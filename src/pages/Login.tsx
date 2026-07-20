@@ -4,7 +4,16 @@ import equipeJrImg from "@/assets/EquipeJr.png";
 import insperJrLogo from "@/assets/insperjr2.png";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Envelope, Lock, ArrowRight, Eye, EyeSlash } from "@phosphor-icons/react";
+import {
+  Envelope,
+  Lock,
+  ArrowRight,
+  Eye,
+  EyeSlash,
+  Users,
+  ListChecks,
+  ChatCircleText,
+} from "@phosphor-icons/react";
 import toast from "react-hot-toast";
 import {
   AuthPageWrapper,
@@ -36,10 +45,8 @@ import {
   LoginBancaProgressLabel,
   LoginBancaProgressTrack,
   LoginBancaProgressFill,
-  LoginPanelTrustRow,
-  LoginPanelTrustItem,
-  LoginPanelTrustStrong,
-  LoginPanelTrustDivider,
+  LoginPanelCapabilityRow,
+  LoginPanelCapabilityItem,
   LoginRightPanel,
   LoginFormWrapper,
   LoginHeaderBlock,
@@ -158,15 +165,20 @@ export default function Login() {
             </LoginBancaCard>
           </LoginPanelMiddle>
 
-          <LoginPanelTrustRow>
-            <LoginPanelTrustItem>
-              <LoginPanelTrustStrong>+30</LoginPanelTrustStrong> anos de história
-            </LoginPanelTrustItem>
-            <LoginPanelTrustDivider />
-            <LoginPanelTrustItem>
-              <LoginPanelTrustStrong>Multidisciplinar</LoginPanelTrustStrong> por essência
-            </LoginPanelTrustItem>
-          </LoginPanelTrustRow>
+          <LoginPanelCapabilityRow>
+            <LoginPanelCapabilityItem>
+              <Users size={18} weight="duotone" />
+              Bancas
+            </LoginPanelCapabilityItem>
+            <LoginPanelCapabilityItem>
+              <ListChecks size={18} weight="duotone" />
+              Critérios
+            </LoginPanelCapabilityItem>
+            <LoginPanelCapabilityItem>
+              <ChatCircleText size={18} weight="duotone" />
+              Feedback
+            </LoginPanelCapabilityItem>
+          </LoginPanelCapabilityRow>
         </LoginPanelContent>
       </LoginLeftPanel>
 

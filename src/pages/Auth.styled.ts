@@ -240,15 +240,16 @@ export const LoginPanelTitleCursor = styled.span`
   animation: ${loginCursorBlink} 0.8s step-end infinite;
 `;
 
-export const LoginPanelTrustRow = styled.div`
+export const LoginPanelCapabilityRow = styled.div`
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 1.5rem;
   padding-top: 1.75rem;
   border-top: 1px solid rgba(255, 255, 255, 0.16);
   opacity: 0;
   animation: ${loginFadeUp} 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: 0.6s;
+  animation-delay: 1.1s;
 
   @media (prefers-reduced-motion: reduce) {
     opacity: 1;
@@ -256,21 +257,18 @@ export const LoginPanelTrustRow = styled.div`
   }
 `;
 
-export const LoginPanelTrustItem = styled.span`
+export const LoginPanelCapabilityItem = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
-`;
 
-export const LoginPanelTrustStrong = styled.strong`
-  color: #ffffff;
-  font-weight: ${theme.fontWeight.bold};
-`;
-
-export const LoginPanelTrustDivider = styled.span`
-  width: 1px;
-  height: 22px;
-  background: rgba(255, 255, 255, 0.2);
+  & svg {
+    color: ${theme.colors.accent};
+    flex-shrink: 0;
+  }
 `;
 
 /* ---------- Card de banca: amostra ilustrativa sobre a foto ---------- */
