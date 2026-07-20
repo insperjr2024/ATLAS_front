@@ -23,6 +23,19 @@ import {
   LoginPanelTitle,
   LoginPanelTitleAccent,
   LoginPanelTitleCursor,
+  LoginBancaCard,
+  LoginBancaStatus,
+  LoginBancaStatusDot,
+  LoginBancaProject,
+  LoginBancaMeta,
+  LoginBancaDivider,
+  LoginBancaFooter,
+  LoginBancaAvatars,
+  LoginBancaAvatar,
+  LoginBancaProgressBlock,
+  LoginBancaProgressLabel,
+  LoginBancaProgressTrack,
+  LoginBancaProgressFill,
   LoginPanelTrustRow,
   LoginPanelTrustItem,
   LoginPanelTrustStrong,
@@ -48,6 +61,15 @@ import {
 const WELCOME_TITLE = "Onde os projetos da Insper Jr são avaliados.";
 const ACCENT_START = WELCOME_TITLE.indexOf("avaliados");
 const TYPEWRITER_DELAY_MS = 80;
+
+/** Amostra ilustrativa — não é dado real, serve só para comunicar o domínio na tela de login. */
+const BANCA_EXEMPLO = {
+  projeto: "Projeto Alfa",
+  data: "12 mar · 14h30",
+  iniciais: ["AM", "BR", "CL"],
+  avaliadores: 3,
+  enviadas: 2,
+} as const;
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -103,6 +125,37 @@ export default function Login() {
                 {!isTypingComplete && <LoginPanelTitleCursor aria-hidden />}
               </LoginPanelTitle>
             </LoginPanelTextContainer>
+
+            <LoginBancaCard aria-hidden="true">
+              <LoginBancaStatus>
+                <LoginBancaStatusDot />
+                Banca em andamento
+              </LoginBancaStatus>
+
+              <LoginBancaProject>{BANCA_EXEMPLO.projeto}</LoginBancaProject>
+              <LoginBancaMeta>{BANCA_EXEMPLO.data}</LoginBancaMeta>
+
+              <LoginBancaDivider />
+
+              <LoginBancaFooter>
+                <LoginBancaAvatars>
+                  {BANCA_EXEMPLO.iniciais.map((inicial) => (
+                    <LoginBancaAvatar key={inicial}>{inicial}</LoginBancaAvatar>
+                  ))}
+                </LoginBancaAvatars>
+
+                <LoginBancaProgressBlock>
+                  <LoginBancaProgressLabel>
+                    {BANCA_EXEMPLO.enviadas} de {BANCA_EXEMPLO.avaliadores} avaliações
+                  </LoginBancaProgressLabel>
+                  <LoginBancaProgressTrack>
+                    <LoginBancaProgressFill
+                      $ratio={BANCA_EXEMPLO.enviadas / BANCA_EXEMPLO.avaliadores}
+                    />
+                  </LoginBancaProgressTrack>
+                </LoginBancaProgressBlock>
+              </LoginBancaFooter>
+            </LoginBancaCard>
           </LoginPanelMiddle>
 
           <LoginPanelTrustRow>

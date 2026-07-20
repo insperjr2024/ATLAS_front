@@ -50,6 +50,16 @@ const loginCursorBlink = keyframes`
   51%, 100% { opacity: 0; }
 `;
 
+const loginProgressFill = keyframes`
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+`;
+
+const loginStatusPulse = keyframes`
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50%      { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+`;
+
 /* Staggered reveal: cada filho anima um tempo depois */
 const loginRevealStagger = css`
   & > * {
@@ -261,6 +271,136 @@ export const LoginPanelTrustDivider = styled.span`
   width: 1px;
   height: 22px;
   background: rgba(255, 255, 255, 0.2);
+`;
+
+/* ---------- Card de banca: amostra ilustrativa sobre a foto ---------- */
+
+export const LoginBancaCard = styled.div`
+  width: 100%;
+  max-width: 20rem;
+  margin-top: 2rem;
+  padding: 1.25rem;
+  border-radius: ${theme.borderRadius.xl};
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  animation: ${loginFadeUp} 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 0.9s;
+
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 1;
+    animation: none;
+  }
+`;
+
+export const LoginBancaStatus = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: ${theme.fontWeight.medium};
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+`;
+
+export const LoginBancaStatusDot = styled.span`
+  width: 7px;
+  height: 7px;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.accent};
+  flex-shrink: 0;
+  animation: ${loginStatusPulse} 2.4s ease-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+`;
+
+export const LoginBancaProject = styled.p`
+  margin: 0.6rem 0 0.15rem 0;
+  font-size: 1rem;
+  font-weight: ${theme.fontWeight.bold};
+  color: #ffffff;
+`;
+
+export const LoginBancaMeta = styled.p`
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.6);
+`;
+
+export const LoginBancaDivider = styled.div`
+  height: 1px;
+  margin: 0.95rem 0;
+  background: rgba(255, 255, 255, 0.14);
+`;
+
+export const LoginBancaFooter = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+`;
+
+export const LoginBancaAvatars = styled.div`
+  display: flex;
+  flex-shrink: 0;
+`;
+
+export const LoginBancaAvatar = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: ${theme.borderRadius.full};
+  background: rgba(255, 255, 255, 0.18);
+  border: 1.5px solid rgba(20, 6, 6, 0.55);
+  font-size: 0.62rem;
+  font-weight: ${theme.fontWeight.semibold};
+  color: #ffffff;
+
+  & + & {
+    margin-left: -8px;
+  }
+`;
+
+export const LoginBancaProgressBlock = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+export const LoginBancaProgressLabel = styled.p`
+  margin: 0 0 0.4rem 0;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.78);
+`;
+
+export const LoginBancaProgressTrack = styled.div`
+  height: 4px;
+  border-radius: ${theme.borderRadius.full};
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+`;
+
+export const LoginBancaProgressFill = styled.span<{ $ratio: number }>`
+  display: block;
+  height: 100%;
+  width: ${({ $ratio }) => `${Math.round($ratio * 100)}%`};
+  border-radius: inherit;
+  background: linear-gradient(90deg, ${theme.colors.accent}, #f87171);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: ${loginProgressFill} 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: 1.3s;
+
+  @media (prefers-reduced-motion: reduce) {
+    transform: scaleX(1);
+    animation: none;
+  }
 `;
 
 /* ---------- Direita: painel do formulário ---------- */
