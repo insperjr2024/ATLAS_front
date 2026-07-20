@@ -125,13 +125,15 @@ export const LoginFormWrapper = styled.div`
 export const LoginHeaderBlock = styled.div`
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  text-align: center;
   gap: 0.4rem;
 `;
 
 export const LoginBrandLockup = styled.div`
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.7rem;
   margin-bottom: 1rem;
 `;
