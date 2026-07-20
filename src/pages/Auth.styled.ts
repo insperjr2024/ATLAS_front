@@ -108,7 +108,7 @@ export const LoginPanelOverlay = styled.div`
     linear-gradient(
       180deg,
       rgba(10, 2, 2, 0.25) 0%,
-      rgba(10, 2, 2, 0.45) 45%,
+      rgba(10, 2, 2, 0.55) 45%,
       rgba(8, 1, 1, 0.86) 100%
     ),
     radial-gradient(
@@ -159,13 +159,37 @@ export const LoginPanelContent = styled.div`
   padding: 3.5rem;
 `;
 
-export const LoginPanelTopRow = styled.div`
+export const LoginPanelLockup = styled.div`
   display: flex;
   align-items: center;
   gap: 0.75rem;
   opacity: 0;
   animation: ${loginFadeIn} 0.9s ease forwards;
   animation-delay: 0.2s;
+
+  @media (prefers-reduced-motion: reduce) {
+    opacity: 1;
+    animation: none;
+  }
+`;
+
+export const LoginPanelLockupLogo = styled.img`
+  display: block;
+  height: 24px;
+  width: auto;
+  object-fit: contain;
+`;
+
+export const LoginPanelLockupDivider = styled.span`
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.25);
+`;
+
+export const LoginPanelMiddle = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 `;
 
 export const LoginPanelKicker = styled.span`
@@ -176,22 +200,14 @@ export const LoginPanelKicker = styled.span`
   color: rgba(255, 255, 255, 0.82);
 `;
 
-export const LoginPanelKickerDot = styled.span`
-  width: 7px;
-  height: 7px;
-  border-radius: 9999px;
-  background: ${theme.colors.accent};
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25);
-`;
-
 export const LoginPanelTextContainer = styled.div`
-  max-width: 33ch;
+  max-width: 26ch;
   ${loginRevealStagger};
 `;
 
 export const LoginPanelTitle = styled.h2`
   font-family: "Inter", system-ui, -apple-system, sans-serif;
-  font-size: clamp(2.25rem, 4.2vw, 3.25rem);
+  font-size: clamp(1.9rem, 3.4vw, 2.75rem);
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.025em;
@@ -212,17 +228,6 @@ export const LoginPanelTitleCursor = styled.span`
   vertical-align: text-bottom;
   background: ${theme.colors.accent};
   animation: ${loginCursorBlink} 0.8s step-end infinite;
-`;
-
-export const LoginPanelSubtitle = styled.p`
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
-  font-size: 1.0625rem;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.9);
-  line-height: 1.7;
-  margin: 0;
-  max-width: 42ch;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
 `;
 
 export const LoginPanelTrustRow = styled.div`

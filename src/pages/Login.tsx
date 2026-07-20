@@ -14,14 +14,15 @@ import {
   LoginPanelAurora,
   LoginPanelGrain,
   LoginPanelContent,
-  LoginPanelTopRow,
+  LoginPanelLockup,
+  LoginPanelLockupLogo,
+  LoginPanelLockupDivider,
   LoginPanelKicker,
-  LoginPanelKickerDot,
+  LoginPanelMiddle,
   LoginPanelTextContainer,
   LoginPanelTitle,
   LoginPanelTitleAccent,
   LoginPanelTitleCursor,
-  LoginPanelSubtitle,
   LoginPanelTrustRow,
   LoginPanelTrustItem,
   LoginPanelTrustStrong,
@@ -44,8 +45,8 @@ import {
   LoginSubmitButton,
 } from "./Auth.styled";
 
-const WELCOME_TITLE = "Bem-vindo à Insper Jr";
-const ACCENT_START = "Bem-vindo à ".length;
+const WELCOME_TITLE = "Onde os projetos da Insper Jr são avaliados.";
+const ACCENT_START = WELCOME_TITLE.indexOf("avaliados");
 const TYPEWRITER_DELAY_MS = 80;
 
 export default function Login() {
@@ -84,26 +85,25 @@ export default function Login() {
         <LoginPanelAurora />
         <LoginPanelGrain />
         <LoginPanelContent>
-          <LoginPanelTopRow>
-            <LoginPanelKickerDot />
+          <LoginPanelLockup>
+            <LoginPanelLockupLogo src={insperJrLogo} alt="Insper Jr." />
+            <LoginPanelLockupDivider aria-hidden />
             <LoginPanelKicker>Sistema de Bancas</LoginPanelKicker>
-          </LoginPanelTopRow>
+          </LoginPanelLockup>
 
-          <LoginPanelTextContainer>
-            <LoginPanelTitle>
-              {WELCOME_TITLE.slice(0, Math.min(typedLength, ACCENT_START))}
-              {typedLength > ACCENT_START && (
-                <LoginPanelTitleAccent>
-                  {WELCOME_TITLE.slice(ACCENT_START, typedLength)}
-                </LoginPanelTitleAccent>
-              )}
-              {!isTypingComplete && <LoginPanelTitleCursor aria-hidden />}
-            </LoginPanelTitle>
-            <LoginPanelSubtitle>
-              A Insper Jr é uma das maiores empresas juniores do país, com diversas
-              frentes de atuação, englobando alunos de todos os cursos de faculdade.
-            </LoginPanelSubtitle>
-          </LoginPanelTextContainer>
+          <LoginPanelMiddle>
+            <LoginPanelTextContainer>
+              <LoginPanelTitle>
+                {WELCOME_TITLE.slice(0, Math.min(typedLength, ACCENT_START))}
+                {typedLength > ACCENT_START && (
+                  <LoginPanelTitleAccent>
+                    {WELCOME_TITLE.slice(ACCENT_START, typedLength)}
+                  </LoginPanelTitleAccent>
+                )}
+                {!isTypingComplete && <LoginPanelTitleCursor aria-hidden />}
+              </LoginPanelTitle>
+            </LoginPanelTextContainer>
+          </LoginPanelMiddle>
 
           <LoginPanelTrustRow>
             <LoginPanelTrustItem>
