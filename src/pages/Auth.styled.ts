@@ -300,23 +300,34 @@ export const LoginHeaderBlock = styled.div`
   gap: 0.4rem;
 `;
 
-export const LoginLogoWrap = styled.div`
+export const LoginBrandLockup = styled.div`
   display: flex;
-  justify-content: flex-start;
-  margin-bottom: 0.25rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 `;
 
-export const LoginLogo = styled.img`
+export const LoginBrandLogo = styled.img`
   display: block;
-  max-height: 132px;
+  height: 56px;
   width: auto;
   max-width: 100%;
   object-fit: contain;
-  object-position: left center;
+`;
 
-  @media (min-width: ${theme.breakpoints.sm}px) {
-    margin-left: -2.5rem;
-  }
+export const LoginBrandDivider = styled.span`
+  width: 1px;
+  align-self: stretch;
+  min-height: 30px;
+  background: ${theme.colors.border};
+`;
+
+export const LoginBrandProduct = styled.span`
+  font-size: 0.95rem;
+  font-weight: ${theme.fontWeight.semibold};
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: ${theme.colors.foreground};
 `;
 
 export const LoginFormTitle = styled.h1`

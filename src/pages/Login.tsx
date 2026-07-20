@@ -29,8 +29,10 @@ import {
   LoginRightPanel,
   LoginFormWrapper,
   LoginHeaderBlock,
-  LoginLogoWrap,
-  LoginLogo,
+  LoginBrandLockup,
+  LoginBrandLogo,
+  LoginBrandDivider,
+  LoginBrandProduct,
   LoginFormTitle,
   LoginFormSubtitle,
   LoginAuthForm,
@@ -118,11 +120,15 @@ export default function Login() {
       <LoginRightPanel>
         <LoginFormWrapper>
           <LoginHeaderBlock>
-            <LoginLogoWrap>
-              <LoginLogo src={insperJrLogo} alt="Insper Jr." />
-            </LoginLogoWrap>
+            <LoginBrandLockup>
+              <LoginBrandLogo src={insperJrLogo} alt="Insper Jr." />
+              <LoginBrandDivider aria-hidden />
+              <LoginBrandProduct>Sistema de Bancas</LoginBrandProduct>
+            </LoginBrandLockup>
             <LoginFormTitle>Acesse sua conta</LoginFormTitle>
-            <LoginFormSubtitle>Entre com suas credenciais para continuar.</LoginFormSubtitle>
+            <LoginFormSubtitle>
+              Entre com seu e-mail Insper Jr para acessar as bancas.
+            </LoginFormSubtitle>
           </LoginHeaderBlock>
 
           <LoginAuthForm onSubmit={handleSubmit}>
