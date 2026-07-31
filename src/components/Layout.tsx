@@ -12,7 +12,7 @@ export function Layout() {
           <a href="/dashboard">Desempenho</a>
           <a href="/bancas">Bancas</a>
           <a href="/calendario">Calendário</a>
-          {usuario?.cargo.pode_gerenciar_cargos && (
+          {usuario?.cargo?.pode_gerenciar_cargos && (
             <>
               <a href="/nucleo">Núcleo</a>
               <a href="/avaliacoes">Avaliações</a>
