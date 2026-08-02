@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import insperJrLogo from "@/assets/insperjr2.png";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Envelope, Lock, ArrowRight, Eye, EyeSlash } from "@phosphor-icons/react";
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import {
   AuthPageWrapper,
   LoginGlow,
@@ -74,7 +74,7 @@ export function Login() {
             <Label htmlFor="email">E-mail</Label>
             <LoginInputWrapper>
               <LoginIconWrapper>
-                <Envelope size={20} />
+                <Mail size={20} />
               </LoginIconWrapper>
               <Input
                 id="email"
@@ -108,7 +108,7 @@ export function Login() {
                 aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </LoginTogglePasswordBtn>
             </LoginInputWrapperWithRight>
           </LoginFieldGroup>

@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { Banca, Candidatura } from "@/types/banca";
+import type { Banca, BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente } from "@/types/banca";
 
 export function getBancas(token: string) {
   return apiFetch<Banca[]>("/bancas", { token });
@@ -23,4 +23,20 @@ export function alocar(bancaId: number, token: string) {
 
 export function desalocar(candidaturaId: number, token: string) {
   return apiFetch("/candidaturas/" + candidaturaId, { method: "DELETE", token });
+}
+
+export function getEscopos(token: string) {
+  return apiFetch<Escopo[]>("/escopos", { token });
+}
+
+export function getFrentes(token: string) {
+  return apiFetch<Frente[]>("/frentes", { token });
+}
+
+export function getBancasFrentes(token: string) {
+  return apiFetch<BancaFrente[]>("/bancas-frentes", { token });
+}
+
+export function getEquipesProjeto(token: string) {
+  return apiFetch<EquipeProjeto[]>("/equipes-projeto", { token });
 }

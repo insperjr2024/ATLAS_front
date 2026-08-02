@@ -32,3 +32,56 @@ export interface Desempenho {
   total_bancas_realizadas: number;
   percentual: number;
 }
+
+export interface Escopo {
+  id: number;
+  nome: string;
+}
+
+export interface Frente {
+  id: number;
+  nome: string;
+}
+
+export interface BancaFrente {
+  id: number;
+  banca_id: number;
+  frente_id: number;
+}
+
+export interface EquipeProjeto {
+  id: number;
+  banca_id: number;
+  usuario_id: number;
+}
+
+export interface Pergunta {
+  id: number;
+  texto: string;
+  ordem: number;
+  tipo_resposta: "nota" | "texto";
+}
+
+export interface FormularioAtivo {
+  id: number;
+  semestre_id: number;
+  perguntas: Pergunta[];
+}
+
+export interface Avaliacao {
+  id: number;
+  banca_id: number;
+  avaliador_id: number;
+  formulario_id: number;
+  status: "rascunho" | "submetida";
+  comentario_feedback: string | null;
+  submetida_em: string | null;
+}
+
+export interface AvaliacaoNota {
+  id: number;
+  avaliacao_id: number;
+  pergunta_id: number;
+  nota: number | null;
+  resposta_texto: string | null;
+}

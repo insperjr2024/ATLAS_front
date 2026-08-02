@@ -5,6 +5,7 @@ import { Layout } from "@/components/Layout";
 import { Login } from "@/pages/Login";
 import { Desempenho } from "@/pages/Desempenho"; // ← import novo
 import { Bancas } from "@/pages/Bancas";         // ← import novo
+import { Calendario } from "@/pages/Calendario";
 
 export default function App() {
   return (
@@ -17,8 +18,10 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} /> {/* ← trocado */}
               <Route path="/bancas" element={<Bancas />} />         {/* ← linha nova */}
+              <Route path="/calendario" element={<Calendario />} />
             </Route>
           </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

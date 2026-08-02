@@ -1,6 +1,17 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { apiFetch } from "@/lib/api";
-import type { Usuario } from "@/types/auth";
+import type { Usuario, Cargo } from "@/types/auth";
+
+// A API devolve `cargo_id` solto em /auth/me e /usuarios/{id}, não o objeto
+// `cargo` aninhado que o resto do front espera — por isso buscamos o cargo
+// à parte e montamos o Usuario completo aqui.
+interface UsuarioResponse {
+  id: number;
+  nome: string;
+  email_insper: string;
+  cargo_id: number;
+  ativo: boolean;
+}
 
 interface AuthContextType {
   usuario: Usuario | null;
@@ -24,8 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const dados = await apiFetch<Usuario>("/auth/me", { token });
-        setUsuario(dados);
+        const dados = await apiFetch<UsuarioResponse>("/auth/me", { token });
+        const cargo = await apiFetch<Cargo>(`/cargos/${dados.cargo_id}`, { token });
+        setUsuario({ ...dados, cargo });
       } catch {
         setToken(null);
         localStorage.removeItem("token");
