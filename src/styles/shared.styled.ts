@@ -10,6 +10,39 @@ export {
   ErrorText as ErrorMessage,
 } from "@/styles/page.styled";
 
+/** Máximo de linhas visíveis em listas/tabelas antes de ativar scroll. */
+export const LIST_MAX_VISIVEIS = 4;
+
+const TABLE_HEADER_HEIGHT = "2.75rem";
+const ROW_HEIGHT = "3.35rem";
+
+/** Wrapper com scroll para tabelas (cabeçalho fixo). */
+export const TableScrollWrap = styled.div<{ $scrollable?: boolean; $maxVisiveis?: number }>`
+  ${({ $scrollable, $maxVisiveis = LIST_MAX_VISIVEIS }) =>
+    $scrollable &&
+    `
+    max-height: calc(${TABLE_HEADER_HEIGHT} + ${$maxVisiveis} * ${ROW_HEIGHT});
+    overflow-y: auto;
+  `}
+
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: ${theme.colors.card};
+  }
+`;
+
+/** Wrapper com scroll para listas em cards (sem cabeçalho de tabela). */
+export const ListScrollWrap = styled.div<{ $scrollable?: boolean }>`
+  ${({ $scrollable }) =>
+    $scrollable &&
+    `
+    max-height: calc(${LIST_MAX_VISIVEIS} * ${ROW_HEIGHT});
+    overflow-y: auto;
+  `}
+`;
+
 // Grid de 2 colunas — alias semântico usado por Desempenho.
 export const TopGrid = styled.div`
   display: grid;

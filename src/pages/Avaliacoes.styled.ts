@@ -34,6 +34,8 @@ export {
   WideModalContent,
 } from "./Bancas.styled";
 
+export { LIST_MAX_VISIVEIS, ListScrollWrap, TableScrollWrap } from "@/styles/shared.styled";
+
 export { NotaCell } from "./Nucleo.styled";
 
 export const FiltersRow = styled.div`

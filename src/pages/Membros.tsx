@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { getCargos } from "@/lib/cargos";
-import { frentesDoUsuario, nomeCargo } from "@/lib/nucleo";
+import { frentesDoUsuario, nomeCargo, normalizarTexto } from "@/lib/nucleo";
 import { getUsuarios, updateUsuario } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import type { Frente } from "@/types/banca";
@@ -50,6 +50,7 @@ import {
   FormStack,
   FieldGroup,
   FieldLabel,
+  FieldInput,
   FieldSelect,
   CheckboxGrid,
   CheckboxLabel,
@@ -57,7 +58,13 @@ import {
   EditSection,
   EditSectionTitle,
   ToggleRow,
+  FiltersRow,
+  SearchField,
+  FilterSelect,
 } from "./Membros.styled";
+import { TableScrollWrap } from "@/styles/shared.styled";
+
+const MEMBROS_MAX_VISIVEIS = 9;
 
 interface Contexto {
   cargos: Cargo[];
@@ -72,8 +79,11 @@ export function Membros() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [membroDetalhe, setMembroDetalhe] = useState<UsuarioResumo | null>(null);
+  const [termoPesquisa, setTermoPesquisa] = useState("");
+  const [filtroCargo, setFiltroCargo] = useState("");
+  const [filtroFrente, setFiltroFrente] = useState("");
 
-  async function buscar() {
+  async function carregarMembros() {
     if (!token) return;
     setCarregando(true);
     setErro("");
@@ -94,7 +104,7 @@ export function Membros() {
   }
 
   useEffect(() => {
-    buscar();
+    carregarMembros();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -108,7 +118,7 @@ export function Membros() {
     return (
       <ErrorBlock>
         <ErrorText>Não foi possível carregar os membros: {erro}</ErrorText>
-        <PageButton $variant="outline" onClick={buscar}>
+        <PageButton $variant="outline" onClick={carregarMembros}>
           Tentar novamente
         </PageButton>
       </ErrorBlock>
@@ -116,6 +126,23 @@ export function Membros() {
   }
 
   if (carregando || !contexto) return <PageLoadingBlock />;
+
+  const termo = normalizarTexto(termoPesquisa.trim());
+  const membrosFiltrados = membros.filter((membro) => {
+    if (filtroCargo && String(membro.cargo_id) !== filtroCargo) return false;
+    if (filtroFrente) {
+      const temFrente = contexto.usuariosFrentes.some(
+        (uf) => uf.usuario_id === membro.id && uf.frente_id === Number(filtroFrente),
+      );
+      if (!temFrente) return false;
+    }
+    if (!termo) return true;
+    const frentes = frentesDoUsuario(contexto.usuariosFrentes, contexto.frentes, membro.id).join(" ");
+    const texto = normalizarTexto(
+      `${membro.nome} ${membro.email_insper ?? ""} ${nomeCargo(contexto.cargos, membro.cargo_id)} ${frentes}`,
+    );
+    return texto.includes(termo);
+  });
 
   return (
     <PageStack>
@@ -133,8 +160,41 @@ export function Membros() {
           <PageCardTitle>Todos os membros do núcleo</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
+          <FiltersRow>
+            <SearchField
+              type="text"
+              value={termoPesquisa}
+              onChange={(e) => setTermoPesquisa(e.target.value)}
+              placeholder="Buscar por nome ou e-mail..."
+              aria-label="Buscar membros"
+            />
+            <FilterSelect value={filtroCargo} onChange={(e) => setFiltroCargo(e.target.value)} aria-label="Filtrar por cargo">
+              <option value="">Todos os cargos</option>
+              {contexto.cargos.map((cargo) => (
+                <option key={cargo.id} value={cargo.id}>
+                  {cargo.nome}
+                </option>
+              ))}
+            </FilterSelect>
+            <FilterSelect value={filtroFrente} onChange={(e) => setFiltroFrente(e.target.value)} aria-label="Filtrar por frente">
+              <option value="">Todas as frentes</option>
+              {contexto.frentes.map((frente) => (
+                <option key={frente.id} value={frente.id}>
+                  {frente.nome}
+                </option>
+              ))}
+            </FilterSelect>
+          </FiltersRow>
+
           {membros.length === 0 && <EmptyText>Nenhum membro cadastrado.</EmptyText>}
-          {membros.length > 0 && (
+          {membros.length > 0 && membrosFiltrados.length === 0 && (
+            <EmptyText>Nenhum membro encontrado com os filtros selecionados.</EmptyText>
+          )}
+          {membrosFiltrados.length > 0 && (
+            <TableScrollWrap
+              $scrollable={membrosFiltrados.length > MEMBROS_MAX_VISIVEIS}
+              $maxVisiveis={MEMBROS_MAX_VISIVEIS}
+            >
             <DataTable>
               <TableHead>
                 <TableRow>
@@ -147,7 +207,7 @@ export function Membros() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {membros.map((membro) => {
+                {membrosFiltrados.map((membro) => {
                   const frentes = frentesDoUsuario(contexto.usuariosFrentes, contexto.frentes, membro.id);
                   return (
                     <TableRow key={membro.id}>
@@ -168,6 +228,7 @@ export function Membros() {
                 })}
               </TableBody>
             </DataTable>
+            </TableScrollWrap>
           )}
         </PageCardContent>
       </PageCard>
@@ -185,7 +246,7 @@ export function Membros() {
                 .map((m) => (m.id === atualizado.id ? atualizado : m))
                 .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
             );
-            buscar();
+            carregarMembros();
           }}
         />
       )}

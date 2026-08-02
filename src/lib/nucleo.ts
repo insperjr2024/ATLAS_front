@@ -26,6 +26,14 @@ export function nomeCargo(cargos: Cargo[], id: number): string {
   return cargos.find((c) => c.id === id)?.nome ?? "—";
 }
 
+/** Remove acentos e normaliza para comparação em buscas. */
+export function normalizarTexto(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 export function frentesDoUsuario(usuariosFrentes: UsuarioFrente[], frentes: Frente[], usuarioId: number): string[] {
   return usuariosFrentes
     .filter((uf) => uf.usuario_id === usuarioId)

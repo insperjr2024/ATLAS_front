@@ -28,6 +28,8 @@ import {
 import {
   TopGrid,
   ListCardContent,
+  ListScrollWrap,
+  LIST_MAX_VISIVEIS,
   RowGroup,
   RowDot,
   RowLabel,
@@ -199,15 +201,19 @@ export function Desempenho() {
           </PageCardHeader>
           <ListCardContent>
             {ultimasBancas.length === 0 && <EmptyText>Nenhuma banca atendida ainda.</EmptyText>}
-            {ultimasBancas.map(({ avaliacao, banca }) => (
-              <HistoricoRow key={avaliacao.id} type="button" onClick={() => setAvaliacaoSelecionada({ avaliacao, banca })}>
-                <RowGroup>
-                  <RowDot aria-hidden />
-                  <RowLabel>{banca.nome_projeto}</RowLabel>
-                </RowGroup>
-                <RowMeta>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
-              </HistoricoRow>
-            ))}
+            {ultimasBancas.length > 0 && (
+              <ListScrollWrap $scrollable={ultimasBancas.length > LIST_MAX_VISIVEIS}>
+                {ultimasBancas.map(({ avaliacao, banca }) => (
+                  <HistoricoRow key={avaliacao.id} type="button" onClick={() => setAvaliacaoSelecionada({ avaliacao, banca })}>
+                    <RowGroup>
+                      <RowDot aria-hidden />
+                      <RowLabel>{banca.nome_projeto}</RowLabel>
+                    </RowGroup>
+                    <RowMeta>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
+                  </HistoricoRow>
+                ))}
+              </ListScrollWrap>
+            )}
           </ListCardContent>
         </PageCard>
       </TopGrid>
@@ -218,21 +224,25 @@ export function Desempenho() {
         </PageCardHeader>
         <ListCardContent>
           {avaliacoesSubmetidas.length === 0 && <EmptyText>Nenhuma avaliação enviada ainda.</EmptyText>}
-          {avaliacoesSubmetidas.map(({ avaliacao, banca }) => (
-            <HistoricoRow
-              key={avaliacao.id}
-              type="button"
-              onClick={() => setAvaliacaoSelecionada({ avaliacao, banca })}
-              aria-label={`Ver formulário enviado para ${banca.nome_projeto}`}
-            >
-              <RowGroup>
-                <RowDot aria-hidden />
-                <RowMeta>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
-                <RowLabel>{banca.nome_projeto}</RowLabel>
-              </RowGroup>
-              <HistoricoVerLabel>Ver respostas</HistoricoVerLabel>
-            </HistoricoRow>
-          ))}
+          {avaliacoesSubmetidas.length > 0 && (
+            <ListScrollWrap $scrollable={avaliacoesSubmetidas.length > LIST_MAX_VISIVEIS}>
+              {avaliacoesSubmetidas.map(({ avaliacao, banca }) => (
+                <HistoricoRow
+                  key={avaliacao.id}
+                  type="button"
+                  onClick={() => setAvaliacaoSelecionada({ avaliacao, banca })}
+                  aria-label={`Ver formulário enviado para ${banca.nome_projeto}`}
+                >
+                  <RowGroup>
+                    <RowDot aria-hidden />
+                    <RowMeta>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
+                    <RowLabel>{banca.nome_projeto}</RowLabel>
+                  </RowGroup>
+                  <HistoricoVerLabel>Ver respostas</HistoricoVerLabel>
+                </HistoricoRow>
+              ))}
+            </ListScrollWrap>
+          )}
         </ListCardContent>
       </PageCard>
 

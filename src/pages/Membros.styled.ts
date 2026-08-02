@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
+import { FieldInput as BaseFieldInput } from "./Bancas.styled";
 
 export {
   PageHeaderRow,
@@ -78,5 +79,34 @@ export const ToggleRow = styled.label`
 
   input {
     accent-color: ${theme.colors.primary};
+  }
+`;
+
+export const FiltersRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.md};
+`;
+
+export const SearchField = styled(BaseFieldInput)`
+  flex: 1;
+  min-width: 12rem;
+  height: 2rem;
+`;
+
+export const FilterSelect = styled.select`
+  height: 2rem;
+  padding: 0 0.625rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.input};
+  background: ${theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+  min-width: 10rem;
+
+  &:focus {
+    outline: none;
+    border-color: ${theme.colors.ring};
   }
 `;

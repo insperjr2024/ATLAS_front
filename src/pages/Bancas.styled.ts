@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
+import { ModalFooter as BaseModalFooter } from "./Calendario.styled";
 
 export const DataTable = styled.table`
   width: 100%;
@@ -7,24 +8,7 @@ export const DataTable = styled.table`
   font-size: ${theme.fontSize.sm};
 `;
 
-export const BANCAS_MAX_VISIVEIS = 5;
-
-/** Altura do cabeçalho + N linhas da tabela antes de ativar scroll. */
-export const TableScrollWrap = styled.div<{ $scrollable?: boolean }>`
-  ${({ $scrollable }) =>
-    $scrollable &&
-    `
-    max-height: calc(2.75rem + ${BANCAS_MAX_VISIVEIS} * 3.35rem);
-    overflow-y: auto;
-  `}
-
-  thead {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: ${theme.colors.card};
-  }
-`;
+export { LIST_MAX_VISIVEIS, ListScrollWrap, TableScrollWrap } from "@/styles/shared.styled";
 
 export const TableHead = styled.thead`
   border-bottom: 1px solid ${theme.colors.border};
@@ -169,7 +153,11 @@ export const NarrowModalContent = styled.div`
 `;
 
 export const WideModalContent = styled(NarrowModalContent)`
-  max-width: 32rem;
+  max-width: 36rem;
+`;
+
+export const ModalFooterSplit = styled(BaseModalFooter)`
+  justify-content: space-between;
 `;
 
 export const PageHeaderRow = styled.div`

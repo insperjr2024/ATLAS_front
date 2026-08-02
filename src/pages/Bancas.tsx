@@ -32,6 +32,7 @@ import {
   isPerguntaOpcional,
   submeterAvaliacao,
 } from "@/lib/avaliacoes";
+import { NotaSlider, NotaSliderGroup } from "@/components/NotaSlider";
 import type { Banca, BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente, FormularioAtivo } from "@/types/banca";
 import type { Cargo, UsuarioResumo } from "@/types/auth";
 import {
@@ -84,6 +85,7 @@ import {
   ModalClose,
   ModalBody,
   ModalFooter,
+  ModalFooterSplit,
   NarrowModalContent,
   WideModalContent,
   PageHeaderRow,
@@ -91,7 +93,7 @@ import {
   PageHeading,
   PageSubheading,
   TableScrollWrap,
-  BANCAS_MAX_VISIVEIS,
+  LIST_MAX_VISIVEIS,
   SectionGroup,
   SectionTitle,
 } from "./Bancas.styled";
@@ -399,7 +401,7 @@ function SecaoBancas({
       <PageCardContent>
         {bancas.length === 0 && <EmptyText>Nenhuma banca aqui.</EmptyText>}
         {bancas.length > 0 && (
-          <TableScrollWrap $scrollable={bancas.length > BANCAS_MAX_VISIVEIS}>
+          <TableScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
             <DataTable>
               <TableHead>
                 <TableRow>
@@ -725,7 +727,18 @@ function AvaliarModal({
   onClose: () => void;
   onEnviada: () => void;
 }) {
-  const [respostas, setRespostas] = useState<Record<number, string>>({});
+  const perguntasVisiveis = (formulario?.perguntas ?? [])
+    .slice()
+    .sort((a, b) => a.ordem - b.ordem)
+    .filter((p) => !isComentarioFeedbackPergunta(p.tipo_resposta, p.texto));
+
+  const perguntasNota = perguntasVisiveis.filter((p) => isPerguntaNota(p.tipo_resposta));
+  const perguntasTexto = perguntasVisiveis.filter((p) => !isPerguntaNota(p.tipo_resposta));
+
+  const [notas, setNotas] = useState<Record<number, number>>(() =>
+    Object.fromEntries(perguntasNota.map((p) => [p.id, 0])),
+  );
+  const [respostasTexto, setRespostasTexto] = useState<Record<number, string>>({});
   const [comentario, setComentario] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -737,19 +750,28 @@ function AvaliarModal({
     setErro("");
     try {
       const avaliacao = await createAvaliacao({ banca_id: banca.id, formulario_id: formulario.id }, token);
-      for (const pergunta of formulario.perguntas) {
-        if (isComentarioFeedbackPergunta(pergunta.tipo_resposta, pergunta.texto)) continue;
-        const valor = respostas[pergunta.id];
-        if (valor === undefined || valor === "") continue;
-        await createAvaliacaoNota(
-          {
-            avaliacao_id: avaliacao.id,
-            pergunta_id: pergunta.id,
-            nota: isPerguntaNota(pergunta.tipo_resposta) ? Number(valor) : undefined,
-            resposta_texto: !isPerguntaNota(pergunta.tipo_resposta) ? valor : undefined,
-          },
-          token,
-        );
+      for (const pergunta of perguntasVisiveis) {
+        if (isPerguntaNota(pergunta.tipo_resposta)) {
+          await createAvaliacaoNota(
+            {
+              avaliacao_id: avaliacao.id,
+              pergunta_id: pergunta.id,
+              nota: notas[pergunta.id] ?? 0,
+            },
+            token,
+          );
+        } else {
+          const valor = respostasTexto[pergunta.id];
+          if (valor === undefined || valor === "") continue;
+          await createAvaliacaoNota(
+            {
+              avaliacao_id: avaliacao.id,
+              pergunta_id: pergunta.id,
+              resposta_texto: valor,
+            },
+            token,
+          );
+        }
       }
       await submeterAvaliacao(avaliacao.id, comentario.trim() || null, token);
       onEnviada();
@@ -762,7 +784,7 @@ function AvaliarModal({
 
   return (
     <ModalOverlay onClick={onClose} role="presentation">
-      <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="avaliar-titulo">
+      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="avaliar-titulo">
         <ModalHeader>
           <ModalTitle id="avaliar-titulo">Formulário de avaliação — {banca.nome_projeto}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
@@ -776,48 +798,47 @@ function AvaliarModal({
         ) : (
           <FormStack onSubmit={handleSubmit}>
             <ModalBody>
-              {formulario.perguntas
-                .slice()
-                .sort((a, b) => a.ordem - b.ordem)
-                .filter((p) => !isComentarioFeedbackPergunta(p.tipo_resposta, p.texto))
-                .map((pergunta) => (
-                  <FieldGroup key={pergunta.id}>
-                    <FieldLabel htmlFor={`pergunta-${pergunta.id}`}>{pergunta.texto}</FieldLabel>
-                    {isPerguntaNota(pergunta.tipo_resposta) ? (
-                      <FieldInput
-                        id={`pergunta-${pergunta.id}`}
-                        type="number"
-                        min={0}
-                        max={5}
-                        step={0.5}
-                        value={respostas[pergunta.id] ?? ""}
-                        onChange={(e) => setRespostas((r) => ({ ...r, [pergunta.id]: e.target.value }))}
-                        required
-                      />
-                    ) : (
-                      <FieldTextarea
-                        id={`pergunta-${pergunta.id}`}
-                        value={respostas[pergunta.id] ?? ""}
-                        onChange={(e) => setRespostas((r) => ({ ...r, [pergunta.id]: e.target.value }))}
-                        required={!isPerguntaOpcional(pergunta.texto)}
-                      />
-                    )}
-                  </FieldGroup>
-                ))}
+              {perguntasNota.length > 0 && (
+                <NotaSliderGroup>
+                  {perguntasNota.map((pergunta) => (
+                    <NotaSlider
+                      key={pergunta.id}
+                      id={`pergunta-${pergunta.id}`}
+                      label={pergunta.texto}
+                      value={notas[pergunta.id] ?? 0}
+                      onChange={(valor) => setNotas((n) => ({ ...n, [pergunta.id]: valor }))}
+                    />
+                  ))}
+                </NotaSliderGroup>
+              )}
+              {perguntasTexto.map((pergunta) => (
+                <FieldGroup key={pergunta.id}>
+                  <FieldLabel htmlFor={`pergunta-${pergunta.id}`}>{pergunta.texto}</FieldLabel>
+                  <FieldTextarea
+                    id={`pergunta-${pergunta.id}`}
+                    value={respostasTexto[pergunta.id] ?? ""}
+                    onChange={(e) => setRespostasTexto((r) => ({ ...r, [pergunta.id]: e.target.value }))}
+                    required={!isPerguntaOpcional(pergunta.texto)}
+                  />
+                </FieldGroup>
+              ))}
               <FieldGroup>
                 <FieldLabel htmlFor="comentario">Comentário (opcional)</FieldLabel>
                 <FieldTextarea id="comentario" value={comentario} onChange={(e) => setComentario(e.target.value)} />
               </FieldGroup>
               {erro && <FormErrorText>{erro}</FormErrorText>}
             </ModalBody>
-            <ModalFooter>
+            <ModalFooterSplit>
+              <PageButton $variant="outline" type="button" onClick={onClose}>
+                Voltar
+              </PageButton>
               <PageButton type="submit" disabled={enviando}>
                 {enviando ? "Enviando..." : "Enviar avaliação"}
               </PageButton>
-            </ModalFooter>
+            </ModalFooterSplit>
           </FormStack>
         )}
-      </NarrowModalContent>
+      </WideModalContent>
     </ModalOverlay>
   );
 }

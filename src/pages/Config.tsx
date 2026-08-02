@@ -53,6 +53,7 @@ import {
   PermissaoTitulo,
   PermissaoDesc,
 } from "./Config.styled";
+import { LIST_MAX_VISIVEIS, TableScrollWrap } from "@/styles/shared.styled";
 
 const PERMISSOES = [
   {
@@ -216,6 +217,7 @@ export function Config() {
         <PageCardContent>
           {cargos.length === 0 && <EmptyText>Nenhum cargo cadastrado.</EmptyText>}
           {cargos.length > 0 && (
+            <TableScrollWrap $scrollable={cargos.length > LIST_MAX_VISIVEIS}>
             <DataTable>
               <TableHead>
                 <TableRow>
@@ -258,6 +260,7 @@ export function Config() {
                 ))}
               </TableBody>
             </DataTable>
+            </TableScrollWrap>
           )}
         </PageCardContent>
       </PageCard>
@@ -316,29 +319,31 @@ function TabelaNomes({
   onExcluir: (item: { id: number; nome: string }) => void;
 }) {
   return (
-    <DataTable>
-      <TableHead>
-        <TableRow>
-          <TableHeadCell>Nome</TableHeadCell>
-          <TableHeadCell />
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {itens.map((item) => (
-          <TableRow key={item.id}>
-            <NameCell>{item.nome}</NameCell>
-            <ActionsCell>
-              <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(item)}>
-                Editar
-              </PageButtonSm>
-              <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(item)}>
-                Excluir
-              </PageButtonSm>
-            </ActionsCell>
+    <TableScrollWrap $scrollable={itens.length > LIST_MAX_VISIVEIS}>
+      <DataTable>
+        <TableHead>
+          <TableRow>
+            <TableHeadCell>Nome</TableHeadCell>
+            <TableHeadCell />
           </TableRow>
-        ))}
-      </TableBody>
-    </DataTable>
+        </TableHead>
+        <TableBody>
+          {itens.map((item) => (
+            <TableRow key={item.id}>
+              <NameCell>{item.nome}</NameCell>
+              <ActionsCell>
+                <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(item)}>
+                  Editar
+                </PageButtonSm>
+                <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(item)}>
+                  Excluir
+                </PageButtonSm>
+              </ActionsCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </DataTable>
+    </TableScrollWrap>
   );
 }
 

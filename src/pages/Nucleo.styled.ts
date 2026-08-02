@@ -11,16 +11,31 @@ export {
   TableRow,
   NameCell,
   TableCell,
+  FieldSelect,
 } from "./Bancas.styled";
 
-export const TablesGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: ${theme.spacing.lg};
+export { LIST_MAX_VISIVEIS, ListScrollWrap, TableScrollWrap } from "@/styles/shared.styled";
 
-  @media (min-width: ${theme.breakpoints.lg}px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
+export const CardHeaderRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+`;
+
+export const FilterGroup = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+export const FilterLabel = styled.label`
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+  white-space: nowrap;
 `;
 
 export const NotaCell = styled.td`
