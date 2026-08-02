@@ -7,6 +7,25 @@ export const DataTable = styled.table`
   font-size: ${theme.fontSize.sm};
 `;
 
+export const BANCAS_MAX_VISIVEIS = 5;
+
+/** Altura do cabeçalho + N linhas da tabela antes de ativar scroll. */
+export const TableScrollWrap = styled.div<{ $scrollable?: boolean }>`
+  ${({ $scrollable }) =>
+    $scrollable &&
+    `
+    max-height: calc(2.75rem + ${BANCAS_MAX_VISIVEIS} * 3.35rem);
+    overflow-y: auto;
+  `}
+
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: ${theme.colors.card};
+  }
+`;
+
 export const TableHead = styled.thead`
   border-bottom: 1px solid ${theme.colors.border};
 `;
@@ -233,4 +252,17 @@ export const DateTimeRow = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: ${theme.spacing.sm};
+`;
+
+export const SectionGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.lg};
+`;
+
+export const SectionTitle = styled.h2`
+  margin: 0;
+  font-size: ${theme.fontSize.lg};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
 `;

@@ -57,6 +57,7 @@ export interface EquipeProjeto {
 
 export interface Pergunta {
   id: number;
+  formulario_id?: number;
   texto: string;
   ordem: number;
   tipo_resposta: "nota" | "texto";
@@ -78,6 +79,13 @@ export interface PerguntaNovaVersao {
   texto: string;
   ordem: number;
   tipo_resposta: "nota" | "texto";
+}
+
+export interface BancaParaAvaliar {
+  usuario_id: number;
+  banca_id: number;
+  nome_projeto: string;
+  data_hora: string;
 }
 
 export interface Avaliacao {

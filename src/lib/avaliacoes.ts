@@ -4,6 +4,7 @@ import type {
   AvaliacaoNota,
   FormularioAtivo,
   NotaPorPergunta,
+  Pergunta,
   PerguntaNovaVersao,
 } from "@/types/banca";
 
@@ -27,6 +28,25 @@ export function getAvaliacoesNotas(token: string) {
   return apiFetch<AvaliacaoNota[]>("/avaliacoes-notas", { token });
 }
 
+export function getPerguntas(token: string) {
+  return apiFetch<Pergunta[]>("/perguntas", { token });
+}
+
+/** Backend usa "nota" ou "dissertativa"/"texto" para perguntas abertas. */
+export function isPerguntaNota(tipo: string): boolean {
+  return tipo === "nota";
+}
+
+/** Perguntas de comentário opcional no formulário (não exigem resposta). */
+export function isPerguntaOpcional(texto: string): boolean {
+  return /opcional/i.test(texto);
+}
+
+/** Comentário livre vai para comentario_feedback, não como pergunta do formulário. */
+export function isComentarioFeedbackPergunta(tipo: string, texto: string): boolean {
+  return !isPerguntaNota(tipo) && isPerguntaOpcional(texto);
+}
+
 export function getNotasPorPergunta(bancaId: number, token: string) {
   return apiFetch<NotaPorPergunta[]>(`/bancas/${bancaId}/notas-por-pergunta`, { token });
 }
@@ -40,14 +60,17 @@ export function createAvaliacao(dados: { banca_id: number; formulario_id: number
 }
 
 export function submeterAvaliacao(avaliacaoId: number, comentarioFeedback: string | null, token: string) {
+  const comentario = comentarioFeedback?.trim();
+  const body: Record<string, unknown> = {
+    status: "submetida",
+    submetida_em: new Date().toISOString(),
+  };
+  if (comentario) body.comentario_feedback = comentario;
+
   return apiFetch<Avaliacao>(`/avaliacoes/${avaliacaoId}`, {
     method: "PATCH",
     token,
-    body: JSON.stringify({
-      status: "submetida",
-      comentario_feedback: comentarioFeedback,
-      submetida_em: new Date().toISOString(),
-    }),
+    body: JSON.stringify(body),
   });
 }
 
