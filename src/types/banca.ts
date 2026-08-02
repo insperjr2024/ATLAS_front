@@ -68,6 +68,18 @@ export interface FormularioAtivo {
   perguntas: Pergunta[];
 }
 
+export interface NotaPorPergunta {
+  pergunta_id: number;
+  texto: string | null;
+  media: number;
+}
+
+export interface PerguntaNovaVersao {
+  texto: string;
+  ordem: number;
+  tipo_resposta: "nota" | "texto";
+}
+
 export interface Avaliacao {
   id: number;
   banca_id: number;
@@ -84,4 +96,22 @@ export interface AvaliacaoNota {
   pergunta_id: number;
   nota: number | null;
   resposta_texto: string | null;
+}
+
+export interface Semestre {
+  id: number;
+  nome: string;
+  inicio: string;
+  fim: string;
+}
+
+export interface HistoricoBanca {
+  id: number;
+  nome_projeto: string;
+  escopo_id: number;
+  coordenador_id: number;
+  data_hora: string;
+  nota_final: number | null;
+  semestre_id: number | null;
+  semestre_nome: string | null;
 }

@@ -40,3 +40,19 @@ export function getBancasFrentes(token: string) {
 export function getEquipesProjeto(token: string) {
   return apiFetch<EquipeProjeto[]>("/equipes-projeto", { token });
 }
+
+export interface CreateBancaPayload {
+  nome_projeto: string;
+  escopo_id: number;
+  data_hora: string;
+  consultor_ids: number[];
+  frente_ids: number[];
+}
+
+export function createBanca(dados: CreateBancaPayload, token: string) {
+  return apiFetch<Banca>("/bancas", {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}

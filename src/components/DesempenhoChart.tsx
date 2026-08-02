@@ -23,9 +23,13 @@ export interface FatiaDonut {
 export function DesempenhoChart({
   fatias,
   percentual,
+  valorCentral,
+  ariaLabel,
 }: {
   fatias: FatiaDonut[];
-  percentual: number;
+  percentual?: number;
+  valorCentral?: string;
+  ariaLabel?: string;
 }) {
   const ordenadas = [...fatias].filter((f) => f.valor > 0).sort((a, b) => b.valor - a.valor);
   const principais = ordenadas.slice(0, CORES.length);
@@ -49,7 +53,7 @@ export function DesempenhoChart({
   return (
     <ChartWrapper>
       <DonutBox>
-        <svg viewBox="0 0 40 40" width={128} height={128} role="img" aria-label={`${percentual}% de bancas atendidas`}>
+        <svg viewBox="0 0 40 40" width={128} height={128} role="img" aria-label={ariaLabel ?? `${percentual ?? 0}% de bancas atendidas`}>
           <circle cx="20" cy="20" r={raio} fill="none" stroke="var(--border)" strokeWidth="5" />
           {segmentos.map((s) => (
             <circle
@@ -72,7 +76,7 @@ export function DesempenhoChart({
           ))}
         </svg>
         <DonutCenter>
-          <DonutValue>{percentual}%</DonutValue>
+          <DonutValue>{valorCentral ?? `${percentual ?? 0}%`}</DonutValue>
         </DonutCenter>
       </DonutBox>
 

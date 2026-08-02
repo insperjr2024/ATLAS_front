@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   alocar,
+  createBanca,
   desalocar,
   getBancas,
   getBancasFrentes,
@@ -11,34 +13,72 @@ import {
   getEscopos,
   getFrentes,
 } from "@/lib/bancas";
+import { getCargos } from "@/lib/cargos";
 import { getUsuarios } from "@/lib/usuarios";
 import { createAvaliacao, createAvaliacaoNota, getFormularioAtivo, submeterAvaliacao } from "@/lib/avaliacoes";
 import type { Banca, BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente, FormularioAtivo } from "@/types/banca";
-import type { UsuarioResumo } from "@/types/auth";
-import { avaliadoresDaBanca, frentesDaBanca, membrosDaBanca, nomeEscopo, nomeUsuario } from "@/lib/nucleo";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { PageStack, EmptyText, PageLoadingSkeleton, ErrorState, ErrorMessage } from "@/styles/shared.styled";
+import type { Cargo, UsuarioResumo } from "@/types/auth";
 import {
+  avaliadoresDaBanca,
+  consultoresDoNucleo,
+  frentesDaBanca,
+  membrosDaBanca,
+  nomeEscopo,
+  nomeUsuario,
+} from "@/lib/nucleo";
+import {
+  PageStack,
+  PageCard,
+  PageCardHeader,
+  PageCardTitle,
+  PageCardContent,
+  PageButton,
+  PageButtonSm,
+  PageLoadingBlock,
+  ErrorBlock,
+  ErrorText,
+  EmptyText,
+} from "@/styles/page.styled";
+import {
+  DataTable,
+  TableHead,
+  TableHeadCell,
+  TableBody,
+  TableRow,
   NameCell,
+  TableCell,
   ActionsCell,
   DetailList,
   DetailRow,
   DetailTerm,
   DetailValue,
-  NarrowDialogContent,
   FormStack,
   FieldGroup,
-  ErrorText,
+  FieldLabel,
+  FieldInput,
+  FieldTextarea,
+  FieldSelect,
+  CheckboxGrid,
+  CheckboxLabel,
+  DateTimeRow,
+  FormErrorText,
+  ModalOverlay,
+  ModalHeader,
+  ModalTitle,
+  ModalClose,
+  ModalBody,
+  ModalFooter,
+  NarrowModalContent,
+  WideModalContent,
+  PageHeaderRow,
+  PageHeaderText,
+  PageHeading,
+  PageSubheading,
 } from "./Bancas.styled";
 
 interface Contexto {
   usuarios: UsuarioResumo[];
+  cargos: Cargo[];
   escopos: Escopo[];
   frentes: Frente[];
   bancasFrentes: BancaFrente[];
@@ -57,18 +97,22 @@ export function Bancas() {
   const [erro, setErro] = useState("");
   const [bancaDetalhe, setBancaDetalhe] = useState<Banca | null>(null);
   const [bancaAvaliar, setBancaAvaliar] = useState<Banca | null>(null);
+  const [criarAberto, setCriarAberto] = useState(false);
+
+  const podeAgendar = !!usuario?.cargo.pode_agendar_banca;
 
   async function recarregar() {
     if (!token || !usuario) return;
     setCarregando(true);
     setErro("");
     try {
-      const [bancasResp, candidaturasResp, avaliarResp, usuarios, escopos, frentes, bancasFrentes, equipesProjeto, formularioAtivo] =
+      const [bancasResp, candidaturasResp, avaliarResp, usuarios, cargos, escopos, frentes, bancasFrentes, equipesProjeto, formularioAtivo] =
         await Promise.all([
           getBancas(token),
           getCandidaturas(token),
           getBancasParaAvaliar(usuario.id, token),
           getUsuarios(token),
+          getCargos(token),
           getEscopos(token),
           getFrentes(token),
           getBancasFrentes(token),
@@ -78,7 +122,7 @@ export function Bancas() {
       setBancas(bancasResp);
       setCandidaturas(candidaturasResp);
       setParaAvaliar(avaliarResp);
-      setContexto({ usuarios, escopos, frentes, bancasFrentes, equipesProjeto, candidaturas: candidaturasResp });
+      setContexto({ usuarios, cargos, escopos, frentes, bancasFrentes, equipesProjeto, candidaturas: candidaturasResp });
       setFormulario(formularioAtivo);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar bancas");
@@ -94,20 +138,24 @@ export function Bancas() {
 
   if (erro) {
     return (
-      <ErrorState>
-        <ErrorMessage>Não foi possível carregar as bancas: {erro}</ErrorMessage>
-        <Button variant="outline" onClick={recarregar}>
+      <ErrorBlock>
+        <ErrorText>Não foi possível carregar as bancas: {erro}</ErrorText>
+        <PageButton $variant="outline" onClick={recarregar}>
           Tentar novamente
-        </Button>
-      </ErrorState>
+        </PageButton>
+      </ErrorBlock>
     );
   }
 
-  if (carregando || !contexto) return <PageLoadingSkeleton />;
+  if (carregando || !contexto || !usuario) return <PageLoadingBlock />;
 
   function candidaturaDe(bancaId: number) {
-    return candidaturas.find((c) => c.banca_id === bancaId && c.usuario_id === usuario?.id);
+    return candidaturas.find((c) => c.banca_id === bancaId && c.usuario_id === usuario.id);
   }
+
+  const bancasDoProjeto = bancas
+    .filter((b) => b.coordenador_id === usuario.id)
+    .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime());
 
   const jaAlocado = bancas.filter((b) => b.status === "aberta para inscrições" && candidaturaDe(b.id));
   const disponiveis = bancas.filter((b) => b.status === "aberta para inscrições" && !candidaturaDe(b.id));
@@ -127,6 +175,33 @@ export function Bancas() {
 
   return (
     <PageStack>
+      <PageHeaderRow>
+        <PageHeaderText>
+          <PageHeading>Bancas</PageHeading>
+          <PageSubheading>
+            {podeAgendar
+              ? "Aloque-se para assistir bancas, avalie as que participou e crie bancas dos seus projetos."
+              : "Aloque-se para assistir bancas disponíveis e avalie as que participou."}
+          </PageSubheading>
+        </PageHeaderText>
+        {podeAgendar && (
+          <PageButton type="button" onClick={() => setCriarAberto(true)}>
+            <Plus size={16} />
+            Criar banca
+          </PageButton>
+        )}
+      </PageHeaderRow>
+
+      {podeAgendar && (
+        <SecaoBancas
+          titulo="Bancas do meu projeto"
+          bancas={bancasDoProjeto}
+          contexto={contexto}
+          acao="nenhuma"
+          onVerMais={setBancaDetalhe}
+        />
+      )}
+
       <SecaoBancas
         titulo="Bancas futuras já alocado"
         bancas={jaAlocado}
@@ -152,10 +227,22 @@ export function Bancas() {
         onVerMais={setBancaDetalhe}
       />
 
-      <VerMaisDialog banca={bancaDetalhe} contexto={contexto} onClose={() => setBancaDetalhe(null)} />
+      <VerMaisModal banca={bancaDetalhe} contexto={contexto} onClose={() => setBancaDetalhe(null)} />
 
-      {bancaAvaliar && usuario && token && (
-        <AvaliarDialog
+      {criarAberto && token && (
+        <CriarBancaModal
+          contexto={contexto}
+          token={token}
+          onClose={() => setCriarAberto(false)}
+          onCriada={() => {
+            setCriarAberto(false);
+            recarregar();
+          }}
+        />
+      )}
+
+      {bancaAvaliar && token && (
+        <AvaliarModal
           banca={bancaAvaliar}
           formulario={formulario}
           token={token}
@@ -181,29 +268,29 @@ function SecaoBancas({
   titulo: string;
   bancas: Banca[];
   contexto: Contexto;
-  acao: "alocar" | "deslocar" | "avaliar";
-  onAcao: (bancaId: number) => void;
+  acao: "nenhuma" | "alocar" | "deslocar" | "avaliar";
+  onAcao?: (bancaId: number) => void;
   onVerMais: (banca: Banca) => void;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{titulo}</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>{titulo}</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
         {bancas.length === 0 && <EmptyText>Nenhuma banca aqui.</EmptyText>}
         {bancas.length > 0 && (
-          <Table>
-            <TableHeader>
+          <DataTable>
+            <TableHead>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Hora</TableHead>
-                <TableHead>Coord</TableHead>
-                <TableHead>Alocados</TableHead>
-                <TableHead />
+                <TableHeadCell>Nome</TableHeadCell>
+                <TableHeadCell>Data</TableHeadCell>
+                <TableHeadCell>Hora</TableHeadCell>
+                <TableHeadCell>Coord</TableHeadCell>
+                <TableHeadCell>Alocados</TableHeadCell>
+                <TableHeadCell />
               </TableRow>
-            </TableHeader>
+            </TableHead>
             <TableBody>
               {bancas.map((banca) => {
                 const dataHora = new Date(banca.data_hora);
@@ -218,79 +305,234 @@ function SecaoBancas({
                       {banca.alocados}/{banca.vagas}
                     </TableCell>
                     <ActionsCell>
-                      <Button variant="outline" size="sm" onClick={() => onVerMais(banca)}>
+                      <PageButtonSm $variant="outline" type="button" onClick={() => onVerMais(banca)}>
                         Ver mais
-                      </Button>
-                      <Button
-                        variant={acao === "deslocar" ? "outline" : "default"}
-                        size="sm"
-                        disabled={lotada}
-                        onClick={() => onAcao(banca.id)}
-                      >
-                        {lotada ? "Lotada" : acao === "alocar" ? "Alocar-se" : acao === "deslocar" ? "Deslocar-se" : "Avaliar"}
-                      </Button>
+                      </PageButtonSm>
+                      {acao !== "nenhuma" && onAcao && (
+                        <PageButtonSm
+                          $variant={acao === "deslocar" ? "outline" : "primary"}
+                          type="button"
+                          disabled={lotada}
+                          onClick={() => onAcao(banca.id)}
+                        >
+                          {lotada ? "Lotada" : acao === "alocar" ? "Alocar-se" : acao === "deslocar" ? "Deslocar-se" : "Avaliar"}
+                        </PageButtonSm>
+                      )}
                     </ActionsCell>
                   </TableRow>
                 );
               })}
             </TableBody>
-          </Table>
+          </DataTable>
         )}
-      </CardContent>
-    </Card>
+      </PageCardContent>
+    </PageCard>
   );
 }
 
-function VerMaisDialog({ banca, contexto, onClose }: { banca: Banca | null; contexto: Contexto; onClose: () => void }) {
+function CriarBancaModal({
+  contexto,
+  token,
+  onClose,
+  onCriada,
+}: {
+  contexto: Contexto;
+  token: string;
+  onClose: () => void;
+  onCriada: () => void;
+}) {
+  const [nomeProjeto, setNomeProjeto] = useState("");
+  const [escopoId, setEscopoId] = useState("");
+  const [data, setData] = useState("");
+  const [hora, setHora] = useState("");
+  const [consultorIds, setConsultorIds] = useState<number[]>([]);
+  const [frenteIds, setFrenteIds] = useState<number[]>([]);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  const consultores = consultoresDoNucleo(contexto.usuarios, contexto.cargos);
+
+  function toggleId(lista: number[], id: number): number[] {
+    return lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id];
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!escopoId || !data || !hora) return;
+    setEnviando(true);
+    setErro("");
+    try {
+      const dataHora = new Date(`${data}T${hora}:00`);
+      await createBanca(
+        {
+          nome_projeto: nomeProjeto.trim(),
+          escopo_id: Number(escopoId),
+          data_hora: dataHora.toISOString(),
+          consultor_ids: consultorIds,
+          frente_ids: frenteIds,
+        },
+        token,
+      );
+      onCriada();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao criar banca");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   return (
-    <Dialog open={!!banca} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        {banca && (
-          <>
-            <DialogHeader>
-              <DialogTitle>{banca.nome_projeto}</DialogTitle>
-            </DialogHeader>
-            <DetailList>
-              <DetailRow>
-                <DetailTerm>Data</DetailTerm>
-                <DetailValue>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
-              </DetailRow>
-              <DetailRow>
-                <DetailTerm>Horário</DetailTerm>
-                <DetailValue>
-                  {new Date(banca.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </DetailValue>
-              </DetailRow>
-              <DetailRow>
-                <DetailTerm>Escopo</DetailTerm>
-                <DetailValue>{nomeEscopo(contexto.escopos, banca.escopo_id)}</DetailValue>
-              </DetailRow>
-              <DetailRow>
-                <DetailTerm>Frentes</DetailTerm>
-                <DetailValue>{frentesDaBanca(contexto.bancasFrentes, contexto.frentes, banca.id).join(", ") || "—"}</DetailValue>
-              </DetailRow>
-              <DetailRow>
-                <DetailTerm>Coordenador</DetailTerm>
-                <DetailValue>{nomeUsuario(contexto.usuarios, banca.coordenador_id)}</DetailValue>
-              </DetailRow>
-              <DetailRow>
-                <DetailTerm>Membros</DetailTerm>
-                <DetailValue>{membrosDaBanca(contexto.equipesProjeto, contexto.usuarios, banca.id).join(", ") || "—"}</DetailValue>
-              </DetailRow>
-              <DetailRow>
-                <DetailTerm>Avaliadores</DetailTerm>
-                <DetailValue>{avaliadoresDaBanca(contexto.candidaturas, contexto.usuarios, banca.id).join(", ") || "—"}</DetailValue>
-              </DetailRow>
-            </DetailList>
-          </>
-        )}
-        <DialogFooter showCloseButton />
-      </DialogContent>
-    </Dialog>
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="criar-banca-titulo">
+        <ModalHeader>
+          <ModalTitle id="criar-banca-titulo">Criar banca</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <FormStack onSubmit={handleSubmit}>
+          <ModalBody>
+            <FieldGroup>
+              <FieldLabel htmlFor="nome-projeto">Nome do projeto</FieldLabel>
+              <FieldInput
+                id="nome-projeto"
+                value={nomeProjeto}
+                onChange={(e) => setNomeProjeto(e.target.value)}
+                placeholder="Ex.: Portugal 1"
+                required
+              />
+            </FieldGroup>
+
+            <DateTimeRow>
+              <FieldGroup>
+                <FieldLabel htmlFor="data-banca">Data</FieldLabel>
+                <FieldInput id="data-banca" type="date" value={data} onChange={(e) => setData(e.target.value)} required />
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel htmlFor="hora-banca">Horário</FieldLabel>
+                <FieldInput id="hora-banca" type="time" value={hora} onChange={(e) => setHora(e.target.value)} required />
+              </FieldGroup>
+            </DateTimeRow>
+
+            <FieldGroup>
+              <FieldLabel htmlFor="escopo">Escopo</FieldLabel>
+              <FieldSelect id="escopo" value={escopoId} onChange={(e) => setEscopoId(e.target.value)} required>
+                <option value="">Selecione um escopo</option>
+                {contexto.escopos.map((escopo) => (
+                  <option key={escopo.id} value={escopo.id}>
+                    {escopo.nome}
+                  </option>
+                ))}
+              </FieldSelect>
+            </FieldGroup>
+
+            <FieldGroup>
+              <FieldLabel>Consultores do projeto</FieldLabel>
+              <CheckboxGrid>
+                {consultores.length === 0 && <EmptyText>Nenhum consultor disponível.</EmptyText>}
+                {consultores.map((consultor) => (
+                  <CheckboxLabel key={consultor.id}>
+                    <input
+                      type="checkbox"
+                      checked={consultorIds.includes(consultor.id)}
+                      onChange={() => setConsultorIds((ids) => toggleId(ids, consultor.id))}
+                    />
+                    {consultor.nome}
+                  </CheckboxLabel>
+                ))}
+              </CheckboxGrid>
+            </FieldGroup>
+
+            <FieldGroup>
+              <FieldLabel>Frentes</FieldLabel>
+              <CheckboxGrid>
+                {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
+                {contexto.frentes.map((frente) => (
+                  <CheckboxLabel key={frente.id}>
+                    <input
+                      type="checkbox"
+                      checked={frenteIds.includes(frente.id)}
+                      onChange={() => setFrenteIds((ids) => toggleId(ids, frente.id))}
+                    />
+                    {frente.nome}
+                  </CheckboxLabel>
+                ))}
+              </CheckboxGrid>
+            </FieldGroup>
+
+            {erro && <FormErrorText>{erro}</FormErrorText>}
+          </ModalBody>
+          <ModalFooter>
+            <PageButton $variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </PageButton>
+            <PageButton type="submit" disabled={enviando}>
+              {enviando ? "Criando..." : "Criar"}
+            </PageButton>
+          </ModalFooter>
+        </FormStack>
+      </WideModalContent>
+    </ModalOverlay>
   );
 }
 
-function AvaliarDialog({
+function VerMaisModal({ banca, contexto, onClose }: { banca: Banca | null; contexto: Contexto; onClose: () => void }) {
+  if (!banca) return null;
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="ver-mais-titulo">
+        <ModalHeader>
+          <ModalTitle id="ver-mais-titulo">{banca.nome_projeto}</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          <DetailList>
+            <DetailRow>
+              <DetailTerm>Data</DetailTerm>
+              <DetailValue>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Horário</DetailTerm>
+              <DetailValue>
+                {new Date(banca.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Escopo</DetailTerm>
+              <DetailValue>{nomeEscopo(contexto.escopos, banca.escopo_id)}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Frentes</DetailTerm>
+              <DetailValue>{frentesDaBanca(contexto.bancasFrentes, contexto.frentes, banca.id).join(", ") || "—"}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Coordenador</DetailTerm>
+              <DetailValue>{nomeUsuario(contexto.usuarios, banca.coordenador_id)}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Membros</DetailTerm>
+              <DetailValue>{membrosDaBanca(contexto.equipesProjeto, contexto.usuarios, banca.id).join(", ") || "—"}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Avaliadores</DetailTerm>
+              <DetailValue>{avaliadoresDaBanca(contexto.candidaturas, contexto.usuarios, banca.id).join(", ") || "—"}</DetailValue>
+            </DetailRow>
+          </DetailList>
+        </ModalBody>
+        <ModalFooter>
+          <PageButton $variant="outline" type="button" onClick={onClose}>
+            Fechar
+          </PageButton>
+        </ModalFooter>
+      </NarrowModalContent>
+    </ModalOverlay>
+  );
+}
+
+function AvaliarModal({
   banca,
   formulario,
   token,
@@ -338,55 +580,62 @@ function AvaliarDialog({
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <NarrowDialogContent>
-        <DialogHeader>
-          <DialogTitle>Formulário de avaliação — {banca.nome_projeto}</DialogTitle>
-        </DialogHeader>
+    <ModalOverlay onClick={onClose} role="presentation">
+      <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="avaliar-titulo">
+        <ModalHeader>
+          <ModalTitle id="avaliar-titulo">Formulário de avaliação — {banca.nome_projeto}</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
         {!formulario ? (
-          <EmptyText>Nenhum formulário ativo configurado no momento.</EmptyText>
+          <ModalBody>
+            <EmptyText>Nenhum formulário ativo configurado no momento.</EmptyText>
+          </ModalBody>
         ) : (
           <FormStack onSubmit={handleSubmit}>
-            {formulario.perguntas
-              .slice()
-              .sort((a, b) => a.ordem - b.ordem)
-              .map((pergunta) => (
-                <FieldGroup key={pergunta.id}>
-                  <Label htmlFor={`pergunta-${pergunta.id}`}>{pergunta.texto}</Label>
-                  {pergunta.tipo_resposta === "nota" ? (
-                    <Input
-                      id={`pergunta-${pergunta.id}`}
-                      type="number"
-                      min={0}
-                      max={5}
-                      step={0.1}
-                      value={respostas[pergunta.id] ?? ""}
-                      onChange={(e) => setRespostas((r) => ({ ...r, [pergunta.id]: e.target.value }))}
-                      required
-                    />
-                  ) : (
-                    <Textarea
-                      id={`pergunta-${pergunta.id}`}
-                      value={respostas[pergunta.id] ?? ""}
-                      onChange={(e) => setRespostas((r) => ({ ...r, [pergunta.id]: e.target.value }))}
-                      required
-                    />
-                  )}
-                </FieldGroup>
-              ))}
-            <FieldGroup>
-              <Label htmlFor="comentario">Comentário (opcional)</Label>
-              <Textarea id="comentario" value={comentario} onChange={(e) => setComentario(e.target.value)} />
-            </FieldGroup>
-            {erro && <ErrorText>{erro}</ErrorText>}
-            <DialogFooter>
-              <Button type="submit" disabled={enviando}>
+            <ModalBody>
+              {formulario.perguntas
+                .slice()
+                .sort((a, b) => a.ordem - b.ordem)
+                .map((pergunta) => (
+                  <FieldGroup key={pergunta.id}>
+                    <FieldLabel htmlFor={`pergunta-${pergunta.id}`}>{pergunta.texto}</FieldLabel>
+                    {pergunta.tipo_resposta === "nota" ? (
+                      <FieldInput
+                        id={`pergunta-${pergunta.id}`}
+                        type="number"
+                        min={0}
+                        max={5}
+                        step={0.1}
+                        value={respostas[pergunta.id] ?? ""}
+                        onChange={(e) => setRespostas((r) => ({ ...r, [pergunta.id]: e.target.value }))}
+                        required
+                      />
+                    ) : (
+                      <FieldTextarea
+                        id={`pergunta-${pergunta.id}`}
+                        value={respostas[pergunta.id] ?? ""}
+                        onChange={(e) => setRespostas((r) => ({ ...r, [pergunta.id]: e.target.value }))}
+                        required
+                      />
+                    )}
+                  </FieldGroup>
+                ))}
+              <FieldGroup>
+                <FieldLabel htmlFor="comentario">Comentário (opcional)</FieldLabel>
+                <FieldTextarea id="comentario" value={comentario} onChange={(e) => setComentario(e.target.value)} />
+              </FieldGroup>
+              {erro && <FormErrorText>{erro}</FormErrorText>}
+            </ModalBody>
+            <ModalFooter>
+              <PageButton type="submit" disabled={enviando}>
                 {enviando ? "Enviando..." : "Enviar avaliação"}
-              </Button>
-            </DialogFooter>
+              </PageButton>
+            </ModalFooter>
           </FormStack>
         )}
-      </NarrowDialogContent>
-    </Dialog>
+      </NarrowModalContent>
+    </ModalOverlay>
   );
 }

@@ -4,16 +4,20 @@ import { apiFetch } from "@/lib/api";
 import { getAvaliacoes } from "@/lib/avaliacoes";
 import { getBancas, getBancasFrentes, getFrentes } from "@/lib/bancas";
 import type { Avaliacao, Banca, BancaFrente, Desempenho as DesempenhoDados, Frente } from "@/types/banca";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { DesempenhoChart, type FatiaDonut } from "@/components/DesempenhoChart";
 import {
   PageStack,
-  EmptyText,
-  PageLoadingSkeleton,
-  ErrorState,
-  ErrorMessage,
+  PageCard,
+  PageCardHeader,
+  PageCardTitle,
+  PageCardContent,
+  PageButton,
+  PageBadge,
+  PageLoadingBlock,
+  ErrorBlock,
+  ErrorText,
+} from "@/styles/page.styled";
+import {
   TopGrid,
   ListCardContent,
   ListRow,
@@ -21,6 +25,7 @@ import {
   RowDot,
   RowLabel,
   RowMeta,
+  EmptyText,
 } from "@/styles/shared.styled";
 import { GreetingHeader, GreetingTitle, GreetingSubtitle, ChartCaption } from "./Desempenho.styled";
 
@@ -72,16 +77,16 @@ export function Desempenho() {
 
   if (erro) {
     return (
-      <ErrorState>
-        <ErrorMessage>Não foi possível carregar o desempenho: {erro}</ErrorMessage>
-        <Button variant="outline" onClick={buscar}>
+      <ErrorBlock>
+        <ErrorText>Não foi possível carregar o desempenho: {erro}</ErrorText>
+        <PageButton $variant="outline" onClick={buscar}>
           Tentar novamente
-        </Button>
-      </ErrorState>
+        </PageButton>
+      </ErrorBlock>
     );
   }
 
-  if (carregando || !dados) return <PageLoadingSkeleton />;
+  if (carregando || !dados) return <PageLoadingBlock />;
 
   const bancasPorId = new Map(bancas.map((b) => [b.id, b]));
 
@@ -93,9 +98,6 @@ export function Desempenho() {
 
   const avaliacoesDoSemestre = avaliacoesSubmetidas.filter((item) => item.banca.semestre_id === dados.semestre_id);
 
-  // Cada banca conta 1 ponto, dividido igualmente entre suas frentes (uma
-  // banca com 2 frentes vale 0.5 pra cada) — assim as fatias do donut sempre
-  // somam ao total de bancas atendidas no semestre.
   const pontosPorFrente = new Map<string, number>();
   for (const { banca } of avaliacoesDoSemestre) {
     const frentesDaBanca = bancasFrentes.filter((bf) => bf.banca_id === banca.id);
@@ -124,22 +126,22 @@ export function Desempenho() {
       </GreetingHeader>
 
       <TopGrid>
-        <Card>
-          <CardHeader>
-            <CardTitle>Porcentagem de bancas atendidas — {dados.semestre_nome}</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>Porcentagem de bancas atendidas — {dados.semestre_nome}</PageCardTitle>
+          </PageCardHeader>
+          <PageCardContent>
             <DesempenhoChart fatias={fatias} percentual={dados.percentual} />
             <ChartCaption>
               {dados.bancas_atendidas} de {dados.total_bancas_realizadas} bancas no semestre
             </ChartCaption>
-          </CardContent>
-        </Card>
+          </PageCardContent>
+        </PageCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Últimas bancas atendidas</CardTitle>
-          </CardHeader>
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>Últimas bancas atendidas</PageCardTitle>
+          </PageCardHeader>
           <ListCardContent>
             {ultimasBancas.length === 0 && <EmptyText>Nenhuma banca atendida ainda.</EmptyText>}
             {ultimasBancas.map(({ avaliacao, banca }) => (
@@ -152,13 +154,13 @@ export function Desempenho() {
               </ListRow>
             ))}
           </ListCardContent>
-        </Card>
+        </PageCard>
       </TopGrid>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de avaliações</CardTitle>
-        </CardHeader>
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Histórico de avaliações</PageCardTitle>
+        </PageCardHeader>
         <ListCardContent>
           {avaliacoesSubmetidas.length === 0 && <EmptyText>Nenhuma avaliação enviada ainda.</EmptyText>}
           {avaliacoesSubmetidas.map(({ avaliacao, banca }) => (
@@ -168,11 +170,11 @@ export function Desempenho() {
                 <RowMeta>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
                 <RowLabel>{banca.nome_projeto}</RowLabel>
               </RowGroup>
-              <Badge variant="outline">Formulário</Badge>
+              <PageBadge $tone="muted">Formulário</PageBadge>
             </ListRow>
           ))}
         </ListCardContent>
-      </Card>
+      </PageCard>
     </PageStack>
   );
 }

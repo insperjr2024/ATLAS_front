@@ -1,5 +1,18 @@
 import type { BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente } from "@/types/banca";
-import type { UsuarioResumo } from "@/types/auth";
+import type { Cargo, UsuarioFrente, UsuarioResumo } from "@/types/auth";
+
+export function consultoresDoNucleo(usuarios: UsuarioResumo[], cargos: Cargo[]): UsuarioResumo[] {
+  const idsConsultor = new Set(
+    cargos
+      .filter(
+        (c) =>
+          c.nome.toLowerCase().includes("consultor") ||
+          (!c.pode_agendar_banca && !c.pode_gerenciar_cargos && !c.pode_definir_formulario),
+      )
+      .map((c) => c.id),
+  );
+  return usuarios.filter((u) => u.ativo && idsConsultor.has(u.cargo_id));
+}
 
 export function nomeUsuario(usuarios: UsuarioResumo[], id: number): string {
   return usuarios.find((u) => u.id === id)?.nome ?? "—";
@@ -7,6 +20,16 @@ export function nomeUsuario(usuarios: UsuarioResumo[], id: number): string {
 
 export function nomeEscopo(escopos: Escopo[], id: number): string {
   return escopos.find((e) => e.id === id)?.nome ?? "—";
+}
+
+export function nomeCargo(cargos: Cargo[], id: number): string {
+  return cargos.find((c) => c.id === id)?.nome ?? "—";
+}
+
+export function frentesDoUsuario(usuariosFrentes: UsuarioFrente[], frentes: Frente[], usuarioId: number): string[] {
+  return usuariosFrentes
+    .filter((uf) => uf.usuario_id === usuarioId)
+    .map((uf) => frentes.find((f) => f.id === uf.frente_id)?.nome ?? "—");
 }
 
 export function frentesDaBanca(bancasFrentes: BancaFrente[], frentes: Frente[], bancaId: number): string[] {

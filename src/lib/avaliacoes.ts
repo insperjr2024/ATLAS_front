@@ -1,12 +1,34 @@
 import { apiFetch } from "@/lib/api";
-import type { Avaliacao, AvaliacaoNota, FormularioAtivo } from "@/types/banca";
+import type {
+  Avaliacao,
+  AvaliacaoNota,
+  FormularioAtivo,
+  NotaPorPergunta,
+  PerguntaNovaVersao,
+} from "@/types/banca";
 
 export function getFormularioAtivo(token: string) {
   return apiFetch<FormularioAtivo>("/formularios/ativo", { token });
 }
 
+export function createNovaVersaoFormulario(perguntas: PerguntaNovaVersao[], token: string) {
+  return apiFetch<FormularioAtivo>("/formularios/nova-versao", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ perguntas }),
+  });
+}
+
 export function getAvaliacoes(token: string) {
   return apiFetch<Avaliacao[]>("/avaliacoes", { token });
+}
+
+export function getAvaliacoesNotas(token: string) {
+  return apiFetch<AvaliacaoNota[]>("/avaliacoes-notas", { token });
+}
+
+export function getNotasPorPergunta(bancaId: number, token: string) {
+  return apiFetch<NotaPorPergunta[]>(`/bancas/${bancaId}/notas-por-pergunta`, { token });
 }
 
 export function createAvaliacao(dados: { banca_id: number; formulario_id: number }, token: string) {
