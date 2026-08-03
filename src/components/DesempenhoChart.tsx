@@ -37,6 +37,7 @@ export function DesempenhoChart({
   const fatiasFinais = outros > 0 ? [...principais, { nome: "Outros", valor: outros }] : principais;
 
   const total = fatiasFinais.reduce((soma, f) => soma + f.valor, 0);
+  const percentualExibido = percentual != null ? Math.round(percentual) : 0;
   const raio = 15.5;
   const circunferencia = 2 * Math.PI * raio;
 
@@ -53,7 +54,7 @@ export function DesempenhoChart({
   return (
     <ChartWrapper>
       <DonutBox>
-        <svg viewBox="0 0 40 40" width={128} height={128} role="img" aria-label={ariaLabel ?? `${percentual ?? 0}% de bancas atendidas`}>
+        <svg viewBox="0 0 40 40" width={128} height={128} role="img" aria-label={ariaLabel ?? `${percentualExibido}% de bancas atendidas`}>
           <circle cx="20" cy="20" r={raio} fill="none" stroke="var(--border)" strokeWidth="5" />
           {segmentos.map((s) => (
             <circle
@@ -76,7 +77,7 @@ export function DesempenhoChart({
           ))}
         </svg>
         <DonutCenter>
-          <DonutValue>{valorCentral ?? `${percentual ?? 0}%`}</DonutValue>
+          <DonutValue>{valorCentral ?? `${percentualExibido}%`}</DonutValue>
         </DonutCenter>
       </DonutBox>
 

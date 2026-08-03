@@ -96,6 +96,7 @@ export const PerguntaEditorList = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.md};
 `;
 
 export const PerguntaEditorRow = styled.div`
