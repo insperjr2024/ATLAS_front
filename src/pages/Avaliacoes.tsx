@@ -37,8 +37,6 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
-import { NotaSlider, NotaSliderGroup } from "@/components/NotaSlider";
-import { NotaPreviewBlock, NotaPreviewTitle } from "@/components/NotaSlider.styled";
 import {
   PageHeaderRow,
   PageHeaderText,
@@ -57,11 +55,7 @@ import {
   LIST_MAX_VISIVEIS,
   FiltersRow,
   FilterSelect,
-  FormularioLista,
-  FormularioItem,
-  FormularioTipo,
   FormHint,
-  CardActions,
   ModalOverlay,
   ModalHeader,
   ModalTitle,
@@ -70,8 +64,6 @@ import {
   ModalFooter,
   WideModalContent,
   FormStack,
-  FieldGroup,
-  FieldLabel,
   FieldInput,
   FieldSelect,
   FormErrorText,
@@ -189,8 +181,6 @@ export function Avaliacoes() {
 
   if (carregando) return <PageLoadingBlock />;
 
-  const perguntasOrdenadas = formulario?.perguntas.slice().sort((a, b) => a.ordem - b.ordem) ?? [];
-
   return (
     <PageStack>
       <PageHeaderRow>
@@ -281,42 +271,12 @@ export function Avaliacoes() {
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>Formulário padrão de avaliação</PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          {!formulario || perguntasOrdenadas.length === 0 ? (
-            <EmptyText>Nenhum formulário ativo configurado.</EmptyText>
-          ) : (
-            <>
-              {perguntasOrdenadas.some((p) => p.tipo_resposta === "nota") && (
-                <NotaPreviewBlock>
-                  <NotaSliderGroup titulo="Critérios com nota (0–5)">
-                    {perguntasOrdenadas
-                      .filter((p) => p.tipo_resposta === "nota")
-                      .map((p) => (
-                        <NotaSlider key={p.id} id={`preview-${p.id}`} label={p.texto} value={0} disabled showValue={false} />
-                      ))}
-                  </NotaSliderGroup>
-                </NotaPreviewBlock>
-              )}
-              <FormularioLista>
-                {perguntasOrdenadas.map((p) => (
-                  <FormularioItem key={p.id}>
-                    {p.texto}{" "}
-                    <FormularioTipo>({p.tipo_resposta === "nota" ? "slider 0–5" : "texto"})</FormularioTipo>
-                  </FormularioItem>
-                ))}
-              </FormularioLista>
-            </>
-          )}
-          <FormHint>Alterações no formulário valem apenas para bancas futuras — avaliações já enviadas são preservadas.</FormHint>
           {podeEditarFormulario && (
-            <CardActions>
-              <PageButton type="button" onClick={() => setEditarFormulario(true)}>
-                Editar formulário
-              </PageButton>
-            </CardActions>
+            <PageButtonSm type="button" onClick={() => setEditarFormulario(true)}>
+              Editar
+            </PageButtonSm>
           )}
-        </PageCardContent>
+        </PageCardHeader>
       </PageCard>
 
       {bancaDetalhe && token && (
@@ -498,8 +458,6 @@ function EditarFormularioModal({
     }
   }
 
-  const perguntasNotaPreview = perguntas.filter((p) => p.tipo_resposta === "nota" && p.texto.trim());
-
   return (
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="editar-form-titulo">
@@ -549,23 +507,6 @@ function EditarFormularioModal({
               <Plus size={16} />
               Adicionar pergunta
             </PageButton>
-            {perguntasNotaPreview.length > 0 && (
-              <NotaPreviewBlock>
-                <NotaPreviewTitle>Pré-visualização</NotaPreviewTitle>
-                <NotaSliderGroup>
-                  {perguntasNotaPreview.map((p, index) => (
-                    <NotaSlider
-                      key={index}
-                      id={`editor-preview-${index}`}
-                      label={p.texto.trim()}
-                      value={0}
-                      disabled
-                      showValue={false}
-                    />
-                  ))}
-                </NotaSliderGroup>
-              </NotaPreviewBlock>
-            )}
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>
           <ModalFooter>
