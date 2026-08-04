@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 .env
+# Cache incremental do TypeScript — gerado a cada build
+*.tsbuildinfo
