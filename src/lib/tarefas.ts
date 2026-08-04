@@ -1,14 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import type { ReuniaoSemanal, ReunioesResposta, StatusTarefa, Tarefa } from "@/types/tarefa";
-
-/** As 5 colunas, na ordem do fluxo (§4). */
-export const COLUNAS: { status: StatusTarefa; rotulo: string }[] = [
-  { status: "a_fazer", rotulo: "A fazer" },
-  { status: "em_andamento", rotulo: "Em andamento" },
-  { status: "validacao", rotulo: "Validação" },
-  { status: "concluido", rotulo: "Concluído" },
-  { status: "cancelado", rotulo: "Cancelado" },
-];
+import type { ReuniaoSemanal, ReunioesResposta, Tarefa } from "@/types/tarefa";
 
 export function getTarefas(projetoId: number, token: string) {
   return apiFetch<Tarefa[]>(`/projetos/${projetoId}/tarefas`, { token });
@@ -19,7 +10,8 @@ export interface CreateTarefaPayload {
   responsavel_id: number;
   prazo: string;
   projeto_escopo_id?: number | null;
-  status?: StatusTarefa;
+  /** Vazio = a primeira coluna do board. */
+  coluna_id?: number | null;
 }
 
 export function createTarefa(projetoId: number, dados: CreateTarefaPayload, token: string) {
@@ -33,7 +25,7 @@ export function createTarefa(projetoId: number, dados: CreateTarefaPayload, toke
 /** Move (arrastar) e edita — a mesma rota. */
 export function updateTarefa(
   tarefaId: number,
-  dados: Partial<CreateTarefaPayload> & { status?: StatusTarefa },
+  dados: Partial<CreateTarefaPayload>,
   token: string,
 ) {
   return apiFetch<Tarefa>(`/tarefas/${tarefaId}`, {
