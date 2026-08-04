@@ -26,6 +26,7 @@ export interface ProjetoResumo {
   id: number;
   nome: string;
   cliente: string;
+  criado_em: string;
   status: StatusProjeto;
   frente_ids: number[];
   /** 2 frentes = projeto sinérgico; aparece para os dois gerentes. */
@@ -34,6 +35,8 @@ export interface ProjetoResumo {
   consultor_ids: number[];
   data_kickoff: string | null;
   kickoff_pendente: boolean;
+  /** Arquivar não é excluir — só some das listagens normais (§6.2). */
+  arquivado_em: string | null;
 }
 
 export interface MembroProjeto {
@@ -89,6 +92,7 @@ export interface ProjetoCompleto extends ProjetoResumo {
   escopos: EscopoVendido[];
   descricao: string | null;
   link_proposta: string | null;
+  anexo_proposta_nome: string | null;
   dias_ambientacao: number;
   data_entrega_cliente: string | null;
   /** 1 = segunda … 7 = domingo. */

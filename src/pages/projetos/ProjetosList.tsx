@@ -53,6 +53,7 @@ export function ProjetosList() {
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [frentesSelecionadas, setFrentesSelecionadas] = useState<number[]>([]);
   const [filtroAberto, setFiltroAberto] = useState(false);
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [modo, setModo] = useState<ModoVisualizacao>("lista");
@@ -62,6 +63,7 @@ export function ProjetosList() {
   const podeFiltrar = pode(usuario, "filtrar_por_frente");
   const podeCriar = pode(usuario, "criar_projeto");
   const podeArrastarKanban = pode(usuario, "mover_projeto_kanban");
+  const podeArquivar = pode(usuario, "arquivar_projeto");
 
   async function carregar() {
     if (!token) return;
@@ -73,7 +75,10 @@ export function ProjetosList() {
       // pra permitir marcar várias frentes de uma vez, um projeto sinérgico
       // aparece assim que QUALQUER uma das suas frentes estiver marcada.
       const [projetosResp, frentesResp, usuariosResp] = await Promise.all([
-        getProjetos(token),
+        // `frente_id` não vai mais pro backend — o filtro de frente(s) virou
+        // um refinamento no cliente (ver `projetosFiltrados` abaixo), pra
+        // suportar marcar várias de uma vez.
+        getProjetos(token, null, podeArquivar && mostrarArquivados),
         getFrentes(token),
         getUsuarios(token),
       ]);
@@ -90,7 +95,7 @@ export function ProjetosList() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, mostrarArquivados]);
 
   useEffect(() => {
     if (!filtroAberto) return;
@@ -223,6 +228,16 @@ export function ProjetosList() {
               )}
             </FrenteFilterWrap>
           )}
+          {podeArquivar && (
+            <CheckboxLabel>
+              <input
+                type="checkbox"
+                checked={mostrarArquivados}
+                onChange={(e) => setMostrarArquivados(e.target.checked)}
+              />
+              Mostrar arquivados
+            </CheckboxLabel>
+          )}
           {podeCriar && (
             <PageButton type="button" onClick={() => navigate("/projetos/novo")}>
               <Plus size={16} />
@@ -270,6 +285,7 @@ export function ProjetosList() {
                 <PageBadge $tone={tomDoStatus(projeto.status)}>
                   {ROTULO_STATUS[projeto.status]}
                 </PageBadge>
+                {projeto.arquivado_em && <PageBadge $tone="muted">📦 Arquivado</PageBadge>}
               </div>
 
               <CardEquipe>

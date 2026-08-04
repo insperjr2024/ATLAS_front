@@ -69,7 +69,7 @@ const navItems: NavItemConfig[] = [
   },
   {
     icon: Settings,
-    label: "Config",
+    label: "Configurações",
     path: "/config",
     section: "admin",
     visible: (c) => c.pode_gerenciar_cargos,

@@ -4,11 +4,8 @@ import type { UsuarioResumo } from "@/types/auth";
 import type { MembroEquipePayload } from "@/types/projeto";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
 import { PageButtonSm } from "@/styles/page.styled";
-import { FieldGroup, FieldLabel, FieldSelect } from "@/pages/Bancas.styled";
+import { FieldGroup, FieldLabel, Required, FieldSelect } from "@/pages/Bancas.styled";
 import { AddRow, Chip, ChipRemove, ChipRow, CountHint, PickerStack } from "./MemberPicker.styled";
-
-export const MAX_CONSULTORES = 3;
-export const MIN_CONSULTORES = 2;
 
 export interface EquipeSelecionada {
   coordenadorId: number | null;
@@ -16,15 +13,13 @@ export interface EquipeSelecionada {
 }
 
 /**
- * A regra 1 + 2–3 (§6.3) numa função só, para o formulário de criação e o
- * modal de editar equipe dizerem exatamente a mesma coisa. O backend
- * revalida em `create_projeto.py` e `update_equipe_projeto.py`.
+ * A regra do coordenador (§6.3) numa função só, para o formulário de criação
+ * e o modal de editar equipe dizerem exatamente a mesma coisa. O backend
+ * revalida em `create_projeto.py` e `update_equipe_projeto.py`. Consultores
+ * não têm mínimo nem máximo — o projeto pode até não ter nenhum.
  */
 export function validarEquipe({ coordenadorId, consultorIds }: EquipeSelecionada): string | null {
   if (!coordenadorId) return "Escolha o coordenador do projeto.";
-  if (consultorIds.length < MIN_CONSULTORES || consultorIds.length > MAX_CONSULTORES) {
-    return `O projeto precisa de ${MIN_CONSULTORES} a ${MAX_CONSULTORES} consultores.`;
-  }
   if (consultorIds.includes(coordenadorId)) {
     return "O coordenador não pode ser também consultor do mesmo projeto.";
   }
@@ -65,13 +60,9 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
     (u) => u.id !== coordenadorId && !consultorIds.includes(u.id),
   );
 
-  const consultoresOk =
-    consultorIds.length >= MIN_CONSULTORES && consultorIds.length <= MAX_CONSULTORES;
-  const cheio = consultorIds.length >= MAX_CONSULTORES;
-
   function adicionarConsultor() {
     const id = Number(consultorPendente);
-    if (!id || cheio || consultorIds.includes(id)) return;
+    if (!id || consultorIds.includes(id)) return;
     onChange({ coordenadorId, consultorIds: [...consultorIds, id] });
     setConsultorPendente("");
   }
@@ -92,7 +83,9 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
   return (
     <PickerStack>
       <FieldGroup>
-        <FieldLabel htmlFor="equipe-coordenador">Coordenador</FieldLabel>
+        <FieldLabel htmlFor="equipe-coordenador">
+          Coordenador<Required>*</Required>
+        </FieldLabel>
         <FieldSelect
           id="equipe-coordenador"
           value={coordenadorId ? String(coordenadorId) : ""}
@@ -112,7 +105,7 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
         <FieldLabel htmlFor="equipe-consultor">Consultores</FieldLabel>
         <ChipRow>
           {consultorIds.length === 0 && (
-            <CountHint $ok={false}>Nenhum consultor escolhido ainda.</CountHint>
+            <CountHint $ok>Nenhum consultor escolhido ainda.</CountHint>
           )}
           {consultorIds.map((id) => (
             <Chip key={id}>
@@ -133,10 +126,12 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
           <FieldSelect
             id="equipe-consultor"
             value={consultorPendente}
-            disabled={desabilitado || cheio}
+            disabled={desabilitado || disponiveisParaConsultor.length === 0}
             onChange={(e) => setConsultorPendente(e.target.value)}
           >
-            <option value="">{cheio ? "Limite de 3 consultores atingido" : "Adicionar consultor…"}</option>
+            <option value="">
+              {disponiveisParaConsultor.length === 0 ? "Nenhum usuário disponível" : "Adicionar consultor…"}
+            </option>
             {disponiveisParaConsultor.map((usuario) => (
               <option key={usuario.id} value={usuario.id}>
                 {rotulo(usuario)}
@@ -146,16 +141,19 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
           <PageButtonSm
             type="button"
             $variant="outline"
-            disabled={desabilitado || cheio || !consultorPendente}
+            disabled={desabilitado || !consultorPendente}
             onClick={adicionarConsultor}
           >
             Adicionar
           </PageButtonSm>
         </AddRow>
 
-        <CountHint $ok={consultoresOk}>
-          {consultorIds.length} de {MIN_CONSULTORES}–{MAX_CONSULTORES} consultores
-        </CountHint>
+        {consultorIds.length > 0 && (
+          <CountHint $ok>
+            {consultorIds.length} consultor{consultorIds.length > 1 ? "es" : ""} selecionado
+            {consultorIds.length > 1 ? "s" : ""}
+          </CountHint>
+        )}
       </FieldGroup>
     </PickerStack>
   );

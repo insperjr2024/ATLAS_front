@@ -10,6 +10,7 @@ export {
   FormStack,
   FieldGroup,
   FieldLabel,
+  Required,
   FieldInput,
   FieldTextarea,
   FieldSelect,
@@ -46,6 +47,12 @@ export const FormFields = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.lg};
+`;
+
+/** O toggle "Link" / "Anexar PDF" do campo de proposta — um ou outro. */
+export const ModoPropostaRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
 `;
 
 /* ------------------------------------------------------------------ */
@@ -519,4 +526,11 @@ export const TimelineTexto = styled.div`
     font-size: ${theme.fontSize.xs};
     color: ${theme.colors.mutedForeground};
   }
+`;
+
+/** Os botões do cabeçalho da aba de tarefas, lado a lado. */
+export const HeaderAcoes = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
 `;

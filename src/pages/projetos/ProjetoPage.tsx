@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Outlet, useOutletContext, useParams } from "react-router-dom";
-import { ArrowLeft, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import {
+  arquivarProjeto,
+  desarquivarProjeto,
   getProjeto,
   mudarStatus,
   podePausar,
@@ -70,6 +72,7 @@ export function ProjetoPage() {
   const [erro, setErro] = useState("");
   const [erroStatus, setErroStatus] = useState("");
   const [mudandoStatus, setMudandoStatus] = useState(false);
+  const [arquivando, setArquivando] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!token || !projetoId) return;
@@ -109,6 +112,26 @@ export function ProjetoPage() {
     }
   }
 
+  async function alternarArquivamento() {
+    if (!token || !projeto) return;
+    const arquivado = Boolean(projeto.arquivado_em);
+    const mensagem = arquivado
+      ? "Desarquivar este projeto? Ele volta a aparecer nas listagens normais."
+      : "Arquivar este projeto? Ele some das listagens normais, mas nada é apagado — dá pra desarquivar depois.";
+    if (!confirm(mensagem)) return;
+    setArquivando(true);
+    setErroStatus("");
+    try {
+      if (arquivado) await desarquivarProjeto(projeto.id, token);
+      else await arquivarProjeto(projeto.id, token);
+      await carregar();
+    } catch (err) {
+      setErroStatus(err instanceof Error ? err.message : "Erro ao arquivar o projeto");
+    } finally {
+      setArquivando(false);
+    }
+  }
+
   if (erro) {
     return (
       <ErrorBlock>
@@ -126,6 +149,7 @@ export function ProjetoPage() {
     frentes.find((f) => f.id === frenteId)?.nome ?? `Frente ${frenteId}`;
 
   const podeMudarStatus = pode(usuario, "mudar_status_projeto");
+  const podeArquivar = pode(usuario, "arquivar_projeto");
   const proximo = proximoStatusManual(projeto.status);
   const anterior = statusAnteriorManual(projeto.status);
 
@@ -192,10 +216,25 @@ export function ProjetoPage() {
               Pausar
             </PageButtonSm>
           )}
+          {podeArquivar && (
+            <PageButtonSm
+              type="button"
+              $variant="outline"
+              disabled={arquivando}
+              onClick={alternarArquivamento}
+            >
+              {projeto.arquivado_em ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+              {projeto.arquivado_em ? "Desarquivar" : "Arquivar"}
+            </PageButtonSm>
+          )}
         </StatusRow>
       </ShellHeader>
 
       {erroStatus && <FormErrorText>{erroStatus}</FormErrorText>}
+
+      {projeto.arquivado_em && (
+        <AvisoBanner>📦 Projeto arquivado — não aparece nas listagens normais.</AvisoBanner>
+      )}
 
       {projeto.kickoff_pendente && (
         <AvisoBanner>

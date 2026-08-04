@@ -10,6 +10,7 @@ import type { Posicao, StatusUsuario, Usuario } from "@/types/auth";
 export type Acao =
   | "criar_projeto"
   | "editar_equipe"
+  | "arquivar_projeto"
   | "gerir_membros"
   | "marcar_kickoff"
   | "mudar_status_projeto"
@@ -19,6 +20,7 @@ export type Acao =
   | "remarcar_banca"
   | "liberar_excecao_choque"
   | "registrar_justificativa_atraso"
+  | "configurar_colunas"
   | "criar_tarefa"
   | "mover_tarefa"
   | "registrar_reuniao"
@@ -29,6 +31,7 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão — restrito às lideranças
   criar_projeto: ["diretor", "gerente"],
   editar_equipe: ["diretor", "gerente"],
+  arquivar_projeto: ["diretor", "gerente"],
   ver_monitoramento: ["diretor", "gerente"],
 
   // Só a diretoria
@@ -42,6 +45,9 @@ const MATRIZ: Record<Acao, Posicao[]> = {
    *  que os botões de `mudar_status_projeto`, por isso fica restrito à
    *  diretoria, mesmo o botão equivalente aceitando gerente/coordenador. */
   mover_projeto_kanban: ["diretor"],
+  //: As colunas do kanban são por projeto, mas quem as edita é sempre a
+  //: diretoria — o time move cards, não redesenha o fluxo.
+  configurar_colunas: ["diretor"],
 
   // Condução do projeto — o consultor não define cronograma nem move o
   // ciclo de vida do projeto (§4)

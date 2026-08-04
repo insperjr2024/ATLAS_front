@@ -27,3 +27,21 @@ export function updateUsuario(usuarioId: number, dados: UpdateUsuarioPayload, to
     body: JSON.stringify(dados),
   });
 }
+
+export interface RegistrarUsuarioPayload {
+  nome: string;
+  email_insper: string;
+  senha: string;
+  posicao: Posicao;
+  /** Sem cargo escolhido, o backend usa o cargo padrão configurado. */
+  cargo_id?: number | null;
+}
+
+/** §10: ninguém se auto-registra — só a diretoria pré-cadastra um membro. */
+export function registrarUsuario(dados: RegistrarUsuarioPayload, token: string) {
+  return apiFetch<UsuarioResumo>("/auth/registrar", {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}

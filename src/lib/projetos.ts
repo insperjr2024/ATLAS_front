@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { API_URL } from "@/config/config";
 import type {
   EscopoVendido,
   MembroEquipePayload,
@@ -18,13 +19,35 @@ import type {
  * `frenteId` só é aceito para diretor — para o gerente ele no máximo
  * restringe dentro das frentes dele, nunca amplia.
  */
-export function getProjetos(token: string, frenteId?: number | null) {
-  const query = frenteId ? `?frente_id=${frenteId}` : "";
+export function getProjetos(
+  token: string,
+  frenteId?: number | null,
+  incluirArquivados?: boolean,
+) {
+  const params = new URLSearchParams();
+  if (frenteId) params.set("frente_id", String(frenteId));
+  if (incluirArquivados) params.set("incluir_arquivados", "true");
+  const query = params.toString() ? `?${params.toString()}` : "";
   return apiFetch<ProjetoResumo[]>(`/projetos${query}`, { token });
 }
 
 export function getProjeto(projetoId: number, token: string) {
   return apiFetch<ProjetoCompleto>(`/projetos/${projetoId}`, { token });
+}
+
+/** Arquivar não é excluir (§6.2) — só some das listagens normais. */
+export function arquivarProjeto(projetoId: number, token: string) {
+  return apiFetch<{ id: number; arquivado_em: string }>(`/projetos/${projetoId}/arquivar`, {
+    method: "PATCH",
+    token,
+  });
+}
+
+export function desarquivarProjeto(projetoId: number, token: string) {
+  return apiFetch<{ id: number; arquivado_em: null }>(`/projetos/${projetoId}/desarquivar`, {
+    method: "PATCH",
+    token,
+  });
 }
 
 export interface CreateProjetoPayload {
@@ -45,6 +68,35 @@ export function createProjeto(dados: CreateProjetoPayload, token: string) {
     token,
     body: JSON.stringify(dados),
   });
+}
+
+/** A proposta é ou link (mandado junto no `createProjeto`), ou este PDF — nunca os dois. */
+export function uploadAnexoProposta(projetoId: number, arquivo: File, token: string) {
+  const formData = new FormData();
+  formData.append("arquivo", arquivo);
+  return apiFetch<{ anexo_proposta_nome: string }>(`/projetos/${projetoId}/anexo-proposta`, {
+    method: "POST",
+    token,
+    body: formData,
+  });
+}
+
+/**
+ * A rota exige Bearer token, então um `<a href>` direto não funciona — baixa
+ * como blob e dispara o download via um link temporário.
+ */
+export async function baixarAnexoProposta(projetoId: number, nomeArquivo: string, token: string) {
+  const response = await fetch(`${API_URL}/projetos/${projetoId}/anexo-proposta`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error("Erro ao baixar o anexo da proposta");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nomeArquivo;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export function updateEquipe(projetoId: number, equipe: MembroEquipePayload[], token: string) {
