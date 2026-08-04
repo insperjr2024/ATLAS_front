@@ -1,7 +1,8 @@
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { rotuloProjetos } from "@/utils/permissoes";
 import insperJrLogo from "@/assets/insperjr.png";
-import { Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut } from "lucide-react";
+import { FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarContainer,
@@ -20,10 +21,15 @@ interface NavItemConfig {
   label: string;
   path: string;
   section?: "admin";
+  /** Marca o item como ativo também nas sub-rotas (ex.: /projetos/42/tarefas). */
+  prefixo?: boolean;
   visible?: (cargo: NonNullable<ReturnType<typeof useAuth>["usuario"]>["cargo"]) => boolean;
 }
 
 const navItems: NavItemConfig[] = [
+  // O rótulo é definido no componente: para coord e consultor é "Meus
+  // projetos", porque eles só enxergam onde estão alocados (§6.1).
+  { icon: FolderKanban, label: "Projetos", path: "/projetos", prefixo: true },
   { icon: Gauge, label: "Desempenho", path: "/dashboard" },
   { icon: ClipboardList, label: "Bancas", path: "/bancas" },
   { icon: Calendar, label: "Calendário", path: "/calendario" },
@@ -79,10 +85,13 @@ export function Sidebar() {
           if (item.section === "admin" && visibleItems[index - 1]?.section !== "admin") {
             entries.push(<SectionLabel key="admin-section">Administração</SectionLabel>);
           }
+          const ativo = item.prefixo
+            ? location.pathname.startsWith(item.path)
+            : location.pathname === item.path;
           entries.push(
-            <NavItem key={item.path} to={item.path} $isActive={location.pathname === item.path}>
+            <NavItem key={item.path} to={item.path} $isActive={ativo}>
               <item.icon size={20} />
-              <span>{item.label}</span>
+              <span>{item.path === "/projetos" ? rotuloProjetos(usuario) : item.label}</span>
             </NavItem>,
           );
           return entries;

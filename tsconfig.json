@@ -11,7 +11,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
+    // Sem `baseUrl` (deprecado no TS 6): os `paths` resolvem relativo a este
+    // arquivo, e o alias em tempo de build é do Vite (`vite.config.ts`).
     "paths": {
       "@/*": ["./src/*"]
     }

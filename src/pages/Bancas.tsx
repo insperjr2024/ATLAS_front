@@ -194,8 +194,13 @@ export function Bancas() {
 
   if (carregando || !contexto || !usuario) return <PageLoadingBlock />;
 
+  // A narrowing do `!usuario` acima não sobrevive dentro das funções
+  // declaradas depois — o TS não sabe quando elas rodam. Segurar o valor
+  // numa const resolve sem espalhar `usuario!` pelo arquivo.
+  const usuarioLogado = usuario;
+
   function candidaturaDe(bancaId: number) {
-    return candidaturas.find((c) => c.banca_id === bancaId && c.usuario_id === usuario.id);
+    return candidaturas.find((c) => c.banca_id === bancaId && c.usuario_id === usuarioLogado.id);
   }
 
   const bancasDoProjeto = bancas
@@ -228,7 +233,7 @@ export function Bancas() {
   }
 
   async function handleExcluir(banca: Banca) {
-    if (!token || !podeGerenciarBanca(banca, usuario.id)) return;
+    if (!token || !podeGerenciarBanca(banca, usuarioLogado.id)) return;
     if (!confirm(`Excluir a banca "${banca.nome_projeto}"? Esta ação não pode ser desfeita.`)) return;
     try {
       await deleteBanca(banca.id, token);

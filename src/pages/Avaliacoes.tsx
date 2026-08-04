@@ -418,7 +418,7 @@ function EditarFormularioModal({
   onSalvo: (formulario: FormularioAtivo) => void;
 }) {
   const [perguntas, setPerguntas] = useState<PerguntaEditavel[]>(() =>
-    (formulario?.perguntas ?? [{ texto: "", tipo_resposta: "nota" as const }])
+    (formulario?.perguntas ?? [{ texto: "", tipo_resposta: "nota" as const, ordem: 1 }])
       .slice()
       .sort((a, b) => a.ordem - b.ordem)
       .map((p) => ({ texto: p.texto, tipo_resposta: p.tipo_resposta })),

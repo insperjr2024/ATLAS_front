@@ -17,6 +17,10 @@ export const theme = {
     card: 'hsl(0, 0%, 100%)',
     cardForeground: 'hsl(0, 0%, 10%)',
 
+    // Popover (dropdowns, selects)
+    popover: 'hsl(0, 0%, 100%)',
+    popoverForeground: 'hsl(0, 0%, 10%)',
+
     // Primary - Red accent
     primary: 'hsl(0, 72%, 51%)',
     primaryForeground: 'hsl(0, 0%, 100%)',
@@ -41,11 +45,39 @@ export const theme = {
     success: 'hsl(142, 71%, 45%)',
     successForeground: 'hsl(0, 0%, 100%)',
 
+    // Warning — atenção: o texto sobre warning é ESCURO, não branco
+    warning: 'hsl(38, 92%, 50%)',
+    warningForeground: 'hsl(0, 0%, 10%)',
+
+    // Info
+    info: 'hsl(199, 89%, 48%)',
+    infoForeground: 'hsl(0, 0%, 100%)',
+
     // Borders
     border: 'hsl(0, 0%, 90%)',
     input: 'hsl(0, 0%, 90%)',
     ring: 'hsl(0, 72%, 51%)',
+
+    // Sidebar
+    sidebarBackground: 'hsl(0, 0%, 100%)',
+    sidebarForeground: 'hsl(0, 0%, 10%)',
+    sidebarPrimary: 'hsl(0, 72%, 51%)',
+    sidebarAccent: 'hsl(0, 0%, 96%)',
+    sidebarBorder: 'hsl(0, 0%, 90%)',
   },
+
+  /**
+   * Opacidade sobre uma cor do tema.
+   *
+   * NÃO concatene sufixo hex numa string `hsl(...)` (`${primary}1A`): isso gera
+   * `hsl(0, 72%, 51%)1A`, que não é cor CSS válida e pode ser ignorada em
+   * silêncio pelo navegador. `alpha(theme.colors.primary, 0.1)` resolve certo.
+   */
+  alpha: (cor: string, opacidade: number) =>
+    cor.replace(
+      /^hsl\((\d+),\s*([\d.]+)%,\s*([\d.]+)%\)$/,
+      (_, h, s, l) => `hsl(${h} ${s}% ${l}% / ${opacidade})`,
+    ),
 
   spacing: {
     xs: '0.25rem',

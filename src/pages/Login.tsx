@@ -43,7 +43,8 @@ export function Login() {
     setCarregando(true);
     try {
       await login(email, senha);
-      navigate("/dashboard");
+      // 🏠 A primeira tela depois do login é /projetos, não o desempenho pessoal.
+      navigate("/projetos");
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao fazer login");
     } finally {

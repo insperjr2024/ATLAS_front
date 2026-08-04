@@ -6,11 +6,19 @@ export interface Cargo {
   pode_gerenciar_cargos: boolean;
 }
 
+/** Os 4 perfis do §3. Distinto de `Cargo`, que são as permissões do módulo de bancas. */
+export type Posicao = "diretor" | "gerente" | "coordenador" | "consultor";
+
+/** §10 — sair por vontade própria (ex_membro) é diferente de ser desligado. */
+export type StatusUsuario = "ativo" | "ex_membro" | "desligado";
+
 export interface Usuario {
   id: number;
   nome: string;
   email_insper: string;
   cargo: Cargo;
+  posicao: Posicao;
+  status: StatusUsuario;
   ativo: boolean;
 }
 
@@ -28,5 +36,7 @@ export interface UsuarioResumo {
   nome: string;
   email_insper: string;
   cargo_id: number;
+  posicao: Posicao;
+  status: StatusUsuario;
   ativo: boolean;
 }

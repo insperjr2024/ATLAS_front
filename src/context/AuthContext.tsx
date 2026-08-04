@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { apiFetch } from "@/lib/api";
-import type { Usuario, Cargo } from "@/types/auth";
+import type { Usuario, Cargo, Posicao, StatusUsuario } from "@/types/auth";
 
 // A API devolve `cargo_id` solto em /auth/me e /usuarios/{id}, não o objeto
 // `cargo` aninhado que o resto do front espera — por isso buscamos o cargo
@@ -10,6 +10,8 @@ interface UsuarioResponse {
   nome: string;
   email_insper: string;
   cargo_id: number;
+  posicao: Posicao;
+  status: StatusUsuario;
   ativo: boolean;
 }
 
