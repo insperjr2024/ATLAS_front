@@ -171,10 +171,13 @@ export const ROTULO_STATUS: Record<StatusProjeto, string> = {
  * revalida (`transicao_manual_valida`); aqui é só para o menu não oferecer o
  * que vai voltar 422.
  *
- * Vendido → Ambientação e Ambientação → Em andamento não estão aqui de
- * propósito: são 🤖 automáticas (kickoff e fim dos dias de ambientação).
+ * Vendido → Ambientação não está aqui: é 🤖 automática, disparada pelo
+ * kickoff. Já `ambientacao → em_andamento` está, mesmo o §4 chamando de
+ * automática — o disparador não existe, e sem ela um projeto que chega em
+ * Ambientação (ou volta para lá) não teria como sair.
  */
 const TRANSICOES_MANUAIS: Partial<Record<StatusProjeto, StatusProjeto>> = {
+  ambientacao: "em_andamento",
   em_andamento: "validacao_bancas",
   validacao_bancas: "envio_tep",
   envio_tep: "periodo_ajustes",
