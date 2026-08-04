@@ -33,6 +33,7 @@ import {
   CardEquipe,
   CardAlerta,
   FiltersRow,
+  CheckboxLabel,
 } from "./Projetos.styled";
 
 export function ProjetosList() {
@@ -42,11 +43,13 @@ export function ProjetosList() {
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [filtroFrente, setFiltroFrente] = useState("");
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
   const podeFiltrar = pode(usuario, "filtrar_por_frente");
   const podeCriar = pode(usuario, "criar_projeto");
+  const podeArquivar = pode(usuario, "arquivar_projeto");
 
   async function carregar() {
     if (!token) return;
@@ -56,7 +59,11 @@ export function ProjetosList() {
       // O recorte de visão é do backend: `GET /projetos` já vem filtrado pelo
       // token. O `?frente_id=` só refina, e só o diretor enxerga o seletor.
       const [projetosResp, frentesResp, usuariosResp] = await Promise.all([
-        getProjetos(token, podeFiltrar && filtroFrente ? Number(filtroFrente) : null),
+        getProjetos(
+          token,
+          podeFiltrar && filtroFrente ? Number(filtroFrente) : null,
+          podeArquivar && mostrarArquivados,
+        ),
         getFrentes(token),
         getUsuarios(token),
       ]);
@@ -73,7 +80,7 @@ export function ProjetosList() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, filtroFrente]);
+  }, [token, filtroFrente, mostrarArquivados]);
 
   const nomeFrente = (id: number) => frentes.find((f) => f.id === id)?.nome ?? `Frente ${id}`;
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
@@ -119,6 +126,16 @@ export function ProjetosList() {
               ))}
             </FieldSelect>
           )}
+          {podeArquivar && (
+            <CheckboxLabel>
+              <input
+                type="checkbox"
+                checked={mostrarArquivados}
+                onChange={(e) => setMostrarArquivados(e.target.checked)}
+              />
+              Mostrar arquivados
+            </CheckboxLabel>
+          )}
           {podeCriar && (
             <PageButton type="button" onClick={() => navigate("/projetos/novo")}>
               <Plus size={16} />
@@ -156,6 +173,7 @@ export function ProjetosList() {
                 <PageBadge $tone={tomDoStatus(projeto.status)}>
                   {ROTULO_STATUS[projeto.status]}
                 </PageBadge>
+                {projeto.arquivado_em && <PageBadge $tone="muted">📦 Arquivado</PageBadge>}
               </div>
 
               <CardEquipe>

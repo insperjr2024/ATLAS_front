@@ -10,6 +10,7 @@ import type { Posicao, StatusUsuario, Usuario } from "@/types/auth";
 export type Acao =
   | "criar_projeto"
   | "editar_equipe"
+  | "arquivar_projeto"
   | "gerir_membros"
   | "marcar_kickoff"
   | "mudar_status_projeto"
@@ -28,6 +29,7 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão — restrito às lideranças
   criar_projeto: ["diretor", "gerente"],
   editar_equipe: ["diretor", "gerente"],
+  arquivar_projeto: ["diretor", "gerente"],
   ver_monitoramento: ["diretor", "gerente"],
 
   // Só a diretoria

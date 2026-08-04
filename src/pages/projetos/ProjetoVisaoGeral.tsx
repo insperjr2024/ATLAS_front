@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { ExternalLink, Lock, X } from "lucide-react";
+import { Download, ExternalLink, Lock, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
 import {
+  baixarAnexoProposta,
   formatarData,
+  formatarDataHora,
   marcarEntregaCliente,
   marcarEntregaEscopo,
   marcarKickoff,
@@ -69,9 +71,24 @@ export function ProjetoVisaoGeral() {
   const { projeto, usuarios, recarregar } = useProjeto();
   const { usuario, token } = useAuth();
   const [editandoEquipe, setEditandoEquipe] = useState(false);
+  const [baixandoAnexo, setBaixandoAnexo] = useState(false);
+  const [erroAnexo, setErroAnexo] = useState("");
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
   const podeEditarEquipe = pode(usuario, "editar_equipe");
+
+  async function handleBaixarAnexo() {
+    if (!token || !projeto.anexo_proposta_nome) return;
+    setErroAnexo("");
+    setBaixandoAnexo(true);
+    try {
+      await baixarAnexoProposta(projeto.id, projeto.anexo_proposta_nome, token);
+    } catch (err) {
+      setErroAnexo(err instanceof Error ? err.message : "Erro ao baixar o anexo");
+    } finally {
+      setBaixandoAnexo(false);
+    }
+  }
 
   return (
     <PageStack>
@@ -85,6 +102,12 @@ export function ProjetoVisaoGeral() {
                 <ExternalLink size={14} />
               </LinkExterno>
             )}
+            {projeto.anexo_proposta_nome && (
+              <PageButtonSm type="button" $variant="outline" onClick={handleBaixarAnexo} disabled={baixandoAnexo}>
+                <Download size={14} />
+                {baixandoAnexo ? "Baixando…" : "Baixar proposta"}
+              </PageButtonSm>
+            )}
           </PageCardHeader>
           <PageCardContent>
             {projeto.descricao ? (
@@ -92,6 +115,7 @@ export function ProjetoVisaoGeral() {
             ) : (
               <EmptyText>Sem descrição cadastrada.</EmptyText>
             )}
+            {erroAnexo && <FormErrorText>{erroAnexo}</FormErrorText>}
           </PageCardContent>
         </PageCard>
 
@@ -130,6 +154,10 @@ export function ProjetoVisaoGeral() {
           <PageCardTitle>Datas</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
+          <DataRow>
+            <DataLabel>Criado em</DataLabel>
+            <span>{formatarDataHora(projeto.criado_em)}</span>
+          </DataRow>
           <DataEditavel
             rotulo="Kickoff"
             valor={projeto.data_kickoff}
@@ -363,10 +391,6 @@ function DataEditavel({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
-  // 🤖 O kickoff é o gatilho de Vendido → Ambientação, e o backend só aceita
-  // a marcação enquanto o projeto está Vendido.
-  const travado = tipo === "kickoff" && projeto.status !== "vendido";
-
   async function salvar() {
     if (!token || !data) return;
     setSalvando(true);
@@ -413,11 +437,9 @@ function DataEditavel({
         ) : (
           <>
             <span>{formatarData(valor)}</span>
-            {!travado && (
-              <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
-                {valor ? "Alterar" : "Marcar"}
-              </PageButtonSm>
-            )}
+            <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
+              {valor ? "Alterar" : "Marcar"}
+            </PageButtonSm>
           </>
         )}
       </DataRow>
