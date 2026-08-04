@@ -150,16 +150,21 @@ export const CardMeta = styled.div`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** 🚨 O badge de vencida — derivado do prazo, sem campo booleano no banco. */
-export const BadgeVencida = styled.span`
+/**
+ * ⏰ O sinal de urgência no card.
+ *
+ * O card mostra só NOME e RESPONSÁVEL; a data fica no detalhe. Este glifo é
+ * o único indício de prazo na face — some quando falta tempo (`normal`) e
+ * fica mais forte conforme aperta.
+ */
+export const SinalUrgencia = styled.span<{ $cor: string }>`
   display: inline-flex;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.05rem 0.375rem;
-  border-radius: ${theme.borderRadius.full};
-  background: color-mix(in srgb, ${theme.colors.destructive} 12%, white);
-  color: ${theme.colors.destructive};
-  font-weight: ${theme.fontWeight.medium};
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: ${({ $cor }) => $cor};
+  cursor: help;
 `;
 
 export const ColunaVazia = styled.p`

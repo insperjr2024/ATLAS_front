@@ -11,13 +11,11 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { AlertTriangle, X } from "lucide-react";
-import { formatarData } from "@/lib/projetos";
+
+import { SINAL_URGENCIA } from "@/lib/tarefas";
 import { tonsDaColuna, type ColunaTarefa, type TonsColuna } from "@/lib/colunas-tarefa";
 import type { Tarefa } from "@/types/tarefa";
 import {
-  BadgeVencida,
-  BotaoExcluir,
   Board,
   Card,
   CardMeta,
@@ -30,6 +28,7 @@ import {
   Contador,
   ContadorVencidas,
   Ponto,
+  SinalUrgencia,
 } from "./Kanban.styled";
 
 interface KanbanBoardProps {
@@ -38,7 +37,8 @@ interface KanbanBoardProps {
   tarefas: Tarefa[];
   nomeUsuario: (id: number) => string;
   onMover: (tarefaId: number, colunaId: number) => void;
-  onExcluir?: (tarefa: Tarefa) => void;
+  /** Clicar no card abre o detalhe: datas, autoria e comentários. */
+  onAbrir: (tarefa: Tarefa) => void;
 }
 
 /**
@@ -54,7 +54,7 @@ export function KanbanBoard({
   tarefas,
   nomeUsuario,
   onMover,
-  onExcluir,
+  onAbrir,
 }: KanbanBoardProps) {
   const [arrastando, setArrastando] = useState<Tarefa | null>(null);
 
@@ -97,7 +97,7 @@ export function KanbanBoard({
             tons={tons.get(coluna.id)!}
             tarefas={tarefas.filter((t) => t.coluna_id === coluna.id)}
             nomeUsuario={nomeUsuario}
-            onExcluir={onExcluir}
+            onAbrir={onAbrir}
           />
         ))}
       </Board>
@@ -119,13 +119,13 @@ function ColunaDrop({
   tons,
   tarefas,
   nomeUsuario,
-  onExcluir,
+  onAbrir,
 }: {
   coluna: ColunaTarefa;
   tons: TonsColuna;
   tarefas: Tarefa[];
   nomeUsuario: (id: number) => string;
-  onExcluir?: (tarefa: Tarefa) => void;
+  onAbrir: (tarefa: Tarefa) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: coluna.id });
   const vencidas = tarefas.filter((t) => t.vencida).length;
@@ -160,7 +160,7 @@ function ColunaDrop({
           tarefa={tarefa}
           tons={tons}
           nomeUsuario={nomeUsuario}
-          onExcluir={onExcluir}
+          onAbrir={onAbrir}
         />
       ))}
     </Coluna>
@@ -171,14 +171,15 @@ function CardArrastavel({
   tarefa,
   tons,
   nomeUsuario,
-  onExcluir,
+  onAbrir,
 }: {
   tarefa: Tarefa;
   tons: TonsColuna;
   nomeUsuario: (id: number) => string;
-  onExcluir?: (tarefa: Tarefa) => void;
+  onAbrir: (tarefa: Tarefa) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: tarefa.id });
+  const sinal = SINAL_URGENCIA[tarefa.urgencia];
 
   return (
     <Card
@@ -188,30 +189,33 @@ function CardArrastavel({
       $cor={tons}
       {...listeners}
       {...attributes}
+      // Depois do spread de propósito: `attributes` do dnd-kit já traz
+      // role/tabIndex, e espalhar por último sobrescreveria os nossos.
+      role="button"
+      title="Clique para ver detalhes e comentários"
+      // O clique abre o detalhe; o arrasto só começa depois de 5px de
+      // movimento (activationConstraint), então os dois gestos convivem.
+      onClick={() => onAbrir(tarefa)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onAbrir(tarefa);
+        }
+      }}
     >
+      {/* A face do card tem só NOME e RESPONSÁVEL. Datas, autoria e
+          comentários ficam no detalhe — o único indício de prazo aqui é o
+          sinal de urgência, que só aparece quando o prazo aperta. */}
       <CardTopo>
         <CardTitulo>{tarefa.titulo}</CardTitulo>
-        {onExcluir && (
-          <BotaoExcluir
-            type="button"
-            aria-label={`Excluir ${tarefa.titulo}`}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => onExcluir(tarefa)}
-          >
-            <X size={12} />
-          </BotaoExcluir>
+        {sinal && (
+          <SinalUrgencia $cor={sinal.cor} title={sinal.rotulo(tarefa.dias_para_prazo)}>
+            {sinal.glifo}
+          </SinalUrgencia>
         )}
       </CardTopo>
       <CardMeta>
         <span>{nomeUsuario(tarefa.responsavel_id)}</span>
-        {tarefa.vencida ? (
-          <BadgeVencida>
-            <AlertTriangle size={10} />
-            {formatarData(tarefa.prazo)}
-          </BadgeVencida>
-        ) : (
-          <span>{formatarData(tarefa.prazo)}</span>
-        )}
       </CardMeta>
     </Card>
   );

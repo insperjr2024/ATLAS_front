@@ -18,6 +18,7 @@ export type Acao =
   | "remarcar_banca"
   | "liberar_excecao_choque"
   | "registrar_justificativa_atraso"
+  | "configurar_colunas"
   | "criar_tarefa"
   | "mover_tarefa"
   | "registrar_reuniao"
@@ -37,6 +38,9 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   liberar_excecao_choque: ["diretor"],
   registrar_justificativa_atraso: ["diretor"],
   filtrar_por_frente: ["diretor"],
+  //: As colunas do kanban são por projeto, mas quem as edita é sempre a
+  //: diretoria — o time move cards, não redesenha o fluxo.
+  configurar_colunas: ["diretor"],
 
   // Condução do projeto — o consultor não define cronograma nem move o
   // ciclo de vida do projeto (§4)
