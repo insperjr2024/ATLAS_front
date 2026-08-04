@@ -14,6 +14,7 @@ export type Acao =
   | "gerir_membros"
   | "marcar_kickoff"
   | "mudar_status_projeto"
+  | "mover_projeto_kanban"
   | "definir_cronograma"
   | "aprovar_reajuste"
   | "remarcar_banca"
@@ -40,6 +41,10 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   liberar_excecao_choque: ["diretor"],
   registrar_justificativa_atraso: ["diretor"],
   filtrar_por_frente: ["diretor"],
+  /** O kanban de projetos muda o ciclo de vida por arrasto — mais informal
+   *  que os botões de `mudar_status_projeto`, por isso fica restrito à
+   *  diretoria, mesmo o botão equivalente aceitando gerente/coordenador. */
+  mover_projeto_kanban: ["diretor"],
   //: As colunas do kanban são por projeto, mas quem as edita é sempre a
   //: diretoria — o time move cards, não redesenha o fluxo.
   configurar_colunas: ["diretor"],
