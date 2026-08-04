@@ -1,52 +1,89 @@
 import styled, { css } from "styled-components";
 import { theme } from "@/styles/theme";
+import type { TonsColuna } from "@/lib/colunas-tarefa";
 
-export const Board = styled.div`
+/** O número de colunas é dado, não constante: a diretoria pode criar mais. */
+export const Board = styled.div<{ $colunas: number }>`
   display: grid;
-  grid-template-columns: repeat(5, minmax(11rem, 1fr));
+  grid-template-columns: repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(11rem, 1fr));
   gap: ${theme.spacing.sm};
   overflow-x: auto;
   padding-bottom: ${theme.spacing.sm};
   align-items: start;
 `;
 
-export const Coluna = styled.div<{ $sobre?: boolean }>`
+export const Coluna = styled.div<{ $sobre?: boolean; $cor?: TonsColuna }>`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.sm};
   min-height: 8rem;
   padding: ${theme.spacing.sm};
   border-radius: ${theme.borderRadius.lg};
-  border: 1px solid ${({ $sobre }) => ($sobre ? theme.colors.ring : theme.colors.border)};
-  background: ${({ $sobre }) => ($sobre ? theme.colors.secondary : theme.colors.background)};
+  /* Ao arrastar por cima, a coluna acende na PRÓPRIA cor — assim o alvo do
+     drop diz para onde a tarefa está indo, não só que há um alvo. */
+  border: 1px solid
+    ${({ $sobre, $cor }) => ($sobre ? ($cor?.ponto ?? theme.colors.ring) : theme.colors.border)};
+  background: ${({ $sobre, $cor }) =>
+    $sobre ? ($cor?.fundo ?? theme.colors.secondary) : theme.colors.background};
   transition: background ${theme.transitions.fast}, border-color ${theme.transitions.fast};
 `;
 
 export const ColunaTitulo = styled.h3`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: ${theme.spacing.sm};
   margin: 0;
   font-size: ${theme.fontSize.xs};
-  font-weight: ${theme.fontWeight.semibold};
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: ${theme.colors.mutedForeground};
+  font-weight: ${theme.fontWeight.medium};
+`;
+
+/** A pílula do cabeçalho: ponto colorido + rótulo, no molde do board. */
+export const ColunaPilula = styled.span<{ $cor: TonsColuna }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: ${theme.borderRadius.md};
+  background: ${({ $cor }) => $cor.fundo};
+  color: ${({ $cor }) => $cor.texto};
+  white-space: nowrap;
+`;
+
+export const Ponto = styled.span<{ $cor: string }>`
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $cor }) => $cor};
 `;
 
 export const Contador = styled.span`
   font-variant-numeric: tabular-nums;
   font-weight: ${theme.fontWeight.normal};
+  color: ${theme.colors.mutedForeground};
 `;
 
-export const Card = styled.div<{ $vencida?: boolean; $arrastando?: boolean }>`
+/** A contagem de vencidas, separada — vermelho não pode virar cor de coluna. */
+export const ContadorVencidas = styled.span`
+  margin-left: auto;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.destructive};
+  white-space: nowrap;
+`;
+
+export const Card = styled.div<{ $vencida?: boolean; $arrastando?: boolean; $cor?: TonsColuna }>`
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
   padding: ${theme.spacing.sm};
   border-radius: ${theme.borderRadius.md};
-  border: 1px solid ${({ $vencida }) => ($vencida ? theme.colors.destructive : theme.colors.border)};
-  background: ${theme.colors.card};
+  /* A borda vermelha de VENCIDA vence a cor da coluna: é sinal de problema,
+     não de estado — precisa continuar aparecendo sobre qualquer tinta. */
+  border: 1px solid
+    ${({ $vencida, $cor }) =>
+      $vencida ? theme.colors.destructive : ($cor?.borda ?? theme.colors.border)};
+  background: ${({ $cor }) => $cor?.fundo ?? theme.colors.card};
   box-shadow: ${theme.shadows.sm};
   cursor: grab;
   touch-action: none;

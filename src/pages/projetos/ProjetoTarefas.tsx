@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { createTarefa, deleteTarefa, getTarefas, updateTarefa } from "@/lib/tarefas";
-import type { StatusTarefa, Tarefa } from "@/types/tarefa";
+import type { Tarefa } from "@/types/tarefa";
+import { getColunas, type ColunaTarefa } from "@/lib/colunas-tarefa";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import {
   PageStack,
@@ -38,6 +39,7 @@ export function ProjetoTarefas() {
   const { projeto, usuarios } = useProjeto();
   const { token } = useAuth();
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [colunas, setColunas] = useState<ColunaTarefa[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
@@ -47,7 +49,14 @@ export function ProjetoTarefas() {
     if (!token) return;
     setErro("");
     try {
-      setTarefas(await getTarefas(projeto.id, token));
+      // As colunas vêm da API: quantidade, nome, cor e ordem são
+      // configuráveis pela diretoria em /config.
+      const [resTarefas, resColunas] = await Promise.all([
+        getTarefas(projeto.id, token),
+        getColunas(token),
+      ]);
+      setTarefas(resTarefas);
+      setColunas(resColunas);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar as tarefas");
     } finally {
@@ -66,13 +75,15 @@ export function ProjetoTarefas() {
    * Otimista: o card já aparece na coluna nova antes da resposta. Se o PATCH
    * falhar, recarrega do servidor — a fonte da verdade nunca é o estado local.
    */
-  async function mover(tarefaId: number, status: StatusTarefa) {
+  async function mover(tarefaId: number, colunaId: number) {
     if (!token) return;
     const anterior = tarefas;
-    setTarefas((lista) => lista.map((t) => (t.id === tarefaId ? { ...t, status } : t)));
+    setTarefas((lista) =>
+      lista.map((t) => (t.id === tarefaId ? { ...t, coluna_id: colunaId } : t)),
+    );
     setAviso("");
     try {
-      await updateTarefa(tarefaId, { status }, token);
+      await updateTarefa(tarefaId, { coluna_id: colunaId }, token);
       await carregar();
     } catch (err) {
       setTarefas(anterior);
@@ -128,7 +139,13 @@ export function ProjetoTarefas() {
               Nenhuma tarefa ainda. O coordenador distribui, mas qualquer pessoa da equipe pode criar.
             </EmptyText>
           ) : (
-            <KanbanBoard tarefas={tarefas} nomeUsuario={nomeUsuario} onMover={mover} onExcluir={excluir} />
+            <KanbanBoard
+              colunas={colunas}
+              tarefas={tarefas}
+              nomeUsuario={nomeUsuario}
+              onMover={mover}
+              onExcluir={excluir}
+            />
           )}
         </PageCardContent>
       </PageCard>
