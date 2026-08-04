@@ -143,6 +143,62 @@ export const FiltersRow = styled.div`
   align-items: center;
 `;
 
+export const FrenteFilterWrap = styled.div`
+  position: relative;
+`;
+
+export const FrenteFilterButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.input};
+  background: ${theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: none;
+    border-color: ${theme.colors.ring};
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 25%, transparent);
+  }
+`;
+
+export const FrenteFilterPanel = styled.div`
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.375rem);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 12rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 0.625rem 0.75rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.popover};
+  box-shadow: ${theme.shadows.lg};
+`;
+
+export const FrenteFilterFooter = styled.button`
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.primary};
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 /* ------------------------------------------------------------------ */
 /* Shell da página do projeto                                          */
 /* ------------------------------------------------------------------ */

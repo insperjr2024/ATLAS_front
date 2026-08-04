@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle, ChevronDown, Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { getProjetos, ROTULO_STATUS, tomDoStatus } from "@/lib/projetos";
@@ -23,7 +23,6 @@ import {
   PageHeaderText,
   PageHeading,
   PageSubheading,
-  FieldSelect,
   CardGrid,
   ProjetoCard,
   CardTitle,
@@ -33,6 +32,11 @@ import {
   CardEquipe,
   CardAlerta,
   FiltersRow,
+  FrenteFilterWrap,
+  FrenteFilterButton,
+  FrenteFilterPanel,
+  FrenteFilterFooter,
+  CheckboxLabel,
 } from "./Projetos.styled";
 
 export function ProjetosList() {
@@ -41,9 +45,11 @@ export function ProjetosList() {
   const [projetos, setProjetos] = useState<ProjetoResumo[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
-  const [filtroFrente, setFiltroFrente] = useState("");
+  const [frentesSelecionadas, setFrentesSelecionadas] = useState<number[]>([]);
+  const [filtroAberto, setFiltroAberto] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const filtroRef = useRef<HTMLDivElement>(null);
 
   const podeFiltrar = pode(usuario, "filtrar_por_frente");
   const podeCriar = pode(usuario, "criar_projeto");
@@ -54,9 +60,11 @@ export function ProjetosList() {
     setErro("");
     try {
       // O recorte de visão é do backend: `GET /projetos` já vem filtrado pelo
-      // token. O `?frente_id=` só refina, e só o diretor enxerga o seletor.
+      // token. O filtro por frente(s), aqui, é só um refinamento no cliente —
+      // pra permitir marcar várias frentes de uma vez, um projeto sinérgico
+      // aparece assim que QUALQUER uma das suas frentes estiver marcada.
       const [projetosResp, frentesResp, usuariosResp] = await Promise.all([
-        getProjetos(token, podeFiltrar && filtroFrente ? Number(filtroFrente) : null),
+        getProjetos(token),
         getFrentes(token),
         getUsuarios(token),
       ]);
@@ -73,10 +81,39 @@ export function ProjetosList() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, filtroFrente]);
+  }, [token]);
+
+  useEffect(() => {
+    if (!filtroAberto) return;
+    function aoClicarFora(e: MouseEvent) {
+      if (filtroRef.current && !filtroRef.current.contains(e.target as Node)) {
+        setFiltroAberto(false);
+      }
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, [filtroAberto]);
 
   const nomeFrente = (id: number) => frentes.find((f) => f.id === id)?.nome ?? `Frente ${id}`;
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
+
+  function alternarFrente(id: number) {
+    setFrentesSelecionadas((atual) =>
+      atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
+    );
+  }
+
+  const projetosFiltrados =
+    frentesSelecionadas.length === 0
+      ? projetos
+      : projetos.filter((p) => p.frente_ids.some((id) => frentesSelecionadas.includes(id)));
+
+  const rotuloFiltro =
+    frentesSelecionadas.length === 0
+      ? "Todas as frentes"
+      : frentesSelecionadas.length === 1
+        ? nomeFrente(frentesSelecionadas[0])
+        : `${frentesSelecionadas.length} frentes`;
 
   if (erro) {
     return (
@@ -91,7 +128,7 @@ export function ProjetosList() {
 
   if (carregando) return <PageLoadingBlock />;
 
-  const pendentes = projetos.filter((p) => p.kickoff_pendente).length;
+  const pendentes = projetosFiltrados.filter((p) => p.kickoff_pendente).length;
 
   return (
     <PageStack>
@@ -99,25 +136,43 @@ export function ProjetosList() {
         <PageHeaderText>
           <PageHeading>{rotuloProjetos(usuario)}</PageHeading>
           <PageSubheading>
-            {projetos.length} {projetos.length === 1 ? "projeto" : "projetos"}
+            {projetosFiltrados.length} {projetosFiltrados.length === 1 ? "projeto" : "projetos"}
             {pendentes > 0 && ` · ${pendentes} com kickoff pendente`}
           </PageSubheading>
         </PageHeaderText>
 
         <FiltersRow>
           {podeFiltrar && (
-            <FieldSelect
-              value={filtroFrente}
-              onChange={(e) => setFiltroFrente(e.target.value)}
-              aria-label="Filtrar por frente"
-            >
-              <option value="">Todas as frentes</option>
-              {frentes.map((frente) => (
-                <option key={frente.id} value={frente.id}>
-                  {frente.nome}
-                </option>
-              ))}
-            </FieldSelect>
+            <FrenteFilterWrap ref={filtroRef}>
+              <FrenteFilterButton
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={filtroAberto}
+                onClick={() => setFiltroAberto((aberto) => !aberto)}
+              >
+                {rotuloFiltro}
+                <ChevronDown size={14} />
+              </FrenteFilterButton>
+              {filtroAberto && (
+                <FrenteFilterPanel role="listbox" aria-label="Filtrar por frentes">
+                  {frentes.map((frente) => (
+                    <CheckboxLabel key={frente.id}>
+                      <input
+                        type="checkbox"
+                        checked={frentesSelecionadas.includes(frente.id)}
+                        onChange={() => alternarFrente(frente.id)}
+                      />
+                      {frente.nome}
+                    </CheckboxLabel>
+                  ))}
+                  {frentesSelecionadas.length > 0 && (
+                    <FrenteFilterFooter type="button" onClick={() => setFrentesSelecionadas([])}>
+                      Limpar seleção
+                    </FrenteFilterFooter>
+                  )}
+                </FrenteFilterPanel>
+              )}
+            </FrenteFilterWrap>
           )}
           {podeCriar && (
             <PageButton type="button" onClick={() => navigate("/projetos/novo")}>
@@ -128,17 +183,17 @@ export function ProjetosList() {
         </FiltersRow>
       </PageHeaderRow>
 
-      {projetos.length === 0 ? (
+      {projetosFiltrados.length === 0 ? (
         <EmptyText>
-          {filtroFrente
-            ? "Nenhum projeto nesta frente."
+          {frentesSelecionadas.length > 0
+            ? "Nenhum projeto nas frentes selecionadas."
             : podeCriar
               ? "Nenhum projeto ainda. Crie o primeiro."
               : "Você ainda não está alocado em nenhum projeto."}
         </EmptyText>
       ) : (
         <CardGrid>
-          {projetos.map((projeto) => (
+          {projetosFiltrados.map((projeto) => (
             <ProjetoCard key={projeto.id} to={`/projetos/${projeto.id}`}>
               <div>
                 <CardTitle>{projeto.nome}</CardTitle>
