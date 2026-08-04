@@ -1,0 +1,54 @@
+import type { EscopoVendido } from "@/types/projeto";
+
+export interface EtapaCronograma {
+  id: number;
+  projeto_escopo_id: number;
+  nome: string;
+  cor: string;
+  data_inicio: string;
+  data_fim: string;
+  status: "planejada" | "em_andamento" | "concluida" | "cancelada";
+  ordem: number;
+}
+
+/**
+ * Só dois tipos gravados. ★ banca, ● entrega e 🏁 kickoff são LIDOS de
+ * `banca`, `projeto_escopo` e `projeto` — regravá-los criaria uma segunda
+ * fonte da verdade e o "uma data só" do §8 morreria no primeiro reagendamento.
+ */
+export interface MarcoCronograma {
+  id: number;
+  projeto_id: number;
+  projeto_escopo_id: number | null;
+  tipo: "reuniao_alinhamento" | "visita_presencial";
+  data: string;
+  nota: string | null;
+}
+
+export interface EscopoComEtapas extends EscopoVendido {
+  etapas: EtapaCronograma[];
+}
+
+export interface FaixaDerivadaResposta {
+  tipo: "ambientacao" | "pausa";
+  inicio: string;
+  fim: string;
+  rotulo: string;
+}
+
+export interface DiaNaoUtilResposta {
+  data: string;
+  tipo: string;
+  descricao: string | null;
+}
+
+export interface CronogramaResposta {
+  projeto_id: number;
+  data_kickoff: string | null;
+  escopos: EscopoComEtapas[];
+  marcos: MarcoCronograma[];
+  faixas_derivadas: FaixaDerivadaResposta[];
+  janela: { inicio: string; fim: string };
+  dias_nao_uteis: DiaNaoUtilResposta[];
+  reajuste_pendente: { id: number; solicitado_por: number; criado_em: string } | null;
+}
