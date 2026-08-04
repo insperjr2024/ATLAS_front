@@ -10,6 +10,7 @@ export {
   FormStack,
   FieldGroup,
   FieldLabel,
+  Required,
   FieldInput,
   FieldTextarea,
   FieldSelect,
@@ -46,6 +47,12 @@ export const FormFields = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.lg};
+`;
+
+/** O toggle "Link" / "Anexar PDF" do campo de proposta — um ou outro. */
+export const ModoPropostaRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
 `;
 
 /* ------------------------------------------------------------------ */
@@ -141,6 +148,90 @@ export const FiltersRow = styled.div`
   flex-wrap: wrap;
   gap: ${theme.spacing.sm};
   align-items: center;
+`;
+
+export const ViewToggleRow = styled.div`
+  display: inline-flex;
+  padding: 0.1875rem;
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.muted};
+`;
+
+export const ViewToggleBtn = styled.button<{ $ativo?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.875rem;
+  padding: 0 0.75rem;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+  transition: background ${theme.transitions.fast}, color ${theme.transitions.fast};
+  background: ${({ $ativo }) => ($ativo ? theme.colors.card : "transparent")};
+  color: ${({ $ativo }) => ($ativo ? theme.colors.foreground : theme.colors.mutedForeground)};
+  box-shadow: ${({ $ativo }) => ($ativo ? theme.shadows.sm : "none")};
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+`;
+
+export const FrenteFilterWrap = styled.div`
+  position: relative;
+`;
+
+export const FrenteFilterButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.input};
+  background: ${theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: none;
+    border-color: ${theme.colors.ring};
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 25%, transparent);
+  }
+`;
+
+export const FrenteFilterPanel = styled.div`
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.375rem);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 12rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 0.625rem 0.75rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.popover};
+  box-shadow: ${theme.shadows.lg};
+`;
+
+export const FrenteFilterFooter = styled.button`
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.primary};
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
 `;
 
 /* ------------------------------------------------------------------ */

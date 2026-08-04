@@ -6,6 +6,7 @@ import { FormularioRoute } from "@/routes/FormularioRoute";
 import { RequirePosicao } from "@/routes/RequirePosicao";
 import { Layout } from "@/components/Layout";
 import { Login } from "@/pages/Login";
+import { EsqueciSenha } from "@/pages/EsqueciSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { Calendario } from "@/pages/Calendario";
@@ -36,6 +37,7 @@ export default function App() {
           {/* 🏠 A home é /projetos: é o que a pessoa abre todo dia. */}
           <Route path="/" element={<Navigate to="/projetos" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />

@@ -1,32 +1,45 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import insperJrLogo from "@/assets/insperjr2.png";
+import equipeJrImg from "@/assets/EquipeJr2026.png";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import {
   AuthPageWrapper,
-  LoginGlow,
+  LoginLeftPanel,
+  LoginPanelImage,
+  LoginPanelOverlay,
+  LoginPanelContent,
+  LoginPanelTextContainer,
+  LoginPanelTitleBlock,
+  LoginPanelTitle,
+  LoginPanelTitleAccent,
+  LoginPanelTitleCursor,
+  LoginPanelSubtitle,
+  LoginRightPanel,
   LoginFormWrapper,
   LoginHeaderBlock,
-  LoginBrandLockup,
+  LoginFormLogoWrap,
   LoginBrandLogo,
-  LoginBrandDivider,
-  LoginBrandProduct,
-  LoginFormTitle,
   LoginFormSubtitle,
   LoginAuthForm,
   LoginFieldGroup,
+  LoginFieldRow,
+  LoginForgotLink,
   LoginInputWrapper,
   LoginInputWrapperWithRight,
   LoginIconWrapper,
   LoginTogglePasswordBtn,
   LoginSubmitButton,
   LoginErrorMessage,
-  LoginFooterNote,
 } from "./Auth.styled";
+
+const TITULO_BOAS_VINDAS = "Bem-vindo à Insper Jr";
+const INICIO_DESTAQUE = "Bem-vindo à ".length;
+const VELOCIDADE_DIGITACAO_MS = 80;
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -34,8 +47,17 @@ export function Login() {
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [tamanhoDigitado, setTamanhoDigitado] = useState(0);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const digitacaoCompleta = tamanhoDigitado >= TITULO_BOAS_VINDAS.length;
+
+  useEffect(() => {
+    if (digitacaoCompleta) return;
+    const t = setTimeout(() => setTamanhoDigitado((n) => n + 1), VELOCIDADE_DIGITACAO_MS);
+    return () => clearTimeout(t);
+  }, [tamanhoDigitado, digitacaoCompleta]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -54,82 +76,103 @@ export function Login() {
 
   return (
     <AuthPageWrapper>
-      <LoginGlow $position="top" aria-hidden />
-      <LoginGlow $position="bottom" aria-hidden />
+      <LoginLeftPanel>
+        <LoginPanelImage src={equipeJrImg} alt="Equipe Insper Jr." />
+        <LoginPanelOverlay />
+        <LoginPanelContent>
+          <LoginPanelTextContainer>
+            <LoginPanelTitleBlock>
+              <LoginPanelTitle>
+                {TITULO_BOAS_VINDAS.slice(0, Math.min(tamanhoDigitado, INICIO_DESTAQUE))}
+                {tamanhoDigitado > INICIO_DESTAQUE && (
+                  <LoginPanelTitleAccent>
+                    {TITULO_BOAS_VINDAS.slice(INICIO_DESTAQUE, tamanhoDigitado)}
+                  </LoginPanelTitleAccent>
+                )}
+                {!digitacaoCompleta && <LoginPanelTitleCursor aria-hidden />}
+              </LoginPanelTitle>
+              <LoginPanelSubtitle>
+                A Insper Jr é uma das maiores empresas juniores do país, com diversas frentes de
+                atuação, englobando alunos de todos os cursos de faculdade.
+              </LoginPanelSubtitle>
+            </LoginPanelTitleBlock>
+          </LoginPanelTextContainer>
+        </LoginPanelContent>
+      </LoginLeftPanel>
 
-      <LoginFormWrapper>
-        <LoginHeaderBlock>
-          <LoginBrandLockup>
-            <LoginBrandLogo src={insperJrLogo} alt="Insper Jr." />
-            <LoginBrandDivider aria-hidden />
-            <LoginBrandProduct>Núcleo de Bancas</LoginBrandProduct>
-          </LoginBrandLockup>
-          <LoginFormTitle>Acesse sua conta</LoginFormTitle>
-          <LoginFormSubtitle>
-            Entre com seu e-mail Insper Jr para acessar as bancas.
-          </LoginFormSubtitle>
-        </LoginHeaderBlock>
+      <LoginRightPanel>
+        <LoginFormWrapper>
+          <LoginHeaderBlock>
+            <LoginFormLogoWrap>
+              <LoginBrandLogo src={insperJrLogo} alt="Insper Jr." />
+            </LoginFormLogoWrap>
+            <LoginFormSubtitle>
+              Entre com seu e-mail Insper Jr para acessar a plataforma de projetos.
+            </LoginFormSubtitle>
+          </LoginHeaderBlock>
 
-        <LoginAuthForm onSubmit={handleSubmit}>
-          <LoginFieldGroup>
-            <Label htmlFor="email">E-mail</Label>
-            <LoginInputWrapper>
-              <LoginIconWrapper>
-                <Mail size={20} />
-              </LoginIconWrapper>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu.email@al.insper.edu.br"
-                required
-              />
-            </LoginInputWrapper>
-          </LoginFieldGroup>
+          <LoginAuthForm onSubmit={handleSubmit}>
+            <LoginFieldGroup>
+              <Label htmlFor="email">E-mail</Label>
+              <LoginInputWrapper>
+                <LoginIconWrapper>
+                  <Mail size={20} />
+                </LoginIconWrapper>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="seu.email@al.insper.edu.br"
+                  required
+                />
+              </LoginInputWrapper>
+            </LoginFieldGroup>
 
-          <LoginFieldGroup>
-            <Label htmlFor="senha">Senha</Label>
-            <LoginInputWrapperWithRight>
-              <LoginIconWrapper>
-                <Lock size={20} />
-              </LoginIconWrapper>
-              <Input
-                id="senha"
-                name="senha"
-                type={showPassword ? "text" : "password"}
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
-              <LoginTogglePasswordBtn
-                type="button"
-                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </LoginTogglePasswordBtn>
-            </LoginInputWrapperWithRight>
-          </LoginFieldGroup>
+            <LoginFieldGroup>
+              <LoginFieldRow>
+                <Label htmlFor="senha">Senha</Label>
+                <LoginForgotLink to="/esqueci-senha">Esqueceu a senha?</LoginForgotLink>
+              </LoginFieldRow>
+              <LoginInputWrapperWithRight>
+                <LoginIconWrapper>
+                  <Lock size={20} />
+                </LoginIconWrapper>
+                <Input
+                  id="senha"
+                  name="senha"
+                  type={showPassword ? "text" : "password"}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+                <LoginTogglePasswordBtn
+                  type="button"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </LoginTogglePasswordBtn>
+              </LoginInputWrapperWithRight>
+            </LoginFieldGroup>
 
-          {erro && <LoginErrorMessage>{erro}</LoginErrorMessage>}
+            {erro && <LoginErrorMessage>{erro}</LoginErrorMessage>}
 
-          <LoginSubmitButton type="submit" size="lg" disabled={carregando}>
-            {carregando ? (
-              <>Entrando...</>
-            ) : (
-              <>
-                Entrar
-                <ArrowRight size={16} />
-              </>
-            )}
-          </LoginSubmitButton>
-        </LoginAuthForm>
-
-        <LoginFooterNote>Núcleo de Bancas · Insper Jr</LoginFooterNote>
-      </LoginFormWrapper>
+            <LoginSubmitButton type="submit" size="lg" disabled={carregando}>
+              {carregando ? (
+                <>Entrando...</>
+              ) : (
+                <>
+                  Entrar
+                  <ArrowRight size={16} />
+                </>
+              )}
+            </LoginSubmitButton>
+          </LoginAuthForm>
+        </LoginFormWrapper>
+      </LoginRightPanel>
     </AuthPageWrapper>
   );
 }

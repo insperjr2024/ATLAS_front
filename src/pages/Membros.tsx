@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { getCargos } from "@/lib/cargos";
 import { frentesDoUsuario, nomeCargo, normalizarTexto } from "@/lib/nucleo";
-import { getUsuarios, updateUsuario } from "@/lib/usuarios";
+import { getUsuarios, registrarUsuario, updateUsuario } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import type { Frente } from "@/types/banca";
 import type { Cargo, Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
@@ -80,6 +80,7 @@ export function Membros() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [membroDetalhe, setMembroDetalhe] = useState<UsuarioResumo | null>(null);
+  const [criandoMembro, setCriandoMembro] = useState(false);
   const [termoPesquisa, setTermoPesquisa] = useState("");
   const [filtroCargo, setFiltroCargo] = useState("");
   const [filtroFrente, setFiltroFrente] = useState("");
@@ -154,6 +155,12 @@ export function Membros() {
             {membros.length} usuários cadastrados · {membrosAtivos} ativos
           </PageSubheading>
         </PageHeaderText>
+        {/* §10: ninguém se auto-registra — só a diretoria pré-cadastra. */}
+        {usuario?.posicao === "diretor" && (
+          <PageButton type="button" onClick={() => setCriandoMembro(true)}>
+            Adicionar membro
+          </PageButton>
+        )}
       </PageHeaderRow>
 
       <PageCard>
@@ -259,7 +266,180 @@ export function Membros() {
           }}
         />
       )}
+
+      {criandoMembro && token && (
+        <NovoMembroModal
+          contexto={contexto}
+          token={token}
+          onClose={() => setCriandoMembro(false)}
+          onCriado={() => {
+            setCriandoMembro(false);
+            carregarMembros();
+          }}
+        />
+      )}
     </PageStack>
+  );
+}
+
+function NovoMembroModal({
+  contexto,
+  token,
+  onClose,
+  onCriado,
+}: {
+  contexto: Contexto;
+  token: string;
+  onClose: () => void;
+  onCriado: () => void;
+}) {
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [posicao, setPosicao] = useState<Posicao>("consultor");
+  const [cargoId, setCargoId] = useState("");
+  const [frenteIds, setFrenteIds] = useState<number[]>([]);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  function toggleFrente(id: number) {
+    setFrenteIds((lista) => (lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]));
+  }
+
+  async function handleCriar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true);
+    setErro("");
+    try {
+      const criado = await registrarUsuario(
+        {
+          nome: nome.trim(),
+          email_insper: email.trim(),
+          senha,
+          posicao,
+          cargo_id: cargoId ? Number(cargoId) : null,
+        },
+        token,
+      );
+      if (frenteIds.length > 0) {
+        await syncFrentesUsuario(criado.id, frenteIds, [], token);
+      }
+      onCriado();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao cadastrar o membro");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="novo-membro-titulo">
+        <ModalHeader>
+          <ModalTitle id="novo-membro-titulo">Adicionar membro</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+
+        <FormStack onSubmit={handleCriar}>
+          <ModalBody>
+            <EditSection>
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-nome">Nome</FieldLabel>
+                <FieldInput
+                  id="novo-membro-nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Nome completo"
+                  required
+                />
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-email">E-mail Insper</FieldLabel>
+                <FieldInput
+                  id="novo-membro-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nome@al.insper.edu.br"
+                  required
+                />
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-senha">Senha</FieldLabel>
+                <FieldInput
+                  id="novo-membro-senha"
+                  type="password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="Senha provisória"
+                  minLength={6}
+                  required
+                />
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-posicao">Posição na plataforma</FieldLabel>
+                <FieldSelect
+                  id="novo-membro-posicao"
+                  value={posicao}
+                  onChange={(e) => setPosicao(e.target.value as Posicao)}
+                  required
+                >
+                  {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((p) => (
+                    <option key={p} value={p}>
+                      {ROTULO_POSICAO[p]}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-cargo">Cargo (permissões de banca)</FieldLabel>
+                <FieldSelect id="novo-membro-cargo" value={cargoId} onChange={(e) => setCargoId(e.target.value)}>
+                  <option value="">Cargo padrão configurado</option>
+                  {contexto.cargos.map((cargo) => (
+                    <option key={cargo.id} value={cargo.id}>
+                      {cargo.nome}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel>Frentes</FieldLabel>
+                <CheckboxGrid>
+                  {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
+                  {contexto.frentes.map((frente) => (
+                    <CheckboxLabel key={frente.id}>
+                      <input
+                        type="checkbox"
+                        checked={frenteIds.includes(frente.id)}
+                        onChange={() => toggleFrente(frente.id)}
+                      />
+                      {frente.nome}
+                    </CheckboxLabel>
+                  ))}
+                </CheckboxGrid>
+              </FieldGroup>
+
+              {erro && <FormErrorText>{erro}</FormErrorText>}
+            </EditSection>
+          </ModalBody>
+          <ModalFooter>
+            <PageButton $variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </PageButton>
+            <PageButton type="submit" disabled={salvando}>
+              {salvando ? "Cadastrando…" : "Cadastrar"}
+            </PageButton>
+          </ModalFooter>
+        </FormStack>
+      </WideModalContent>
+    </ModalOverlay>
   );
 }
 
