@@ -4,6 +4,8 @@ import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
 import {
   formatarData,
+  formatarDataHora,
+  marcarBancaDoEscopo,
   marcarEntregaCliente,
   marcarEntregaEscopo,
   marcarKickoff,
@@ -18,7 +20,7 @@ import {
   type EquipeSelecionada,
 } from "@/components/membros/MemberPicker";
 import type { UsuarioResumo } from "@/types/auth";
-import type { ProjetoCompleto } from "@/types/projeto";
+import type { EscopoVendido, ProjetoCompleto } from "@/types/projeto";
 import { pode } from "@/utils/permissoes";
 import {
   PageStack,
@@ -62,6 +64,11 @@ import {
   Cadeado,
   EscopoNome,
   LegendaTabela,
+  FrenteBloco,
+  FrenteCabecalho,
+  BancaLinha,
+  BancaEscopo,
+  BancaData,
 } from "./Projetos.styled";
 import { useProjeto } from "./ProjetoPage";
 
@@ -158,6 +165,10 @@ export function ProjetoVisaoGeral() {
       </PageCard>
 
       <TabelaEscopos />
+
+      {/* §5.5: uma banca por escopo, e o escopo é de uma frente — daí o
+          recorte por frente, que é como a coordenação se organiza. */}
+      <BancasPorFrente />
 
       {/* Pausa para pensar: a contagem é do backend (`utils/contagem_dias.py`).
           O front nunca recalcula dia útil — só desenha o que recebe. */}
@@ -338,6 +349,242 @@ function TabelaEscopos() {
         )}
       </PageCardContent>
     </PageCard>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * As bancas do projeto, uma seção por frente (§5.5 + §8).
+ *
+ * "Cada escopo tem a sua própria banca" (§5.5) e cada escopo pertence a uma
+ * frente — então um projeto sinérgico de Business + Direito tem a banca de
+ * Análise Mercadológica **em Business** e a de Revisão Contratual **em
+ * Direito**, com composições e pisos diferentes. A tabela de escopos mostra
+ * a banca como uma coluna no meio de dias e entrega; aqui o recorte é o que
+ * a coordenação usa para se organizar: o que cada frente tem pela frente.
+ *
+ * Frente que o projeto contempla mas ainda não tem escopo aparece assim
+ * mesmo, vazia — é informação, não erro: alguém vendeu a frente e ainda não
+ * cadastrou o escopo dela.
+ */
+function BancasPorFrente() {
+  const { projeto, frentes, recarregar } = useProjeto();
+  const { usuario, token } = useAuth();
+  const [marcando, setMarcando] = useState<EscopoVendido | null>(null);
+
+  const nomeFrente = (id: number) => frentes.find((f) => f.id === id)?.nome ?? `Frente ${id}`;
+
+  // §5.6: marcar/remarcar banca é de liderança — o backend usa
+  // `require_lideranca` e cobra justificativa da diretoria na remarcação.
+  const podeMarcar = pode(usuario, "definir_cronograma");
+
+  // A ordem é a das frentes do projeto; escopo de uma frente que saiu do
+  // projeto ainda aparece, senão a banca dele sumiria da tela sem aviso.
+  const idsDeEscopo = [...new Set(projeto.escopos.map((e) => e.frente_id))];
+  const frenteIds = [
+    ...projeto.frente_ids,
+    ...idsDeEscopo.filter((id) => !projeto.frente_ids.includes(id)),
+  ];
+
+  return (
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>Bancas por frente</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
+        {frenteIds.length === 0 ? (
+          <EmptyText>Este projeto não tem frentes cadastradas.</EmptyText>
+        ) : (
+          frenteIds.map((frenteId) => {
+            const escoposDaFrente = projeto.escopos.filter((e) => e.frente_id === frenteId);
+            const marcadas = escoposDaFrente.filter((e) => e.banca).length;
+            return (
+              <FrenteBloco key={frenteId}>
+                <FrenteCabecalho>
+                  <h3>{nomeFrente(frenteId)}</h3>
+                  <small>
+                    {escoposDaFrente.length === 0
+                      ? "sem escopo cadastrado"
+                      : `${marcadas} de ${escoposDaFrente.length} ${
+                          escoposDaFrente.length === 1 ? "banca marcada" : "bancas marcadas"
+                        }`}
+                  </small>
+                </FrenteCabecalho>
+
+                {escoposDaFrente.length === 0 ? (
+                  <EmptyText>
+                    A frente foi vendida, mas ainda não há escopo cadastrado nela — e é o escopo que
+                    tem banca.
+                  </EmptyText>
+                ) : (
+                  escoposDaFrente.map((escopo) => (
+                    <BancaLinha key={escopo.id}>
+                      <BancaEscopo>{escopo.nome}</BancaEscopo>
+                      {escopo.banca ? (
+                        <>
+                          <BancaData>
+                            {escopo.banca.data_hora
+                              ? formatarDataHora(escopo.banca.data_hora)
+                              : "sem data"}
+                          </BancaData>
+                          <PageBadge $tone={tomDoStatusBanca(escopo.banca.status)}>
+                            {ROTULO_STATUS_BANCA[escopo.banca.status]}
+                          </PageBadge>
+                        </>
+                      ) : (
+                        <PageBadge $tone="muted">não marcada</PageBadge>
+                      )}
+                      {podeMarcar && (
+                        <PageButtonSm
+                          type="button"
+                          $variant="outline"
+                          onClick={() => setMarcando(escopo)}
+                        >
+                          {escopo.banca ? "Remarcar" : "Marcar banca"}
+                        </PageButtonSm>
+                      )}
+                    </BancaLinha>
+                  ))
+                )}
+              </FrenteBloco>
+            );
+          })
+        )}
+
+        <LegendaTabela>
+          Cada escopo tem a sua própria banca (§5.5), e a banca herda a frente do escopo — é ela que
+          define a composição exigida e quem pode ser escalado. A data é a mesma que aparece em
+          Bancas e no cronograma: um registro só, lido de três lugares.
+        </LegendaTabela>
+      </PageCardContent>
+
+      {marcando && token && (
+        <MarcarBancaModal
+          escopo={marcando}
+          frente={nomeFrente(marcando.frente_id)}
+          ehDiretor={usuario?.posicao === "diretor"}
+          token={token}
+          onClose={() => setMarcando(null)}
+          onSalvo={async () => {
+            setMarcando(null);
+            await recarregar();
+          }}
+        />
+      )}
+    </PageCard>
+  );
+}
+
+/**
+ * Marcar ou remarcar a banca de um escopo.
+ *
+ * 🔒 Remarcar exige justificativa e é só da diretoria (§5.6) — o backend
+ * recusa com 422 e a mensagem aparece aqui. O campo só é pedido quando já
+ * existe data, que é quando a regra vale.
+ */
+function MarcarBancaModal({
+  escopo,
+  frente,
+  ehDiretor,
+  token,
+  onClose,
+  onSalvo,
+}: {
+  escopo: EscopoVendido;
+  frente: string;
+  ehDiretor: boolean;
+  token: string;
+  onClose: () => void;
+  onSalvo: () => void;
+}) {
+  const remarcacao = Boolean(escopo.banca?.data_hora);
+  const [dataHora, setDataHora] = useState(escopo.banca?.data_hora?.slice(0, 16) ?? "");
+  const [justificativa, setJustificativa] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true);
+    setErro("");
+    try {
+      await marcarBancaDoEscopo(escopo.id, dataHora, token, justificativa.trim() || undefined);
+      onSalvo();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao marcar a banca");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="marcar-banca"
+      >
+        <ModalHeader>
+          <ModalTitle id="marcar-banca">
+            {remarcacao ? "Remarcar banca" : "Marcar banca"} · {frente}
+          </ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <form onSubmit={salvar}>
+          <ModalBody>
+            <DataRow>
+              <DataLabel>Escopo</DataLabel>
+              <span>{escopo.nome}</span>
+            </DataRow>
+            <DataRow>
+              <DataLabel>Data e hora</DataLabel>
+              <FieldInput
+                type="datetime-local"
+                value={dataHora}
+                onChange={(e) => setDataHora(e.target.value)}
+                aria-label="Data e hora da banca"
+                required
+              />
+            </DataRow>
+            {remarcacao && (
+              <>
+                <DataRow>
+                  <DataLabel>Justificativa</DataLabel>
+                  <FieldInput
+                    value={justificativa}
+                    onChange={(e) => setJustificativa(e.target.value)}
+                    placeholder="Por que a data mudou"
+                    aria-label="Justificativa da remarcação"
+                    required
+                  />
+                </DataRow>
+                {!ehDiretor && (
+                  <EmptyText>
+                    Remarcar uma banca que já tem data é decisão da diretoria (§5.6) — o servidor vai
+                    recusar.
+                  </EmptyText>
+                )}
+              </>
+            )}
+            <EmptyText>
+              O sistema recusa duas bancas no mesmo horário; só a diretoria libera a exceção (§8).
+            </EmptyText>
+            {erro && <FormErrorText>{erro}</FormErrorText>}
+          </ModalBody>
+          <ModalFooter>
+            <PageButton type="button" $variant="outline" onClick={onClose}>
+              Cancelar
+            </PageButton>
+            <PageButton type="submit" disabled={salvando || !dataHora}>
+              {salvando ? "Salvando…" : remarcacao ? "Remarcar" : "Marcar"}
+            </PageButton>
+          </ModalFooter>
+        </form>
+      </WideModalContent>
+    </ModalOverlay>
   );
 }
 

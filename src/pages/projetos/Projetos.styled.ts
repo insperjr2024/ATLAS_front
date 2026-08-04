@@ -443,3 +443,61 @@ export const HeaderAcoes = styled.div`
   align-items: center;
   gap: ${theme.spacing.sm};
 `;
+
+/* ------------------------------------------------------------------ */
+/* Bancas por frente (§5.5 + §8)                                       */
+/* ------------------------------------------------------------------ */
+
+/** Um bloco por frente que o projeto contempla. */
+export const FrenteBloco = styled.section`
+  & + & {
+    margin-top: ${theme.spacing.lg};
+    padding-top: ${theme.spacing.lg};
+    border-top: 1px solid ${theme.colors.border};
+  }
+`;
+
+export const FrenteCabecalho = styled.header`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.sm};
+
+  h3 {
+    margin: 0;
+    font-size: ${theme.fontSize.sm};
+    font-weight: ${theme.fontWeight.semibold};
+    color: ${theme.colors.foreground};
+  }
+
+  small {
+    color: ${theme.colors.mutedForeground};
+    font-size: ${theme.fontSize.xs};
+  }
+`;
+
+export const BancaLinha = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} 0;
+
+  & + & {
+    border-top: 1px dashed ${theme.colors.border};
+  }
+`;
+
+/** O nome do escopo, que ocupa a folga e empurra data e status para a direita. */
+export const BancaEscopo = styled.span`
+  flex: 1;
+  min-width: 10rem;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+`;
+
+export const BancaData = styled.span`
+  font-size: ${theme.fontSize.sm};
+  font-variant-numeric: tabular-nums;
+  color: ${theme.colors.foreground};
+`;
