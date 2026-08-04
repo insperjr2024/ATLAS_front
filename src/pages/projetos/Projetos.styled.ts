@@ -10,6 +10,7 @@ export {
   FormStack,
   FieldGroup,
   FieldLabel,
+  Required,
   FieldInput,
   FieldTextarea,
   FieldSelect,
@@ -46,6 +47,12 @@ export const FormFields = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.lg};
+`;
+
+/** O toggle "Link" / "Anexar PDF" do campo de proposta — um ou outro. */
+export const ModoPropostaRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
 `;
 
 /* ------------------------------------------------------------------ */

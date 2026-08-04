@@ -89,6 +89,12 @@ export const FieldLabel = styled.label`
   color: ${theme.colors.foreground};
 `;
 
+/** O asterisco de campo obrigatório — mesma marcação em todo formulário. */
+export const Required = styled.span`
+  color: ${theme.colors.destructive};
+  margin-left: 0.15rem;
+`;
+
 export const FieldInput = styled.input`
   height: 2.25rem;
   padding: 0 0.75rem;

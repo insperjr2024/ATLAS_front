@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
-import { createProjeto } from "@/lib/projetos";
+import { createProjeto, uploadAnexoProposta } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import { getEscopos } from "@/lib/escopos";
 import {
@@ -27,6 +27,7 @@ import {
   PageCardTitle,
   PageCardContent,
   PageButton,
+  PageButtonSm,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
@@ -40,6 +41,7 @@ import {
   FormStack,
   FieldGroup,
   FieldLabel,
+  Required,
   FieldInput,
   FieldTextarea,
   FieldSelect,
@@ -47,6 +49,7 @@ import {
   CheckboxLabel,
   FormErrorText,
   FormFields,
+  ModoPropostaRow,
   ModalFooter,
   VoltarLink,
 } from "./Projetos.styled";
@@ -81,7 +84,10 @@ export function ProjetoNovo() {
   const [nome, setNome] = useState("");
   const [cliente, setCliente] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [modoProposta, setModoProposta] = useState<"link" | "anexo">("link");
   const [linkProposta, setLinkProposta] = useState("");
+  const [anexoProposta, setAnexoProposta] = useState<File | null>(null);
+  const [erroAnexo, setErroAnexo] = useState("");
   const [frenteIds, setFrenteIds] = useState<number[]>([]);
   const [diasAmbientacao, setDiasAmbientacao] = useState("5");
   const [diaReuniao, setDiaReuniao] = useState("");
@@ -90,6 +96,9 @@ export function ProjetoNovo() {
 
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  // Guardado para a tentativa de reenvio do anexo não criar um segundo
+  // projeto se o upload falhar depois que o projeto já foi criado.
+  const [projetoCriadoId, setProjetoCriadoId] = useState<number | null>(null);
 
   async function carregar() {
     if (!token) return;
@@ -133,6 +142,18 @@ export function ProjetoNovo() {
     });
   }
 
+  function handleArquivoProposta(e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0] ?? null;
+    if (arquivo && arquivo.type !== "application/pdf" && !arquivo.name.toLowerCase().endsWith(".pdf")) {
+      setErroAnexo("O anexo da proposta precisa ser um PDF.");
+      setAnexoProposta(null);
+      e.target.value = "";
+      return;
+    }
+    setErroAnexo("");
+    setAnexoProposta(arquivo);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -154,24 +175,44 @@ export function ProjetoNovo() {
 
     setSalvando(true);
     setErro("");
+    // Local, não o state: o state só reflete no próximo render, e o catch
+    // logo abaixo precisa saber JÁ nesta chamada se a criação passou.
+    let projetoId = projetoCriadoId;
     try {
-      const projeto = await createProjeto(
-        {
-          nome: nome.trim(),
-          cliente: cliente.trim(),
-          descricao: descricao.trim() || null,
-          link_proposta: linkProposta.trim() || null,
-          frente_ids: frenteIds,
-          dias_ambientacao: Number(diasAmbientacao) || 5,
-          equipe: montarEquipePayload(equipe),
-          dia_reuniao_padrao: diaReuniao ? Number(diaReuniao) : null,
-          escopos: montarEscoposPayload(escopos),
-        },
-        token,
-      );
-      navigate(`/projetos/${projeto.id}`, { replace: true });
+      // Se o projeto já foi criado numa tentativa anterior (e só o upload do
+      // anexo falhou), não cria de novo — só reenvia o anexo.
+      if (!projetoId) {
+        const projeto = await createProjeto(
+          {
+            nome: nome.trim(),
+            cliente: cliente.trim(),
+            descricao: descricao.trim() || null,
+            link_proposta: modoProposta === "link" ? linkProposta.trim() || null : null,
+            frente_ids: frenteIds,
+            dias_ambientacao: Number(diasAmbientacao) || 5,
+            equipe: montarEquipePayload(equipe),
+            dia_reuniao_padrao: diaReuniao ? Number(diaReuniao) : null,
+            escopos: montarEscoposPayload(escopos),
+          },
+          token,
+        );
+        projetoId = projeto.id;
+        setProjetoCriadoId(projeto.id);
+      }
+
+      if (modoProposta === "anexo" && anexoProposta) {
+        await uploadAnexoProposta(projetoId, anexoProposta, token);
+      }
+
+      navigate(`/projetos/${projetoId}`, { replace: true });
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao criar o projeto");
+      setErro(
+        projetoId
+          ? `O projeto foi criado, mas o anexo da proposta falhou: ${err instanceof Error ? err.message : "erro desconhecido"}. Tente enviar de novo.`
+          : err instanceof Error
+            ? err.message
+            : "Erro ao criar o projeto",
+      );
     } finally {
       setSalvando(false);
     }
@@ -216,7 +257,9 @@ export function ProjetoNovo() {
           <PageCardContent>
             <FormFields>
               <FieldGroup>
-                <FieldLabel htmlFor="projeto-nome">Nome do projeto</FieldLabel>
+                <FieldLabel htmlFor="projeto-nome">
+                  Nome do projeto<Required>*</Required>
+                </FieldLabel>
                 <FieldInput
                   id="projeto-nome"
                   value={nome}
@@ -227,7 +270,9 @@ export function ProjetoNovo() {
               </FieldGroup>
 
               <FieldGroup>
-                <FieldLabel htmlFor="projeto-cliente">Cliente</FieldLabel>
+                <FieldLabel htmlFor="projeto-cliente">
+                  Cliente<Required>*</Required>
+                </FieldLabel>
                 <FieldInput
                   id="projeto-cliente"
                   value={cliente}
@@ -238,7 +283,9 @@ export function ProjetoNovo() {
               </FieldGroup>
 
               <FieldGroup>
-                <FieldLabel>Frente(s)</FieldLabel>
+                <FieldLabel>
+                  Frente(s)<Required>*</Required>
+                </FieldLabel>
                 <CheckboxGrid>
                   {frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
                   {frentes.map((frente) => {
@@ -264,7 +311,9 @@ export function ProjetoNovo() {
               </FieldGroup>
 
               <FieldGroup>
-                <FieldLabel>Escopos vendidos</FieldLabel>
+                <FieldLabel>
+                  Escopos vendidos<Required>*</Required>
+                </FieldLabel>
                 <EscopoPicker
                   catalogo={catalogo}
                   frentes={frentes}
@@ -280,7 +329,9 @@ export function ProjetoNovo() {
               </FieldGroup>
 
               <FieldGroup>
-                <FieldLabel htmlFor="projeto-ambientacao">Dias de ambientação (dias úteis)</FieldLabel>
+                <FieldLabel htmlFor="projeto-ambientacao">
+                  Dias de ambientação (dias úteis)<Required>*</Required>
+                </FieldLabel>
                 <FieldInput
                   id="projeto-ambientacao"
                   type="number"
@@ -316,14 +367,51 @@ export function ProjetoNovo() {
               </FieldGroup>
 
               <FieldGroup>
-                <FieldLabel htmlFor="projeto-proposta">Link da proposta</FieldLabel>
-                <FieldInput
-                  id="projeto-proposta"
-                  type="url"
-                  value={linkProposta}
-                  onChange={(e) => setLinkProposta(e.target.value)}
-                  placeholder="https://…"
-                />
+                <FieldLabel>Proposta</FieldLabel>
+                <ModoPropostaRow>
+                  <PageButtonSm
+                    type="button"
+                    $variant={modoProposta === "link" ? "primary" : "outline"}
+                    onClick={() => {
+                      setModoProposta("link");
+                      setAnexoProposta(null);
+                      setErroAnexo("");
+                    }}
+                  >
+                    Link
+                  </PageButtonSm>
+                  <PageButtonSm
+                    type="button"
+                    $variant={modoProposta === "anexo" ? "primary" : "outline"}
+                    onClick={() => {
+                      setModoProposta("anexo");
+                      setLinkProposta("");
+                    }}
+                  >
+                    Anexar PDF
+                  </PageButtonSm>
+                </ModoPropostaRow>
+
+                {modoProposta === "link" ? (
+                  <FieldInput
+                    id="projeto-proposta"
+                    type="url"
+                    value={linkProposta}
+                    onChange={(e) => setLinkProposta(e.target.value)}
+                    placeholder="https://…"
+                  />
+                ) : (
+                  <>
+                    <FieldInput
+                      id="projeto-proposta-anexo"
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={handleArquivoProposta}
+                    />
+                    {erroAnexo && <FormErrorText>{erroAnexo}</FormErrorText>}
+                  </>
+                )}
+                <PageSubheading>Um ou outro — link para a proposta, ou o PDF anexado.</PageSubheading>
               </FieldGroup>
 
               <FieldGroup>
