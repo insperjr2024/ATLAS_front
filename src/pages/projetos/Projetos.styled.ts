@@ -143,6 +143,34 @@ export const FiltersRow = styled.div`
   align-items: center;
 `;
 
+export const ViewToggleRow = styled.div`
+  display: inline-flex;
+  padding: 0.1875rem;
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.muted};
+`;
+
+export const ViewToggleBtn = styled.button<{ $ativo?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.875rem;
+  padding: 0 0.75rem;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+  transition: background ${theme.transitions.fast}, color ${theme.transitions.fast};
+  background: ${({ $ativo }) => ($ativo ? theme.colors.card : "transparent")};
+  color: ${({ $ativo }) => ($ativo ? theme.colors.foreground : theme.colors.mutedForeground)};
+  box-shadow: ${({ $ativo }) => ($ativo ? theme.shadows.sm : "none")};
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+`;
+
 export const FrenteFilterWrap = styled.div`
   position: relative;
 `;

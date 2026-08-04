@@ -39,7 +39,7 @@ export const Contador = styled.span`
   font-weight: ${theme.fontWeight.normal};
 `;
 
-export const Card = styled.div<{ $vencida?: boolean; $arrastando?: boolean }>`
+export const Card = styled.div<{ $vencida?: boolean; $arrastando?: boolean; $bloqueada?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
@@ -56,6 +56,16 @@ export const Card = styled.div<{ $vencida?: boolean; $arrastando?: boolean }>`
     css`
       opacity: 0.4;
       cursor: grabbing;
+    `}
+
+  /* Card sem transição manual válida (ex.: Vendido) ou cujo destino é
+     ambíguo pra arrastar (Pausado — retoma pelo botão da página do
+     projeto): mesma cor de sempre, só sem convite a arrastar. */
+  ${({ $bloqueada }) =>
+    $bloqueada &&
+    css`
+      cursor: default;
+      opacity: 0.75;
     `}
 
   &:focus-visible {
