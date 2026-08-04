@@ -16,6 +16,20 @@ export interface Tarefa {
    * não marcada como "encerra a tarefa".
    */
   vencida: boolean;
+  /** ⏰ A gradação que o card usa para avisar ANTES do prazo estourar. */
+  urgencia: Urgencia;
+  /** Dias corridos até o prazo. Negativo = já passou. */
+  dias_para_prazo: number | null;
+}
+
+export type Urgencia = "vencida" | "critica" | "atencao" | "normal";
+
+export interface ComentarioTarefa {
+  id: number;
+  tarefa_id: number;
+  autor_id: number;
+  texto: string;
+  criado_em: string;
 }
 
 export interface ReuniaoSemanal {

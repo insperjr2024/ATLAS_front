@@ -32,7 +32,7 @@ import {
   ModalBody,
   ModalFooter,
   WideModalContent,
-} from "../Config.styled";
+} from "./Projetos.styled";
 import { CheckboxLabel } from "../Bancas.styled";
 import {
   Amostra,
@@ -45,18 +45,26 @@ import {
 } from "./ColunasTarefa.styled";
 
 /**
- * A configuração das colunas do kanban (§3: gerir é da diretoria).
+ * A configuração das colunas do kanban **deste projeto** (§3: gerir é da
+ * diretoria).
  *
- * Eram um ENUM de 5 valores no banco. Viraram dados para a área montar o
- * próprio fluxo — o board do Notion que a Projetos já usa tem colunas que
- * não existiam aqui.
+ * Eram um ENUM de 5 valores no banco, depois uma configuração global em
+ * /config. Hoje moram dentro do projeto: cada projeto tem um fluxo, e mudar
+ * o board de um não pode mexer no dos outros.
  *
  * ⭐ O campo que mais importa é **"encerra a tarefa"**: "vencida" não é
  * campo, é prazo passado + tarefa ainda aberta. Com colunas livres, é a
  * diretoria que diz o que "aberta" significa em cada uma — sem isso, uma
  * coluna "Arquivado" deixaria tudo que cai ali vencido para sempre.
  */
-export function ColunasTarefaCard() {
+export function ColunasTarefaCard({
+  projetoId,
+  onMudou,
+}: {
+  projetoId: number;
+  /** O board ao lado precisa redesenhar quando uma coluna muda. */
+  onMudou?: () => void;
+}) {
   const { token } = useAuth();
   const [colunas, setColunas] = useState<ColunaTarefa[]>([]);
   const [editando, setEditando] = useState<ColunaTarefa | "nova" | null>(null);
@@ -66,7 +74,7 @@ export function ColunasTarefaCard() {
     if (!token) return;
     setErro("");
     try {
-      setColunas(await getColunas(token));
+      setColunas(await getColunas(projetoId, token));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar as colunas");
     }
@@ -75,7 +83,7 @@ export function ColunasTarefaCard() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, projetoId]);
 
   async function mover(indice: number, direcao: -1 | 1) {
     if (!token) return;
@@ -85,7 +93,8 @@ export function ColunasTarefaCard() {
     [ids[indice], ids[destino]] = [ids[destino], ids[indice]];
     setErro("");
     try {
-      setColunas(await reordenarColunas(ids, token));
+      setColunas(await reordenarColunas(projetoId, ids, token));
+      onMudou?.();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao reordenar");
     }
@@ -95,8 +104,9 @@ export function ColunasTarefaCard() {
     if (!token) return;
     setErro("");
     try {
-      await deleteColuna(coluna.id, token);
+      await deleteColuna(projetoId, coluna.id, token);
       await carregar();
+      onMudou?.();
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : "Erro ao excluir";
       // A coluna tem tarefas: o backend recusa e pede um destino. Em vez de
@@ -110,8 +120,9 @@ export function ColunasTarefaCard() {
         const escolhida = outras[Number(destino) - 1];
         if (!escolhida) return;
         try {
-          await deleteColuna(coluna.id, token, escolhida.id);
+          await deleteColuna(projetoId, coluna.id, token, escolhida.id);
           await carregar();
+          onMudou?.();
           return;
         } catch (err2) {
           setErro(err2 instanceof Error ? err2.message : "Erro ao excluir");
@@ -133,9 +144,10 @@ export function ColunasTarefaCard() {
       </PageCardHeader>
       <PageCardContent>
         <EmptyText style={{ marginBottom: "0.75rem" }}>
-          Valem para as tarefas de todos os projetos. Marcar{" "}
-          <strong>“encerra a tarefa”</strong> tira as tarefas dessa coluna da conta de vencidas e do
-          trabalho ativo no monitoramento — é o que separa “Concluído” de “Em andamento”.
+          Valem só para as tarefas <strong>deste projeto</strong> — outro projeto pode ter um fluxo
+          diferente. Marcar <strong>“encerra a tarefa”</strong> tira as tarefas dessa coluna da conta
+          de vencidas e do trabalho ativo no monitoramento — é o que separa “Concluído” de “Em
+          andamento”.
         </EmptyText>
 
         {colunas.length === 0 ? (
@@ -194,12 +206,14 @@ export function ColunasTarefaCard() {
 
       {editando && token && (
         <ColunaModal
+          projetoId={projetoId}
           coluna={editando === "nova" ? null : editando}
           token={token}
           onClose={() => setEditando(null)}
           onSalvo={async () => {
             setEditando(null);
             await carregar();
+            onMudou?.();
           }}
         />
       )}
@@ -208,11 +222,13 @@ export function ColunasTarefaCard() {
 }
 
 function ColunaModal({
+  projetoId,
   coluna,
   token,
   onClose,
   onSalvo,
 }: {
+  projetoId: number;
   coluna: ColunaTarefa | null;
   token: string;
   onClose: () => void;
@@ -232,9 +248,9 @@ function ColunaModal({
     setErro("");
     try {
       if (coluna) {
-        await updateColuna(coluna.id, { nome, cor, encerra_tarefa: encerra }, token);
+        await updateColuna(projetoId, coluna.id, { nome, cor, encerra_tarefa: encerra }, token);
       } else {
-        await createColuna({ nome, cor, encerra_tarefa: encerra }, token);
+        await createColuna(projetoId, { nome, cor, encerra_tarefa: encerra }, token);
       }
       onSalvo();
     } catch (err) {

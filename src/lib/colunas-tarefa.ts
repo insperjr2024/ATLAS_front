@@ -1,10 +1,12 @@
 import { apiFetch } from "@/lib/api";
 
 /**
- * As colunas do kanban — configuráveis pela diretoria (§3: gerir é dela).
+ * As colunas do kanban — **de cada projeto**, configuráveis pela diretoria
+ * (§3: gerir é dela).
  *
- * Eram um ENUM de 5 valores no backend. Viraram dados para a área montar o
- * próprio fluxo: renomear, recolorir, reordenar e criar colunas novas.
+ * Eram um ENUM de 5 valores no backend, depois uma configuração global. Hoje
+ * pertencem ao projeto: a diretora monta o fluxo de UM projeto sem mexer nos
+ * outros. Por isso toda rota aqui carrega o `projetoId`.
  */
 export interface ColunaTarefa {
   id: number;
@@ -22,15 +24,18 @@ export interface ColunaTarefa {
   encerra_tarefa: boolean;
 }
 
-export function getColunas(token: string) {
-  return apiFetch<ColunaTarefa[]>("/tarefas-colunas", { token });
+const base = (projetoId: number) => `/projetos/${projetoId}/tarefas-colunas`;
+
+export function getColunas(projetoId: number, token: string) {
+  return apiFetch<ColunaTarefa[]>(base(projetoId), { token });
 }
 
 export function createColuna(
+  projetoId: number,
   dados: { nome: string; cor: string; encerra_tarefa: boolean },
   token: string,
 ) {
-  return apiFetch<ColunaTarefa>("/tarefas-colunas", {
+  return apiFetch<ColunaTarefa>(base(projetoId), {
     method: "POST",
     token,
     body: JSON.stringify(dados),
@@ -38,19 +43,20 @@ export function createColuna(
 }
 
 export function updateColuna(
+  projetoId: number,
   colunaId: number,
   dados: Partial<{ nome: string; cor: string; encerra_tarefa: boolean }>,
   token: string,
 ) {
-  return apiFetch<ColunaTarefa>(`/tarefas-colunas/${colunaId}`, {
+  return apiFetch<ColunaTarefa>(`${base(projetoId)}/${colunaId}`, {
     method: "PATCH",
     token,
     body: JSON.stringify(dados),
   });
 }
 
-export function reordenarColunas(ids: number[], token: string) {
-  return apiFetch<ColunaTarefa[]>("/tarefas-colunas/ordem", {
+export function reordenarColunas(projetoId: number, ids: number[], token: string) {
+  return apiFetch<ColunaTarefa[]>(`${base(projetoId)}/ordem`, {
     method: "PUT",
     token,
     body: JSON.stringify({ ids }),
@@ -59,9 +65,14 @@ export function reordenarColunas(ids: number[], token: string) {
 
 /** `moverPara` é obrigatório quando a coluna tem tarefas — elas nunca são
  *  apagadas junto. */
-export function deleteColuna(colunaId: number, token: string, moverPara?: number) {
+export function deleteColuna(
+  projetoId: number,
+  colunaId: number,
+  token: string,
+  moverPara?: number,
+) {
   const query = moverPara ? `?mover_para=${moverPara}` : "";
-  return apiFetch(`/tarefas-colunas/${colunaId}${query}`, { method: "DELETE", token });
+  return apiFetch(`${base(projetoId)}/${colunaId}${query}`, { method: "DELETE", token });
 }
 
 /* ------------------------------------------------------------------ */

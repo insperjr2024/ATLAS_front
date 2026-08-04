@@ -443,3 +443,10 @@ export const TimelineTexto = styled.div`
     color: ${theme.colors.mutedForeground};
   }
 `;
+
+/** Os botões do cabeçalho da aba de tarefas, lado a lado. */
+export const HeaderAcoes = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;

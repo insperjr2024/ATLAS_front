@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Columns3, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { createTarefa, deleteTarefa, getTarefas, updateTarefa } from "@/lib/tarefas";
+import { pode } from "@/utils/permissoes";
+import { createTarefa, getTarefas, updateTarefa } from "@/lib/tarefas";
 import type { Tarefa } from "@/types/tarefa";
 import { getColunas, type ColunaTarefa } from "@/lib/colunas-tarefa";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
+import { TarefaDetalheModal } from "@/components/kanban/TarefaDetalheModal";
 import {
   PageStack,
   PageCard,
@@ -32,28 +34,33 @@ import {
   ModalFooter,
   WideModalContent,
   FormFields,
+  HeaderAcoes,
 } from "./Projetos.styled";
 import { useProjeto } from "./ProjetoPage";
+import { ColunasTarefaCard } from "./ColunasTarefaCard";
 
 export function ProjetoTarefas() {
   const { projeto, usuarios } = useProjeto();
-  const { token } = useAuth();
+  const { token, usuario } = useAuth();
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [colunas, setColunas] = useState<ColunaTarefa[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
   const [criando, setCriando] = useState(false);
+  const [aberta, setAberta] = useState<Tarefa | null>(null);
+  const [configurando, setConfigurando] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!token) return;
     setErro("");
     try {
-      // As colunas vêm da API: quantidade, nome, cor e ordem são
-      // configuráveis pela diretoria em /config.
+      // As colunas vêm da API e são DESTE projeto: quantidade, nome, cor e
+      // ordem são configuráveis pela diretoria aqui mesmo, no botão
+      // "Colunas" — cada projeto tem o seu fluxo.
       const [resTarefas, resColunas] = await Promise.all([
         getTarefas(projeto.id, token),
-        getColunas(token),
+        getColunas(projeto.id, token),
       ]);
       setTarefas(resTarefas);
       setColunas(resColunas);
@@ -91,18 +98,6 @@ export function ProjetoTarefas() {
     }
   }
 
-  async function excluir(tarefa: Tarefa) {
-    if (!token) return;
-    if (!confirm(`Excluir a tarefa "${tarefa.titulo}"?`)) return;
-    setAviso("");
-    try {
-      await deleteTarefa(tarefa.id, token);
-      await carregar();
-    } catch (err) {
-      setAviso(err instanceof Error ? err.message : "Erro ao excluir a tarefa");
-    }
-  }
-
   if (erro) {
     return (
       <ErrorBlock>
@@ -126,11 +121,25 @@ export function ProjetoTarefas() {
             {tarefas.length} {tarefas.length === 1 ? "tarefa" : "tarefas"}
             {vencidas > 0 && ` · ${vencidas} vencida${vencidas > 1 ? "s" : ""}`}
           </PageCardTitle>
-          {/* §3: os QUATRO perfis criam e movem tarefa — sem gate de posição. */}
-          <PageButtonSm type="button" onClick={() => setCriando(true)}>
-            <Plus size={14} />
-            Nova tarefa
-          </PageButtonSm>
+          <HeaderAcoes>
+            {/* 🔒 Configurar o board é da diretoria (§3), e só deste projeto. */}
+            {pode(usuario, "configurar_colunas") && (
+              <PageButtonSm
+                type="button"
+                $variant="outline"
+                aria-expanded={configurando}
+                onClick={() => setConfigurando((v) => !v)}
+              >
+                <Columns3 size={14} />
+                Colunas
+              </PageButtonSm>
+            )}
+            {/* §3: os QUATRO perfis criam e movem tarefa — sem gate de posição. */}
+            <PageButtonSm type="button" onClick={() => setCriando(true)}>
+              <Plus size={14} />
+              Nova tarefa
+            </PageButtonSm>
+          </HeaderAcoes>
         </PageCardHeader>
         <PageCardContent>
           {aviso && <FormErrorText>{aviso}</FormErrorText>}
@@ -144,11 +153,25 @@ export function ProjetoTarefas() {
               tarefas={tarefas}
               nomeUsuario={nomeUsuario}
               onMover={mover}
-              onExcluir={excluir}
+              onAbrir={setAberta}
             />
           )}
         </PageCardContent>
       </PageCard>
+
+      {configurando && <ColunasTarefaCard projetoId={projeto.id} onMudou={carregar} />}
+
+      {aberta && (
+        <TarefaDetalheModal
+          // A tarefa vem da lista recarregada, não do estado do clique: assim
+          // o modal reflete a edição que acabou de acontecer.
+          tarefa={tarefas.find((t) => t.id === aberta.id) ?? aberta}
+          colunas={colunas}
+          usuarios={usuarios}
+          onClose={() => setAberta(null)}
+          onMudou={carregar}
+        />
+      )}
 
       {criando && token && (
         <NovaTarefaModal
