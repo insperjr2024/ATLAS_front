@@ -8,7 +8,8 @@ import { frentesDoUsuario, nomeCargo, normalizarTexto } from "@/lib/nucleo";
 import { getUsuarios, updateUsuario } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import type { Frente } from "@/types/banca";
-import type { Cargo, UsuarioFrente, UsuarioResumo } from "@/types/auth";
+import type { Cargo, Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
+import { ROTULO_POSICAO, ROTULO_STATUS_USUARIO } from "@/utils/permissoes";
 import {
   PageStack,
   PageCard,
@@ -200,6 +201,9 @@ export function Membros() {
                 <TableRow>
                   <TableHeadCell>Nome</TableHeadCell>
                   <TableHeadCell>E-mail</TableHeadCell>
+                  {/* Posição (§3) e cargo (permissões de banca) são dimensões
+                      diferentes — a tela mostra as duas. */}
+                  <TableHeadCell>Posição</TableHeadCell>
                   <TableHeadCell>Cargo</TableHeadCell>
                   <TableHeadCell>Frentes</TableHeadCell>
                   <TableHeadCell>Status</TableHeadCell>
@@ -213,10 +217,15 @@ export function Membros() {
                     <TableRow key={membro.id}>
                       <NameCell>{membro.nome}</NameCell>
                       <TableCell>{membro.email_insper}</TableCell>
+                      <TableCell>{ROTULO_POSICAO[membro.posicao] ?? membro.posicao}</TableCell>
                       <TableCell>{nomeCargo(contexto.cargos, membro.cargo_id)}</TableCell>
                       <TableCell>{frentes.length > 0 ? frentes.join(", ") : "—"}</TableCell>
                       <TableCell>
-                        <StatusBadge $ativo={membro.ativo}>{membro.ativo ? "Ativo" : "Inativo"}</StatusBadge>
+                        {/* Os 3 estados do §10, não um booleano: ex-membro e
+                            desligado são situações diferentes. */}
+                        <StatusBadge $ativo={membro.status === "ativo"}>
+                          {ROTULO_STATUS_USUARIO[membro.status] ?? membro.status}
+                        </StatusBadge>
                       </TableCell>
                       <ActionsCell>
                         <PageButtonSm $variant="outline" type="button" onClick={() => setMembroDetalhe(membro)}>
@@ -269,10 +278,11 @@ function MembroModal({
 }) {
   const [editando, setEditando] = useState(false);
   const [cargoId, setCargoId] = useState(String(membro.cargo_id));
+  const [posicao, setPosicao] = useState<Posicao>(membro.posicao);
+  const [status, setStatus] = useState<StatusUsuario>(membro.status);
   const [frenteIds, setFrenteIds] = useState<number[]>(() =>
     contexto.usuariosFrentes.filter((uf) => uf.usuario_id === membro.id).map((uf) => uf.frente_id),
   );
-  const [ativo, setAtivo] = useState(membro.ativo);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -291,7 +301,11 @@ function MembroModal({
         membro.id,
         {
           cargo_id: Number(cargoId),
-          ativo,
+          posicao,
+          status,
+          // `ativo` é espelho de `status` (F2) — mandado junto para o front
+          // legado que ainda lê o booleano não divergir.
+          ativo: status === "ativo",
         },
         token,
       );
@@ -323,6 +337,10 @@ function MembroModal({
                   <DetailValue>{membro.email_insper}</DetailValue>
                 </DetailRow>
                 <DetailRow>
+                  <DetailTerm>Posição</DetailTerm>
+                  <DetailValue>{ROTULO_POSICAO[membro.posicao] ?? membro.posicao}</DetailValue>
+                </DetailRow>
+                <DetailRow>
                   <DetailTerm>Cargo</DetailTerm>
                   <DetailValue>{nomeCargo(contexto.cargos, membro.cargo_id)}</DetailValue>
                 </DetailRow>
@@ -333,7 +351,9 @@ function MembroModal({
                 <DetailRow>
                   <DetailTerm>Status</DetailTerm>
                   <DetailValue>
-                    <StatusBadge $ativo={membro.ativo}>{membro.ativo ? "Ativo" : "Inativo"}</StatusBadge>
+                    <StatusBadge $ativo={membro.status === "ativo"}>
+                      {ROTULO_STATUS_USUARIO[membro.status] ?? membro.status}
+                    </StatusBadge>
                   </DetailValue>
                 </DetailRow>
               </DetailList>
@@ -354,7 +374,26 @@ function MembroModal({
                 <EditSectionTitle>Editar membro</EditSectionTitle>
 
                 <FieldGroup>
-                  <FieldLabel htmlFor="cargo-membro">Cargo</FieldLabel>
+                  {/* §10: "na troca de gestão, muitos consultores viram
+                      coordenadores ou gerentes" — a promoção da virada é
+                      feita por aqui. */}
+                  <FieldLabel htmlFor="posicao-membro">Posição na plataforma</FieldLabel>
+                  <FieldSelect
+                    id="posicao-membro"
+                    value={posicao}
+                    onChange={(e) => setPosicao(e.target.value as Posicao)}
+                    required
+                  >
+                    {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((p) => (
+                      <option key={p} value={p}>
+                        {ROTULO_POSICAO[p]}
+                      </option>
+                    ))}
+                  </FieldSelect>
+                </FieldGroup>
+
+                <FieldGroup>
+                  <FieldLabel htmlFor="cargo-membro">Cargo (permissões de banca)</FieldLabel>
                   <FieldSelect id="cargo-membro" value={cargoId} onChange={(e) => setCargoId(e.target.value)} required>
                     {contexto.cargos.map((cargo) => (
                       <option key={cargo.id} value={cargo.id}>
@@ -381,10 +420,26 @@ function MembroModal({
                   </CheckboxGrid>
                 </FieldGroup>
 
-                <ToggleRow>
-                  <input id="ativo-membro" type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} />
-                  <span>Usuário ativo na plataforma</span>
-                </ToggleRow>
+                <FieldGroup>
+                  <FieldLabel htmlFor="status-membro">Status</FieldLabel>
+                  <FieldSelect
+                    id="status-membro"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as StatusUsuario)}
+                    required
+                  >
+                    {(Object.keys(ROTULO_STATUS_USUARIO) as StatusUsuario[]).map((s) => (
+                      <option key={s} value={s}>
+                        {ROTULO_STATUS_USUARIO[s]}
+                      </option>
+                    ))}
+                  </FieldSelect>
+                  <EmptyText style={{ fontSize: "0.7rem" }}>
+                    <strong>Ex-membro</strong>: saiu por vontade própria ou fim de gestão — perde o
+                    acesso, mantém o histórico. <strong>Desligado</strong>: removido da plataforma.
+                    Em ambos, a participação em projetos passados permanece íntegra (§10).
+                  </EmptyText>
+                </FieldGroup>
 
                 {erro && <FormErrorText>{erro}</FormErrorText>}
               </EditSection>
@@ -396,10 +451,11 @@ function MembroModal({
                 onClick={() => {
                   setEditando(false);
                   setCargoId(String(membro.cargo_id));
+                  setPosicao(membro.posicao);
+                  setStatus(membro.status);
                   setFrenteIds(
                     contexto.usuariosFrentes.filter((uf) => uf.usuario_id === membro.id).map((uf) => uf.frente_id),
                   );
-                  setAtivo(membro.ativo);
                   setErro("");
                 }}
               >

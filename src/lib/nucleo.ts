@@ -18,7 +18,9 @@ export function nomeUsuario(usuarios: UsuarioResumo[], id: number): string {
   return usuarios.find((u) => u.id === id)?.nome ?? "—";
 }
 
-export function nomeEscopo(escopos: Escopo[], id: number): string {
+/** `id` vazio = escopo "Outro" (nome digitado, sem linha de catálogo). */
+export function nomeEscopo(escopos: Escopo[], id: number | null): string {
+  if (id == null) return "Outro";
   return escopos.find((e) => e.id === id)?.nome ?? "—";
 }
 

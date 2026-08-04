@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Outlet, useOutletContext, useParams } from "react-router-dom";
-import { ArrowLeft, Pause, Play, SkipForward } from "lucide-react";
+import { ArrowLeft, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import {
@@ -9,6 +9,7 @@ import {
   podePausar,
   proximoStatusManual,
   ROTULO_STATUS,
+  statusAnteriorManual,
   tomDoStatus,
 } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
@@ -126,6 +127,8 @@ export function ProjetoPage() {
 
   const podeMudarStatus = pode(usuario, "mudar_status_projeto");
   const proximo = proximoStatusManual(projeto.status);
+  const anterior = statusAnteriorManual(projeto.status);
+
   const contexto: ProjetoContexto = { projeto, usuarios, frentes, recarregar: carregar };
 
   return (
@@ -156,6 +159,20 @@ export function ProjetoPage() {
             <PageButtonSm type="button" disabled={mudandoStatus} onClick={() => aplicarStatus("retomar")}>
               <Play size={14} />
               Retomar
+            </PageButtonSm>
+          )}
+          {/* ↩ A volta anda a MESMA fila, um passo por vez — inclusive
+              reabrir um projeto finalizado. Some em Ambientação, que é o
+              piso: voltar dali seria desmarcar o kickoff. */}
+          {podeMudarStatus && anterior && (
+            <PageButtonSm
+              type="button"
+              $variant="outline"
+              disabled={mudandoStatus}
+              onClick={() => aplicarStatus(anterior)}
+            >
+              <SkipBack size={14} />
+              Voltar para {ROTULO_STATUS[anterior]}
             </PageButtonSm>
           )}
           {podeMudarStatus && proximo && (

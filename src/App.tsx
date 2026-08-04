@@ -9,6 +9,7 @@ import { Login } from "@/pages/Login";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { Calendario } from "@/pages/Calendario";
+import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Nucleo } from "@/pages/Nucleo";
 import { Membros } from "@/pages/Membros";
 import { Avaliacoes } from "@/pages/Avaliacoes";
@@ -17,8 +18,15 @@ import { ProjetosList } from "@/pages/projetos/ProjetosList";
 import { ProjetoNovo } from "@/pages/projetos/ProjetoNovo";
 import { ProjetoPage } from "@/pages/projetos/ProjetoPage";
 import { ProjetoVisaoGeral } from "@/pages/projetos/ProjetoVisaoGeral";
+import { ProjetoCronograma } from "@/pages/projetos/ProjetoCronograma";
 import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
-import { AbaEmBreve } from "@/pages/projetos/AbaEmBreve";
+import { ProjetoReunioes } from "@/pages/projetos/ProjetoReunioes";
+import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
+import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
+import { VisaoGeralAba } from "@/pages/monitoramento/VisaoGeralAba";
+import { ExecucaoAba } from "@/pages/monitoramento/ExecucaoAba";
+import { AlocacaoAba } from "@/pages/monitoramento/AlocacaoAba";
+import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
 
 export default function App() {
   return (
@@ -32,7 +40,10 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />
-              <Route path="/calendario" element={<Calendario />} />
+              {/* /calendario agora agrega os 4 tipos (§6.5); a visão
+                  só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
+              <Route path="/calendario" element={<CalendarioGeral />} />
+              <Route path="/bancas/calendario" element={<Calendario />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
               {/* Criar projeto é de diretor e gerente — guard por POSIÇÃO,
@@ -44,34 +55,22 @@ export default function App() {
                   direto em /projetos/42/tarefas. */}
               <Route path="/projetos/:id" element={<ProjetoPage />}>
                 <Route index element={<ProjetoVisaoGeral />} />
-                <Route
-                  path="cronograma"
-                  element={
-                    <AbaEmBreve
-                      titulo="Cronograma pintado"
-                      descricao="O calendário pintável com etapas, marcos e export em PNG/PDF entra na fatia F6."
-                    />
-                  }
-                />
-                <Route
-                  path="tarefas"
-                  element={
-                    <AbaEmBreve
-                      titulo="Tarefas"
-                      descricao="O kanban de 5 colunas com arrastar-e-soltar entra na fatia F7."
-                    />
-                  }
-                />
-                <Route
-                  path="reunioes"
-                  element={
-                    <AbaEmBreve
-                      titulo="Reuniões semanais"
-                      descricao="O registro da reunião na faixa seg–dom entra na fatia F8."
-                    />
-                  }
-                />
+                <Route path="cronograma" element={<ProjetoCronograma />} />
+                <Route path="tarefas" element={<ProjetoTarefas />} />
+                <Route path="reunioes" element={<ProjetoReunioes />} />
                 <Route path="historico" element={<ProjetoHistorico />} />
+              </Route>
+
+              {/* §7: monitoramento é só de diretor e gerente. O backend
+                  revalida com require_gestao — o guard aqui evita a tela
+                  vazia com 403 em todas as abas. */}
+              <Route element={<RequirePosicao posicoes={["diretor", "gerente"]} />}>
+                <Route path="/monitoramento" element={<MonitoramentoLayout />}>
+                  <Route index element={<VisaoGeralAba />} />
+                  <Route path="execucao" element={<ExecucaoAba />} />
+                  <Route path="alocacao" element={<AlocacaoAba />} />
+                  <Route path="atrasos" element={<AtrasosAba />} />
+                </Route>
               </Route>
 
               {/* Esconder o item na Sidebar não protege a rota: sem estes

@@ -1,8 +1,28 @@
-// Campos vindos direto da tabela `banca`
+/**
+ * Os 4 estados da banca (§7.4, §8).
+ *
+ * `atrasada` — venceu e não aconteceu — é o estado que não existia antes da
+ * F5 e que destrava o monitoramento. Uma banca `atrasada` **ainda aceita
+ * inscrição**: quem fecha é a realização, não o calendário.
+ */
+export type StatusBanca = "nao_marcada" | "aberta" | "realizada" | "atrasada";
+
+export type ResultadoBanca = "aprovada" | "nao_aprovada";
+
+/**
+ * Campos vindos direto da tabela `banca`.
+ *
+ * `data_hora` é nullable no banco (é o que torna `nao_marcada` representável),
+ * mas nenhum caminho de criação deixa a coluna vazia — tanto `POST /bancas`
+ * quanto marcar pelo cronograma exigem a data. Na prática, "escopo sem banca"
+ * é ausência de LINHA, e quem mostra isso é a aba Visão geral, lendo
+ * `escopo.banca === null`. Por isso o tipo de listagem mantém a data
+ * obrigatória, em vez de espalhar guardas por telas onde o caso não ocorre.
+ */
 export interface BancaBase {
   id: number;
   nome_projeto: string;
-  escopo_id: number;
+  escopo_id: number | null; // vazio quando o escopo vendido é um "Outro"
   coordenador_id: number;
   data_hora: string; // ISO 8601
 }
@@ -10,11 +30,15 @@ export interface BancaBase {
 // Campos calculados que a API adiciona em GET /bancas e GET /bancas/{id}
 // (não existem no banco — ver seção "Campos calculados" do schema)
 export interface Banca extends BancaBase {
-  status: "aberta para inscrições" | "realizada";
+  status: StatusBanca;
   vagas: number;
   alocados: number;
   semestre_id: number;
   semestre_nome: string;
+  // F5 — a costura com o projeto.
+  projeto_escopo_id: number | null;
+  realizado_em: string | null;
+  resultado: ResultadoBanca | null;
 }
 
 export interface Candidatura {
@@ -33,9 +57,13 @@ export interface Desempenho {
   percentual: number;
 }
 
+/** O CATÁLOGO de escopos por frente (§4) — distinto do escopo vendido de um
+ *  projeto, que é `EscopoVendido` em `types/projeto.ts`. */
 export interface Escopo {
   id: number;
   nome: string;
+  frente_id: number | null;
+  ativo: boolean;
 }
 
 export interface Frente {

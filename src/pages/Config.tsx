@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { createCargo, deleteCargo, getCargos, updateCargo, type CargoPayload } from "@/lib/cargos";
 import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/escopos";
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
+import { CalendarioAcademicoCard } from "./config/CalendarioAcademicoCard";
 import type { Escopo, Frente } from "@/types/banca";
 import type { Cargo } from "@/types/auth";
 import {
@@ -140,9 +141,15 @@ export function Config() {
       <PageHeaderRow>
         <PageHeaderText>
           <PageHeading>Configurações</PageHeading>
-          <PageSubheading>Gerencie frentes, escopos e cargos com suas permissões na plataforma.</PageSubheading>
+          <PageSubheading>
+            Gestão semestral, calendário acadêmico, frentes, escopos e cargos.
+          </PageSubheading>
         </PageHeaderText>
       </PageHeaderRow>
+
+      {/* Vem primeiro de propósito: é a carga que define o dia útil (§5.4),
+          e sem ela toda a contagem do sistema fica errada. */}
+      <CalendarioAcademicoCard />
 
       <PageCard>
         <PageCardHeader>
@@ -309,14 +316,16 @@ export function Config() {
   );
 }
 
-function TabelaNomes({
+// Genérica no item para preservar o tipo concreto (`Escopo`, `Frente`, …)
+// no callback — sem isso, `onEditar={setModalEscopo}` perde os campos novos.
+function TabelaNomes<T extends { id: number; nome: string }>({
   itens,
   onEditar,
   onExcluir,
 }: {
-  itens: { id: number; nome: string }[];
-  onEditar: (item: { id: number; nome: string }) => void;
-  onExcluir: (item: { id: number; nome: string }) => void;
+  itens: T[];
+  onEditar: (item: T) => void;
+  onExcluir: (item: T) => void;
 }) {
   return (
     <TableScrollWrap $scrollable={itens.length > LIST_MAX_VISIVEIS}>

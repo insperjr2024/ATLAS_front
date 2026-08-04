@@ -139,80 +139,24 @@ export const TodayButton = styled(NavButton)`
   font-weight: ${theme.fontWeight.medium};
 `;
 
-/* ---- Grade mensal ---- */
+/* ---- Grade mensal ----
+   As primitivas vivem em `components/calendario/CalendarGrid.styled.ts`
+   desde a F6, para o cronograma pintado usar a MESMA grade. Este re-export
+   mantém `Calendario.tsx` e `Bancas.styled.ts` intactos. */
 
-export const MonthGrid = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
+export {
+  MonthGrid,
+  WeekdayRow,
+  WeekdayCell,
+  WeekRow,
+  DayCell,
+  DayNumber,
+  DayEvents,
+  WeekGrid,
+} from "@/components/calendario/CalendarGrid.styled";
 
-export const WeekdayRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  border-bottom: 1px solid ${theme.colors.border};
-`;
-
-export const WeekdayCell = styled.div`
-  padding: 0.625rem 0.5rem;
-  text-align: center;
-  font-size: ${theme.fontSize.sm};
-  font-weight: ${theme.fontWeight.medium};
-  color: ${theme.colors.mutedForeground};
-  background: ${theme.colors.secondary};
-`;
-
-export const WeekRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  flex: 1;
-  min-height: 0;
-`;
-
-export const DayCell = styled.div<{ $outside?: boolean; $today?: boolean }>`
-  min-height: 7.5rem;
-  padding: 0.375rem;
-  border-right: 1px solid ${theme.colors.border};
-  border-bottom: 1px solid ${theme.colors.border};
-  background: ${({ $outside }) => ($outside ? theme.colors.muted : theme.colors.background)};
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  overflow: hidden;
-
-  &:nth-child(7n) {
-    border-right: none;
-  }
-
-  ${WeekRow}:last-child & {
-    border-bottom: none;
-  }
-`;
-
-export const DayNumber = styled.span<{ $today?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.625rem;
-  height: 1.625rem;
-  font-size: ${theme.fontSize.sm};
-  font-weight: ${theme.fontWeight.medium};
-  color: ${({ $today }) => ($today ? theme.colors.primaryForeground : theme.colors.foreground)};
-
-  ${({ $today }) =>
-    $today &&
-    css`
-      border-radius: ${theme.borderRadius.full};
-      background: ${theme.colors.primary};
-    `}
-`;
-
-export const DayEvents = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  flex: 1;
-  min-height: 0;
-`;
+/* `EventPill` e `MoreEvents` ficam aqui: são a pílula DE BANCA (usam as
+   constantes de cor locais), não primitiva de grade. */
 
 export const EventPill = styled.button`
   width: 100%;
@@ -252,12 +196,6 @@ export const MoreEvents = styled.button`
 `;
 
 /* ---- Vista semana / dia ---- */
-
-export const WeekGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  min-height: 12rem;
-`;
 
 export const DayViewPanel = styled.div`
   padding: ${theme.spacing.lg};

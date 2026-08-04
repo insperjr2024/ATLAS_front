@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { ExternalLink, X } from "lucide-react";
+import { ExternalLink, Lock, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
 import {
   formatarData,
   marcarEntregaCliente,
+  marcarEntregaEscopo,
   marcarKickoff,
+  ROTULO_STATUS_ESCOPO,
   rotuloDiaSemana,
   updateEquipe,
 } from "@/lib/projetos";
@@ -23,6 +26,7 @@ import {
   PageCardHeader,
   PageCardTitle,
   PageCardContent,
+  PageBadge,
   PageButton,
   PageButtonSm,
   EmptyText,
@@ -45,7 +49,19 @@ import {
   EquipeList,
   EquipeItem,
   PapelTag,
-  EmBrevePanel,
+  DataTable,
+  TableHead,
+  TableHeadCell,
+  TableBody,
+  TableRow,
+  TableCell,
+  ProgressoWrap,
+  ProgressoTrilha,
+  ProgressoBarra,
+  ProgressoTexto,
+  Cadeado,
+  EscopoNome,
+  LegendaTabela,
 } from "./Projetos.styled";
 import { useProjeto } from "./ProjetoPage";
 
@@ -141,15 +157,10 @@ export function ProjetoVisaoGeral() {
         </PageCardContent>
       </PageCard>
 
-      {/* A tabela de escopos vendidos (barra 6/15, banca, entrega) é a fatia
-          F4 — precisa de `projeto_escopo` e da contagem de dias úteis. */}
-      <EmBrevePanel>
-        <h2>Escopos vendidos</h2>
-        <p>
-          A tabela com dias consumidos, banca e entrega por escopo entra junto com a contagem de dias
-          úteis (F4).
-        </p>
-      </EmBrevePanel>
+      <TabelaEscopos />
+
+      {/* Pausa para pensar: a contagem é do backend (`utils/contagem_dias.py`).
+          O front nunca recalcula dia útil — só desenha o que recebe. */}
 
       {editandoEquipe && token && (
         <EditarEquipeModal
@@ -164,6 +175,169 @@ export function ProjetoVisaoGeral() {
         />
       )}
     </PageStack>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * A tabela do §6.4: escopo · status · dias usados · banca · entrega.
+ *
+ * 🔒 O cadeado na entrega é conveniência de UI — quem barra de verdade é
+ * `RegistrarEntregaEscopoUseCase` no backend, que devolve 422 enquanto a
+ * banca do escopo não estiver aprovada.
+ */
+function TabelaEscopos() {
+  const { projeto, recarregar } = useProjeto();
+  const { usuario, token } = useAuth();
+  const [erro, setErro] = useState("");
+  const [ocupado, setOcupado] = useState<number | null>(null);
+
+  // §6.4: marcar kickoff e data de entrega é dos QUATRO perfis — a
+  // responsabilidade é do coordenador, mas o acesso não é exclusivo dele.
+  // (O backend usa só `exigir_acesso_ao_projeto` aqui; o front não pode ser
+  // mais restrito que ele, ou esconde um botão que a pessoa tem direito de ver.)
+  const podeConduzir = pode(usuario, "marcar_kickoff");
+
+  async function agir(escopoId: number, acao: () => Promise<unknown>) {
+    if (!token) return;
+    setOcupado(escopoId);
+    setErro("");
+    try {
+      await acao();
+      await recarregar();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao atualizar o escopo");
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  return (
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>Escopos vendidos</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
+        {projeto.escopos.length === 0 ? (
+          <EmptyText>Nenhum escopo cadastrado neste projeto.</EmptyText>
+        ) : (
+          <>
+            <DataTable>
+              <TableHead>
+                <TableRow>
+                  <TableHeadCell>Escopo</TableHeadCell>
+                  <TableHeadCell>Status</TableHeadCell>
+                  <TableHeadCell>Dias usados</TableHeadCell>
+                  <TableHeadCell>Banca</TableHeadCell>
+                  <TableHeadCell>Entrega</TableHeadCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {projeto.escopos.map((escopo) => {
+                  const percentual =
+                    escopo.dias_uteis_vendidos > 0
+                      ? (escopo.consumidos / escopo.dias_uteis_vendidos) * 100
+                      : 0;
+                  const banca = escopo.banca;
+                  return (
+                    <TableRow key={escopo.id}>
+                      <TableCell>
+                        <EscopoNome>
+                          <strong>{escopo.nome}</strong>
+                          {escopo.data_inicio && (
+                            <small>desde {formatarData(escopo.data_inicio)}</small>
+                          )}
+                        </EscopoNome>
+                      </TableCell>
+
+                      <TableCell>
+                        <PageBadge
+                          $tone={
+                            escopo.status === "entregue"
+                              ? "success"
+                              : escopo.status === "em_andamento"
+                                ? "default"
+                                : "muted"
+                          }
+                        >
+                          {ROTULO_STATUS_ESCOPO[escopo.status]}
+                        </PageBadge>
+                      </TableCell>
+
+                      <TableCell>
+                        <ProgressoWrap>
+                          <ProgressoTrilha>
+                            <ProgressoBarra
+                              $percentual={percentual}
+                              $estourou={escopo.estourou}
+                            />
+                          </ProgressoTrilha>
+                          <ProgressoTexto $estourou={escopo.estourou}>
+                            {escopo.consumidos}/{escopo.dias_uteis_vendidos}
+                            {escopo.estourou && ` (+${Math.abs(escopo.restantes)})`}
+                          </ProgressoTexto>
+                        </ProgressoWrap>
+                      </TableCell>
+
+                      <TableCell>
+                        {banca ? (
+                          <PageBadge $tone={tomDoStatusBanca(banca.status)}>
+                            {banca.data_hora ? formatarData(banca.data_hora) : "—"} ·{" "}
+                            {ROTULO_STATUS_BANCA[banca.status]}
+                          </PageBadge>
+                        ) : (
+                          <EmptyText>—</EmptyText>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        {escopo.data_entrega_real ? (
+                          formatarData(escopo.data_entrega_real)
+                        ) : escopo.entrega_liberada ? (
+                          podeConduzir ? (
+                            <PageButtonSm
+                              type="button"
+                              $variant="outline"
+                              disabled={ocupado === escopo.id}
+                              onClick={() =>
+                                agir(escopo.id, () =>
+                                  marcarEntregaEscopo(
+                                    escopo.id,
+                                    new Date().toISOString().slice(0, 10),
+                                    token!,
+                                  ),
+                                )
+                              }
+                            >
+                              Marcar entrega
+                            </PageButtonSm>
+                          ) : (
+                            <EmptyText>liberada</EmptyText>
+                          )
+                        ) : (
+                          <Cadeado title="A entrega só é liberada depois da banca do escopo ser aprovada (§5.5)">
+                            <Lock size={12} />
+                            travada
+                          </Cadeado>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </DataTable>
+
+            <LegendaTabela>
+              🔒 A entrega fica travada até a banca do escopo ser aprovada. Os dias correm apenas
+              enquanto o escopo está iniciado e não entregue — feriados, provas e recessos do
+              calendário do Insper não contam.
+            </LegendaTabela>
+            {erro && <FormErrorText>{erro}</FormErrorText>}
+          </>
+        )}
+      </PageCardContent>
+    </PageCard>
   );
 }
 

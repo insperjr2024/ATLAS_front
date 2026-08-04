@@ -307,6 +307,78 @@ export const PapelTag = styled.span<{ $coordenador?: boolean }>`
   color: ${({ $coordenador }) => ($coordenador ? theme.colors.primary : theme.colors.mutedForeground)};
 `;
 
+/* ------------------------------------------------------------------ */
+/* Tabela de escopos vendidos (§6.4)                                   */
+/* ------------------------------------------------------------------ */
+
+export const ProgressoWrap = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  min-width: 9rem;
+`;
+
+export const ProgressoTrilha = styled.div`
+  flex: 1;
+  height: 0.5rem;
+  min-width: 4.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.muted};
+  overflow: hidden;
+`;
+
+/** Clampa em 100% na largura — mas o RÓTULO ao lado mostra o número real
+ *  (18/15), porque estourar o vendido é a informação, não um detalhe. */
+export const ProgressoBarra = styled.div<{ $percentual: number; $estourou?: boolean }>`
+  height: 100%;
+  width: ${({ $percentual }) => Math.min(100, Math.max(0, $percentual))}%;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $estourou }) =>
+    $estourou ? theme.colors.destructive : theme.colors.success};
+  transition: width ${theme.transitions.normal};
+`;
+
+export const ProgressoTexto = styled.span<{ $estourou?: boolean }>`
+  font-size: ${theme.fontSize.xs};
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: ${({ $estourou }) => ($estourou ? theme.colors.destructive : theme.colors.mutedForeground)};
+  font-weight: ${({ $estourou }) =>
+    $estourou ? theme.fontWeight.semibold : theme.fontWeight.normal};
+`;
+
+/** 🔒 O cadeado da entrega travada — conveniência de UI; quem barra é o backend. */
+export const Cadeado = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  cursor: help;
+`;
+
+export const EscopoNome = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+
+  strong {
+    font-weight: ${theme.fontWeight.medium};
+    color: ${theme.colors.foreground};
+  }
+
+  small {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+export const LegendaTabela = styled.p`
+  margin: ${theme.spacing.sm} 0 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
 /** Painel das abas que ainda não existem (F6–F8, F11). */
 export const EmBrevePanel = styled.div`
   display: flex;

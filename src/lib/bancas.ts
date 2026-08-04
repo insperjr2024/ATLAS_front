@@ -1,5 +1,14 @@
 import { apiFetch } from "@/lib/api";
-import type { Banca, BancaFrente, BancaParaAvaliar, Candidatura, EquipeProjeto, Escopo, Frente } from "@/types/banca";
+import type {
+  Banca,
+  BancaFrente,
+  BancaParaAvaliar,
+  Candidatura,
+  EquipeProjeto,
+  Escopo,
+  Frente,
+  StatusBanca,
+} from "@/types/banca";
 
 export function getBancas(token: string) {
   return apiFetch<Banca[]>("/bancas", { token });
@@ -137,8 +146,36 @@ export async function syncBancaFrentes(
   );
 }
 
+/**
+ * Espelho de `utils/banca_status.py::aceita_inscricao`.
+ *
+ * Uma banca `atrasada` (venceu e não aconteceu) **continua aceitando gente** —
+ * ela ainda vai acontecer. Quem fecha a inscrição é a realização, não o
+ * calendário. O backend revalida.
+ */
+export function aceitaInscricao(status: StatusBanca): boolean {
+  return status === "aberta" || status === "atrasada";
+}
+
+export const ROTULO_STATUS_BANCA: Record<StatusBanca, string> = {
+  nao_marcada: "Não marcada",
+  aberta: "Aberta para inscrições",
+  realizada: "Realizada",
+  atrasada: "Atrasada",
+};
+
+/** Vermelho só para `atrasada` — é o estado que precisa gritar na tela. */
+export function tomDoStatusBanca(status: StatusBanca): "default" | "success" | "muted" | "danger" {
+  if (status === "atrasada") return "danger";
+  if (status === "realizada") return "success";
+  if (status === "nao_marcada") return "muted";
+  return "default";
+}
+
 export function podeGerenciarBanca(banca: Banca, usuarioId: number): boolean {
-  return banca.coordenador_id === usuarioId && banca.status === "aberta para inscrições";
+  // Banca atrasada continua gerenciável: é justamente quando o coordenador
+  // precisa entrar para marcar que ela aconteceu (ou remarcar).
+  return banca.coordenador_id === usuarioId && aceitaInscricao(banca.status);
 }
 
 export function toDateInputValue(iso: string): string {

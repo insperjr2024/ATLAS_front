@@ -5,14 +5,21 @@ import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { createProjeto } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
+import { getEscopos } from "@/lib/escopos";
 import {
   MemberPicker,
   montarEquipePayload,
   validarEquipe,
   type EquipeSelecionada,
 } from "@/components/membros/MemberPicker";
+import {
+  EscopoPicker,
+  montarEscoposPayload,
+  validarEscopos,
+  type EscopoEmEdicao,
+} from "@/components/escopos/EscopoPicker";
 import type { UsuarioResumo } from "@/types/auth";
-import type { Frente } from "@/types/banca";
+import type { Escopo, Frente } from "@/types/banca";
 import {
   PageStack,
   PageCard,
@@ -66,6 +73,7 @@ export function ProjetoNovo() {
   const navigate = useNavigate();
 
   const [frentes, setFrentes] = useState<Frente[]>([]);
+  const [catalogo, setCatalogo] = useState<Escopo[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState("");
@@ -78,6 +86,7 @@ export function ProjetoNovo() {
   const [diasAmbientacao, setDiasAmbientacao] = useState("5");
   const [diaReuniao, setDiaReuniao] = useState("");
   const [equipe, setEquipe] = useState<EquipeSelecionada>({ coordenadorId: null, consultorIds: [] });
+  const [escopos, setEscopos] = useState<EscopoEmEdicao[]>([]);
 
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
@@ -87,8 +96,13 @@ export function ProjetoNovo() {
     setCarregando(true);
     setErroCarga("");
     try {
-      const [frentesResp, usuariosResp] = await Promise.all([getFrentes(token), getUsuarios(token)]);
+      const [frentesResp, usuariosResp, catalogoResp] = await Promise.all([
+        getFrentes(token),
+        getUsuarios(token),
+        getEscopos(token),
+      ]);
       setFrentes(frentesResp);
+      setCatalogo(catalogoResp.filter((e) => e.ativo));
       setUsuarios(
         usuariosResp.filter((u) => u.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
       );
@@ -106,7 +120,14 @@ export function ProjetoNovo() {
 
   function toggleFrente(id: number) {
     setFrenteIds((atual) => {
-      if (atual.includes(id)) return atual.filter((x) => x !== id);
+      if (atual.includes(id)) {
+        const novas = atual.filter((x) => x !== id);
+        // Desmarcar a frente tem que levar os escopos dela junto — senão o
+        // formulário envia um escopo de uma frente que o projeto não tem
+        // mais, e o backend recusa com uma mensagem confusa.
+        setEscopos((lista) => lista.filter((e) => novas.includes(e.frente_id)));
+        return novas;
+      }
       if (atual.length >= MAX_FRENTES) return atual;
       return [...atual, id];
     });
@@ -118,6 +139,11 @@ export function ProjetoNovo() {
 
     if (frenteIds.length === 0) {
       setErro("Escolha pelo menos uma frente.");
+      return;
+    }
+    const erroEscopos = validarEscopos(escopos);
+    if (erroEscopos) {
+      setErro(erroEscopos);
       return;
     }
     const erroEquipe = validarEquipe(equipe);
@@ -139,6 +165,7 @@ export function ProjetoNovo() {
           dias_ambientacao: Number(diasAmbientacao) || 5,
           equipe: montarEquipePayload(equipe),
           dia_reuniao_padrao: diaReuniao ? Number(diaReuniao) : null,
+          escopos: montarEscoposPayload(escopos),
         },
         token,
       );
@@ -233,6 +260,22 @@ export function ProjetoNovo() {
                   {sinergico
                     ? "🔗 Duas frentes marcadas: o projeto é sinérgico e aparece para os dois gerentes."
                     : "Até 2 frentes. Duas marcadas = projeto sinérgico."}
+                </PageSubheading>
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel>Escopos vendidos</FieldLabel>
+                <EscopoPicker
+                  catalogo={catalogo}
+                  frentes={frentes}
+                  frentesMarcadas={frenteIds}
+                  valor={escopos}
+                  onChange={setEscopos}
+                  desabilitado={salvando}
+                />
+                <PageSubheading>
+                  Cada escopo tem os seus próprios dias úteis vendidos, banca e entrega. A contagem
+                  só começa quando o escopo é iniciado, na página do projeto.
                 </PageSubheading>
               </FieldGroup>
 

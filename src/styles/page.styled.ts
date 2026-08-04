@@ -176,7 +176,9 @@ export const PageButtonSm = styled(PageButton)`
 /* Badge / status                                                       */
 /* ------------------------------------------------------------------ */
 
-export const PageBadge = styled.span<{ $tone?: "default" | "success" | "muted" | "warning" }>`
+export const PageBadge = styled.span<{
+  $tone?: "default" | "success" | "muted" | "warning" | "danger";
+}>`
   display: inline-flex;
   align-items: center;
   padding: 0.125rem 0.5rem;
@@ -191,20 +193,29 @@ export const PageBadge = styled.span<{ $tone?: "default" | "success" | "muted" |
           background: color-mix(in srgb, ${theme.colors.success} 14%, white);
           color: ${theme.colors.success};
         `
-      : $tone === "warning"
+      : /* `danger` é reservado para o que precisa gritar: banca atrasada e
+           escopo que estourou os dias vendidos. Vem com borda, para não se
+           confundir com o `default`, que também é avermelhado. */
+        $tone === "danger"
         ? css`
-            background: color-mix(in srgb, ${theme.colors.primary} 12%, white);
-            color: ${theme.colors.primary};
+            background: color-mix(in srgb, ${theme.colors.destructive} 14%, white);
+            color: ${theme.colors.destructive};
+            border: 1px solid color-mix(in srgb, ${theme.colors.destructive} 35%, transparent);
           `
-        : $tone === "muted"
+        : $tone === "warning"
           ? css`
-              background: ${theme.colors.muted};
-              color: ${theme.colors.mutedForeground};
+              background: color-mix(in srgb, ${theme.colors.warning} 20%, white);
+              color: ${theme.colors.warningForeground};
             `
-          : css`
-              background: color-mix(in srgb, ${theme.colors.primary} 10%, white);
-              color: ${theme.colors.primary};
-            `}
+          : $tone === "muted"
+            ? css`
+                background: ${theme.colors.muted};
+                color: ${theme.colors.mutedForeground};
+              `
+            : css`
+                background: color-mix(in srgb, ${theme.colors.primary} 10%, white);
+                color: ${theme.colors.primary};
+              `}
 `;
 
 /* ------------------------------------------------------------------ */

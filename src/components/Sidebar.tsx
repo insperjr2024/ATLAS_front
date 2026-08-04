@@ -1,8 +1,8 @@
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { rotuloProjetos } from "@/utils/permissoes";
+import { pode, rotuloProjetos } from "@/utils/permissoes";
 import insperJrLogo from "@/assets/insperjr.png";
-import { FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut } from "lucide-react";
+import { BarChart3, FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarContainer,
@@ -16,6 +16,8 @@ import {
   LogoutButton,
 } from "./Sidebar.styled";
 
+type UsuarioLogado = NonNullable<ReturnType<typeof useAuth>["usuario"]>;
+
 interface NavItemConfig {
   icon: LucideIcon;
   label: string;
@@ -23,13 +25,24 @@ interface NavItemConfig {
   section?: "admin";
   /** Marca o item como ativo também nas sub-rotas (ex.: /projetos/42/tarefas). */
   prefixo?: boolean;
-  visible?: (cargo: NonNullable<ReturnType<typeof useAuth>["usuario"]>["cargo"]) => boolean;
+  /** Visibilidade por CARGO — as 3 flags do módulo de bancas. */
+  visible?: (cargo: UsuarioLogado["cargo"]) => boolean;
+  /** Visibilidade por POSIÇÃO (§3) — dimensão diferente do cargo. É o que o
+   *  item de Monitoramento precisa, e o mecanismo antigo não cobria. */
+  visiblePorPosicao?: (usuario: UsuarioLogado) => boolean;
 }
 
 const navItems: NavItemConfig[] = [
   // O rótulo é definido no componente: para coord e consultor é "Meus
   // projetos", porque eles só enxergam onde estão alocados (§6.1).
   { icon: FolderKanban, label: "Projetos", path: "/projetos", prefixo: true },
+  {
+    icon: BarChart3,
+    label: "Monitoramento",
+    path: "/monitoramento",
+    prefixo: true,
+    visiblePorPosicao: (u) => pode(u, "ver_monitoramento"),
+  },
   { icon: Gauge, label: "Desempenho", path: "/dashboard" },
   { icon: ClipboardList, label: "Bancas", path: "/bancas" },
   { icon: Calendar, label: "Calendário", path: "/calendario" },
@@ -68,6 +81,9 @@ export function Sidebar() {
   const location = useLocation();
 
   const itensVisiveis = navItems.filter((item) => {
+    if (item.visiblePorPosicao) {
+      return !!usuario && item.visiblePorPosicao(usuario);
+    }
     if (!item.visible) return true;
     if (!usuario?.cargo) return false;
     return item.visible(usuario.cargo);

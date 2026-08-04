@@ -1,0 +1,128 @@
+import { apiFetch } from "@/lib/api";
+
+/* Os tipos espelham `use_cases/monitoramento/monitoramento.py`. */
+
+export interface VisaoGeral {
+  kpis: {
+    total: number;
+    em_execucao: number;
+    perto_de_finalizar: number;
+    atrasados: number;
+    pausados: number;
+    finalizados: number;
+  };
+  por_status: Record<string, number>;
+  /** % dos projetos ativos sem banca atrasada. A entrega ao cliente fica de
+   *  fora de propósito: depende da agenda dele (§7.1). */
+  placar_gestao: { percentual: number; no_prazo: number; total_ativos: number };
+  entregas: {
+    total_escopos: number;
+    projetos_finalizados: number;
+    recentes: {
+      projeto_id: number;
+      projeto_nome: string;
+      escopo: string;
+      data: string;
+      no_prazo: boolean;
+    }[];
+    tendencia: { inicio: string; total: number }[];
+  };
+  bancas_proximas: {
+    projeto_id: number | null;
+    projeto_nome: string;
+    escopo: string;
+    data_hora: string;
+  }[];
+  tempo_parado: {
+    projeto_id: number;
+    projeto_nome: string;
+    escopo_entregue: string;
+    dias_parado: number;
+  }[];
+  /** §7.1: o motivo é explícito, nunca um rótulo genérico. */
+  atencao_agora: {
+    projeto_id: number;
+    projeto_nome: string;
+    motivo: string;
+    dias: number | null;
+  }[];
+}
+
+export interface Execucao {
+  semana: { inicio: string; fim: string };
+  tarefas: {
+    projeto_id: number;
+    projeto_nome: string;
+    distribuiu_na_semana: boolean;
+    total: number;
+    ativas: number;
+    vencidas: number;
+    ultima_movimentacao: string | null;
+  }[];
+  reunioes: {
+    projeto_id: number;
+    projeto_nome: string;
+    realizou: boolean;
+    dias: string[];
+    dia_padrao: number | null;
+  }[];
+}
+
+export interface LinhaCarga {
+  usuario_id: number;
+  nome: string;
+  posicao: string;
+  total: number;
+  projetos: string[];
+  carga_alta: boolean;
+  disponivel: boolean;
+}
+
+export interface Alocacao {
+  coordenadores: LinhaCarga[];
+  consultores: LinhaCarga[];
+  grade_horaria_disponivel: boolean;
+}
+
+export interface Atrasos {
+  por_projeto: {
+    projeto_id: number;
+    projeto_nome: string;
+    status: string;
+    dias_totais: number;
+    motivos: {
+      tipo: string;
+      descricao: string;
+      dias: number;
+      escopo: string;
+      projeto_escopo_id: number | null;
+    }[];
+  }[];
+  por_coordenador: {
+    usuario_id: number;
+    nome: string;
+    projetos: number;
+    atrasados: number;
+    dias_acumulados: number;
+  }[];
+}
+
+function query(frenteId?: number | null): string {
+  return frenteId ? `?frente_id=${frenteId}` : "";
+}
+
+export function getVisaoGeral(token: string, frenteId?: number | null) {
+  return apiFetch<VisaoGeral>(`/monitoramento/visao-geral${query(frenteId)}`, { token });
+}
+
+export function getExecucao(token: string, frenteId?: number | null) {
+  return apiFetch<Execucao>(`/monitoramento/execucao${query(frenteId)}`, { token });
+}
+
+export function getAlocacao(token: string, frenteId?: number | null) {
+  return apiFetch<Alocacao>(`/monitoramento/alocacao${query(frenteId)}`, { token });
+}
+
+export function getAtrasos(token: string, frenteId?: number | null) {
+  return apiFetch<Atrasos>(`/monitoramento/atrasos${query(frenteId)}`, { token });
+}

@@ -2,15 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import {
   addDays,
   addMonths,
-  eachDayOfInterval,
-  endOfMonth,
-  endOfWeek,
   format,
   isSameMonth,
   isToday,
   startOfDay,
   startOfMonth,
-  startOfWeek,
   subMonths,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -80,15 +76,20 @@ import {
   ErrorText,
   StatusBadge,
 } from "./Calendario.styled";
+import {
+  chaveData,
+  diasDaSemana as diasDaSemanaBase,
+  rotulosDiaSemana,
+  semanasDoMes as semanasDoMesBase,
+} from "@/components/calendario/semanas";
 
-const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+// O calendário geral segue em domingo-primeiro; o cronograma e a faixa de
+// reunião usam seg–dom (§6.4). Cabeçalho e grade saem do MESMO parâmetro.
+const INICIO_SEMANA = 0;
+const DIAS_SEMANA = rotulosDiaSemana(INICIO_SEMANA);
 const MAX_PILLS = 2;
 
 type Vista = "mes" | "semana" | "dia";
-
-function chaveData(data: Date): string {
-  return format(data, "yyyy-MM-dd");
-}
 
 interface Contexto {
   usuarios: UsuarioResumo[];
@@ -105,21 +106,8 @@ function statusBanca(banca: Banca): { label: string; tone: "success" | "warning"
   return { label: "Aberta", tone: "success" };
 }
 
-function semanasDoMes(mes: Date): Date[][] {
-  const inicio = startOfWeek(startOfMonth(mes), { weekStartsOn: 0 });
-  const fim = endOfWeek(endOfMonth(mes), { weekStartsOn: 0 });
-  const dias = eachDayOfInterval({ start: inicio, end: fim });
-  const semanas: Date[][] = [];
-  for (let i = 0; i < dias.length; i += 7) {
-    semanas.push(dias.slice(i, i + 7));
-  }
-  return semanas;
-}
-
-function diasDaSemana(ref: Date): Date[] {
-  const inicio = startOfWeek(ref, { weekStartsOn: 0 });
-  return Array.from({ length: 7 }, (_, i) => addDays(inicio, i));
-}
+const semanasDoMes = (mes: Date) => semanasDoMesBase(mes, INICIO_SEMANA);
+const diasDaSemana = (ref: Date) => diasDaSemanaBase(ref, INICIO_SEMANA);
 
 export function Calendario() {
   const { token } = useAuth();

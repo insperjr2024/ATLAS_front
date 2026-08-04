@@ -1,4 +1,4 @@
-import type { Posicao, Usuario } from "@/types/auth";
+import type { Posicao, StatusUsuario, Usuario } from "@/types/auth";
 
 /**
  * A tabela de permissões do §3 do briefing, num lugar só.
@@ -65,6 +65,18 @@ export const ROTULO_POSICAO: Record<Posicao, string> = {
   gerente: "Gerente de frente",
   coordenador: "Coordenador(a)",
   consultor: "Consultor(a)",
+};
+
+/**
+ * §10: os dois modos de sair são distintos e não podem virar um booleano só.
+ * `ex_membro` sai por vontade própria ou fim de gestão e mantém o histórico;
+ * `desligado` perde o acesso. Em ambos, a participação em projetos passados
+ * continua íntegra.
+ */
+export const ROTULO_STATUS_USUARIO: Record<StatusUsuario, string> = {
+  ativo: "Ativo",
+  ex_membro: "Ex-membro",
+  desligado: "Desligado",
 };
 
 /**

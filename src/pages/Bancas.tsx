@@ -5,6 +5,7 @@ import {
   alocar,
   createBanca,
   deleteBanca,
+  aceitaInscricao,
   desalocar,
   getBancas,
   getBancasFrentes,
@@ -211,12 +212,15 @@ export function Bancas() {
     )
     .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime());
 
-  const jaAlocado = bancas.filter((b) => b.status === "aberta para inscrições" && candidaturaDe(b.id));
+  // ⚠ `aceitaInscricao` no lugar da comparação com a string antiga: uma banca
+  // `atrasada` continua nestes baldes. Trocar só o literal a faria sumir da
+  // tela inteira.
+  const jaAlocado = bancas.filter((b) => aceitaInscricao(b.status) && candidaturaDe(b.id));
   const lotadas = bancas.filter(
-    (b) => b.status === "aberta para inscrições" && !candidaturaDe(b.id) && b.alocados >= b.vagas,
+    (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados >= b.vagas,
   );
   const disponiveisParaAlocacao = bancas.filter(
-    (b) => b.status === "aberta para inscrições" && !candidaturaDe(b.id) && b.alocados < b.vagas,
+    (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados < b.vagas,
   );
 
   async function handleAlocar(bancaId: number) {
