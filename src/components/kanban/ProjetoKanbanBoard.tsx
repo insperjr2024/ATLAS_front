@@ -1,5 +1,4 @@
-import { useState } from "react";
-import styled from "styled-components";
+import { useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -12,18 +11,44 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
 import { podePausar, proximoStatusManual, ROTULO_STATUS, statusAnteriorManual } from "@/lib/projetos";
 import type { ProjetoResumo, StatusProjeto } from "@/types/projeto";
-import { Board, Card, CardMeta, CardTitulo, CardTopo, Coluna, ColunaTitulo, ColunaVazia, Contador } from "./Kanban.styled";
+import {
+  Board,
+  Card,
+  CardMeta,
+  CardTitulo,
+  CardTopo,
+  Coluna,
+  ColunaPilula,
+  ColunaTitulo,
+  ColunaVazia,
+  Contador,
+  Ponto,
+} from "./Kanban.styled";
+
+/**
+ * Uma cor fixa por fase — ao contrário das colunas de tarefa, as fases do
+ * projeto não são configuráveis pela diretoria, então não precisam de tela
+ * de config: só reaproveitam a mesma paleta e a mesma derivação de tons
+ * (`tonsDaColuna`) que o kanban de tarefas passou a usar.
+ */
+const CORES_STATUS: Record<StatusProjeto, string> = {
+  vendido: "#9CA3AF", // cinza — ainda não começou de fato
+  ambientacao: "#6366F1", // índigo
+  em_andamento: "#3B82F6", // azul
+  validacao_bancas: "#8B5CF6", // roxo
+  envio_tep: "#14B8A6", // teal
+  periodo_ajustes: "#F97316", // laranja
+  finalizado: "#10B981", // verde
+  pausado: "#F59E0B", // âmbar — vermelho fica reservado pro alerta de vencida
+};
 
 const COLUNAS = (Object.keys(ROTULO_STATUS) as StatusProjeto[]).map((status) => ({
   status,
   rotulo: ROTULO_STATUS[status],
 }));
-
-const BoardProjetos = styled(Board)`
-  grid-template-columns: repeat(${COLUNAS.length}, minmax(11rem, 1fr));
-`;
 
 /**
  * Pra onde um projeto no status `atual` pode ir num arrasto — espelha as
@@ -51,6 +76,14 @@ interface ProjetoKanbanBoardProps {
 export function ProjetoKanbanBoard({ projetos, podeArrastar, nomeFrente, onMover }: ProjetoKanbanBoardProps) {
   const [arrastando, setArrastando] = useState<ProjetoResumo | null>(null);
 
+  const tons = useMemo(() => {
+    const mapa = new Map<StatusProjeto, TonsColuna>();
+    for (const status of Object.keys(CORES_STATUS) as StatusProjeto[]) {
+      mapa.set(status, tonsDaColuna(CORES_STATUS[status]));
+    }
+    return mapa;
+  }, []);
+
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor),
@@ -72,22 +105,23 @@ export function ProjetoKanbanBoard({ projetos, podeArrastar, nomeFrente, onMover
 
   return (
     <DndContext sensors={sensores} onDragStart={aoIniciar} onDragEnd={aoSoltar}>
-      <BoardProjetos>
+      <Board $colunas={COLUNAS.length}>
         {COLUNAS.map((coluna) => (
           <ColunaDrop
             key={coluna.status}
             status={coluna.status}
             rotulo={coluna.rotulo}
+            tons={tons.get(coluna.status)!}
             projetos={projetos.filter((p) => p.status === coluna.status)}
             podeArrastar={podeArrastar}
             nomeFrente={nomeFrente}
           />
         ))}
-      </BoardProjetos>
+      </Board>
 
       <DragOverlay>
         {arrastando && (
-          <Card>
+          <Card $cor={tons.get(arrastando.status)}>
             <CardTitulo>{arrastando.nome}</CardTitulo>
           </Card>
         )}
@@ -99,12 +133,14 @@ export function ProjetoKanbanBoard({ projetos, podeArrastar, nomeFrente, onMover
 function ColunaDrop({
   status,
   rotulo,
+  tons,
   projetos,
   podeArrastar,
   nomeFrente,
 }: {
   status: StatusProjeto;
   rotulo: string;
+  tons: TonsColuna;
   projetos: ProjetoResumo[];
   podeArrastar: boolean;
   nomeFrente: (id: number) => string;
@@ -112,9 +148,12 @@ function ColunaDrop({
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    <Coluna ref={setNodeRef} $sobre={isOver}>
+    <Coluna ref={setNodeRef} $sobre={isOver} $cor={tons}>
       <ColunaTitulo>
-        {rotulo}
+        <ColunaPilula $cor={tons}>
+          <Ponto $cor={tons.ponto} />
+          {rotulo}
+        </ColunaPilula>
         <Contador>{projetos.length}</Contador>
       </ColunaTitulo>
 
@@ -123,6 +162,7 @@ function ColunaDrop({
         <CardArrastavel
           key={projeto.id}
           projeto={projeto}
+          tons={tons}
           podeArrastar={podeArrastar}
           nomeFrente={nomeFrente}
         />
@@ -133,10 +173,12 @@ function ColunaDrop({
 
 function CardArrastavel({
   projeto,
+  tons,
   podeArrastar,
   nomeFrente,
 }: {
   projeto: ProjetoResumo;
+  tons: TonsColuna;
   podeArrastar: boolean;
   nomeFrente: (id: number) => string;
 }) {
@@ -149,6 +191,7 @@ function CardArrastavel({
   return (
     <Card
       ref={setNodeRef}
+      $cor={tons}
       $arrastando={isDragging}
       $bloqueada={!arrastavel}
       {...(arrastavel ? listeners : {})}
