@@ -25,8 +25,8 @@ export type Acao =
   | "mover_tarefa"
   | "registrar_reuniao"
   | "ver_monitoramento"
-  | "ver_tarefas_gerais"
-  | "filtrar_por_frente";
+  | "filtrar_por_frente"
+  | "ver_tarefas_gerais";
 
 const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão — restrito às lideranças
@@ -64,6 +64,12 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   criar_tarefa: ["diretor", "gerente", "coordenador", "consultor"],
   mover_tarefa: ["diretor", "gerente", "coordenador", "consultor"],
   registrar_reuniao: ["diretor", "gerente", "coordenador", "consultor"],
+
+  // A Avaliação de Desempenho saiu desta matriz: virou permissão de CARGO
+  // (`pode_gerenciar_desempenho` e `pode_definir_formulario_desempenho`), para
+  // a diretoria poder delegar o painel sem promover ninguém de posição. Deixar
+  // as entradas aqui criaria uma segunda fonte de verdade divergindo do
+  // backend.
 };
 
 export function pode(usuario: Usuario | null | undefined, acao: Acao): boolean {

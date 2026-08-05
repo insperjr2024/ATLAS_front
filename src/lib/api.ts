@@ -39,6 +39,18 @@ export async function apiFetch<T>(endpoint: string, options: ApiOptions = {}): P
   if (!response.ok) {
     const erro = await response.json().catch(() => null);
     const mensagem = formatApiDetail(erro?.detail);
+
+    // O JWT expira em 30min (ACCESS_TOKEN_EXPIRE_MINUTES) e o AuthContext só
+    // revalida no mount — sem isto, uma sessão que expira no meio do uso
+    // deixa a pessoa presa numa página mostrando "Token inválido ou
+    // expirado" em vez de voltar pro login pra entrar de novo.
+    if (response.status === 401 && token) {
+      localStorage.removeItem("token");
+      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+
     throw new Error(mensagem || `Erro ${response.status} ao chamar ${endpoint}`);
   }
 

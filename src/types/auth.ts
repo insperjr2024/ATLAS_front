@@ -3,7 +3,18 @@ export interface Cargo {
   nome: string;
   pode_definir_formulario: boolean;
   pode_agendar_banca: boolean;
+  /**
+   * Editar cargos e permissões. Não basta sozinha: o backend também exige
+   * `posicao === "diretor"`, senão quem tivesse a caixa se auto-concederia
+   * o resto.
+   */
   pode_gerenciar_cargos: boolean;
+  pode_gerenciar_membros: boolean;
+  pode_gerenciar_nucleo: boolean;
+  /** Painel de Avaliação de Desempenho inteiro: resultados, lotes e mentorias. */
+  pode_gerenciar_desempenho: boolean;
+  /** Editar os formulários de desempenho — separada de ver os resultados. */
+  pode_definir_formulario_desempenho: boolean;
 }
 
 /** Os 4 perfis do §3. Distinto de `Cargo`, que são as permissões do módulo de bancas. */

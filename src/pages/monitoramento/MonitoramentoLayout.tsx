@@ -28,7 +28,7 @@ export function useMonitoramento() {
 /**
  * O shell do monitoramento (§7). As 4 abas são sub-rotas.
  *
- * 🔐 O seletor de frente só aparece para a diretoria (§7.5: "o gerente fica
+ * O seletor de frente só aparece para a diretoria (§7.5: "o gerente fica
  * travado na própria frente"). Mas quem **decide** é o backend: mesmo que o
  * gerente forje um `?frente_id=`, `aplicar_recorte_visao` restringe às
  * frentes dele. Esconder o seletor é conveniência de UI.

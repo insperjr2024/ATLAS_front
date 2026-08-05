@@ -78,6 +78,12 @@ export function ProjetoTarefas() {
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
 
+  // Só quem está de fato alocado neste projeto pode ser responsável por uma
+  // tarefa dele — `usuarios` (do useProjeto) é o quadro inteiro da Insper Jr.
+  const membrosDoProjeto = usuarios.filter(
+    (u) => u.id === projeto.coordenador_id || projeto.consultor_ids.includes(u.id),
+  );
+
   /**
    * Otimista: o card já aparece na coluna nova antes da resposta. Se o PATCH
    * falhar, recarrega do servidor — a fonte da verdade nunca é o estado local.
@@ -168,6 +174,7 @@ export function ProjetoTarefas() {
           tarefa={tarefas.find((t) => t.id === aberta.id) ?? aberta}
           colunas={colunas}
           usuarios={usuarios}
+          usuariosAtribuiveis={membrosDoProjeto}
           onClose={() => setAberta(null)}
           onMudou={carregar}
         />
@@ -176,7 +183,7 @@ export function ProjetoTarefas() {
       {criando && token && (
         <NovaTarefaModal
           projetoId={projeto.id}
-          usuarios={usuarios.filter((u) => u.ativo)}
+          usuarios={membrosDoProjeto.filter((u) => u.ativo)}
           token={token}
           onClose={() => setCriando(false)}
           onCriada={async () => {

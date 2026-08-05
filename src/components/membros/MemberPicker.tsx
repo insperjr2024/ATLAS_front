@@ -74,11 +74,19 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
   // diretoria e gerência não aparecem em nenhuma das duas listas.
   const elegiveisCoordenador = usuarios.filter((u) => u.posicao === POSICAO_COORDENADOR);
 
+  // Menos carregado primeiro: quem tem menos projetos abre a lista, para a
+  // alocação distribuir a carga em vez de cair sempre em quem já está no
+  // limiar de gargalo do §7.3. Empate desempata por nome — sem isso a ordem
+  // dos que têm a mesma carga varia conforme a API responde.
+  const porCargaCrescente = (a: UsuarioResumo, b: UsuarioResumo) =>
+    a.projetos_alocados - b.projetos_alocados || a.nome.localeCompare(b.nome, "pt-BR");
+
   // Ninguém aparece duas vezes: quem já foi escolhido como consultor sai da
-  // lista de opções.
-  const disponiveisParaConsultor = usuarios.filter(
-    (u) => u.posicao === POSICAO_CONSULTOR && !consultorIds.includes(u.id),
-  );
+  // lista de opções. O `.filter` já devolve array novo, então o `.sort` não
+  // mexe na prop `usuarios`.
+  const disponiveisParaConsultor = usuarios
+    .filter((u) => u.posicao === POSICAO_CONSULTOR && !consultorIds.includes(u.id))
+    .sort(porCargaCrescente);
 
   function adicionarConsultor() {
     const id = Number(consultorPendente);
@@ -183,8 +191,8 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
               {consultorIds.length > 1 ? "s" : ""} ·{" "}
             </>
           )}
-          Só quem tem a posição Consultor(a) aparece aqui, com os projetos em que já está
-          alocado(a). A mesma pessoa pode atuar em vários.
+          Só quem tem a posição Consultor(a) aparece aqui, do menos alocado para o mais alocado.
+          A mesma pessoa pode atuar em vários.
         </CountHint>
       </FieldGroup>
     </PickerStack>

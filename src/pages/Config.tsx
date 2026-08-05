@@ -40,6 +40,7 @@ import {
   FieldGroup,
   FieldLabel,
   FieldInput,
+  FieldSelect,
   FormErrorText,
   ModalOverlay,
   ModalHeader,
@@ -56,30 +57,55 @@ import {
 } from "./Config.styled";
 import { LIST_MAX_VISIVEIS, TableScrollWrap } from "@/styles/shared.styled";
 
+// Fonte única dos rótulos: alimenta as caixas do modal de edição E as tags da
+// tabela. Cada título é verbo + objeto, para a tag dizer sozinha o que o cargo
+// pode fazer — sem depender de abrir o modal para descobrir.
 const PERMISSOES = [
   {
     campo: "pode_agendar_banca" as const,
     titulo: "Agendar bancas",
-    descricao: "Exibe o botão Criar banca na página de Bancas.",
+    descricao: "Criar, editar e cancelar bancas, e registrar realização e resultado.",
   },
   {
     campo: "pode_definir_formulario" as const,
-    titulo: "Definir formulário",
-    descricao: "Acesso à página de Avaliações para consultar notas e editar o formulário.",
+    titulo: "Editar formulário de banca",
+    descricao:
+      "Abrir a página Avaliações: montar os critérios do formulário de banca e consultar as notas lançadas. Não tem relação com a Avaliação de Desempenho.",
+  },
+  {
+    campo: "pode_gerenciar_membros" as const,
+    titulo: "Gerenciar membros",
+    descricao: "Cadastrar pessoas e editar posição, status e frentes de cada uma.",
+  },
+  {
+    campo: "pode_gerenciar_nucleo" as const,
+    titulo: "Gerenciar núcleo e configurações",
+    descricao: "Editar frentes, escopos, o semestre vigente e o calendário.",
+  },
+  {
+    campo: "pode_gerenciar_desempenho" as const,
+    titulo: "Acessar avaliação de desempenho",
+    descricao:
+      "Abrir o painel de Avaliação de Desempenho: ver os resultados (quem avaliou quem, avaliados, relatórios e pendências) e administrar lotes e mentorias.",
+  },
+  {
+    campo: "pode_definir_formulario_desempenho" as const,
+    titulo: "Editar formulário de desempenho",
+    descricao:
+      "Montar as seções e os critérios dos formulários de Avaliação de Desempenho — o que todo mundo responde. Separada de acessar os resultados.",
   },
   {
     campo: "pode_gerenciar_cargos" as const,
-    titulo: "Gerenciar plataforma",
-    descricao: "Acesso às páginas de Configurações, Núcleo e Membros.",
+    titulo: "Gerenciar cargos e permissões",
+    descricao:
+      "Criar cargos e marcar as permissões desta tela. Só tem efeito para quem também é Diretor(a) — é o que impede alguém de se auto-conceder permissões.",
   },
 ];
 
-function labelsPermissao(cargo: Cargo): string[] {
-  const labels: string[] = [];
-  if (cargo.pode_agendar_banca) labels.push("Agendar bancas");
-  if (cargo.pode_definir_formulario) labels.push("Formulário");
-  if (cargo.pode_gerenciar_cargos) labels.push("Admin");
-  return labels;
+type CampoPermissao = (typeof PERMISSOES)[number]["campo"];
+
+function permissoesDoCargo(cargo: Cargo) {
+  return PERMISSOES.filter((p) => cargo[p.campo]);
 }
 
 export function Config() {
@@ -119,9 +145,14 @@ export function Config() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  if (!usuario?.cargo.pode_gerenciar_cargos) {
+  if (!usuario?.cargo.pode_gerenciar_nucleo) {
     return <Navigate to="/dashboard" replace />;
   }
+
+  // Editar cargo é editar quem pode o quê: exige a caixa E a posição, igual
+  // ao `require_pode_gerenciar_cargos` do backend. Só a caixa deixaria alguém
+  // abrir o próprio cargo e marcar o resto.
+  const podeEditarCargos = usuario.posicao === "diretor" && usuario.cargo.pode_gerenciar_cargos;
 
   if (erro) {
     return (
@@ -215,13 +246,21 @@ export function Config() {
         <PageCardHeader>
           <CardHeaderActions>
             <PageCardTitle>Cargos</PageCardTitle>
-            <PageButtonSm type="button" onClick={() => setModalCargo("novo")}>
-              <Plus size={14} />
-              Adicionar
-            </PageButtonSm>
+            {podeEditarCargos && (
+              <PageButtonSm type="button" onClick={() => setModalCargo("novo")}>
+                <Plus size={14} />
+                Adicionar
+              </PageButtonSm>
+            )}
           </CardHeaderActions>
         </PageCardHeader>
         <PageCardContent>
+          {!podeEditarCargos && (
+            <EmptyText style={{ fontSize: "0.7rem" }}>
+              Só a diretoria altera cargos e permissões — é o que impede alguém de
+              se auto-conceder acesso. Aqui você consulta quem pode o quê.
+            </EmptyText>
+          )}
           {cargos.length === 0 && <EmptyText>Nenhum cargo cadastrado.</EmptyText>}
           {cargos.length > 0 && (
             <TableScrollWrap $scrollable={cargos.length > LIST_MAX_VISIVEIS}>
@@ -238,30 +277,36 @@ export function Config() {
                   <TableRow key={cargo.id}>
                     <NameCell>{cargo.nome}</NameCell>
                     <TableCell>
-                      {labelsPermissao(cargo).length === 0 && "—"}
-                      {labelsPermissao(cargo).map((label) => (
-                        <PermissaoBadge key={label}>{label}</PermissaoBadge>
+                      {permissoesDoCargo(cargo).length === 0 && "—"}
+                      {permissoesDoCargo(cargo).map((p) => (
+                        <PermissaoBadge key={p.campo} title={p.descricao}>
+                          {p.titulo}
+                        </PermissaoBadge>
                       ))}
                     </TableCell>
                     <ActionsCell>
-                      <PageButtonSm $variant="outline" type="button" onClick={() => setModalCargo(cargo)}>
-                        Editar
-                      </PageButtonSm>
-                      <PageButtonSm
-                        $variant="outline"
-                        type="button"
-                        onClick={async () => {
-                          if (!confirm(`Excluir o cargo "${cargo.nome}"?`)) return;
-                          try {
-                            await deleteCargo(cargo.id, token);
-                            buscar();
-                          } catch (err) {
-                            alert(err instanceof Error ? err.message : "Erro ao excluir");
-                          }
-                        }}
-                      >
-                        Excluir
-                      </PageButtonSm>
+                      {podeEditarCargos && (
+                        <>
+                          <PageButtonSm $variant="outline" type="button" onClick={() => setModalCargo(cargo)}>
+                            Editar
+                          </PageButtonSm>
+                          <PageButtonSm
+                            $variant="outline"
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm(`Excluir o cargo "${cargo.nome}"?`)) return;
+                              try {
+                                await deleteCargo(cargo.id, token);
+                                buscar();
+                              } catch (err) {
+                                alert(err instanceof Error ? err.message : "Erro ao excluir");
+                              }
+                            }}
+                          >
+                            Excluir
+                          </PageButtonSm>
+                        </>
+                      )}
                     </ActionsCell>
                   </TableRow>
                 ))}
@@ -303,10 +348,11 @@ export function Config() {
       {modalCargo && (
         <ModalCargo
           cargo={modalCargo === "novo" ? null : modalCargo}
+          cargos={cargos}
           onClose={() => setModalCargo(null)}
-          onSalvar={async (dados) => {
-            if (modalCargo === "novo") await createCargo(dados, token);
-            else await updateCargo(modalCargo.id, dados, token);
+          onSalvar={async (dados, cargoId) => {
+            if (cargoId === null) await createCargo(dados, token);
+            else await updateCargo(cargoId, dados, token);
             setModalCargo(null);
             buscar();
           }}
@@ -416,23 +462,44 @@ function ModalNome({
   );
 }
 
+/** As caixas do formulário, na ordem em que aparecem — derivadas de
+ *  `PERMISSOES` para uma permissão nova não nascer faltando no modal. */
+function permissoesDe(cargo: Cargo | null): Record<CampoPermissao, boolean> {
+  return Object.fromEntries(
+    PERMISSOES.map((p) => [p.campo, cargo?.[p.campo] ?? false]),
+  ) as Record<CampoPermissao, boolean>;
+}
+
 function ModalCargo({
   cargo,
+  cargos,
   onClose,
   onSalvar,
 }: {
+  /** `null` = criando um cargo novo. */
   cargo: Cargo | null;
+  cargos: Cargo[];
   onClose: () => void;
-  onSalvar: (dados: CargoPayload) => Promise<void>;
+  onSalvar: (dados: CargoPayload, cargoId: number | null) => Promise<void>;
 }) {
+  const criando = cargo === null;
+  // Ao editar, o cargo é escolhido numa lista — digitar o nome renomearia o
+  // cargo por engano, que é o oposto do que esta tela existe para fazer.
+  const [cargoId, setCargoId] = useState(cargo?.id ?? null);
   const [nome, setNome] = useState(cargo?.nome ?? "");
-  const [permissoes, setPermissoes] = useState({
-    pode_agendar_banca: cargo?.pode_agendar_banca ?? false,
-    pode_definir_formulario: cargo?.pode_definir_formulario ?? false,
-    pode_gerenciar_cargos: cargo?.pode_gerenciar_cargos ?? false,
-  });
+  const [permissoes, setPermissoes] = useState(permissoesDe(cargo));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+
+  const selecionado = criando ? null : (cargos.find((c) => c.id === cargoId) ?? null);
+
+  function trocarCargo(novoId: number) {
+    // Trocar de cargo recarrega as caixas dele — senão as marcações do cargo
+    // anterior seriam salvas por cima do novo.
+    setCargoId(novoId);
+    setPermissoes(permissoesDe(cargos.find((c) => c.id === novoId) ?? null));
+    setErro("");
+  }
 
   function togglePermissao(campo: keyof typeof permissoes) {
     setPermissoes((p) => ({ ...p, [campo]: !p[campo] }));
@@ -440,11 +507,18 @@ function ModalCargo({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!nome.trim()) return;
+    if (criando && !nome.trim()) return;
+    if (!criando && !selecionado) {
+      setErro("Escolha o cargo que você quer alterar.");
+      return;
+    }
     setSalvando(true);
     setErro("");
     try {
-      await onSalvar({ nome: nome.trim(), ...permissoes });
+      await onSalvar(
+        { nome: criando ? nome.trim() : selecionado!.nome, ...permissoes },
+        criando ? null : selecionado!.id,
+      );
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao salvar cargo");
     } finally {
@@ -456,7 +530,7 @@ function ModalCargo({
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog">
         <ModalHeader>
-          <ModalTitle>{cargo ? "Editar cargo" : "Novo cargo"}</ModalTitle>
+          <ModalTitle>{criando ? "Novo cargo" : "Editar permissões"}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>
@@ -464,8 +538,30 @@ function ModalCargo({
         <FormStack onSubmit={handleSubmit}>
           <ModalBody>
             <FieldGroup>
-              <FieldLabel htmlFor="nome-cargo">Nome do cargo</FieldLabel>
-              <FieldInput id="nome-cargo" value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
+              <FieldLabel htmlFor="nome-cargo">Cargo</FieldLabel>
+              {criando ? (
+                <FieldInput
+                  id="nome-cargo"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Nome do cargo novo"
+                  required
+                  autoFocus
+                />
+              ) : (
+                <FieldSelect
+                  id="nome-cargo"
+                  value={cargoId ?? ""}
+                  onChange={(e) => trocarCargo(Number(e.target.value))}
+                  autoFocus
+                >
+                  {cargos.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </FieldSelect>
+              )}
             </FieldGroup>
 
             <FieldGroup>
