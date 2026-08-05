@@ -25,6 +25,24 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+/**
+ * ⭐ Estende a sessão: pede um token novo, com o prazo cheio, e guarda no
+ * lugar do atual. Quem abre o ATLAS toda semana nunca precisa relogar.
+ *
+ * Grava só no `localStorage`, sem `setToken`: mexer no estado dispararia de
+ * novo o efeito que carrega o usuário (o `token` é a dependência dele) e a
+ * renovação viraria um laço. O token em memória continua válido nesta sessão
+ * — o novo entra em vigor no próximo load, que é quando ele é lido.
+ *
+ * Falha em silêncio de propósito: renovar é conforto, não requisito. Se a
+ * rede cair aqui, a sessão segue valendo pelo prazo que já tinha.
+ */
+function renovarSessao(token: string) {
+  apiFetch<{ access_token: string }>("/auth/renovar", { method: "POST", token })
+    .then((resposta) => localStorage.setItem("token", resposta.access_token))
+    .catch(() => {});
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
@@ -40,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const dados = await apiFetch<UsuarioResponse>("/auth/me", { token });
         const cargo = await apiFetch<Cargo>(`/cargos/${dados.cargo_id}`, { token });
         setUsuario({ ...dados, cargo });
+        renovarSessao(token);
       } catch {
         setToken(null);
         localStorage.removeItem("token");
