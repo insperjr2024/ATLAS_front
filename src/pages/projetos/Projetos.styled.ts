@@ -150,6 +150,90 @@ export const FiltersRow = styled.div`
   align-items: center;
 `;
 
+export const ViewToggleRow = styled.div`
+  display: inline-flex;
+  padding: 0.1875rem;
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.muted};
+`;
+
+export const ViewToggleBtn = styled.button<{ $ativo?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.875rem;
+  padding: 0 0.75rem;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+  transition: background ${theme.transitions.fast}, color ${theme.transitions.fast};
+  background: ${({ $ativo }) => ($ativo ? theme.colors.card : "transparent")};
+  color: ${({ $ativo }) => ($ativo ? theme.colors.foreground : theme.colors.mutedForeground)};
+  box-shadow: ${({ $ativo }) => ($ativo ? theme.shadows.sm : "none")};
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+`;
+
+export const FrenteFilterWrap = styled.div`
+  position: relative;
+`;
+
+export const FrenteFilterButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.input};
+  background: ${theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: none;
+    border-color: ${theme.colors.ring};
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 25%, transparent);
+  }
+`;
+
+export const FrenteFilterPanel = styled.div`
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.375rem);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 12rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 0.625rem 0.75rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.popover};
+  box-shadow: ${theme.shadows.lg};
+`;
+
+export const FrenteFilterFooter = styled.button`
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.primary};
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 /* ------------------------------------------------------------------ */
 /* Shell da página do projeto                                          */
 /* ------------------------------------------------------------------ */
@@ -449,4 +533,62 @@ export const HeaderAcoes = styled.div`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
+`;
+
+/* ------------------------------------------------------------------ */
+/* Bancas por frente (§5.5 + §8)                                       */
+/* ------------------------------------------------------------------ */
+
+/** Um bloco por frente que o projeto contempla. */
+export const FrenteBloco = styled.section`
+  & + & {
+    margin-top: ${theme.spacing.lg};
+    padding-top: ${theme.spacing.lg};
+    border-top: 1px solid ${theme.colors.border};
+  }
+`;
+
+export const FrenteCabecalho = styled.header`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.sm};
+
+  h3 {
+    margin: 0;
+    font-size: ${theme.fontSize.sm};
+    font-weight: ${theme.fontWeight.semibold};
+    color: ${theme.colors.foreground};
+  }
+
+  small {
+    color: ${theme.colors.mutedForeground};
+    font-size: ${theme.fontSize.xs};
+  }
+`;
+
+export const BancaLinha = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} 0;
+
+  & + & {
+    border-top: 1px dashed ${theme.colors.border};
+  }
+`;
+
+/** O nome do escopo, que ocupa a folga e empurra data e status para a direita. */
+export const BancaEscopo = styled.span`
+  flex: 1;
+  min-width: 10rem;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+`;
+
+export const BancaData = styled.span`
+  font-size: ${theme.fontSize.sm};
+  font-variant-numeric: tabular-nums;
+  color: ${theme.colors.foreground};
 `;

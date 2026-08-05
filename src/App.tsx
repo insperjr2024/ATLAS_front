@@ -6,6 +6,7 @@ import { FormularioRoute } from "@/routes/FormularioRoute";
 import { RequirePosicao } from "@/routes/RequirePosicao";
 import { Layout } from "@/components/Layout";
 import { Login } from "@/pages/Login";
+import { EsqueciSenha } from "@/pages/EsqueciSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { Calendario } from "@/pages/Calendario";
@@ -37,6 +38,7 @@ import { PainelRelatorio } from "@/pages/avaliacao-desempenho/painel/PainelRelat
 import { PainelLotes } from "@/pages/avaliacao-desempenho/painel/PainelLotes";
 import { PainelMentoria } from "@/pages/avaliacao-desempenho/painel/PainelMentoria";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
+import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 
 export default function App() {
   return (
@@ -46,6 +48,7 @@ export default function App() {
           {/* 🏠 A home é /projetos: é o que a pessoa abre todo dia. */}
           <Route path="/" element={<Navigate to="/projetos" replace />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />
@@ -80,6 +83,7 @@ export default function App() {
                   <Route path="execucao" element={<ExecucaoAba />} />
                   <Route path="alocacao" element={<AlocacaoAba />} />
                   <Route path="atrasos" element={<AtrasosAba />} />
+                  <Route path="tarefas" element={<TarefasGeraisAba />} />
                 </Route>
               </Route>
 

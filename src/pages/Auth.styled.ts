@@ -1,10 +1,12 @@
 import styled, { keyframes, css } from "styled-components";
+import { Link } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import { Button } from "@/components/ui/button";
 
 /* =========================================================================
-   Login — coluna única centrada, exports namespaced "Login*".
-   Toda a motion vive em CSS; o componente só compõe.
+   Login — painel dividido (imagem da equipe + formulário), inspirado na
+   página de login do GP II. Exports namespaced "Login*" pra não colidir
+   com nada — só o Login.tsx importa deste arquivo.
    ========================================================================= */
 
 const loginFadeUp = keyframes`
@@ -18,16 +20,9 @@ const loginFadeUp = keyframes`
   }
 `;
 
-const loginGlowDrift = keyframes`
-  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0.55; }
-  50%  { transform: translate3d(4%, 6%, 0) scale(1.12); opacity: 0.8; }
-  100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.55; }
-`;
-
-const loginShine = keyframes`
-  0%   { transform: translateX(-130%) skewX(-18deg); }
-  60%  { transform: translateX(230%) skewX(-18deg); }
-  100% { transform: translateX(230%) skewX(-18deg); }
+const loginCursorBlink = keyframes`
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 `;
 
 /* Staggered reveal: cada filho entra um tempo depois do anterior */
@@ -53,13 +48,113 @@ const loginRevealStagger = css`
 /* ---------- Página ---------- */
 
 export const AuthPageWrapper = styled.div`
-  position: relative;
   min-height: 100vh;
+  display: flex;
+`;
+
+/* Some abaixo de 1024px — em telas estreitas só o formulário aparece */
+export const LoginLeftPanel = styled.div`
+  display: none;
+  width: 50%;
+  position: relative;
+  overflow: hidden;
+  background: ${theme.colors.primary};
+
+  @media (min-width: 1024px) {
+    display: flex;
+  }
+`;
+
+export const LoginPanelImage = styled.img`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+export const LoginPanelOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.65) 0%,
+    rgba(0, 0, 0, 0.55) 40%,
+    rgba(0, 0, 0, 0.5) 70%,
+    rgba(0, 0, 0, 0.45) 100%
+  );
+  pointer-events: none;
+`;
+
+export const LoginPanelContent = styled.div`
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 100%;
+  padding: ${theme.spacing["2xl"]};
+`;
+
+export const LoginPanelTextContainer = styled.div`
+  max-width: 560px;
+  width: 100%;
+  text-align: left;
+`;
+
+export const LoginPanelTitleBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+`;
+
+export const LoginPanelTitle = styled.h1`
+  /* GP II carrega a família estática como "Inter"; aqui ela vem do
+     @fontsource-variable/inter, registrada como "Inter Variable" — pedir
+     "Inter" literal não casava com nada instalado e caía pro fallback
+     (system-ui/Segoe UI), uma tipografia bem diferente. */
+  font-family: "Inter Variable", system-ui, -apple-system, sans-serif;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  /* GP II carrega só até o peso 700 (Google Fonts wght@400;500;600;700) — aqui a
+     fonte é variável e tem 800 de verdade, o que ficava visivelmente mais grosso
+     que o original. 700 é o que o GP II realmente renderiza. */
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 0;
+`;
+
+export const LoginPanelTitleAccent = styled.span`
+  color: ${theme.colors.accent};
+`;
+
+export const LoginPanelTitleCursor = styled.span`
+  display: inline-block;
+  width: 3px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: ${theme.colors.accent};
+  animation: ${loginCursorBlink} 0.8s step-end infinite;
+`;
+
+export const LoginPanelSubtitle = styled.p`
+  font-size: ${theme.fontSize.lg};
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  margin: 0;
+`;
+
+export const LoginRightPanel = styled.div`
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  padding: ${theme.spacing.lg} ${theme.spacing.md};
+  padding: ${theme.spacing.md};
   background: ${theme.colors.background};
 
   @media (min-width: ${theme.breakpoints.sm}px) {
@@ -67,49 +162,9 @@ export const AuthPageWrapper = styled.div`
   }
 `;
 
-/* Dois halos suaves que respiram — dão vida ao fundo sem pedir imagem nenhuma */
-export const LoginGlow = styled.div<{ $position: "top" | "bottom" }>`
-  position: absolute;
-  width: min(48rem, 90vw);
-  height: min(48rem, 90vw);
-  border-radius: ${theme.borderRadius.full};
-  pointer-events: none;
-  filter: blur(90px);
-  will-change: transform, opacity;
-  animation: ${loginGlowDrift} 16s ease-in-out infinite;
-
-  ${({ $position }) =>
-    $position === "top"
-      ? css`
-          top: -22rem;
-          right: -14rem;
-          background: radial-gradient(
-            closest-side,
-            rgba(239, 68, 68, 0.16),
-            rgba(239, 68, 68, 0) 70%
-          );
-        `
-      : css`
-          bottom: -24rem;
-          left: -16rem;
-          animation-delay: -8s;
-          background: radial-gradient(
-            closest-side,
-            rgba(239, 68, 68, 0.1),
-            rgba(239, 68, 68, 0) 70%
-          );
-        `}
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-`;
-
 export const LoginFormWrapper = styled.div`
-  position: relative;
-  z-index: 1;
   width: 100%;
-  max-width: 24rem;
+  max-width: 28rem;
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.xl};
@@ -122,59 +177,47 @@ export const LoginFormWrapper = styled.div`
 
 /* ---------- Cabeçalho ---------- */
 
+/* Bloco único do header: logo grande + subtítulo no mesmo eixo, igual ao GP II —
+   sem título de página separado, o logo já ocupa esse lugar. */
 export const LoginHeaderBlock = styled.div`
+  width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.4rem;
+  align-items: flex-start;
+  gap: 0.125rem;
 `;
 
-export const LoginBrandLockup = styled.div`
+export const LoginFormLogoWrap = styled.div`
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.7rem;
-  margin-bottom: 1rem;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+  margin-top: 0.5rem;
+
+  @media (min-width: ${theme.breakpoints.sm}px) {
+    margin-left: -3rem;
+    margin-top: 1.5rem;
+  }
 `;
 
 export const LoginBrandLogo = styled.img`
   display: block;
-  height: 44px;
+  max-height: 160px;
   width: auto;
   max-width: 100%;
   object-fit: contain;
-`;
-
-export const LoginBrandDivider = styled.span`
-  width: 1px;
-  align-self: stretch;
-  min-height: 26px;
-  background: ${theme.colors.border};
-`;
-
-export const LoginBrandProduct = styled.span`
-  font-size: 0.9rem;
-  font-weight: ${theme.fontWeight.semibold};
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-  color: ${theme.colors.foreground};
-`;
-
-export const LoginFormTitle = styled.h1`
-  font-size: clamp(1.6rem, 4vw, 1.9rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  color: ${theme.colors.foreground};
+  object-position: left center;
   margin: 0;
+  padding: 0;
+  vertical-align: top;
 `;
 
 export const LoginFormSubtitle = styled.p`
+  width: 100%;
   color: ${theme.colors.mutedForeground};
-  font-size: 0.95rem;
-  line-height: 1.5;
   margin: 0;
+  padding: 0;
+  text-align: left;
 `;
 
 /* ---------- Formulário ---------- */
@@ -192,30 +235,42 @@ export const LoginFieldGroup = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
+export const LoginFieldRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+export const LoginForgotLink = styled(Link)`
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.accent};
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+/*
+ * O Input deste projeto (shadcn mais novo) tem h-8 por padrão — bem menor que
+ * o h-11 (2.75rem) do Input do GP II. Pra ficar no mesmo formato/altura,
+ * fixamos aqui o que lá vem de graça do componente; o resto (padding-left só
+ * pro ícone) é o mesmo wrapper do GP II.
+ */
 export const LoginInputWrapper = styled.div`
   position: relative;
 
   & input {
-    padding-left: 2.6rem;
-    height: 2.95rem;
+    height: 2.75rem;
     border-radius: ${theme.borderRadius.lg};
-    transition: border-color ${theme.transitions.fast},
-      box-shadow ${theme.transitions.fast};
-  }
-
-  & input:focus-visible {
-    border-color: ${theme.colors.accent};
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
-  }
-
-  &:focus-within svg {
-    color: ${theme.colors.accent};
+    padding-left: 2.5rem;
   }
 `;
 
 export const LoginInputWrapperWithRight = styled(LoginInputWrapper)`
   & input {
-    padding-right: 2.75rem;
+    padding-right: 2.5rem;
   }
 `;
 
@@ -226,9 +281,9 @@ export const LoginIconWrapper = styled.span`
   transform: translateY(-50%);
   display: flex;
   align-items: center;
+  justify-content: center;
   color: ${theme.colors.mutedForeground};
   pointer-events: none;
-  transition: color ${theme.transitions.fast};
 `;
 
 export const LoginTogglePasswordBtn = styled.button`
@@ -249,59 +304,23 @@ export const LoginTogglePasswordBtn = styled.button`
 `;
 
 /*
- * O Button desta branch não tem variant "accent" e o tema Tailwind local
- * não usa vermelho como cor neutra de "accent" (é usado em hovers de menu
- * etc.). Por isso a cor vem explícita do theme.ts (mesmo tema da branch
- * development), sem depender do variant do Button ou de tokens globais.
+ * Mesmo botão do GP II: outline vermelho que vira preenchido no hover. O
+ * Button daqui não tem variant "accent" (nem precisa — tudo abaixo é
+ * !important), mas o size="lg" dele é h-9 (36px) contra o h-11 (44px) do
+ * GP II, então a altura vem fixa aqui pra bater com a altura dos inputs.
  */
 export const LoginSubmitButton = styled(Button)`
-  position: relative;
   width: 100%;
-  height: 3rem;
+  height: 2.75rem;
   gap: 0.5rem;
-  overflow: hidden;
-  border-radius: ${theme.borderRadius.lg};
-  background: ${theme.colors.accent};
-  color: ${theme.colors.accentForeground};
-  font-weight: ${theme.fontWeight.semibold};
-  box-shadow: ${theme.shadows.md};
-  transition: transform ${theme.transitions.fast},
-    box-shadow ${theme.transitions.normal};
+  background: transparent !important;
+  border: 1.5px solid ${theme.colors.accent} !important;
+  color: ${theme.colors.accent} !important;
+  transition: background ${theme.transitions.fast}, color ${theme.transitions.fast} !important;
 
   &:hover:not(:disabled) {
-    background: ${theme.colors.accent};
-    transform: translateY(-1px);
-    box-shadow: 0 10px 24px -8px rgba(239, 68, 68, 0.55);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 45%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.35) 50%,
-      rgba(255, 255, 255, 0) 100%
-    );
-    transform: translateX(-130%) skewX(-18deg);
-  }
-
-  &:hover:not(:disabled)::after {
-    animation: ${loginShine} 0.9s ease forwards;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    &::after {
-      display: none;
-    }
+    background: ${theme.colors.accent} !important;
+    color: #ffffff !important;
   }
 `;
 
@@ -316,9 +335,3 @@ export const LoginErrorMessage = styled.p`
   text-align: center;
 `;
 
-export const LoginFooterNote = styled.p`
-  font-size: 0.8rem;
-  color: ${theme.colors.mutedForeground};
-  text-align: center;
-  margin: 0;
-`;

@@ -10,6 +10,30 @@ export const Board = styled.div<{ $colunas: number }>`
   overflow-x: auto;
   padding-bottom: ${theme.spacing.sm};
   align-items: start;
+
+  /* A barra padrão do SO (grossa, com setinha) destoa do resto da UI — aqui
+     fica fina e some quando não tem o quê rolar. Firefox usa as propriedades
+     scrollbar-width/scrollbar-color; o resto, os pseudo-elementos
+     ::-webkit-scrollbar. */
+  scrollbar-width: thin;
+  scrollbar-color: ${theme.colors.border} transparent;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colors.border};
+    border-radius: ${theme.borderRadius.full};
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${theme.colors.mutedForeground};
+  }
 `;
 
 export const Coluna = styled.div<{ $sobre?: boolean; $cor?: TonsColuna }>`
@@ -72,7 +96,12 @@ export const ContadorVencidas = styled.span`
   white-space: nowrap;
 `;
 
-export const Card = styled.div<{ $vencida?: boolean; $arrastando?: boolean; $cor?: TonsColuna }>`
+export const Card = styled.div<{
+  $vencida?: boolean;
+  $arrastando?: boolean;
+  $cor?: TonsColuna;
+  $bloqueada?: boolean;
+}>`
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
@@ -93,6 +122,16 @@ export const Card = styled.div<{ $vencida?: boolean; $arrastando?: boolean; $cor
     css`
       opacity: 0.4;
       cursor: grabbing;
+    `}
+
+  /* Card sem transição manual válida (ex.: Vendido) ou cujo destino é
+     ambíguo pra arrastar (Pausado — retoma pelo botão da página do
+     projeto): mesma cor de sempre, só sem convite a arrastar. */
+  ${({ $bloqueada }) =>
+    $bloqueada &&
+    css`
+      cursor: default;
+      opacity: 0.75;
     `}
 
   &:focus-visible {

@@ -1,7 +1,7 @@
 /**
  * A paleta das etapas do cronograma.
  *
- * ⚠ Por que não usar as cores do `theme.ts`: o tema tem essencialmente uma
+ * Por que não usar as cores do `theme.ts`: o tema tem essencialmente uma
  * matiz (vermelho) mais success/warning/info, e as três semânticas apontam
  * para significados já ocupados — vermelho é primary/destructive/atrasado,
  * verde é sucesso, âmbar é alerta. Cor de etapa **não pode encostar na
@@ -13,9 +13,14 @@
  * amostras, sem color picker livre.
  *
  * Os valores são hex literais gerados uma vez a partir da fórmula HSL
- * (matiz variável; amostra 62%/52%, fundo 62%/92%, texto 45%/35%). Literais
+ * (matiz variável; amostra 62%/52%, fundo 62%/80%, texto 55%/25%). Literais
  * porque são mais fáceis de revisar num diff do que uma conversão em runtime
  * — e porque `cronograma_etapa.cor` é `CHAR(7)`, que só cabe `#RRGGBB`.
+ *
+ * O fundo já foi 92% de luminosidade, quase branco. Subiu para 80% para as
+ * etapas pintarem de verdade. O texto teve que escurecer junto (era 45%/35%):
+ * a 80% de fundo, o tom antigo caía para 3.5:1 em ciano, verde-água e
+ * mostarda. Com 55%/25% o pior caso do conjunto é 5.35:1.
  */
 
 export interface CorEtapa {
@@ -30,14 +35,14 @@ export interface CorEtapa {
 }
 
 export const PALETA: CorEtapa[] = [
-  { amostra: "#397AD0", fundo: "#DEE9F7", texto: "#315481" }, // azul
-  { amostra: "#7839D0", fundo: "#E8DEF7", texto: "#533181" }, // roxo
-  { amostra: "#39B7D0", fundo: "#DEF3F7", texto: "#317481" }, // ciano
-  { amostra: "#D03985", fundo: "#F7DEEB", texto: "#813159" }, // magenta
-  { amostra: "#D07539", fundo: "#F7E8DE", texto: "#815131" }, // laranja
-  { amostra: "#39D09E", fundo: "#DEF7EF", texto: "#318167" }, // verde-água
-  { amostra: "#AB39D0", fundo: "#F1DEF7", texto: "#6D3181" }, // violeta
-  { amostra: "#D0AB39", fundo: "#F7F1DE", texto: "#816D31" }, // mostarda
+  { amostra: "#397AD0", fundo: "#ACC8EC", texto: "#1D3B63" }, // azul
+  { amostra: "#7839D0", fundo: "#C7ACEC", texto: "#3A1D63" }, // roxo
+  { amostra: "#39B7D0", fundo: "#ACE1EC", texto: "#1D5763" }, // ciano
+  { amostra: "#D03985", fundo: "#ECACCC", texto: "#631D40" }, // magenta
+  { amostra: "#D07539", fundo: "#ECC6AC", texto: "#63391D" }, // laranja
+  { amostra: "#39D09E", fundo: "#ACECD7", texto: "#1D634C" }, // verde-água
+  { amostra: "#AB39D0", fundo: "#DCACEC", texto: "#521D63" }, // violeta
+  { amostra: "#D0AB39", fundo: "#ECDCAC", texto: "#63521D" }, // mostarda
 ];
 
 /** A cor sugerida para a próxima etapa — determinística pela ordem, e então
@@ -56,7 +61,71 @@ export function tonsDaCor(cor: string): CorEtapa {
   return { fundo: cor, amostra: cor, texto: "#1F2937" };
 }
 
+/**
+ * O fundo de um dia disputado por N etapas: fatias diagonais de tamanho igual.
+ *
+ * Com uma cor só devolve o próprio hex — célula chapada, sem gradiente, que é
+ * o caso esmagadoramente comum e não deve pagar por este recurso.
+ *
+ * Atenção: as paradas são DUPLAS (`cor A% B%`), não simples. Com uma parada só o CSS
+ * interpola entre as cores e sai um degradê borrado; repetindo a cor no fim da
+ * própria fatia a transição vira um corte seco, que é o que dá o triângulo.
+ *
+ * 135deg aponta o eixo para o canto inferior direito, então a divisa corre de
+ * baixo-esquerda para cima-direita — a diagonal "/".
+ */
+export function fundoDiagonal(cores: string[]): string {
+  if (cores.length === 1) return cores[0];
+  const passo = 100 / cores.length;
+  const paradas = cores
+    .map((cor, i) => `${cor} ${(i * passo).toFixed(4)}% ${((i + 1) * passo).toFixed(4)}%`)
+    .join(", ");
+  return `linear-gradient(135deg, ${paradas})`;
+}
+
+/** O texto sobre uma célula dividida: as fatias têm matizes diferentes, então
+ *  nenhuma cor da paleta serve para todas. Cinza-escuro neutro passa em todas. */
+export const TEXTO_SOBRE_DIVIDIDA = "#1F2937";
+
 /** Reservados e fora da rampa, para nunca disputarem matiz com as etapas. */
 export const COR_AMBIENTACAO = "#DCE0E5";
 export const COR_PAUSA = "#E9EAED";
 export const COR_NAO_UTIL = "#F0F0F0";
+
+/* ------------------------------------------------------------------ */
+/* Marcos (§6.4)                                                       */
+/* ------------------------------------------------------------------ */
+
+export type TipoMarco =
+  | "banca"
+  | "entrega"
+  | "kickoff"
+  | "reuniao_alinhamento"
+  | "visita_presencial";
+
+/**
+ * Um vermelho só para todos os marcos.
+ *
+ * A distinção entre eles é o NOME escrito dentro do box, não a cor — por isso
+ * não há legenda de marcos: não existe código de cor a decifrar. O vermelho
+ * fica fora da rampa das etapas, então marco nunca se confunde com etapa.
+ *
+ * O fundo é quase BRANCO, e não um vermelho pálido: o box é desenhado por cima
+ * de um dia que já pode estar pintado, e agora que os fundos das etapas são
+ * mais fortes (80% de luminosidade), qualquer tinta no box o faria competir
+ * com a etapa embaixo. Branco com borda saturada separa de todas elas.
+ */
+export const COR_MARCO = {
+  borda: "#D03939",
+  fundo: "#FEF9F9",
+  texto: "#631D1D",
+};
+
+/** O rótulo curto do box na visão de mês, onde não cabe o título inteiro. */
+export const ROTULOS_MARCO: Record<TipoMarco, string> = {
+  banca: "Banca",
+  entrega: "Entrega",
+  kickoff: "Kickoff",
+  reuniao_alinhamento: "Reunião",
+  visita_presencial: "Visita",
+};

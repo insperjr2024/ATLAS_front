@@ -39,6 +39,7 @@ export function MonitoramentoLayout() {
   const [frenteId, setFrenteId] = useState<number | null>(null);
 
   const podeFiltrar = pode(usuario, "filtrar_por_frente");
+  const podeVerTarefasGerais = pode(usuario, "ver_tarefas_gerais");
 
   useEffect(() => {
     if (!token) return;
@@ -82,6 +83,7 @@ export function MonitoramentoLayout() {
         <TabLink to="/monitoramento/execucao">Execução</TabLink>
         <TabLink to="/monitoramento/alocacao">Alocação</TabLink>
         <TabLink to="/monitoramento/atrasos">Atrasos</TabLink>
+        {podeVerTarefasGerais && <TabLink to="/monitoramento/tarefas">Tarefas</TabLink>}
       </TabBar>
 
       <Outlet context={contexto} />

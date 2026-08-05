@@ -14,6 +14,7 @@ export type Acao =
   | "gerir_membros"
   | "marcar_kickoff"
   | "mudar_status_projeto"
+  | "mover_projeto_kanban"
   | "definir_cronograma"
   | "aprovar_reajuste"
   | "remarcar_banca"
@@ -29,6 +30,8 @@ export type Acao =
   | "editar_formulario_desempenho"
   | "gerenciar_mentoria"
   | "ver_relatorio_de_qualquer_um";
+  | "ver_tarefas_gerais"
+  | "filtrar_por_frente";
 
 const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão — restrito às lideranças
@@ -44,9 +47,17 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   liberar_excecao_choque: ["diretor"],
   registrar_justificativa_atraso: ["diretor"],
   filtrar_por_frente: ["diretor"],
+  /** O kanban de projetos muda o ciclo de vida por arrasto — mais informal
+   *  que os botões de `mudar_status_projeto`, por isso fica restrito à
+   *  diretoria, mesmo o botão equivalente aceitando gerente/coordenador. */
+  mover_projeto_kanban: ["diretor"],
   //: As colunas do kanban são por projeto, mas quem as edita é sempre a
   //: diretoria — o time move cards, não redesenha o fluxo.
   configurar_colunas: ["diretor"],
+  /** O board macro de tarefas (todos os projetos juntos) — o backend usa
+   *  require_diretor, não require_gestao: mais informal que os números
+   *  agregados do resto do Monitoramento, então fica só pra diretoria. */
+  ver_tarefas_gerais: ["diretor"],
 
   // Condução do projeto — o consultor não define cronograma nem move o
   // ciclo de vida do projeto (§4)
