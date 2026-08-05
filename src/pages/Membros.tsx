@@ -172,7 +172,7 @@ export function Membros() {
 
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Todos os membros do núcleo</PageCardTitle>
+          <PageCardTitle>Todos os membros</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
           <FiltersRow>

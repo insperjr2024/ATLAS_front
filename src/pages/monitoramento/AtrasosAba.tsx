@@ -184,14 +184,10 @@ export function AtrasosAba() {
         <PageCardHeader>
           <PageCardTitle>Por projeto</PageCardTitle>
           {projetos.length > 0 && (
-            /* A legenda diz de onde vem a cor. Sem esse "pior motivo" escrito,
-               quem vê "12 dias" em âmbar ao lado de "9 dias" em vermelho lê a
-               escala como quebrada — quando na verdade os 12 são 3+4+5. */
             <Legenda>
               <LegendaItem $nivel="leve">até 3 dias</LegendaItem>
               <LegendaItem $nivel="media">4 a 10</LegendaItem>
               <LegendaItem $nivel="critica">mais de 10</LegendaItem>
-              <li>cor pelo pior motivo, não pela soma</li>
             </Legenda>
           )}
         </PageCardHeader>

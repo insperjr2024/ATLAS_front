@@ -113,7 +113,7 @@ export function ExecucaoAba() {
       <FaixaResumo>
         <ResumoItem>
           <ResumoValor>{resumo.projetos}</ResumoValor>
-          <ResumoRotulo>projetos na visão</ResumoRotulo>
+          <ResumoRotulo>projetos na gestão</ResumoRotulo>
         </ResumoItem>
         <ResumoItem>
           <ResumoValor $nivel={resumo.sem_tarefas > 0 ? "critica" : undefined}>
