@@ -1,0 +1,224 @@
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { deleteAvaliacao, getAvaliacaoDetalhe, getAvaliacoes } from "@/lib/desempenho-avaliacoes";
+import { getLotes } from "@/lib/desempenho-lotes";
+import { getUsuarios } from "@/lib/usuarios";
+import type { DesempenhoAvaliacao, DesempenhoAvaliacaoDetalhe, DesempenhoLote, DesempenhoTipo } from "@/types/desempenho";
+import type { UsuarioResumo } from "@/types/auth";
+import {
+  EmptyText,
+  ErrorBlock,
+  ErrorText,
+  PageBadge,
+  PageButton,
+  PageButtonSm,
+  PageCard,
+  PageCardContent,
+  PageCardHeader,
+  PageCardTitle,
+  PageLoadingBlock,
+} from "@/styles/page.styled";
+import { FieldSelect } from "@/pages/Bancas.styled";
+import {
+  AvaliacaoDetalheBlock,
+  CriterioDetalheRow,
+  FiltrosRow,
+  ListaExpansivel,
+  PessoaHeader,
+  PessoaResumo,
+  SubItem,
+  SubItemMeta,
+  SubLista,
+} from "./Painel.styled";
+
+function corPorNota(nota: number): "danger" | "default" {
+  return nota < 3 ? "danger" : "default";
+}
+
+function formatarData(iso?: string): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+export function PainelAvaliados() {
+  const { token } = useAuth();
+  const [avaliacoes, setAvaliacoes] = useState<DesempenhoAvaliacao[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
+  const [lotes, setLotes] = useState<DesempenhoLote[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+  const [expandido, setExpandido] = useState<number | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState<DesempenhoTipo | "todos">("todos");
+
+  const [avaliacaoExpandidaId, setAvaliacaoExpandidaId] = useState<number | null>(null);
+  const [detalhes, setDetalhes] = useState<Map<number, DesempenhoAvaliacaoDetalhe>>(new Map());
+
+  async function buscar() {
+    if (!token) return;
+    setCarregando(true);
+    setErro("");
+    try {
+      const [a, u, l] = await Promise.all([getAvaliacoes(token), getUsuarios(token), getLotes(token, false)]);
+      setAvaliacoes(a);
+      setUsuarios(u);
+      setLotes(l);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao carregar avaliações");
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    buscar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const nomes = useMemo(() => new Map(usuarios.map((u) => [u.id, u.nome])), [usuarios]);
+  const tipoPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.tipo])), [lotes]);
+
+  const avaliacoesFiltradas = useMemo(() => {
+    if (filtroTipo === "todos") return avaliacoes;
+    return avaliacoes.filter((a) => tipoPorLote.get(a.lote_id) === filtroTipo);
+  }, [avaliacoes, tipoPorLote, filtroTipo]);
+
+  const porAvaliado = useMemo(() => {
+    const grupos = new Map<number, DesempenhoAvaliacao[]>();
+    for (const a of avaliacoesFiltradas) {
+      const lista = grupos.get(a.avaliado_id) ?? [];
+      lista.push(a);
+      grupos.set(a.avaliado_id, lista);
+    }
+    return Array.from(grupos.entries()).sort(([, a], [, b]) => b.length - a.length);
+  }, [avaliacoesFiltradas]);
+
+  async function toggleDetalhe(avaliacaoId: number) {
+    if (!token) return;
+    if (avaliacaoExpandidaId === avaliacaoId) {
+      setAvaliacaoExpandidaId(null);
+      return;
+    }
+    setAvaliacaoExpandidaId(avaliacaoId);
+    if (!detalhes.has(avaliacaoId)) {
+      const detalhe = await getAvaliacaoDetalhe(avaliacaoId, token);
+      setDetalhes((atual) => new Map(atual).set(avaliacaoId, detalhe));
+    }
+  }
+
+  async function handleRemover(avaliacaoId: number) {
+    if (!token) return;
+    await deleteAvaliacao(avaliacaoId, token);
+    setAvaliacoes((atual) => atual.filter((a) => a.id !== avaliacaoId));
+    setAvaliacaoExpandidaId(null);
+  }
+
+  if (erro) {
+    return (
+      <ErrorBlock>
+        <ErrorText>{erro}</ErrorText>
+        <PageButton $variant="outline" onClick={buscar}>
+          Tentar novamente
+        </PageButton>
+      </ErrorBlock>
+    );
+  }
+
+  if (carregando) return <PageLoadingBlock />;
+
+  return (
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>Como cada um foi avaliado</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
+        <FiltrosRow>
+          <FieldSelect value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as DesempenhoTipo | "todos")}>
+            <option value="todos">Todos os tipos</option>
+            <option value="periodico">Periódica</option>
+            <option value="finalizacao">Finalização</option>
+          </FieldSelect>
+        </FiltrosRow>
+
+        {porAvaliado.length === 0 ? (
+          <EmptyText>Nenhuma avaliação registrada ainda.</EmptyText>
+        ) : (
+          <ListaExpansivel>
+            {porAvaliado.map(([avaliadoId, lista]) => {
+              const media = lista.reduce((soma, a) => soma + a.nota_geral, 0) / lista.length;
+              return (
+                <div key={avaliadoId}>
+                  <PessoaHeader
+                    type="button"
+                    onClick={() => setExpandido((atual) => (atual === avaliadoId ? null : avaliadoId))}
+                  >
+                    <span>{nomes.get(avaliadoId) ?? `Usuário ${avaliadoId}`}</span>
+                    <PessoaResumo>
+                      {lista.length} recebida(s) · média{" "}
+                      <PageBadge $tone={corPorNota(media)}>{media.toFixed(1)}</PageBadge>
+                    </PessoaResumo>
+                  </PessoaHeader>
+                  {expandido === avaliadoId && (
+                    <SubLista>
+                      {lista.map((a) => {
+                        const detalhe = detalhes.get(a.id);
+                        const expandidaAqui = avaliacaoExpandidaId === a.id;
+                        return (
+                          <div key={a.id}>
+                            <SubItem>
+                              <span>
+                                {nomes.get(a.avaliador_id) ?? `Usuário ${a.avaliador_id}`}
+                                {" · "}
+                                {formatarData(a.criado_em)}
+                              </span>
+                              <SubItemMeta>
+                                <PageBadge $tone={corPorNota(a.nota_geral)}>{a.nota_geral.toFixed(1)}</PageBadge>
+                                <PageButtonSm $variant="outline" type="button" onClick={() => toggleDetalhe(a.id)}>
+                                  {expandidaAqui ? "Ocultar" : "Detalhes"}
+                                </PageButtonSm>
+                                <PageButtonSm $variant="ghost" type="button" onClick={() => handleRemover(a.id)}>
+                                  Remover
+                                </PageButtonSm>
+                              </SubItemMeta>
+                            </SubItem>
+                            {expandidaAqui && (
+                              <AvaliacaoDetalheBlock>
+                                {!detalhe ? (
+                                  <EmptyText>Carregando...</EmptyText>
+                                ) : (
+                                  <>
+                                    <CriterioDetalheRow>
+                                      <strong>Nota geral</strong>
+                                      <span>{detalhe.nota_geral.toFixed(1)}</span>
+                                    </CriterioDetalheRow>
+                                    {detalhe.notas.map((n) => (
+                                      <CriterioDetalheRow key={n.criterio_id}>
+                                        <span>{n.label ?? `Critério ${n.criterio_id}`}</span>
+                                        <span>
+                                          {n.tipo_resposta === "nota"
+                                            ? (n.nota != null ? n.nota.toFixed(1) : "—")
+                                            : (n.resposta_texto || "—")}
+                                        </span>
+                                      </CriterioDetalheRow>
+                                    ))}
+                                    <CriterioDetalheRow>
+                                      <strong>Comentário</strong>
+                                      <span>{detalhe.comentarios || "—"}</span>
+                                    </CriterioDetalheRow>
+                                  </>
+                                )}
+                              </AvaliacaoDetalheBlock>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </SubLista>
+                  )}
+                </div>
+              );
+            })}
+          </ListaExpansivel>
+        )}
+      </PageCardContent>
+    </PageCard>
+  );
+}

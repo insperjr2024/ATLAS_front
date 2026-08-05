@@ -28,6 +28,16 @@ import { VisaoGeralAba } from "@/pages/monitoramento/VisaoGeralAba";
 import { ExecucaoAba } from "@/pages/monitoramento/ExecucaoAba";
 import { AlocacaoAba } from "@/pages/monitoramento/AlocacaoAba";
 import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
+import { AvaliacaoDesempenho } from "@/pages/avaliacao-desempenho/AvaliacaoDesempenho";
+import { MeuRelatorio } from "@/pages/avaliacao-desempenho/MeuRelatorio";
+import { MeusMentorados } from "@/pages/avaliacao-desempenho/MeusMentorados";
+import { PainelDesempenho } from "@/pages/avaliacao-desempenho/painel/PainelDesempenho";
+import { PainelAvaliadores } from "@/pages/avaliacao-desempenho/painel/PainelAvaliadores";
+import { PainelAvaliados } from "@/pages/avaliacao-desempenho/painel/PainelAvaliados";
+import { PainelRelatorio } from "@/pages/avaliacao-desempenho/painel/PainelRelatorio";
+import { PainelLotes } from "@/pages/avaliacao-desempenho/painel/PainelLotes";
+import { PainelMentoria } from "@/pages/avaliacao-desempenho/painel/PainelMentoria";
+import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 
 export default function App() {
@@ -75,6 +85,33 @@ export default function App() {
                   <Route path="atrasos" element={<AtrasosAba />} />
                   <Route path="tarefas" element={<TarefasGeraisAba />} />
                 </Route>
+              </Route>
+
+              {/* Avaliação de Desempenho (periódica/finalização) — não
+                  confundir com /avaliacoes (feedback de banca) nem com
+                  /dashboard (Desempenho.tsx, % de bancas atendidas). */}
+              <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenho />} />
+              <Route path="/avaliacao-desempenho/relatorio" element={<MeuRelatorio />} />
+
+              <Route element={<RequirePosicao posicoes={["coordenador"]} />}>
+                <Route path="/avaliacao-desempenho/mentorados" element={<MeusMentorados />} />
+              </Route>
+
+              <Route element={<RequirePosicao posicoes={["diretor", "gerente"]} />}>
+                <Route path="/avaliacao-desempenho/painel" element={<PainelDesempenho />}>
+                  <Route index element={<Navigate to="avaliadores" replace />} />
+                  <Route path="avaliadores" element={<PainelAvaliadores />} />
+                  <Route path="avaliados" element={<PainelAvaliados />} />
+                  <Route path="relatorio" element={<PainelRelatorio />} />
+                  <Route path="lotes" element={<PainelLotes />} />
+                  <Route path="mentoria" element={<PainelMentoria />} />
+                </Route>
+              </Route>
+
+              {/* Fora do shell do painel acima — mais restrito (só diretor),
+                  sem o TabBar do resto do painel. */}
+              <Route element={<RequirePosicao posicoes={["diretor"]} />}>
+                <Route path="/avaliacao-desempenho/painel/formularios" element={<PainelFormularios />} />
               </Route>
 
               {/* Esconder o item na Sidebar não protege a rota: sem estes

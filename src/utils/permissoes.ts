@@ -25,6 +25,11 @@ export type Acao =
   | "mover_tarefa"
   | "registrar_reuniao"
   | "ver_monitoramento"
+  | "filtrar_por_frente"
+  | "gerenciar_lote_desempenho"
+  | "editar_formulario_desempenho"
+  | "gerenciar_mentoria"
+  | "ver_relatorio_de_qualquer_um";
   | "ver_tarefas_gerais"
   | "filtrar_por_frente";
 
@@ -64,6 +69,13 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   criar_tarefa: ["diretor", "gerente", "coordenador", "consultor"],
   mover_tarefa: ["diretor", "gerente", "coordenador", "consultor"],
   registrar_reuniao: ["diretor", "gerente", "coordenador", "consultor"],
+
+  // Avaliação de Desempenho — periódica/finalização de consultores e
+  // coordenadores (não confundir com o feedback de banca).
+  gerenciar_lote_desempenho: ["diretor", "gerente"],
+  editar_formulario_desempenho: ["diretor"],
+  gerenciar_mentoria: ["diretor", "gerente"],
+  ver_relatorio_de_qualquer_um: ["diretor", "gerente"],
 };
 
 export function pode(usuario: Usuario | null | undefined, acao: Acao): boolean {
