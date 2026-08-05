@@ -96,7 +96,7 @@ const navItems: NavItemConfig[] = [
     path: "/avaliacao-desempenho/painel",
     section: "admin",
     prefixo: true,
-    visiblePorPosicao: (u) => pode(u, "gerenciar_lote_desempenho"),
+    visible: (c) => c.pode_gerenciar_desempenho,
   },
   {
     icon: Settings,
