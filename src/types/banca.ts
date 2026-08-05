@@ -89,6 +89,9 @@ export interface Pergunta {
   texto: string;
   ordem: number;
   tipo_resposta: "nota" | "texto";
+  /** Nulo = pergunta universal (aparece em toda banca); com valor, só
+   *  aparece quando a banca avaliada é daquele escopo. */
+  escopo_id: number | null;
 }
 
 export interface FormularioAtivo {
@@ -107,6 +110,7 @@ export interface PerguntaNovaVersao {
   texto: string;
   ordem: number;
   tipo_resposta: "nota" | "texto";
+  escopo_id: number | null;
 }
 
 export interface BancaParaAvaliar {
@@ -124,6 +128,15 @@ export interface Avaliacao {
   status: "rascunho" | "submetida";
   comentario_feedback: string | null;
   submetida_em: string | null;
+  /** Bloco 1 do formulário — resposta livre, não necessariamente igual ao
+   *  cadastro do sistema (o avaliador pode confirmar diferente). */
+  nome_avaliador: string | null;
+  tipo_avaliador: "consultor" | "lideranca" | null;
+  projeto_avaliado: string | null;
+  /** O escopo que o próprio avaliador confirmou — decide o Bloco 2, não
+   *  necessariamente o mesmo de `banca.escopo_id`. */
+  escopo_avaliado_id: number | null;
+  escopo_avaliado_outro: string | null;
 }
 
 export interface AvaliacaoNota {

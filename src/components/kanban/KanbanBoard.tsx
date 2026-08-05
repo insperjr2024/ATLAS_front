@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  closestCenter,
   DndContext,
   DragOverlay,
   KeyboardSensor,
@@ -88,7 +89,17 @@ export function KanbanBoard({
   }
 
   return (
-    <DndContext sensors={sensores} onDragStart={aoIniciar} onDragEnd={aoSoltar}>
+    // collisionDetection padrão do dnd-kit é rectIntersection, que só conta
+    // como "sobre" a coluna quando o retângulo do card ainda se sobrepõe ao
+    // dela — em colunas estreitas/altas isso falha ao arrastar por várias de
+    // uma vez. closestCenter resolve pelo centro mais próximo, então soltar
+    // longe da coluna de origem também é reconhecido.
+    <DndContext
+      sensors={sensores}
+      collisionDetection={closestCenter}
+      onDragStart={aoIniciar}
+      onDragEnd={aoSoltar}
+    >
       <Board $colunas={colunas.length}>
         {colunas.map((coluna) => (
           <ColunaDrop
