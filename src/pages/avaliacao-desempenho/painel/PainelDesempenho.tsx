@@ -23,7 +23,7 @@ export function PainelDesempenho() {
         <TabLink to="/avaliacao-desempenho/painel/mentoria">Mentoria</TabLink>
         {/* Formulários fica fora do <Outlet> (rota irmã, com caixa própria de
             permissão), mas sem um link daqui não tinha como chegar nela. */}
-        {usuario?.cargo.pode_definir_formulario_desempenho && (
+        {usuario?.posicao === "diretor" && (
           <TabLink to="/avaliacao-desempenho/painel/formularios">Formulários</TabLink>
         )}
       </TabBar>

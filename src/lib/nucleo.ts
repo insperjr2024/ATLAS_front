@@ -2,17 +2,22 @@ import type { BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente } from "@/
 import type { Cargo, UsuarioFrente, UsuarioResumo } from "@/types/auth";
 
 /**
- * Um cargo sem nenhuma caixa marcada é de consultor. Precisa listar TODAS as
- * permissões: esquecer uma faria um cargo administrativo passar por consultor.
+ * Um cargo é de consultor quando não tem nenhuma das permissões que só a
+ * liderança recebe. Kickoff, tarefas e ver os próprios projetos ficam de fora
+ * da checagem de propósito: o consultor também as tem por padrão, então
+ * incluí-las faria todo cargo parecer administrativo.
  */
+const PERMISSOES_DE_LIDERANCA = [
+  "pode_criar_projeto",
+  "pode_editar_equipe",
+  "pode_gerir_membros",
+  "pode_definir_cronograma",
+  "pode_aprovar_reajuste",
+  "pode_ver_monitoramento",
+] as const;
+
 function semNenhumaPermissao(cargo: Cargo): boolean {
-  return (
-    !cargo.pode_agendar_banca &&
-    !cargo.pode_definir_formulario &&
-    !cargo.pode_gerenciar_cargos &&
-    !cargo.pode_gerenciar_membros &&
-    !cargo.pode_gerenciar_nucleo
-  );
+  return PERMISSOES_DE_LIDERANCA.every((campo) => !cargo[campo]);
 }
 
 export function consultoresDoNucleo(usuarios: UsuarioResumo[], cargos: Cargo[]): UsuarioResumo[] {

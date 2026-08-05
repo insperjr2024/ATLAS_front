@@ -111,7 +111,8 @@ export function Avaliacoes() {
   const [bancaDetalhe, setBancaDetalhe] = useState<HistoricoBanca | null>(null);
   const [editarFormulario, setEditarFormulario] = useState(false);
 
-  const podeEditarFormulario = !!usuario?.cargo.pode_definir_formulario;
+  // O formulário de banca saiu das caixas de cargo: volta a ser da diretoria.
+  const podeEditarFormulario = usuario?.posicao === "diretor";
 
   async function buscar() {
     if (!token) return;
@@ -164,7 +165,7 @@ export function Avaliacoes() {
       .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
   }, [historico, filtroSemestre, filtroCoordenador, filtroConsultor, filtroEscopo, avaliacoes]);
 
-  if (!usuario?.cargo.pode_definir_formulario) {
+  if (usuario?.posicao !== "diretor") {
     return <Navigate to="/dashboard" replace />;
   }
 

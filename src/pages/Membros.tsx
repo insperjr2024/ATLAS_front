@@ -114,7 +114,7 @@ export function Membros() {
 
   const membrosAtivos = useMemo(() => membros.filter((m) => m.ativo).length, [membros]);
 
-  if (!usuario?.cargo.pode_gerenciar_membros) {
+  if (!usuario?.cargo.pode_gerir_membros) {
     return <Navigate to="/dashboard" replace />;
   }
 
