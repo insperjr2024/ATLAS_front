@@ -12,6 +12,7 @@ import {
   marcarKickoff,
   ROTULO_STATUS_ESCOPO,
   rotuloDiaSemana,
+  updateDescricao,
   updateEquipe,
 } from "@/lib/projetos";
 import {
@@ -35,6 +36,7 @@ import {
 } from "@/styles/page.styled";
 import {
   FieldInput,
+  FieldTextarea,
   FormErrorText,
   ModalOverlay,
   ModalHeader,
@@ -48,6 +50,11 @@ import {
   LinkExterno,
   DataRow,
   DataLabel,
+  DatasGrid,
+  DataItem,
+  DataItemLabel,
+  DataItemValor,
+  EdicaoBotoes,
   EquipeList,
   EquipeItem,
   PapelTag,
@@ -80,9 +87,28 @@ export function ProjetoVisaoGeral() {
   const [editandoEquipe, setEditandoEquipe] = useState(false);
   const [baixandoAnexo, setBaixandoAnexo] = useState(false);
   const [erroAnexo, setErroAnexo] = useState("");
+  const [editandoDescricao, setEditandoDescricao] = useState(false);
+  const [descricao, setDescricao] = useState(projeto.descricao ?? "");
+  const [salvandoDescricao, setSalvandoDescricao] = useState(false);
+  const [erroDescricao, setErroDescricao] = useState("");
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
   const podeEditarEquipe = !!usuario?.cargo.pode_editar_equipe;
+
+  async function handleSalvarDescricao() {
+    if (!token) return;
+    setSalvandoDescricao(true);
+    setErroDescricao("");
+    try {
+      await updateDescricao(projeto.id, descricao, token);
+      setEditandoDescricao(false);
+      await recarregar();
+    } catch (err) {
+      setErroDescricao(err instanceof Error ? err.message : "Erro ao salvar a descrição");
+    } finally {
+      setSalvandoDescricao(false);
+    }
+  }
 
   async function handleBaixarAnexo() {
     if (!token || !projeto.anexo_proposta_nome) return;
@@ -115,9 +141,46 @@ export function ProjetoVisaoGeral() {
                 {baixandoAnexo ? "Baixando…" : "Baixar proposta"}
               </PageButtonSm>
             )}
+            {podeEditarEquipe && !editandoDescricao && (
+              <PageButtonSm
+                type="button"
+                $variant="outline"
+                onClick={() => {
+                  setDescricao(projeto.descricao ?? "");
+                  setEditandoDescricao(true);
+                }}
+              >
+                Editar
+              </PageButtonSm>
+            )}
           </PageCardHeader>
           <PageCardContent>
-            {projeto.descricao ? (
+            {editandoDescricao ? (
+              <>
+                <FieldTextarea
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  rows={5}
+                  aria-label="Descrição do projeto"
+                />
+                {erroDescricao && <FormErrorText>{erroDescricao}</FormErrorText>}
+                <EdicaoBotoes>
+                  <PageButtonSm type="button" disabled={salvandoDescricao} onClick={handleSalvarDescricao}>
+                    {salvandoDescricao ? "Salvando…" : "Salvar"}
+                  </PageButtonSm>
+                  <PageButtonSm
+                    type="button"
+                    $variant="ghost"
+                    onClick={() => {
+                      setEditandoDescricao(false);
+                      setErroDescricao("");
+                    }}
+                  >
+                    Cancelar
+                  </PageButtonSm>
+                </EdicaoBotoes>
+              </>
+            ) : projeto.descricao ? (
               <DescricaoTexto>{projeto.descricao}</DescricaoTexto>
             ) : (
               <EmptyText>Sem descrição cadastrada.</EmptyText>
@@ -161,34 +224,36 @@ export function ProjetoVisaoGeral() {
           <PageCardTitle>Datas</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
-          <DataRow>
-            <DataLabel>Criado em</DataLabel>
-            <span>{formatarDataHora(projeto.criado_em)}</span>
-          </DataRow>
-          <DataEditavel
-            rotulo="Kickoff"
-            valor={projeto.data_kickoff}
-            projeto={projeto}
-            token={token}
-            recarregar={recarregar}
-            tipo="kickoff"
-          />
-          <DataEditavel
-            rotulo="Entrega ao cliente"
-            valor={projeto.data_entrega_cliente}
-            projeto={projeto}
-            token={token}
-            recarregar={recarregar}
-            tipo="entrega"
-          />
-          <DataRow>
-            <DataLabel>Dias de ambientação</DataLabel>
-            <span>{projeto.dias_ambientacao} dias úteis</span>
-          </DataRow>
-          <DataRow>
-            <DataLabel>Reunião semanal</DataLabel>
-            <span>{rotuloDiaSemana(projeto.dia_reuniao_padrao)}</span>
-          </DataRow>
+          <DatasGrid>
+            <DataItem>
+              <DataItemLabel>Criado em</DataItemLabel>
+              <DataItemValor>{formatarDataHora(projeto.criado_em)}</DataItemValor>
+            </DataItem>
+            <DataEditavel
+              rotulo="Kickoff"
+              valor={projeto.data_kickoff}
+              projeto={projeto}
+              token={token}
+              recarregar={recarregar}
+              tipo="kickoff"
+            />
+            <DataEditavel
+              rotulo="Entrega ao cliente"
+              valor={projeto.data_entrega_cliente}
+              projeto={projeto}
+              token={token}
+              recarregar={recarregar}
+              tipo="entrega"
+            />
+            <DataItem>
+              <DataItemLabel>Dias de ambientação</DataItemLabel>
+              <DataItemValor>{projeto.dias_ambientacao} dias úteis</DataItemValor>
+            </DataItem>
+            <DataItem>
+              <DataItemLabel>Reunião semanal</DataItemLabel>
+              <DataItemValor>{rotuloDiaSemana(projeto.dia_reuniao_padrao)}</DataItemValor>
+            </DataItem>
+          </DatasGrid>
         </PageCardContent>
       </PageCard>
 
@@ -738,9 +803,9 @@ function DataEditavel({
   }
 
   return (
-    <>
-      <DataRow>
-        <DataLabel>{rotulo}</DataLabel>
+    <DataItem>
+      <DataItemLabel>{rotulo}</DataItemLabel>
+      <DataItemValor>
         {editando ? (
           <>
             <FieldInput
@@ -772,9 +837,9 @@ function DataEditavel({
             </PageButtonSm>
           </>
         )}
-      </DataRow>
+      </DataItemValor>
       {erro && <FormErrorText>{erro}</FormErrorText>}
-    </>
+    </DataItem>
   );
 }
 

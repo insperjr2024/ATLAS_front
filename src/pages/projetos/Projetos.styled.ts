@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
+import type { TonsColuna } from "@/lib/colunas-tarefa";
 
 export {
   PageHeaderRow,
@@ -367,6 +368,110 @@ export const DataLabel = styled.span`
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: ${theme.colors.mutedForeground};
+`;
+
+/**
+ * O card de Datas em grade, não em linhas empilhadas — uma linha por campo
+ * deixava letra minúscula boiando numa fileira inteira de espaço vazio à
+ * direita. Aqui cada campo é uma célula (rótulo em cima, valor embaixo),
+ * então o card usa a largura toda em vez de só a coluna da esquerda.
+ */
+export const DatasGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: ${theme.spacing.lg} ${theme.spacing.xl};
+`;
+
+export const DataItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+`;
+
+export const DataItemLabel = styled.span`
+  font-size: ${theme.fontSize.xs};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/**
+ * Troca de etapa como lista, não como botõezinhos de avançar/voltar — a
+ * pílula colorida é a MESMA paleta do kanban de projetos (`CORES_STATUS`),
+ * pra escolher a fase aqui não parecer um controle diferente do kanban.
+ */
+export const EtapaSeletorWrap = styled.div`
+  position: relative;
+`;
+
+export const EtapaBotaoAtual = styled.button<{ $cor: TonsColuna }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid ${({ $cor }) => $cor.borda};
+  border-radius: ${theme.borderRadius.md};
+  background: ${({ $cor }) => $cor.fundo};
+  color: ${({ $cor }) => $cor.texto};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+`;
+
+export const EtapaMenu = styled.div`
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: ${theme.spacing.xs};
+  min-width: 15rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.background};
+  box-shadow: ${theme.shadows.lg};
+`;
+
+export const EtapaOpcaoBotao = styled.button<{ $cor: TonsColuna | null }>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  background: ${({ $cor }) => $cor?.fundo ?? "transparent"};
+  color: ${({ $cor }) => $cor?.texto ?? theme.colors.foreground};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.96);
+  }
+`;
+
+export const EdicaoBotoes = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.sm};
+`;
+
+export const DataItemValor = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSize.base};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
 `;
 
 export const EquipeList = styled.ul`

@@ -160,7 +160,7 @@ export function CalendarioAcademicoCard() {
         ) : (
           <>
             <EmptyText style={{ marginBottom: "0.75rem" }}>
-              É esta carga que define o <strong>dia útil</strong> do sistema (§5.4). Sem ela, só o
+              É esta carga que define o <strong>dia útil</strong> do sistema. Sem ela, só o
               fim de semana é excluído — feriados e semanas de prova contariam como dias
               trabalhados em todos os escopos. De {formatarData(ativo.inicio)} a{" "}
               {formatarData(ativo.fim)}.
