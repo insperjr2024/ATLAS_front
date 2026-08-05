@@ -122,12 +122,20 @@ export function marcarEntregaCliente(projetoId: number, data: string, token: str
   );
 }
 
-/** `statusNovo` aceita a próxima etapa da fila, `"pausado"` ou `"retomar"`. */
+/** `statusNovo` aceita qualquer etapa ativa (ver `destinosValidos`), `"pausado"` ou `"retomar"`. */
 export function mudarStatus(projetoId: number, statusNovo: string, token: string) {
   return apiFetch<{ id: number; status_anterior: StatusProjeto; status: StatusProjeto }>(
     `/projetos/${projetoId}/status`,
     { method: "PATCH", token, body: JSON.stringify({ status_novo: statusNovo }) },
   );
+}
+
+export function updateDescricao(projetoId: number, descricao: string, token: string) {
+  return apiFetch<{ id: number; descricao: string | null }>(`/projetos/${projetoId}/descricao`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ descricao }),
+  });
 }
 
 export function getHistoricoProjeto(projetoId: number, token: string) {
@@ -218,24 +226,6 @@ export const ROTULO_STATUS: Record<StatusProjeto, string> = {
   pausado: "Pausado",
 };
 
-/**
- * ✋ As transições manuais — só a próxima da fila, nunca pula etapa. O backend
- * revalida (`transicao_manual_valida`); aqui é só para o menu não oferecer o
- * que vai voltar 422.
- *
- * Vendido → Ambientação não está aqui: é 🤖 automática, disparada pelo
- * kickoff. Já `ambientacao → em_andamento` está, mesmo o §4 chamando de
- * automática — o disparador não existe, e sem ela um projeto que chega em
- * Ambientação (ou volta para lá) não teria como sair.
- */
-const TRANSICOES_MANUAIS: Partial<Record<StatusProjeto, StatusProjeto>> = {
-  ambientacao: "em_andamento",
-  em_andamento: "validacao_bancas",
-  validacao_bancas: "envio_tep",
-  envio_tep: "periodo_ajustes",
-  periodo_ajustes: "finalizado",
-};
-
 const STATUS_PAUSAVEIS: StatusProjeto[] = [
   "ambientacao",
   "em_andamento",
@@ -255,26 +245,21 @@ const STATUS_ORDEM: StatusProjeto[] = [
   "finalizado",
 ];
 
-export function proximoStatusManual(atual: StatusProjeto): StatusProjeto | null {
-  return TRANSICOES_MANUAIS[atual] ?? null;
-}
-
 /**
- * ↩ A etapa anterior — espelho de `status_projeto.py::status_anterior_manual`.
+ * ✋ Espelho de `status_projeto.py::destinos_validos` — as etapas que o
+ * seletor mostra como opção pra este status. Livre entre as ativas, nos dois
+ * sentidos (inclusive reabrir um projeto finalizado); o backend revalida
+ * (`transicao_manual_valida`), aqui é só pra montar a lista.
  *
- * A volta vale da fila inteira até **Ambientação, que é o piso**: voltar dali
- * para Vendido seria desmarcar o kickoff, e a data já registrada é um fato do
- * projeto — corrige-se editando a data, não regredindo o status.
- *
- * `pausado` também não volta por aqui: sai pelo botão de retomar.
+ * Vendido só oferece Ambientação, e só quando `temKickoff` — sem data de
+ * kickoff marcada não tem o que confirmar. `pausado` não tem destino por
+ * aqui: sai pelo retomar.
  */
-export function statusAnteriorManual(atual: StatusProjeto): StatusProjeto | null {
-  if (atual === STATUS_PISO_VOLTA) return null;
-  const indice = STATUS_ORDEM.indexOf(atual);
-  return indice > 0 ? STATUS_ORDEM[indice - 1] : null;
+export function destinosValidos(atual: StatusProjeto, temKickoff: boolean): StatusProjeto[] {
+  if (atual === "pausado") return [];
+  if (atual === "vendido") return temKickoff ? ["ambientacao"] : [];
+  return STATUS_ORDEM.slice(1).filter((s) => s !== atual);
 }
-
-const STATUS_PISO_VOLTA: StatusProjeto = "ambientacao";
 
 export function podePausar(atual: StatusProjeto): boolean {
   return STATUS_PAUSAVEIS.includes(atual);
@@ -286,6 +271,22 @@ export function tomDoStatus(status: StatusProjeto): "success" | "muted" | "defau
   if (status === "pausado") return "muted";
   return "default";
 }
+
+/**
+ * Uma cor fixa por fase — mesma fonte usada no kanban de projetos e no
+ * seletor de etapa da Visão geral, pra nenhum dos dois inventar a própria
+ * paleta e os dois acabarem discordando da cor de uma fase.
+ */
+export const CORES_STATUS: Record<StatusProjeto, string> = {
+  vendido: "#9CA3AF", // cinza — ainda não começou de fato
+  ambientacao: "#6366F1", // índigo
+  em_andamento: "#3B82F6", // azul
+  validacao_bancas: "#8B5CF6", // roxo
+  envio_tep: "#14B8A6", // teal
+  periodo_ajustes: "#F97316", // laranja
+  finalizado: "#10B981", // verde
+  pausado: "#F59E0B", // âmbar — vermelho fica reservado pro alerta de vencida
+};
 
 /* ------------------------------------------------------------------ */
 /* Formatação                                                          */

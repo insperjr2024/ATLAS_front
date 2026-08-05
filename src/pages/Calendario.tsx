@@ -10,8 +10,10 @@ import {
   subMonths,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { PageButtonSm } from "@/styles/page.styled";
 import { getBancas, getBancasFrentes, getCandidaturas, getEquipesProjeto, getEscopos, getFrentes } from "@/lib/bancas";
 import { getUsuarios } from "@/lib/usuarios";
 import {
@@ -221,6 +223,11 @@ export function Calendario() {
       <Breadcrumb>
         Núcleo de Bancas &gt; <span>Calendário</span>
       </Breadcrumb>
+
+      <PageButtonSm as={Link} to="/calendario" $variant="outline" style={{ alignSelf: "flex-start" }}>
+        <ArrowLeft size={14} />
+        Calendário geral
+      </PageButtonSm>
 
       <PageTitle>Calendário</PageTitle>
       <PageDescription>
