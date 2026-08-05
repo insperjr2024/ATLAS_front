@@ -36,7 +36,14 @@ import {
   submeterAvaliacao,
 } from "@/lib/avaliacoes";
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
+import {
+  cancelarSolicitacaoTroca,
+  confirmarSolicitacaoTroca,
+  createSolicitacaoTroca,
+  getSolicitacoesTroca,
+} from "@/lib/solicitacoes-troca";
 import type { Banca, BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente, FormularioAtivo } from "@/types/banca";
+import type { SolicitacaoTroca } from "@/types/notificacao";
 import type { Cargo, UsuarioResumo } from "@/types/auth";
 import {
   avaliadoresDaBanca,
@@ -119,6 +126,7 @@ interface Contexto {
   bancasFrentes: BancaFrente[];
   equipesProjeto: EquipeProjeto[];
   candidaturas: Candidatura[];
+  solicitacoesTroca: SolicitacaoTroca[];
 }
 
 export function Bancas() {
@@ -144,7 +152,7 @@ export function Bancas() {
     setCarregando(true);
     setErro("");
     try {
-      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, cargos, escopos, frentes, bancasFrentes, equipesProjeto, formularioAtivo] =
+      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, cargos, escopos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca] =
         await Promise.all([
           getBancas(token),
           getCandidaturas(token),
@@ -157,6 +165,7 @@ export function Bancas() {
           getBancasFrentes(token),
           getEquipesProjeto(token),
           getFormularioAtivo(token).catch(() => null),
+          getSolicitacoesTroca(token),
         ]);
       setBancas(bancasResp);
       setCandidaturas(candidaturasResp);
@@ -182,7 +191,16 @@ export function Bancas() {
           )
           .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()),
       );
-      setContexto({ usuarios, cargos, escopos, frentes, bancasFrentes, equipesProjeto, candidaturas: candidaturasResp });
+      setContexto({
+        usuarios,
+        cargos,
+        escopos,
+        frentes,
+        bancasFrentes,
+        equipesProjeto,
+        candidaturas: candidaturasResp,
+        solicitacoesTroca,
+      });
       setFormulario(formularioAtivo);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar bancas");
@@ -262,6 +280,37 @@ export function Bancas() {
     recarregar();
   }
 
+  async function handlePedirTroca(bancaId: number) {
+    const candidatura = candidaturaDe(bancaId);
+    if (!token || !candidatura) return;
+    try {
+      await createSolicitacaoTroca(candidatura.id, token);
+      recarregar();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao pedir troca");
+    }
+  }
+
+  async function handleConfirmarTroca(solicitacaoId: number) {
+    if (!token) return;
+    try {
+      await confirmarSolicitacaoTroca(solicitacaoId, token);
+      recarregar();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao confirmar troca");
+    }
+  }
+
+  async function handleCancelarTroca(solicitacaoId: number) {
+    if (!token) return;
+    try {
+      await cancelarSolicitacaoTroca(solicitacaoId, token);
+      recarregar();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao cancelar troca");
+    }
+  }
+
   async function handleExcluir(banca: Banca) {
     if (!token || !podeGerenciarBanca(banca, usuarioLogado.id)) return;
     if (!confirm(`Excluir a banca "${banca.nome_projeto}"? Esta ação não pode ser desfeita.`)) return;
@@ -332,7 +381,9 @@ export function Bancas() {
             bancas={jaAlocado}
             contexto={contexto}
             acao="deslocar"
+            usuarioId={usuario.id}
             onAcao={handleDesalocar}
+            onPedirTroca={handlePedirTroca}
             onVerMais={setBancaDetalhe}
           />
           <SecaoBancas
@@ -349,6 +400,13 @@ export function Bancas() {
             contexto={contexto}
             acao="nenhuma"
             onVerMais={setBancaDetalhe}
+          />
+          <SecaoTrocas
+            solicitacoes={contexto.solicitacoesTroca}
+            bancas={bancas}
+            usuarioId={usuario.id}
+            onConfirmar={handleConfirmarTroca}
+            onCancelar={handleCancelarTroca}
           />
         </SectionGroup>
       )}
@@ -386,6 +444,7 @@ export function Bancas() {
         <BancaFormModal
           contexto={contexto}
           token={token}
+          ehDiretor={usuario.posicao === "diretor"}
           onClose={() => setCriarAberto(false)}
           onSalvo={() => {
             setCriarAberto(false);
@@ -399,6 +458,7 @@ export function Bancas() {
           banca={bancaEditar}
           contexto={contexto}
           token={token}
+          ehDiretor={usuario.posicao === "diretor"}
           onClose={() => setBancaEditar(null)}
           onSalvo={() => {
             setBancaEditar(null);
@@ -436,6 +496,7 @@ function SecaoBancas({
   gerenciar,
   onEditar,
   onExcluir,
+  onPedirTroca,
 }: {
   titulo: string;
   bancas: Banca[];
@@ -447,6 +508,7 @@ function SecaoBancas({
   gerenciar?: boolean;
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
+  onPedirTroca?: (bancaId: number) => void;
 }) {
   return (
     <PageCard>
@@ -465,6 +527,15 @@ function SecaoBancas({
               const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
               const podeGerenciar = gerenciar && usuarioId != null && podeGerenciarBanca(banca, usuarioId);
               const escopoNome = nomeEscopo(contexto.escopos, banca.escopo_id);
+              const minhaCandidatura =
+                acao === "deslocar" && usuarioId != null
+                  ? contexto.candidaturas.find((c) => c.banca_id === banca.id && c.usuario_id === usuarioId)
+                  : undefined;
+              const trocaPendente =
+                minhaCandidatura &&
+                contexto.solicitacoesTroca.some(
+                  (s) => s.candidatura_id === minhaCandidatura.id && s.status === "pendente",
+                );
 
               return (
                 <BancaLinha key={banca.id}>
@@ -511,6 +582,16 @@ function SecaoBancas({
                         Excluir
                       </PageButtonSm>
                     )}
+                    {acao === "deslocar" && onPedirTroca && minhaCandidatura && (
+                      <PageButtonSm
+                        $variant="outline"
+                        type="button"
+                        disabled={!!trocaPendente}
+                        onClick={() => onPedirTroca(banca.id)}
+                      >
+                        {trocaPendente ? "Troca pedida" : "Pedir troca"}
+                      </PageButtonSm>
+                    )}
                     {acao !== "nenhuma" && onAcao && (
                       <PageButtonSm
                         $variant={acao === "deslocar" ? "outline" : "primary"}
@@ -532,16 +613,100 @@ function SecaoBancas({
   );
 }
 
+/** Pedidos abertos de troca de candidatura (§8): qualquer consultor elegível
+ *  pode confirmar; quem pediu vê os próprios pedidos com opção de cancelar. */
+function SecaoTrocas({
+  solicitacoes,
+  bancas,
+  usuarioId,
+  onConfirmar,
+  onCancelar,
+}: {
+  solicitacoes: SolicitacaoTroca[];
+  bancas: Banca[];
+  usuarioId: number;
+  onConfirmar: (solicitacaoId: number) => void;
+  onCancelar: (solicitacaoId: number) => void;
+}) {
+  const pendentes = solicitacoes.filter((s) => s.status === "pendente");
+  const disponiveis = pendentes.filter((s) => s.usuario_original_id !== usuarioId);
+  const minhas = pendentes.filter((s) => s.usuario_original_id === usuarioId);
+  const total = disponiveis.length + minhas.length;
+
+  function linha(solicitacao: SolicitacaoTroca, propria: boolean) {
+    const banca = bancas.find((b) => b.id === solicitacao.banca_id);
+    const dataHora = banca ? new Date(banca.data_hora) : null;
+    return (
+      <BancaLinha key={solicitacao.id}>
+        <BancaData>
+          {dataHora && (
+            <>
+              <BancaDataDiaSemana>
+                {dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
+              </BancaDataDiaSemana>
+              <BancaDataDia>{dataHora.getDate()}</BancaDataDia>
+            </>
+          )}
+        </BancaData>
+        <BancaInfo>
+          <BancaNomeLinha>
+            <BancaNome>{banca?.nome_projeto ?? `Banca ${solicitacao.banca_id}`}</BancaNome>
+            <PageBadge $tone={propria ? "default" : "warning"}>
+              {propria ? "Meu pedido" : "Troca aberta"}
+            </PageBadge>
+          </BancaNomeLinha>
+          {dataHora && (
+            <BancaMeta>
+              {dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </BancaMeta>
+          )}
+        </BancaInfo>
+        <BancaAcoes>
+          {propria ? (
+            <PageButtonSm $variant="outline" type="button" onClick={() => onCancelar(solicitacao.id)}>
+              Cancelar
+            </PageButtonSm>
+          ) : (
+            <PageButtonSm type="button" onClick={() => onConfirmar(solicitacao.id)}>
+              Confirmar
+            </PageButtonSm>
+          )}
+        </BancaAcoes>
+      </BancaLinha>
+    );
+  }
+
+  return (
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>Trocas disponíveis</PageCardTitle>
+        <PageBadge $tone="muted">{total}</PageBadge>
+      </PageCardHeader>
+      <PageCardContent>
+        {total === 0 && <EmptyText>Nenhuma solicitação de troca no momento.</EmptyText>}
+        {total > 0 && (
+          <ListScrollWrap $scrollable={total > LIST_MAX_VISIVEIS}>
+            {disponiveis.map((s) => linha(s, false))}
+            {minhas.map((s) => linha(s, true))}
+          </ListScrollWrap>
+        )}
+      </PageCardContent>
+    </PageCard>
+  );
+}
+
 function BancaFormModal({
   banca,
   contexto,
   token,
+  ehDiretor,
   onClose,
   onSalvo,
 }: {
   banca?: Banca | null;
   contexto: Contexto;
   token: string;
+  ehDiretor: boolean;
   onClose: () => void;
   onSalvo: () => void;
 }) {
@@ -556,6 +721,9 @@ function BancaFormModal({
   );
   const [frenteIds, setFrenteIds] = useState<number[]>(() =>
     banca ? contexto.bancasFrentes.filter((bf) => bf.banca_id === banca.id).map((bf) => bf.frente_id) : [],
+  );
+  const [pisoOverride, setPisoOverride] = useState(
+    banca?.piso_minimo_override != null ? String(banca.piso_minimo_override) : "",
   );
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -573,6 +741,11 @@ function BancaFormModal({
     setErro("");
     try {
       const dataHora = new Date(`${data}T${hora}:00`).toISOString();
+      const pisoMinimoOverride = ehDiretor
+        ? pisoOverride.trim() === ""
+          ? null
+          : Number(pisoOverride)
+        : undefined;
       if (editando && banca) {
         await updateBanca(
           banca.id,
@@ -580,6 +753,7 @@ function BancaFormModal({
             nome_projeto: nomeProjeto.trim(),
             escopo_id: Number(escopoId),
             data_hora: dataHora,
+            ...(pisoMinimoOverride !== undefined ? { piso_minimo_override: pisoMinimoOverride } : {}),
           },
           token,
         );
@@ -593,6 +767,7 @@ function BancaFormModal({
             data_hora: dataHora,
             consultor_ids: consultorIds,
             frente_ids: frenteIds,
+            ...(pisoMinimoOverride !== undefined ? { piso_minimo_override: pisoMinimoOverride } : {}),
           },
           token,
         );
@@ -649,6 +824,22 @@ function BancaFormModal({
                 ))}
               </FieldSelect>
             </FieldGroup>
+
+            {ehDiretor && (
+              <FieldGroup>
+                <FieldLabel htmlFor="piso-override">
+                  Piso mínimo desta banca (opcional)
+                </FieldLabel>
+                <FieldInput
+                  id="piso-override"
+                  type="number"
+                  min={0}
+                  value={pisoOverride}
+                  onChange={(e) => setPisoOverride(e.target.value)}
+                  placeholder="Deixe em branco para usar o padrão da(s) frente(s)"
+                />
+              </FieldGroup>
+            )}
 
             <FieldGroup>
               <FieldLabel>Consultores do projeto</FieldLabel>

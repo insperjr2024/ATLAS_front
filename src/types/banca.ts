@@ -25,6 +25,9 @@ export interface BancaBase {
   escopo_id: number | null; // vazio quando o escopo vendido é um "Outro"
   coordenador_id: number;
   data_hora: string; // ISO 8601
+  /** Nulo = usa a soma do piso das frentes vinculadas (§8). Só a diretoria
+   *  define — ver `podeAgendar`/`usuario.posicao === "diretor"` no form. */
+  piso_minimo_override: number | null;
 }
 
 // Campos calculados que a API adiciona em GET /bancas e GET /bancas/{id}
@@ -69,6 +72,17 @@ export interface Escopo {
 export interface Frente {
   id: number;
   nome: string;
+  ativa: boolean;
+  /** Mínimo de membros da frente exigido numa banca (§8) — editável pela
+   *  diretoria em Config. */
+  piso_banca: number;
+}
+
+export interface Configuracao {
+  id: number;
+  /** Teto de pessoas por banca (§8) — editável pela diretoria em Config. */
+  vagas_por_banca: number;
+  cargo_padrao_id: number | null;
 }
 
 export interface BancaFrente {

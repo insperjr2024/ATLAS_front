@@ -56,12 +56,15 @@ export interface CreateBancaPayload {
   data_hora: string;
   consultor_ids: number[];
   frente_ids: number[];
+  /** Só a diretoria manda isto — ver `require_diretor` no backend. */
+  piso_minimo_override?: number | null;
 }
 
 export interface UpdateBancaPayload {
   nome_projeto?: string;
   escopo_id?: number;
   data_hora?: string;
+  piso_minimo_override?: number | null;
 }
 
 export function createBanca(dados: CreateBancaPayload, token: string) {
