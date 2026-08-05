@@ -12,7 +12,7 @@ export interface EtapaCronograma {
 }
 
 /**
- * Só dois tipos gravados. ★ banca, ● entrega e 🏁 kickoff são LIDOS de
+ * Só dois tipos gravados. Banca, entrega e kickoff são LIDOS de
  * `banca`, `projeto_escopo` e `projeto` — regravá-los criaria uma segunda
  * fonte da verdade e o "uma data só" do §8 morreria no primeiro reagendamento.
  */
