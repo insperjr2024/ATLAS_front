@@ -29,9 +29,8 @@ export type Acao =
   | "gerenciar_lote_desempenho"
   | "editar_formulario_desempenho"
   | "gerenciar_mentoria"
-  | "ver_relatorio_de_qualquer_um";
-  | "ver_tarefas_gerais"
-  | "filtrar_por_frente";
+  | "ver_relatorio_de_qualquer_um"
+  | "ver_tarefas_gerais";
 
 const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão — restrito às lideranças
