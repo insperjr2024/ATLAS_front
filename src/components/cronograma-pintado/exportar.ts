@@ -1,5 +1,9 @@
 /**
- * Export do cronograma em PNG e PDF (§6.4: "pronto para apresentações").
+ * Export do cronograma em PDF (§6.4: "pronto para apresentações").
+ *
+ * O PNG saiu: o PDF já é o formato de apresentação, e manter dois caminhos
+ * para a mesma imagem só dobrava a superfície a testar. A rasterização
+ * continua sendo por `toPng` — ela virou etapa interna do PDF, não uma saída.
  *
  * Atenção: `html-to-image`, não `html2canvas`: o segundo reimplementa um
  * renderizador de CSS e engasga com `color-mix(in srgb, …)`, que este código
@@ -36,16 +40,13 @@ function nomeArquivo(projeto: string, extensao: string): string {
 async function comLayoutDeExport<T>(alvo: HTMLElement, acao: () => Promise<T>): Promise<T> {
   alvo.classList.add("exportando");
   try {
+    // As fontes precisam estar prontas antes de rasterizar: com elas ainda
+    // carregando, o texto sai deslocado ou simplesmente não sai.
+    if (document.fonts?.ready) await document.fonts.ready;
     return await acao();
   } finally {
     alvo.classList.remove("exportando");
   }
-}
-
-export async function exportarPNG(alvo: HTMLElement, nomeProjeto: string): Promise<void> {
-  const { toPng } = await import("html-to-image");
-  const dataUrl = await comLayoutDeExport(alvo, () => toPng(alvo, OPCOES));
-  baixar(dataUrl, nomeArquivo(nomeProjeto, "png"));
 }
 
 export async function exportarPDF(alvo: HTMLElement, nomeProjeto: string): Promise<void> {
@@ -83,11 +84,4 @@ export async function exportarPDF(alvo: HTMLElement, nomeProjeto: string): Promi
   }
 
   pdf.save(nomeArquivo(nomeProjeto, "pdf"));
-}
-
-function baixar(dataUrl: string, nome: string): void {
-  const link = document.createElement("a");
-  link.download = nome;
-  link.href = dataUrl;
-  link.click();
 }

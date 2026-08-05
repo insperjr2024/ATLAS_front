@@ -14,6 +14,7 @@ import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Nucleo } from "@/pages/Nucleo";
 import { Membros } from "@/pages/Membros";
 import { Avaliacoes } from "@/pages/Avaliacoes";
+import { CalendariosBase } from "@/pages/CalendariosBase";
 import { Config } from "@/pages/Config";
 import { ProjetosList } from "@/pages/projetos/ProjetosList";
 import { ProjetoNovo } from "@/pages/projetos/ProjetoNovo";
@@ -84,6 +85,7 @@ export default function App() {
                 <Route path="/nucleo" element={<Nucleo />} />
                 <Route path="/membros" element={<Membros />} />
                 <Route path="/config" element={<Config />} />
+                <Route path="/calendarios-base" element={<CalendariosBase />} />
               </Route>
             </Route>
           </Route>

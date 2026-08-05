@@ -234,16 +234,56 @@ export const Barra = styled.div`
   padding-bottom: ${theme.spacing.md};
 `;
 
+/**
+ * Os botões da barra, na mesma caixa do select de escopo ao lado.
+ *
+ * O PageButtonSm tem 1.75rem e fonte xs; o FieldSelect, 2.25rem, raio maior e
+ * fonte sm. Lado a lado a diferença aparece como desalinhamento. Aqui o botão
+ * herda a métrica do campo, que é quem manda na linha.
+ */
+export const BotaoBarra = styled.button<{ $variant?: "outline" | "ghost" }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid
+    ${({ $variant }) => ($variant === "ghost" ? "transparent" : theme.colors.input)};
+  background: ${({ $variant }) =>
+    $variant === "ghost" ? "transparent" : theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: ${theme.colors.muted};
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: ${theme.colors.ring};
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 25%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 /** O seletor de visão — dia · semana · mês, como um segmented control. */
 export const GrupoVisao = styled.div`
   display: inline-flex;
-  border: 1px solid ${theme.colors.border};
-  border-radius: ${theme.borderRadius.md};
+  height: 2.25rem;
+  border: 1px solid ${theme.colors.input};
+  border-radius: ${theme.borderRadius.lg};
   overflow: hidden;
 `;
 
 export const BotaoVisao = styled.button<{ $ativo?: boolean }>`
-  padding: 0.3rem 0.7rem;
+  padding: 0 0.75rem;
   border: none;
   border-right: 1px solid ${theme.colors.border};
   background: ${({ $ativo }) => ($ativo ? theme.colors.secondary : "transparent")};
@@ -272,10 +312,10 @@ export const BotaoNav = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border: 1px solid ${theme.colors.border};
-  border-radius: ${theme.borderRadius.md};
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid ${theme.colors.input};
+  border-radius: ${theme.borderRadius.lg};
   background: transparent;
   color: ${theme.colors.foreground};
   cursor: pointer;
@@ -314,6 +354,37 @@ export const ContadorDias = styled.span`
   font-size: ${theme.fontSize.xs};
   font-variant-numeric: tabular-nums;
   color: ${theme.colors.mutedForeground};
+`;
+
+/**
+ * Esconde a cópia do export sem tirá-la do layout.
+ *
+ * Fora da tela por deslocamento, e não por `display: none`: o html-to-image
+ * precisa de layout calculado, e um elemento sem display tem largura zero.
+ *
+ * Atenção: quem é fotografado é a MOLDURA lá dentro, nunca este elemento.
+ * O html-to-image clona o nó COM os estilos dele; capturar este aqui levaria
+ * o `position: fixed; left: -20000px` para dentro do clone, e o conteúdo
+ * cairia fora da área renderizada. O resultado é um PDF em branco.
+ */
+export const AreaExportOculta = styled.div`
+  position: fixed;
+  top: 0;
+  left: -20000px;
+  pointer-events: none;
+`;
+
+/**
+ * O nó que vira imagem. Posicionamento estático de propósito (ver acima).
+ *
+ * A largura fixa tira o PDF da mão do tamanho da janela: o arquivo sai igual
+ * em qualquer monitor. O fundo branco é explícito porque o clone não herda o
+ * fundo da página.
+ */
+export const MolduraExport = styled.div`
+  width: 60rem;
+  padding: ${theme.spacing.lg};
+  background: #ffffff;
 `;
 
 export const CronogramaLayout = styled.div`

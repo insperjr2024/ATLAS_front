@@ -21,8 +21,8 @@ interface Props {
   /** A cor pré-selecionada — a próxima da rampa, pela ordem da etapa. */
   corInicial: string;
   onCancelar: () => void;
-  /** Resolve quando a etapa foi criada; rejeita com a mensagem do backend. */
-  onCriar: (nome: string, cor: string) => Promise<void>;
+  /** Cria a etapa. Se rejeitar, a mensagem aparece no próprio formulário. */
+  onCriar: (nome: string, cor: string) => Promise<void> | void;
 }
 
 /**

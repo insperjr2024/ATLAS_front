@@ -40,6 +40,14 @@ export interface DiaNaoUtilResposta {
   data: string;
   tipo: string;
   descricao: string | null;
+  /**
+   * A frente dona do dia; `null` vale para todas.
+   *
+   * O calendário acadêmico deixou de ser um só: cada frente abrange cursos
+   * diferentes, e cada curso tem as suas semanas de avaliação. Feriado é do
+   * país e continua global.
+   */
+  frente_id: number | null;
 }
 
 export interface CronogramaResposta {
