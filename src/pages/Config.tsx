@@ -57,43 +57,55 @@ import {
 } from "./Config.styled";
 import { LIST_MAX_VISIVEIS, TableScrollWrap } from "@/styles/shared.styled";
 
+// Fonte única dos rótulos: alimenta as caixas do modal de edição E as tags da
+// tabela. Cada título é verbo + objeto, para a tag dizer sozinha o que o cargo
+// pode fazer — sem depender de abrir o modal para descobrir.
 const PERMISSOES = [
   {
     campo: "pode_agendar_banca" as const,
     titulo: "Agendar bancas",
-    descricao: "Exibe o botão Criar banca na página de Bancas.",
+    descricao: "Criar, editar e cancelar bancas, e registrar realização e resultado.",
   },
   {
     campo: "pode_definir_formulario" as const,
-    titulo: "Definir formulário",
-    descricao: "Acesso à página de Avaliações para consultar notas e editar o formulário.",
+    titulo: "Editar formulário de banca",
+    descricao:
+      "Abrir a página Avaliações: montar os critérios do formulário de banca e consultar as notas lançadas. Não tem relação com a Avaliação de Desempenho.",
   },
   {
     campo: "pode_gerenciar_membros" as const,
     titulo: "Gerenciar membros",
-    descricao: "Acesso à página de Membros: cadastrar pessoas, editar posição, status e frentes.",
+    descricao: "Cadastrar pessoas e editar posição, status e frentes de cada uma.",
   },
   {
     campo: "pode_gerenciar_nucleo" as const,
-    titulo: "Gerenciar núcleo",
-    descricao: "Acesso ao Núcleo e às Configurações: frentes, escopos, semestre e calendário.",
+    titulo: "Gerenciar núcleo e configurações",
+    descricao: "Editar frentes, escopos, o semestre vigente e o calendário.",
+  },
+  {
+    campo: "pode_gerenciar_desempenho" as const,
+    titulo: "Acessar avaliação de desempenho",
+    descricao:
+      "Abrir o painel de Avaliação de Desempenho: ver os resultados (quem avaliou quem, avaliados, relatórios e pendências) e administrar lotes e mentorias.",
+  },
+  {
+    campo: "pode_definir_formulario_desempenho" as const,
+    titulo: "Editar formulário de desempenho",
+    descricao:
+      "Montar as seções e os critérios dos formulários de Avaliação de Desempenho — o que todo mundo responde. Separada de acessar os resultados.",
   },
   {
     campo: "pode_gerenciar_cargos" as const,
     titulo: "Gerenciar cargos e permissões",
     descricao:
-      "Editar esta própria tela de cargos. Só tem efeito para quem também é Diretor(a) — é o que impede alguém de se auto-conceder permissões.",
+      "Criar cargos e marcar as permissões desta tela. Só tem efeito para quem também é Diretor(a) — é o que impede alguém de se auto-conceder permissões.",
   },
 ];
 
-function labelsPermissao(cargo: Cargo): string[] {
-  const labels: string[] = [];
-  if (cargo.pode_agendar_banca) labels.push("Agendar bancas");
-  if (cargo.pode_definir_formulario) labels.push("Formulário");
-  if (cargo.pode_gerenciar_membros) labels.push("Membros");
-  if (cargo.pode_gerenciar_nucleo) labels.push("Núcleo");
-  if (cargo.pode_gerenciar_cargos) labels.push("Cargos");
-  return labels;
+type CampoPermissao = (typeof PERMISSOES)[number]["campo"];
+
+function permissoesDoCargo(cargo: Cargo) {
+  return PERMISSOES.filter((p) => cargo[p.campo]);
 }
 
 export function Config() {
@@ -265,9 +277,11 @@ export function Config() {
                   <TableRow key={cargo.id}>
                     <NameCell>{cargo.nome}</NameCell>
                     <TableCell>
-                      {labelsPermissao(cargo).length === 0 && "—"}
-                      {labelsPermissao(cargo).map((label) => (
-                        <PermissaoBadge key={label}>{label}</PermissaoBadge>
+                      {permissoesDoCargo(cargo).length === 0 && "—"}
+                      {permissoesDoCargo(cargo).map((p) => (
+                        <PermissaoBadge key={p.campo} title={p.descricao}>
+                          {p.titulo}
+                        </PermissaoBadge>
                       ))}
                     </TableCell>
                     <ActionsCell>
@@ -448,15 +462,12 @@ function ModalNome({
   );
 }
 
-/** As caixas do formulário, na ordem em que aparecem. */
-function permissoesDe(cargo: Cargo | null) {
-  return {
-    pode_agendar_banca: cargo?.pode_agendar_banca ?? false,
-    pode_definir_formulario: cargo?.pode_definir_formulario ?? false,
-    pode_gerenciar_membros: cargo?.pode_gerenciar_membros ?? false,
-    pode_gerenciar_nucleo: cargo?.pode_gerenciar_nucleo ?? false,
-    pode_gerenciar_cargos: cargo?.pode_gerenciar_cargos ?? false,
-  };
+/** As caixas do formulário, na ordem em que aparecem — derivadas de
+ *  `PERMISSOES` para uma permissão nova não nascer faltando no modal. */
+function permissoesDe(cargo: Cargo | null): Record<CampoPermissao, boolean> {
+  return Object.fromEntries(
+    PERMISSOES.map((p) => [p.campo, cargo?.[p.campo] ?? false]),
+  ) as Record<CampoPermissao, boolean>;
 }
 
 function ModalCargo({

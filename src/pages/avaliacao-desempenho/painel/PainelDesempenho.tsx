@@ -1,6 +1,5 @@
 import { Outlet } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { pode } from "@/utils/permissoes";
 import { PageHeader, PageHeaderText, PageStack, PageSubtitle, PageTitle } from "@/styles/page.styled";
 import { TabBar, TabLink } from "./Painel.styled";
 
@@ -22,9 +21,9 @@ export function PainelDesempenho() {
         <TabLink to="/avaliacao-desempenho/painel/relatorio">Relatório</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/lotes">Lotes</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/mentoria">Mentoria</TabLink>
-        {/* Formulários fica fora do <Outlet> (rota irmã, só diretor — §4.2 da
-            spec), mas sem um link daqui não tinha como chegar nela. */}
-        {pode(usuario, "editar_formulario_desempenho") && (
+        {/* Formulários fica fora do <Outlet> (rota irmã, com caixa própria de
+            permissão), mas sem um link daqui não tinha como chegar nela. */}
+        {usuario?.cargo.pode_definir_formulario_desempenho && (
           <TabLink to="/avaliacao-desempenho/painel/formularios">Formulários</TabLink>
         )}
       </TabBar>

@@ -97,7 +97,7 @@ export default function App() {
                 <Route path="/avaliacao-desempenho/mentorados" element={<MeusMentorados />} />
               </Route>
 
-              <Route element={<RequirePosicao posicoes={["diretor", "gerente"]} />}>
+              <Route element={<AdminRoute permissao="pode_gerenciar_desempenho" />}>
                 <Route path="/avaliacao-desempenho/painel" element={<PainelDesempenho />}>
                   <Route index element={<Navigate to="avaliadores" replace />} />
                   <Route path="avaliadores" element={<PainelAvaliadores />} />
@@ -108,9 +108,10 @@ export default function App() {
                 </Route>
               </Route>
 
-              {/* Fora do shell do painel acima — mais restrito (só diretor),
-                  sem o TabBar do resto do painel. */}
-              <Route element={<RequirePosicao posicoes={["diretor"]} />}>
+              {/* Fora do shell do painel acima — caixa própria, porque mexer no
+                  formulário muda o que todo mundo responde; ver resultado não.
+                  Sem o TabBar do resto do painel. */}
+              <Route element={<AdminRoute permissao="pode_definir_formulario_desempenho" />}>
                 <Route path="/avaliacao-desempenho/painel/formularios" element={<PainelFormularios />} />
               </Route>
 
