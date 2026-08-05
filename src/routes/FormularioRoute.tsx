@@ -7,10 +7,7 @@ export function FormularioRoute() {
 
   if (carregando) return <PageLoadingBlock />;
 
-  const podeAcessar =
-    !!usuario?.cargo.pode_definir_formulario || !!usuario?.cargo.pode_gerenciar_cargos;
-
-  if (!podeAcessar) return <Navigate to="/dashboard" replace />;
+  if (!usuario?.cargo.pode_definir_formulario) return <Navigate to="/dashboard" replace />;
 
   return <Outlet />;
 }
