@@ -13,6 +13,7 @@ import {
   getBancasParaAvaliar,
   getEquipesProjeto,
   getEscopos,
+  getEscoposVendidos,
   getFrentes,
   podeGerenciarBanca,
   ROTULO_STATUS_BANCA,
@@ -42,7 +43,16 @@ import {
   createSolicitacaoTroca,
   getSolicitacoesTroca,
 } from "@/lib/solicitacoes-troca";
-import type { Banca, BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente, FormularioAtivo } from "@/types/banca";
+import type {
+  Banca,
+  BancaFrente,
+  Candidatura,
+  EquipeProjeto,
+  Escopo,
+  EscopoVendidoResumo,
+  Frente,
+  FormularioAtivo,
+} from "@/types/banca";
 import type { SolicitacaoTroca } from "@/types/notificacao";
 import type { Cargo, UsuarioResumo } from "@/types/auth";
 import {
@@ -122,6 +132,7 @@ interface Contexto {
   usuarios: UsuarioResumo[];
   cargos: Cargo[];
   escopos: Escopo[];
+  escoposVendidos: EscopoVendidoResumo[];
   frentes: Frente[];
   bancasFrentes: BancaFrente[];
   equipesProjeto: EquipeProjeto[];
@@ -152,7 +163,7 @@ export function Bancas() {
     setCarregando(true);
     setErro("");
     try {
-      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, cargos, escopos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca] =
+      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, cargos, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca] =
         await Promise.all([
           getBancas(token),
           getCandidaturas(token),
@@ -161,6 +172,7 @@ export function Bancas() {
           getUsuarios(token),
           getCargos(token),
           getEscopos(token),
+          getEscoposVendidos(token),
           getFrentes(token),
           getBancasFrentes(token),
           getEquipesProjeto(token),
@@ -195,6 +207,7 @@ export function Bancas() {
         usuarios,
         cargos,
         escopos,
+        escoposVendidos,
         frentes,
         bancasFrentes,
         equipesProjeto,
@@ -384,6 +397,7 @@ export function Bancas() {
             usuarioId={usuario.id}
             onAcao={handleDesalocar}
             onPedirTroca={handlePedirTroca}
+            onCancelarTroca={handleCancelarTroca}
             onVerMais={setBancaDetalhe}
           />
           <SecaoBancas
@@ -497,6 +511,7 @@ function SecaoBancas({
   onEditar,
   onExcluir,
   onPedirTroca,
+  onCancelarTroca,
 }: {
   titulo: string;
   bancas: Banca[];
@@ -509,6 +524,7 @@ function SecaoBancas({
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
   onPedirTroca?: (bancaId: number) => void;
+  onCancelarTroca?: (solicitacaoId: number) => void;
 }) {
   return (
     <PageCard>
@@ -526,16 +542,26 @@ function SecaoBancas({
               const hora = dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
               const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
               const podeGerenciar = gerenciar && usuarioId != null && podeGerenciarBanca(banca, usuarioId);
-              const escopoNome = nomeEscopo(contexto.escopos, banca.escopo_id);
+              // Banca legada (sem escopo vendido vinculado) mostra o escopo do
+              // catálogo, singular, como sempre foi. Banca costurada a
+              // escopo(s) do projeto mostra todos os que ela cobre — uma
+              // banca pode juntar mais de um (§8), e o campo antigo só
+              // guardava o primeiro.
+              const nomesEscopos =
+                banca.projeto_escopo_ids.length > 0
+                  ? banca.projeto_escopo_ids
+                      .map((id) => contexto.escoposVendidos.find((e) => e.id === id)?.nome)
+                      .filter((nome): nome is string => !!nome)
+                  : [nomeEscopo(contexto.escopos, banca.escopo_id)];
               const minhaCandidatura =
                 acao === "deslocar" && usuarioId != null
                   ? contexto.candidaturas.find((c) => c.banca_id === banca.id && c.usuario_id === usuarioId)
                   : undefined;
-              const trocaPendente =
-                minhaCandidatura &&
-                contexto.solicitacoesTroca.some(
-                  (s) => s.candidatura_id === minhaCandidatura.id && s.status === "pendente",
-                );
+              const minhaSolicitacaoPendente = minhaCandidatura
+                ? contexto.solicitacoesTroca.find(
+                    (s) => s.candidatura_id === minhaCandidatura.id && s.status === "pendente",
+                  )
+                : undefined;
 
               return (
                 <BancaLinha key={banca.id}>
@@ -547,7 +573,11 @@ function SecaoBancas({
                   <BancaInfo>
                     <BancaNomeLinha>
                       <BancaNome>{banca.nome_projeto}</BancaNome>
-                      {escopoNome && <PageBadge $tone="muted">{escopoNome}</PageBadge>}
+                      {nomesEscopos.map((nome, i) => (
+                        <PageBadge key={`${nome}-${i}`} $tone="muted">
+                          {nome}
+                        </PageBadge>
+                      ))}
                       {acao === "avaliar" && <PageBadge $tone="warning">Pendente</PageBadge>}
                       {acao === "deslocar" && <PageBadge $tone="default">Inscrito</PageBadge>}
                       {acao === "alocar" &&
@@ -582,15 +612,24 @@ function SecaoBancas({
                         Excluir
                       </PageButtonSm>
                     )}
-                    {acao === "deslocar" && onPedirTroca && minhaCandidatura && (
-                      <PageButtonSm
-                        $variant="outline"
-                        type="button"
-                        disabled={!!trocaPendente}
-                        onClick={() => onPedirTroca(banca.id)}
-                      >
-                        {trocaPendente ? "Troca pedida" : "Pedir troca"}
-                      </PageButtonSm>
+                    {acao === "deslocar" && minhaCandidatura && (
+                      <>
+                        {minhaSolicitacaoPendente && onCancelarTroca ? (
+                          <PageButtonSm
+                            $variant="outline"
+                            type="button"
+                            onClick={() => onCancelarTroca(minhaSolicitacaoPendente.id)}
+                          >
+                            Cancelar troca
+                          </PageButtonSm>
+                        ) : (
+                          onPedirTroca && (
+                            <PageButtonSm $variant="outline" type="button" onClick={() => onPedirTroca(banca.id)}>
+                              Pedir troca
+                            </PageButtonSm>
+                          )
+                        )}
+                      </>
                     )}
                     {acao !== "nenhuma" && onAcao && (
                       <PageButtonSm
@@ -614,7 +653,9 @@ function SecaoBancas({
 }
 
 /** Pedidos abertos de troca de candidatura (§8): qualquer consultor elegível
- *  pode confirmar; quem pediu vê os próprios pedidos com opção de cancelar. */
+ *  pode confirmar; quem pediu vê os próprios pedidos aqui também, com opção
+ *  de cancelar (o mesmo botão também aparece em "Já alocado", junto da
+ *  banca — os dois lugares fazem a mesma coisa, de propósito). */
 function SecaoTrocas({
   solicitacoes,
   bancas,

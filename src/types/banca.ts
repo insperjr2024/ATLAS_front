@@ -70,6 +70,17 @@ export interface Escopo {
   ativo: boolean;
 }
 
+/** Nome resolvido de um escopo VENDIDO (de um projeto), de todos os
+ *  projetos — usado só pra página Bancas resolver `Banca.projeto_escopo_ids`
+ *  em nomes, já que ela lista bancas de projetos diferentes ao mesmo tempo.
+ *  Versão enxuta de `EscopoVendido` (`types/projeto.ts`), sem a contagem de
+ *  dias, que não faz sentido fora do contexto de um projeto só. */
+export interface EscopoVendidoResumo {
+  id: number;
+  projeto_id: number;
+  nome: string;
+}
+
 export interface Frente {
   id: number;
   nome: string;

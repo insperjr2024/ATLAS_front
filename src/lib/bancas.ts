@@ -6,6 +6,7 @@ import type {
   Candidatura,
   EquipeProjeto,
   Escopo,
+  EscopoVendidoResumo,
   Frente,
   StatusBanca,
 } from "@/types/banca";
@@ -36,6 +37,10 @@ export function desalocar(candidaturaId: number, token: string) {
 
 export function getEscopos(token: string) {
   return apiFetch<Escopo[]>("/escopos", { token });
+}
+
+export function getEscoposVendidos(token: string) {
+  return apiFetch<EscopoVendidoResumo[]>("/escopos-projeto", { token });
 }
 
 export function getFrentes(token: string) {
