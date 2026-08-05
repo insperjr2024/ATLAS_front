@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Cache incremental do tsc. É regravado a cada build, então versionado ele
+# conflita em todo PR sem nunca haver mudança real a resolver.
+*.tsbuildinfo
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -24,5 +28,3 @@ dist-ssr
 *.sw?
 
 .env
-# Cache incremental do TypeScript — gerado a cada build
-*.tsbuildinfo

@@ -302,12 +302,20 @@ function NovoMembroModal({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
+  // §3: o recorte de visão do gerente sai de `usuario_frente` — sem nenhuma
+  // frente marcada ele entra na plataforma sem enxergar projeto nenhum.
+  const frenteObrigatoria = posicao === "gerente";
+
   function toggleFrente(id: number) {
     setFrenteIds((lista) => (lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]));
   }
 
   async function handleCriar(e: React.FormEvent) {
     e.preventDefault();
+    if (frenteObrigatoria && frenteIds.length === 0) {
+      setErro("Selecione ao menos uma frente — é ela que define os projetos que o gerente enxerga.");
+      return;
+    }
     setSalvando(true);
     setErro("");
     try {
@@ -397,20 +405,10 @@ function NovoMembroModal({
                 </FieldSelect>
               </FieldGroup>
 
+              {/* Logo abaixo da posição: para o gerente, escolher a frente é
+                  parte de definir a posição, não um detalhe solto. */}
               <FieldGroup>
-                <FieldLabel htmlFor="novo-membro-cargo">Cargo (permissões de banca)</FieldLabel>
-                <FieldSelect id="novo-membro-cargo" value={cargoId} onChange={(e) => setCargoId(e.target.value)}>
-                  <option value="">Cargo padrão configurado</option>
-                  {contexto.cargos.map((cargo) => (
-                    <option key={cargo.id} value={cargo.id}>
-                      {cargo.nome}
-                    </option>
-                  ))}
-                </FieldSelect>
-              </FieldGroup>
-
-              <FieldGroup>
-                <FieldLabel>Frentes</FieldLabel>
+                <FieldLabel>{frenteObrigatoria ? "Frentes que o gerente lidera *" : "Frentes"}</FieldLabel>
                 <CheckboxGrid>
                   {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
                   {contexto.frentes.map((frente) => (
@@ -424,6 +422,24 @@ function NovoMembroModal({
                     </CheckboxLabel>
                   ))}
                 </CheckboxGrid>
+                {frenteObrigatoria && (
+                  <EmptyText style={{ fontSize: "0.7rem" }}>
+                    O gerente só enxerga os projetos das frentes marcadas aqui (§3) — sem nenhuma
+                    marcada, ele entra na plataforma sem ver projeto algum.
+                  </EmptyText>
+                )}
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-cargo">Cargo (permissões de banca)</FieldLabel>
+                <FieldSelect id="novo-membro-cargo" value={cargoId} onChange={(e) => setCargoId(e.target.value)}>
+                  <option value="">Cargo padrão configurado</option>
+                  {contexto.cargos.map((cargo) => (
+                    <option key={cargo.id} value={cargo.id}>
+                      {cargo.nome}
+                    </option>
+                  ))}
+                </FieldSelect>
               </FieldGroup>
 
               {erro && <FormErrorText>{erro}</FormErrorText>}
@@ -468,12 +484,19 @@ function MembroModal({
 
   const frentesMembro = frentesDoUsuario(contexto.usuariosFrentes, contexto.frentes, membro.id);
 
+  // §3: promover a gerente sem vincular frente deixa a conta sem enxergar nada.
+  const frenteObrigatoria = posicao === "gerente";
+
   function toggleFrente(id: number) {
     setFrenteIds((lista) => (lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]));
   }
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
+    if (frenteObrigatoria && frenteIds.length === 0) {
+      setErro("Selecione ao menos uma frente — é ela que define os projetos que o gerente enxerga.");
+      return;
+    }
     setSalvando(true);
     setErro("");
     try {
@@ -573,18 +596,7 @@ function MembroModal({
                 </FieldGroup>
 
                 <FieldGroup>
-                  <FieldLabel htmlFor="cargo-membro">Cargo (permissões de banca)</FieldLabel>
-                  <FieldSelect id="cargo-membro" value={cargoId} onChange={(e) => setCargoId(e.target.value)} required>
-                    {contexto.cargos.map((cargo) => (
-                      <option key={cargo.id} value={cargo.id}>
-                        {cargo.nome}
-                      </option>
-                    ))}
-                  </FieldSelect>
-                </FieldGroup>
-
-                <FieldGroup>
-                  <FieldLabel>Frentes</FieldLabel>
+                  <FieldLabel>{frenteObrigatoria ? "Frentes que o gerente lidera *" : "Frentes"}</FieldLabel>
                   <CheckboxGrid>
                     {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
                     {contexto.frentes.map((frente) => (
@@ -598,6 +610,23 @@ function MembroModal({
                       </CheckboxLabel>
                     ))}
                   </CheckboxGrid>
+                  {frenteObrigatoria && (
+                    <EmptyText style={{ fontSize: "0.7rem" }}>
+                      O gerente só enxerga os projetos das frentes marcadas aqui (§3) — sem nenhuma
+                      marcada, ele fica sem ver projeto algum.
+                    </EmptyText>
+                  )}
+                </FieldGroup>
+
+                <FieldGroup>
+                  <FieldLabel htmlFor="cargo-membro">Cargo (permissões de banca)</FieldLabel>
+                  <FieldSelect id="cargo-membro" value={cargoId} onChange={(e) => setCargoId(e.target.value)} required>
+                    {contexto.cargos.map((cargo) => (
+                      <option key={cargo.id} value={cargo.id}>
+                        {cargo.nome}
+                      </option>
+                    ))}
+                  </FieldSelect>
                 </FieldGroup>
 
                 <FieldGroup>

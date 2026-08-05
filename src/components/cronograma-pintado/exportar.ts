@@ -1,7 +1,7 @@
 /**
  * Export do cronograma em PNG e PDF (§6.4: "pronto para apresentações").
  *
- * ⚠ `html-to-image`, não `html2canvas`: o segundo reimplementa um
+ * Atenção: `html-to-image`, não `html2canvas`: o segundo reimplementa um
  * renderizador de CSS e engasga com `color-mix(in srgb, …)`, que este código
  * usa em vários lugares — aquelas células sairiam transparentes.
  * `html-to-image` serializa o DOM num `<foreignObject>` de SVG e deixa o

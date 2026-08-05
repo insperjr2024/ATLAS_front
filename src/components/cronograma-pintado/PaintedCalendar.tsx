@@ -1,25 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { format, isSameMonth, isToday } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { format, isToday } from "date-fns";
+import { WeekdayCell } from "@/components/calendario/CalendarGrid.styled";
+import { chaveData } from "@/components/calendario/semanas";
 import {
-  WeekRow,
-  WeekdayCell,
-  WeekdayRow,
-} from "@/components/calendario/CalendarGrid.styled";
-import { chaveData, rotulosDiaSemana, semanasDoMes } from "@/components/calendario/semanas";
-import { tonsDaCor } from "./cores";
+  COR_MARCO,
+  fundoDiagonal,
+  TEXTO_SOBRE_DIVIDIDA,
+  tonsDaCor,
+  type TipoMarco,
+} from "./cores";
 import {
   BlocoMes,
+  CabecalhoDias,
   CronogramaScroll,
-  MarcoGlifo,
+  DetalheCelula,
+  LinhaDias,
+  MarcoBox,
+  MarcosDoDia,
   NumeroDia,
   PaintedDayCell,
   TituloMes,
 } from "./PaintedCalendar.styled";
-
-/** §6.4 pede seg–dom para o cronograma. */
-const INICIO_SEMANA = 1;
-const ROTULOS = rotulosDiaSemana(INICIO_SEMANA);
+import type { BlocoCalendario, Visao } from "./visao";
 
 export interface EtapaPintavel {
   id: number;
@@ -33,7 +35,10 @@ export interface EtapaPintavel {
 export interface MarcoRenderizavel {
   /** Chave `yyyy-MM-dd`. */
   data: string;
-  glifo: string;
+  tipo: TipoMarco;
+  /** O nome curto do box na visão de mês, onde não cabe o título inteiro. */
+  rotulo: string;
+  /** O nome completo — no box das visões maiores e no `title` da célula. */
   titulo: string;
 }
 
@@ -51,16 +56,18 @@ export interface DiaNaoUtil {
 }
 
 interface PaintedCalendarProps {
-  /** 1º dia de cada mês a renderizar, já derivado pela página. */
-  meses: Date[];
+  /** Os blocos a renderizar, já derivados pela página (ver `visao.ts`). */
+  blocos: BlocoCalendario[];
+  /** Manda na altura da célula e em quanto detalhe cabe dentro dela. */
+  visao: Visao;
   etapas: EtapaPintavel[];
   marcos: MarcoRenderizavel[];
   faixas: FaixaDerivada[];
-  /** Chave `yyyy-MM-dd` → motivo. Vem do backend: `dias_uteis.py` é a
+  /** Chave `yyyy-MM-dd` para o motivo. Vem do backend: `dias_uteis.py` é a
    *  definição única, e recalcular fim de semana aqui divergiria no dia em
    *  que a diretoria carregar um recesso. */
   diasNaoUteis: Map<string, DiaNaoUtil>;
-  /** A etapa do "🖌 pintando: X". `null` = cursor de leitura. */
+  /** A etapa do "pintando: X". `null` = cursor de leitura. */
   etapaAtiva: number | null;
   somenteLeitura?: boolean;
   onPaintRange: (etapaId: number, inicio: string, fim: string) => void;
@@ -74,6 +81,13 @@ interface Arraste {
   hover: string;
 }
 
+/** Uma fatia da célula: uma etapa (ou a faixa derivada) que reivindica o dia. */
+interface DonoDoDia {
+  fundo: string;
+  texto: string;
+  nome: string;
+}
+
 /**
  * O calendário pintável do §6.4 — meses empilhados, seg–dom, arrastar para
  * pintar um intervalo.
@@ -82,7 +96,8 @@ interface Arraste {
  * que faz o export ser determinístico.
  */
 export function PaintedCalendar({
-  meses,
+  blocos,
+  visao,
   etapas,
   marcos,
   faixas,
@@ -112,34 +127,63 @@ export function PaintedCalendar({
    * O renderizador da célula não sabe a diferença — só pergunta "quem é dona
    * desta data?". É isso que faz o preview aparecer sem estado duplicado.
    */
-  const donaDoDia = useMemo(() => {
-    const mapa = new Map<string, { cor: string; texto: string; preview: boolean }>();
+  /**
+   * Quem são os donos de cada dia — uma LISTA, não um vencedor.
+   *
+   * Duas etapas no mesmo dia dividem a célula em fatias diagonais (ver
+   * `fundoDiagonal`). O campo `ordem` deixou de ser desempate de sobreposição
+   * e passou a ser a ORDEM DAS FATIAS, a mesma da legenda, para o olho casar
+   * as duas sem esforço.
+   */
+  const donosDoDia = useMemo(() => {
+    const porDia = new Map<string, DonoDoDia[]>();
 
-    const pintar = (inicio: string, fim: string, cor: string, preview: boolean) => {
+    const acrescentar = (inicio: string, fim: string, cor: string, nome: string) => {
       const tons = tonsDaCor(cor);
       for (const chave of diasDoIntervalo(inicio, fim)) {
-        mapa.set(chave, { cor: tons.fundo, texto: tons.texto, preview });
+        const lista = porDia.get(chave) ?? [];
+        lista.push({ fundo: tons.fundo, texto: tons.texto, nome });
+        porDia.set(chave, lista);
       }
     };
 
-    // Faixas derivadas primeiro (ficam por baixo).
-    for (const faixa of faixas) {
-      pintar(faixa.inicio, faixa.fim, faixa.cor, false);
-    }
-    // Etapas por ordem: a de maior `ordem` ganha o desempate de sobreposição.
     for (const etapa of [...etapas].sort((a, b) => a.ordem - b.ordem)) {
-      pintar(etapa.data_inicio, etapa.data_fim, etapa.cor, false);
+      acrescentar(etapa.data_inicio, etapa.data_fim, etapa.cor, etapa.nome);
     }
-    // O preview por último — sempre visível por cima.
+
+    // A etapa em arrasto entra como mais uma fatia nos dias que ainda não são
+    // dela — o preview mostra o resultado real do drop, não uma cor por cima.
+    const preview = new Set<string>();
     if (arraste) {
       const etapa = etapas.find((e) => e.id === arraste.etapaId);
       if (etapa) {
         const inicio = arraste.ancora <= arraste.hover ? arraste.ancora : arraste.hover;
         const fim = arraste.ancora <= arraste.hover ? arraste.hover : arraste.ancora;
-        pintar(inicio, fim, etapa.cor, true);
+        const tons = tonsDaCor(etapa.cor);
+        for (const chave of diasDoIntervalo(inicio, fim)) {
+          preview.add(chave);
+          const lista = porDia.get(chave) ?? [];
+          if (!lista.some((d) => d.nome === etapa.nome)) {
+            lista.push({ fundo: tons.fundo, texto: tons.texto, nome: etapa.nome });
+            porDia.set(chave, lista);
+          }
+        }
       }
     }
-    return mapa;
+
+    // Faixas derivadas ficam por BAIXO: só pintam o dia que nenhuma etapa
+    // reivindicou. Ambientação como fatia ao lado de uma etapa seria ruído —
+    // ela é contexto do projeto, não trabalho planejado.
+    for (const faixa of faixas) {
+      const tons = tonsDaCor(faixa.cor);
+      for (const chave of diasDoIntervalo(faixa.inicio, faixa.fim)) {
+        if (!porDia.has(chave)) {
+          porDia.set(chave, [{ fundo: tons.fundo, texto: tons.texto, nome: faixa.rotulo }]);
+        }
+      }
+    }
+
+    return { porDia, preview };
   }, [etapas, faixas, arraste]);
 
   const pintavel = useCallback(
@@ -183,7 +227,7 @@ export function PaintedCalendar({
       onArrasteMudou?.(null);
       if (!atual) return;
 
-      // ⚠ Hit-test do ponto FINAL aqui, e não confiar só no `hover`: num
+      // Atenção: hit-test do ponto FINAL aqui, e não confiar só no `hover`: num
       // arrasto rápido o último `pointermove` pode ter sido descartado pelo
       // throttle de rAF, e o intervalo sairia curto — a etapa terminaria
       // antes de onde o dedo soltou.
@@ -221,61 +265,122 @@ export function PaintedCalendar({
     onArrasteMudou?.({ inicio, fim });
   }, [arraste, onArrasteMudou]);
 
+  // Nas células grandes (semana e dia) sobra espaço para dizer de quem é o dia
+  // por escrito, em vez de depender só da cor e da legenda ao lado.
+  const detalhado = visao !== "mes";
+
   return (
     <CronogramaScroll data-cronograma-export>
-      {meses.map((mes) => (
-        <BlocoMes key={chaveData(mes)}>
-          <TituloMes>{format(mes, "MMMM 'de' yyyy", { locale: ptBR })}</TituloMes>
-          <WeekdayRow>
-            {ROTULOS.map((rotulo) => (
-              <WeekdayCell key={rotulo}>{rotulo}</WeekdayCell>
+      {blocos.map((bloco) => {
+        const colunas = bloco.rotulos.length || bloco.linhas[0]?.length || 1;
+        return (
+          <BlocoMes key={bloco.chave}>
+            <TituloMes>{bloco.titulo}</TituloMes>
+            {bloco.rotulos.length > 0 && (
+              <CabecalhoDias $colunas={colunas}>
+                {bloco.rotulos.map((rotulo) => (
+                  <WeekdayCell key={rotulo}>{rotulo}</WeekdayCell>
+                ))}
+              </CabecalhoDias>
+            )}
+            {bloco.linhas.map((linha, indiceLinha) => (
+              <LinhaDias key={`${bloco.chave}-${indiceLinha}`} $colunas={colunas}>
+                {linha.map((dia, indiceColuna) => {
+                  // `null` é preenchimento de mês vizinho: com os meses
+                  // empilhados a mesma data cairia em DOIS blocos.
+                  if (!dia) {
+                    return (
+                      <PaintedDayCell
+                        key={`${bloco.chave}-${indiceLinha}-${indiceColuna}`}
+                        $vazia
+                        $visao={visao}
+                      />
+                    );
+                  }
+
+                  const chave = chaveData(dia);
+                  const naoUtil = diasNaoUteis.get(chave);
+                  const donos = donosDoDia.porDia.get(chave) ?? [];
+                  // Uma dona = cor chapada; várias = fatias diagonais.
+                  const fundo = donos.length
+                    ? fundoDiagonal(donos.map((d) => d.fundo))
+                    : undefined;
+                  // Com a célula dividida, nenhuma cor da paleta serve para
+                  // todas as fatias — cai no cinza-escuro neutro.
+                  const corTexto =
+                    donos.length === 1
+                      ? donos[0].texto
+                      : donos.length > 1
+                        ? TEXTO_SOBRE_DIVIDIDA
+                        : undefined;
+                  const marcosDoDia = marcosPorDia.get(chave) ?? [];
+                  const rotuloDoNaoUtil = naoUtil
+                    ? `${rotuloNaoUtil(naoUtil.tipo)}${naoUtil.descricao ? ` — ${naoUtil.descricao}` : ""}`
+                    : null;
+
+                  return (
+                    <PaintedDayCell
+                      key={chave}
+                      data-dia={chave}
+                      $visao={visao}
+                      $naoUtil={!!naoUtil}
+                      $cor={fundo}
+                      $texto={corTexto}
+                      $preview={donosDoDia.preview.has(chave)}
+                      $pintavel={pintavel(chave)}
+                      title={
+                        rotuloDoNaoUtil ??
+                        ([...donos.map((d) => d.nome), ...marcosDoDia.map((m) => m.titulo)].join(
+                          " · ",
+                        ) ||
+                          undefined)
+                      }
+                      onPointerDown={(e) => iniciarArraste(e, chave)}
+                    >
+                      <NumeroDia $texto={corTexto} $hoje={isToday(dia)}>
+                        {format(dia, "d")}
+                      </NumeroDia>
+
+                      {/* O nome da etapa só onde cabe; no mês a cor + legenda
+                          fazem esse trabalho e o espaço é do box de marco.
+                          Com o dia dividido, lista TODAS as donas — é a única
+                          forma de saber quem é cada fatia sem contar cor. */}
+                      {detalhado && !rotuloDoNaoUtil && donos.length > 0 && (
+                        <DetalheCelula $texto={corTexto}>
+                          {donos.map((d) => (
+                            <strong key={d.nome}>{d.nome}</strong>
+                          ))}
+                        </DetalheCelula>
+                      )}
+                      {detalhado && rotuloDoNaoUtil && (
+                        <DetalheCelula>
+                          <small>{rotuloDoNaoUtil}</small>
+                        </DetalheCelula>
+                      )}
+
+                      {marcosDoDia.length > 0 && (
+                        <MarcosDoDia>
+                          {marcosDoDia.map((m) => (
+                            <MarcoBox
+                              key={`${m.tipo}-${m.titulo}`}
+                              $borda={COR_MARCO.borda}
+                              $fundo={COR_MARCO.fundo}
+                              $texto={COR_MARCO.texto}
+                              title={m.titulo}
+                            >
+                              {detalhado ? m.titulo : m.rotulo}
+                            </MarcoBox>
+                          ))}
+                        </MarcosDoDia>
+                      )}
+                    </PaintedDayCell>
+                  );
+                })}
+              </LinhaDias>
             ))}
-          </WeekdayRow>
-          {semanasDoMes(mes, INICIO_SEMANA).map((semana) => (
-            <WeekRow key={`${chaveData(mes)}-${chaveData(semana[0])}`}>
-              {semana.map((dia) => {
-                const chave = chaveData(dia);
-                const doMes = isSameMonth(dia, mes);
-                const naoUtil = diasNaoUteis.get(chave);
-                const dona = donaDoDia.get(chave);
-                const marcosDoDia = marcosPorDia.get(chave) ?? [];
-
-                // Dia de mês vizinho vira placeholder vazio: com meses
-                // empilhados a mesma data cairia em DOIS blocos.
-                if (!doMes) {
-                  return <PaintedDayCell key={chave} $vazia $compacto />;
-                }
-
-                return (
-                  <PaintedDayCell
-                    key={chave}
-                    data-dia={chave}
-                    $compacto
-                    $naoUtil={!!naoUtil}
-                    $cor={dona?.cor}
-                    $texto={dona?.texto}
-                    $preview={dona?.preview}
-                    $pintavel={pintavel(chave)}
-                    title={
-                      naoUtil
-                        ? `${rotuloNaoUtil(naoUtil.tipo)}${naoUtil.descricao ? ` — ${naoUtil.descricao}` : ""}`
-                        : marcosDoDia.map((m) => m.titulo).join(" · ") || undefined
-                    }
-                    onPointerDown={(e) => iniciarArraste(e, chave)}
-                  >
-                    <NumeroDia $texto={dona?.texto} $hoje={isToday(dia)}>
-                      {format(dia, "d")}
-                    </NumeroDia>
-                    {marcosDoDia.length > 0 && (
-                      <MarcoGlifo>{marcosDoDia.map((m) => m.glifo).join("")}</MarcoGlifo>
-                    )}
-                  </PaintedDayCell>
-                );
-              })}
-            </WeekRow>
-          ))}
-        </BlocoMes>
-      ))}
+          </BlocoMes>
+        );
+      })}
     </CronogramaScroll>
   );
 }
