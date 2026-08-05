@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { UsuarioResumo } from "@/types/auth";
+import type { Posicao, UsuarioResumo } from "@/types/auth";
 import type { MembroEquipePayload } from "@/types/projeto";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
 import { PageButtonSm } from "@/styles/page.styled";
@@ -13,10 +13,22 @@ export interface EquipeSelecionada {
 }
 
 /**
+ * Cada papel do projeto (§6.3) só é ocupado por quem tem a posição
+ * correspondente (§3): coordenador coordena, consultor consulta. Diretoria e
+ * gerência acompanham pelo recorte de visão, sem ocupar vaga na equipe.
+ * Espelha `POSICAO_EXIGIDA_POR_PAPEL` de `src/utils/validacao_equipe.py`.
+ */
+export const POSICAO_COORDENADOR: Posicao = "coordenador";
+export const POSICAO_CONSULTOR: Posicao = "consultor";
+
+/**
  * A regra do coordenador (§6.3) numa função só, para o formulário de criação
  * e o modal de editar equipe dizerem exatamente a mesma coisa. O backend
  * revalida em `create_projeto.py` e `update_equipe_projeto.py`. Consultores
  * não têm mínimo nem máximo — o projeto pode até não ter nenhum.
+ *
+ * Ninguém tem limite de projetos: a mesma pessoa pode coordenar (ou consultar)
+ * vários ao mesmo tempo, por isso não há checagem contra outros projetos.
  */
 export function validarEquipe({ coordenadorId, consultorIds }: EquipeSelecionada): string | null {
   if (!coordenadorId) return "Escolha o coordenador do projeto.";
@@ -49,15 +61,23 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
   const nomePorId = new Map(usuarios.map((u) => [u.id, u.nome]));
   const { coordenadorId, consultorIds } = valor;
 
-  // A posição não restringe a escolha (o backend também não restringe), mas
-  // mostrá-la evita colocar um consultor como coordenador por engano.
-  const rotulo = (usuario: UsuarioResumo) =>
-    `${usuario.nome} · ${ROTULO_POSICAO[usuario.posicao]}`;
+  // A carga atual entra no rótulo para a alocação ser decidida sem sair da
+  // tela — 3+ projetos é o limiar de gargalo do §7.3.
+  const rotulo = (usuario: UsuarioResumo) => {
+    const total = usuario.projetos_alocados;
+    const carga =
+      total === 0 ? "livre" : `${total} projeto${total > 1 ? "s" : ""}${total >= 3 ? " ⚠" : ""}`;
+    return `${usuario.nome} · ${ROTULO_POSICAO[usuario.posicao]} · ${carga}`;
+  };
 
-  // Ninguém aparece duas vezes: quem já é coordenador ou já foi escolhido
-  // como consultor sai da lista de opções.
+  // O backend recusa quem não tem a posição do papel, então nem oferecemos:
+  // diretoria e gerência não aparecem em nenhuma das duas listas.
+  const elegiveisCoordenador = usuarios.filter((u) => u.posicao === POSICAO_COORDENADOR);
+
+  // Ninguém aparece duas vezes: quem já foi escolhido como consultor sai da
+  // lista de opções.
   const disponiveisParaConsultor = usuarios.filter(
-    (u) => u.id !== coordenadorId && !consultorIds.includes(u.id),
+    (u) => u.posicao === POSICAO_CONSULTOR && !consultorIds.includes(u.id),
   );
 
   function adicionarConsultor() {
@@ -72,8 +92,8 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
   }
 
   function trocarCoordenador(novoId: number | null) {
-    // Promover alguém que já era consultor tira a pessoa da lista de baixo,
-    // em vez de deixá-la nos dois lugares.
+    // As duas listas são disjuntas por posição, mas equipes salvas antes desta
+    // regra podem ter a mesma pessoa nos dois papéis — tira da lista de baixo.
     onChange({
       coordenadorId: novoId,
       consultorIds: novoId ? consultorIds.filter((x) => x !== novoId) : consultorIds,
@@ -92,13 +112,19 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
           disabled={desabilitado}
           onChange={(e) => trocarCoordenador(e.target.value ? Number(e.target.value) : null)}
         >
-          <option value="">Selecione…</option>
-          {usuarios.map((usuario) => (
+          <option value="">
+            {elegiveisCoordenador.length === 0 ? "Nenhum coordenador cadastrado" : "Selecione…"}
+          </option>
+          {elegiveisCoordenador.map((usuario) => (
             <option key={usuario.id} value={usuario.id}>
               {rotulo(usuario)}
             </option>
           ))}
         </FieldSelect>
+        <CountHint $ok>
+          Só quem tem a posição Coordenador(a) aparece aqui, com os projetos em que já está
+          alocado(a). A mesma pessoa pode coordenar vários.
+        </CountHint>
       </FieldGroup>
 
       <FieldGroup>
@@ -130,7 +156,9 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
             onChange={(e) => setConsultorPendente(e.target.value)}
           >
             <option value="">
-              {disponiveisParaConsultor.length === 0 ? "Nenhum usuário disponível" : "Adicionar consultor…"}
+              {disponiveisParaConsultor.length === 0
+                ? "Nenhum consultor disponível"
+                : "Adicionar consultor…"}
             </option>
             {disponiveisParaConsultor.map((usuario) => (
               <option key={usuario.id} value={usuario.id}>
@@ -148,12 +176,16 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
           </PageButtonSm>
         </AddRow>
 
-        {consultorIds.length > 0 && (
-          <CountHint $ok>
-            {consultorIds.length} consultor{consultorIds.length > 1 ? "es" : ""} selecionado
-            {consultorIds.length > 1 ? "s" : ""}
-          </CountHint>
-        )}
+        <CountHint $ok>
+          {consultorIds.length > 0 && (
+            <>
+              {consultorIds.length} consultor{consultorIds.length > 1 ? "es" : ""} selecionado
+              {consultorIds.length > 1 ? "s" : ""} ·{" "}
+            </>
+          )}
+          Só quem tem a posição Consultor(a) aparece aqui, com os projetos em que já está
+          alocado(a). A mesma pessoa pode atuar em vários.
+        </CountHint>
       </FieldGroup>
     </PickerStack>
   );
