@@ -74,21 +74,21 @@ const navItems: NavItemConfig[] = [
     label: "Núcleo",
     path: "/nucleo",
     section: "admin",
-    visible: (c) => c.pode_gerenciar_cargos,
+    visible: (c) => c.pode_gerenciar_nucleo,
   },
   {
     icon: Users,
     label: "Membros",
     path: "/membros",
     section: "admin",
-    visible: (c) => c.pode_gerenciar_cargos,
+    visible: (c) => c.pode_gerenciar_membros,
   },
   {
     icon: ClipboardCheck,
     label: "Avaliações",
     path: "/avaliacoes",
     section: "admin",
-    visible: (c) => c.pode_definir_formulario || c.pode_gerenciar_cargos,
+    visible: (c) => c.pode_definir_formulario,
   },
   {
     icon: Award,
@@ -103,7 +103,7 @@ const navItems: NavItemConfig[] = [
     label: "Configurações",
     path: "/config",
     section: "admin",
-    visible: (c) => c.pode_gerenciar_cargos,
+    visible: (c) => c.pode_gerenciar_nucleo,
   },
 ];
 

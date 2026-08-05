@@ -119,10 +119,12 @@ export default function App() {
               <Route element={<FormularioRoute />}>
                 <Route path="/avaliacoes" element={<Avaliacoes />} />
               </Route>
-              <Route element={<AdminRoute />}>
+              <Route element={<AdminRoute permissao="pode_gerenciar_nucleo" />}>
                 <Route path="/nucleo" element={<Nucleo />} />
-                <Route path="/membros" element={<Membros />} />
                 <Route path="/config" element={<Config />} />
+              </Route>
+              <Route element={<AdminRoute permissao="pode_gerenciar_membros" />}>
+                <Route path="/membros" element={<Membros />} />
               </Route>
             </Route>
           </Route>

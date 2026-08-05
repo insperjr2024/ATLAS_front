@@ -164,7 +164,7 @@ export function Avaliacoes() {
       .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
   }, [historico, filtroSemestre, filtroCoordenador, filtroConsultor, filtroEscopo, avaliacoes]);
 
-  if (!usuario?.cargo.pode_definir_formulario && !usuario?.cargo.pode_gerenciar_cargos) {
+  if (!usuario?.cargo.pode_definir_formulario) {
     return <Navigate to="/dashboard" replace />;
   }
 

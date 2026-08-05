@@ -3,7 +3,14 @@ export interface Cargo {
   nome: string;
   pode_definir_formulario: boolean;
   pode_agendar_banca: boolean;
+  /**
+   * Editar cargos e permissões. Não basta sozinha: o backend também exige
+   * `posicao === "diretor"`, senão quem tivesse a caixa se auto-concederia
+   * o resto.
+   */
   pode_gerenciar_cargos: boolean;
+  pode_gerenciar_membros: boolean;
+  pode_gerenciar_nucleo: boolean;
 }
 
 /** Os 4 perfis do §3. Distinto de `Cargo`, que são as permissões do módulo de bancas. */

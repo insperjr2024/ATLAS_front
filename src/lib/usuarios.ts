@@ -37,6 +37,23 @@ export interface RegistrarUsuarioPayload {
   cargo_id?: number | null;
 }
 
+export interface TransferirDiretoriaPayload {
+  novo_diretor_id: number;
+  diretor_atual_id: number;
+}
+
+/**
+ * §10 — a passagem de bastão da virada de gestão, num passo só. O backend
+ * promove antes de desligar, para nunca existir um instante sem diretoria, e
+ * quem sai vira ex-membro (o caso de "fim de gestão").
+ */
+export function transferirDiretoria(dados: TransferirDiretoriaPayload, token: string) {
+  return apiFetch<{ novo_diretor: { id: number; nome: string } }>(
+    "/usuarios/transferir-diretoria",
+    { method: "POST", token, body: JSON.stringify(dados) },
+  );
+}
+
 /** §10: ninguém se auto-registra — só a diretoria pré-cadastra um membro. */
 export function registrarUsuario(dados: RegistrarUsuarioPayload, token: string) {
   return apiFetch<UsuarioResumo>("/auth/registrar", {

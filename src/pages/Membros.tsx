@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { getCargos } from "@/lib/cargos";
 import { frentesDoUsuario, nomeCargo, normalizarTexto } from "@/lib/nucleo";
-import { getUsuarios, registrarUsuario, updateUsuario } from "@/lib/usuarios";
+import { getUsuarios, registrarUsuario, transferirDiretoria, updateUsuario } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import type { Frente } from "@/types/banca";
 import type { Cargo, Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
@@ -62,6 +62,7 @@ import {
   FiltersRow,
   SearchField,
   FilterSelect,
+  HeaderActions,
 } from "./Membros.styled";
 import { TableScrollWrap } from "@/styles/shared.styled";
 
@@ -81,6 +82,7 @@ export function Membros() {
   const [erro, setErro] = useState("");
   const [membroDetalhe, setMembroDetalhe] = useState<UsuarioResumo | null>(null);
   const [criandoMembro, setCriandoMembro] = useState(false);
+  const [transferindo, setTransferindo] = useState(false);
   const [termoPesquisa, setTermoPesquisa] = useState("");
   const [filtroCargo, setFiltroCargo] = useState("");
   const [filtroFrente, setFiltroFrente] = useState("");
@@ -112,7 +114,7 @@ export function Membros() {
 
   const membrosAtivos = useMemo(() => membros.filter((m) => m.ativo).length, [membros]);
 
-  if (!usuario?.cargo.pode_gerenciar_cargos) {
+  if (!usuario?.cargo.pode_gerenciar_membros) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -157,9 +159,14 @@ export function Membros() {
         </PageHeaderText>
         {/* §10: ninguém se auto-registra — só a diretoria pré-cadastra. */}
         {usuario?.posicao === "diretor" && (
-          <PageButton type="button" onClick={() => setCriandoMembro(true)}>
-            Adicionar membro
-          </PageButton>
+          <HeaderActions>
+            <PageButton $variant="outline" type="button" onClick={() => setTransferindo(true)}>
+              Transferir diretoria
+            </PageButton>
+            <PageButton type="button" onClick={() => setCriandoMembro(true)}>
+              Adicionar membro
+            </PageButton>
+          </HeaderActions>
         )}
       </PageHeaderRow>
 
@@ -278,7 +285,133 @@ export function Membros() {
           }}
         />
       )}
+
+      {transferindo && token && usuario && (
+        <TransferirDiretoriaModal
+          membros={membros}
+          diretorAtualId={usuario.id}
+          token={token}
+          onClose={() => setTransferindo(false)}
+          onTransferido={() => {
+            setTransferindo(false);
+            carregarMembros();
+          }}
+        />
+      )}
     </PageStack>
+  );
+}
+
+/**
+ * §10 — a virada de gestão. Antes disto a troca eram duas edições soltas
+ * (promover uma, rebaixar a outra) e entre elas a plataforma podia ficar com
+ * dois diretores ou com nenhum. Aqui é um passo só: o backend promove antes de
+ * desligar, e quem sai vira ex-membro — o caso de "fim de gestão".
+ */
+function TransferirDiretoriaModal({
+  membros,
+  diretorAtualId,
+  token,
+  onClose,
+  onTransferido,
+}: {
+  membros: UsuarioResumo[];
+  diretorAtualId: number;
+  token: string;
+  onClose: () => void;
+  onTransferido: () => void;
+}) {
+  const [novoDiretorId, setNovoDiretorId] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  // Quem pode receber: qualquer pessoa ativa que não seja você. A diretoria
+  // que sai é sempre quem está fazendo a transferência.
+  const elegiveis = membros.filter((m) => m.id !== diretorAtualId && m.status === "ativo");
+  const escolhido = elegiveis.find((m) => String(m.id) === novoDiretorId);
+
+  async function handleTransferir(e: React.FormEvent) {
+    e.preventDefault();
+    if (!escolhido) {
+      setErro("Escolha quem vai receber a diretoria.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      await transferirDiretoria(
+        { novo_diretor_id: escolhido.id, diretor_atual_id: diretorAtualId },
+        token,
+      );
+      onTransferido();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao transferir a diretoria");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="transferir-titulo">
+        <ModalHeader>
+          <ModalTitle id="transferir-titulo">Transferir diretoria</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+
+        <FormStack onSubmit={handleTransferir}>
+          <ModalBody>
+            <EditSection>
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-diretor">Quem assume a diretoria</FieldLabel>
+                <FieldSelect
+                  id="novo-diretor"
+                  value={novoDiretorId}
+                  onChange={(e) => setNovoDiretorId(e.target.value)}
+                  required
+                >
+                  <option value="">Selecione…</option>
+                  {elegiveis.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome} · {ROTULO_POSICAO[m.posicao]}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FieldGroup>
+
+              <EditSectionTitle>O que acontece com você</EditSectionTitle>
+
+              <EmptyText style={{ fontSize: "0.7rem" }}>
+                {escolhido ? (
+                  <>
+                    <strong>{escolhido.nome}</strong> passa a ser Diretor(a) e você vira{" "}
+                    <strong>Ex-membro</strong> — o fim de gestão do §10. Você sai da plataforma
+                    na hora, mas todo o seu histórico é preservado.
+                  </>
+                ) : (
+                  <>
+                    Quem assume vira Diretor(a) e você vira <strong>Ex-membro</strong>, mantendo o
+                    histórico. A plataforma nunca fica sem diretoria: a promoção acontece antes.
+                  </>
+                )}
+              </EmptyText>
+
+              {erro && <FormErrorText>{erro}</FormErrorText>}
+            </EditSection>
+          </ModalBody>
+          <ModalFooter>
+            <PageButton $variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </PageButton>
+            <PageButton type="submit" disabled={salvando || !escolhido}>
+              {salvando ? "Transferindo…" : "Transferir diretoria"}
+            </PageButton>
+          </ModalFooter>
+        </FormStack>
+      </WideModalContent>
+    </ModalOverlay>
   );
 }
 

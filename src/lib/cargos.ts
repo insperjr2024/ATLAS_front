@@ -10,6 +10,8 @@ export interface CargoPayload {
   pode_definir_formulario: boolean;
   pode_agendar_banca: boolean;
   pode_gerenciar_cargos: boolean;
+  pode_gerenciar_membros: boolean;
+  pode_gerenciar_nucleo: boolean;
 }
 
 export function createCargo(dados: CargoPayload, token: string) {
