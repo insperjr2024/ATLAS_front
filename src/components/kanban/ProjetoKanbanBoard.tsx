@@ -11,10 +11,12 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { AlertTriangle } from "lucide-react";
 import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
-import { podePausar, proximoStatusManual, ROTULO_STATUS, statusAnteriorManual } from "@/lib/projetos";
+import { CORES_STATUS, destinosValidos, podePausar, ROTULO_STATUS } from "@/lib/projetos";
 import type { ProjetoResumo, StatusProjeto } from "@/types/projeto";
 import {
+  AlertaKickoff,
   Board,
   Card,
   CardMeta,
@@ -28,42 +30,20 @@ import {
   Ponto,
 } from "./Kanban.styled";
 
-/**
- * Uma cor fixa por fase — ao contrário das colunas de tarefa, as fases do
- * projeto não são configuráveis pela diretoria, então não precisam de tela
- * de config: só reaproveitam a mesma paleta e a mesma derivação de tons
- * (`tonsDaColuna`) que o kanban de tarefas passou a usar.
- */
-const CORES_STATUS: Record<StatusProjeto, string> = {
-  vendido: "#9CA3AF", // cinza — ainda não começou de fato
-  ambientacao: "#6366F1", // índigo
-  em_andamento: "#3B82F6", // azul
-  validacao_bancas: "#8B5CF6", // roxo
-  envio_tep: "#14B8A6", // teal
-  periodo_ajustes: "#F97316", // laranja
-  finalizado: "#10B981", // verde
-  pausado: "#F59E0B", // âmbar — vermelho fica reservado pro alerta de vencida
-};
-
 const COLUNAS = (Object.keys(ROTULO_STATUS) as StatusProjeto[]).map((status) => ({
   status,
   rotulo: ROTULO_STATUS[status],
 }));
 
 /**
- * Pra onde um projeto no status `atual` pode ir num arrasto — espelha as
- * mesmas três regras dos botões de `ProjetoPage` (avançar/voltar/pausar).
- * `pausado` não entra: o alvo do retomar é decidido no backend, não dá pra
- * adivinhar arrastando pra uma coluna específica.
+ * Pra onde um projeto no status `atual` pode ir num arrasto — mesma régua
+ * livre do seletor de etapa em `ProjetoPage` (qualquer etapa ativa, nos dois
+ * sentidos). `pausado` não entra: o alvo do retomar é decidido no backend,
+ * não dá pra adivinhar arrastando pra uma coluna específica.
  */
-function statusAlvoValidos(atual: StatusProjeto): StatusProjeto[] {
-  const alvos: StatusProjeto[] = [];
-  const proximo = proximoStatusManual(atual);
-  if (proximo) alvos.push(proximo);
-  const anterior = statusAnteriorManual(atual);
-  if (anterior) alvos.push(anterior);
-  if (podePausar(atual)) alvos.push("pausado");
-  return alvos;
+function statusAlvoValidos(atual: StatusProjeto, temKickoff: boolean): StatusProjeto[] {
+  const alvos = destinosValidos(atual, temKickoff);
+  return podePausar(atual) ? [...alvos, "pausado"] : alvos;
 }
 
 interface ProjetoKanbanBoardProps {
@@ -99,7 +79,7 @@ export function ProjetoKanbanBoard({ projetos, podeArrastar, nomeFrente, onMover
     if (!destino) return;
     const projeto = projetos.find((p) => p.id === Number(evento.active.id));
     if (!projeto || projeto.status === destino) return;
-    if (!statusAlvoValidos(projeto.status).includes(destino)) return;
+    if (!statusAlvoValidos(projeto.status, !!projeto.data_kickoff).includes(destino)) return;
     onMover(projeto.id, destino);
   }
 
@@ -182,7 +162,7 @@ function CardArrastavel({
   podeArrastar: boolean;
   nomeFrente: (id: number) => string;
 }) {
-  const arrastavel = podeArrastar && statusAlvoValidos(projeto.status).length > 0;
+  const arrastavel = podeArrastar && statusAlvoValidos(projeto.status, !!projeto.data_kickoff).length > 0;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: projeto.id,
     disabled: !arrastavel,
@@ -199,6 +179,11 @@ function CardArrastavel({
     >
       <CardTopo>
         <CardTitulo>{projeto.nome}</CardTitulo>
+        {projeto.kickoff_pendente && (
+          <AlertaKickoff title="Kickoff pendente">
+            <AlertTriangle size={14} />
+          </AlertaKickoff>
+        )}
       </CardTopo>
       <CardMeta>
         <span>{projeto.cliente}</span>

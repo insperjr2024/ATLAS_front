@@ -56,6 +56,10 @@ function agoraDatetimeLocal(): string {
   return paraDatetimeLocal(new Date().toISOString());
 }
 
+function formatarData(iso: string): string {
+  return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
 function statusLote(lote: DesempenhoLote): { rotulo: string; tone: "success" | "muted" | "warning" } {
   if (lote.override_manual === "aberto") return { rotulo: "Aberto (manual)", tone: "success" };
   if (lote.override_manual === "fechado") return { rotulo: "Fechado (manual)", tone: "muted" };
@@ -216,6 +220,9 @@ export function PainelLotes() {
     if (!token) return;
     const atualizado = await abrirLote(loteId, token);
     setLotes((atual) => atual.map((l) => (l.id === loteId ? atualizado : l)));
+    // Reabriu: pendências deixam de fazer sentido pra este lote — some o botão,
+    // então fecha o painel se estivesse aberto.
+    setPendenciasLoteId((atual) => (atual === loteId ? null : atual));
   }
 
   async function handleFechar(loteId: number) {
@@ -414,9 +421,14 @@ export function PainelLotes() {
                           Voltar ao automático
                         </PageButtonSm>
                       )}
-                      <PageButtonSm type="button" onClick={() => handleVerPendencias(lote.id)}>
-                        Pendências
-                      </PageButtonSm>
+                      {/* Só faz sentido cobrar "quem não preencheu" depois que o
+                          prazo fechou — com o lote aberto, todo mundo que ainda
+                          não respondeu é só gente que ainda tem tempo. */}
+                      {!lote.aberto && (
+                        <PageButtonSm type="button" onClick={() => handleVerPendencias(lote.id)}>
+                          Pendências
+                        </PageButtonSm>
+                      )}
                       <PageButtonSm $variant="ghost" type="button" onClick={() => handleExcluir(lote)}>
                         Excluir
                       </PageButtonSm>
@@ -486,13 +498,13 @@ export function PainelLotes() {
                     </FormStack>
                   ) : (
                     <LoteCardMeta>
-                      {lote.tipo === "periodico" ? "Periódica" : "Finalização"} · {paraDatetimeLocal(lote.data_inicio)} a{" "}
-                      {paraDatetimeLocal(lote.data_fim)} · {lote.projeto_ids.length} projeto(s):{" "}
+                      {lote.tipo === "periodico" ? "Periódica" : "Finalização"} · {formatarData(lote.data_inicio)} a{" "}
+                      {formatarData(lote.data_fim)} · {lote.projeto_ids.length} projeto(s):{" "}
                       {lote.projeto_ids.map((id) => nomesProjeto.get(id) ?? id).join(", ") || "nenhum"}
                     </LoteCardMeta>
                   )}
 
-                  {pendenciasLoteId === lote.id && (
+                  {pendenciasLoteId === lote.id && !lote.aberto && (
                     <SubLista>
                       {gruposPendencias.length === 0 ? (
                         <EmptyText>Ninguém pendente neste lote.</EmptyText>

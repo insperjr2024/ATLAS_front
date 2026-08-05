@@ -172,6 +172,14 @@ export const BotaoExcluir = styled.button`
   }
 `;
 
+/** Kickoff pendente — o mesmo alerta do card em lista, só que aqui cabe só o
+ *  ícone: o card do kanban é compacto demais pro texto "Kickoff pendente". */
+export const AlertaKickoff = styled.span`
+  display: inline-flex;
+  flex-shrink: 0;
+  color: ${theme.colors.destructive};
+`;
+
 export const CardTitulo = styled.span`
   font-size: ${theme.fontSize.sm};
   font-weight: ${theme.fontWeight.medium};
