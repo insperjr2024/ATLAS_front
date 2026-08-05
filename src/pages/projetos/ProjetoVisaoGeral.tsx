@@ -22,7 +22,6 @@ import {
 } from "@/components/membros/MemberPicker";
 import type { UsuarioResumo } from "@/types/auth";
 import type { EscopoVendido, ProjetoCompleto } from "@/types/projeto";
-import { pode } from "@/utils/permissoes";
 import {
   PageStack,
   PageCard,
@@ -81,7 +80,7 @@ export function ProjetoVisaoGeral() {
   const [erroAnexo, setErroAnexo] = useState("");
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
-  const podeEditarEquipe = pode(usuario, "editar_equipe");
+  const podeEditarEquipe = !!usuario?.cargo.pode_editar_equipe;
 
   async function handleBaixarAnexo() {
     if (!token || !projeto.anexo_proposta_nome) return;
@@ -235,7 +234,7 @@ function TabelaEscopos() {
   // responsabilidade é do coordenador, mas o acesso não é exclusivo dele.
   // (O backend usa só `exigir_acesso_ao_projeto` aqui; o front não pode ser
   // mais restrito que ele, ou esconde um botão que a pessoa tem direito de ver.)
-  const podeConduzir = pode(usuario, "marcar_kickoff");
+  const podeConduzir = !!usuario?.cargo.pode_marcar_kickoff;
 
   async function agir(escopoId: number, acao: () => Promise<unknown>) {
     if (!token) return;
@@ -404,7 +403,7 @@ function BancasPorFrente() {
 
   // §5.6: marcar/remarcar banca é de liderança — o backend usa
   // `require_lideranca` e cobra justificativa da diretoria na remarcação.
-  const podeMarcar = pode(usuario, "definir_cronograma");
+  const podeMarcar = !!usuario?.cargo.pode_definir_cronograma;
 
   // A ordem é a das frentes do projeto; escopo de uma frente que saiu do
   // projeto ainda aparece, senão a banca dele sumiria da tela sem aviso.

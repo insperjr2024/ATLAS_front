@@ -97,7 +97,7 @@ export default function App() {
                 <Route path="/avaliacao-desempenho/mentorados" element={<MeusMentorados />} />
               </Route>
 
-              <Route element={<AdminRoute permissao="pode_gerenciar_desempenho" />}>
+              <Route element={<RequirePosicao posicoes={["diretor", "gerente"]} />}>
                 <Route path="/avaliacao-desempenho/painel" element={<PainelDesempenho />}>
                   <Route index element={<Navigate to="avaliadores" replace />} />
                   <Route path="avaliadores" element={<PainelAvaliadores />} />
@@ -108,10 +108,10 @@ export default function App() {
                 </Route>
               </Route>
 
-              {/* Fora do shell do painel acima — caixa própria, porque mexer no
-                  formulário muda o que todo mundo responde; ver resultado não.
-                  Sem o TabBar do resto do painel. */}
-              <Route element={<AdminRoute permissao="pode_definir_formulario_desempenho" />}>
+              {/* Fora do shell do painel acima — mais restrito (só diretor),
+                  sem o TabBar do resto do painel. A Avaliação de Desempenho não
+                  está na tabela das 10, então segue travada por posição. */}
+              <Route element={<RequirePosicao posicoes={["diretor"]} />}>
                 <Route path="/avaliacao-desempenho/painel/formularios" element={<PainelFormularios />} />
               </Route>
 
@@ -120,11 +120,11 @@ export default function App() {
               <Route element={<FormularioRoute />}>
                 <Route path="/avaliacoes" element={<Avaliacoes />} />
               </Route>
-              <Route element={<AdminRoute permissao="pode_gerenciar_nucleo" />}>
+              <Route element={<RequirePosicao posicoes={["diretor"]} />}>
                 <Route path="/nucleo" element={<Nucleo />} />
                 <Route path="/config" element={<Config />} />
               </Route>
-              <Route element={<AdminRoute permissao="pode_gerenciar_membros" />}>
+              <Route element={<AdminRoute permissao="pode_gerir_membros" />}>
                 <Route path="/membros" element={<Membros />} />
               </Route>
             </Route>

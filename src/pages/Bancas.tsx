@@ -124,7 +124,7 @@ export function Bancas() {
   const [bancaEditar, setBancaEditar] = useState<Banca | null>(null);
   const [criarAberto, setCriarAberto] = useState(false);
 
-  const podeAgendar = !!usuario?.cargo.pode_agendar_banca;
+  const podeAgendar = !!usuario?.cargo.pode_definir_cronograma;
 
   async function recarregar() {
     if (!token || !usuario) return;

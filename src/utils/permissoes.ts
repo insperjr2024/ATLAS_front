@@ -8,36 +8,22 @@ import type { Posicao, StatusUsuario, Usuario } from "@/types/auth";
  * botão é conveniência de UI, não segurança.
  */
 export type Acao =
-  | "criar_projeto"
-  | "editar_equipe"
   | "arquivar_projeto"
-  | "gerir_membros"
-  | "marcar_kickoff"
   | "mudar_status_projeto"
   | "mover_projeto_kanban"
-  | "definir_cronograma"
-  | "aprovar_reajuste"
   | "remarcar_banca"
   | "liberar_excecao_choque"
   | "registrar_justificativa_atraso"
   | "configurar_colunas"
-  | "criar_tarefa"
-  | "mover_tarefa"
   | "registrar_reuniao"
-  | "ver_monitoramento"
   | "filtrar_por_frente"
   | "ver_tarefas_gerais";
 
 const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão — restrito às lideranças
-  criar_projeto: ["diretor", "gerente"],
-  editar_equipe: ["diretor", "gerente"],
   arquivar_projeto: ["diretor", "gerente"],
-  ver_monitoramento: ["diretor", "gerente"],
 
   // Só a diretoria
-  gerir_membros: ["diretor"],
-  aprovar_reajuste: ["diretor"],
   remarcar_banca: ["diretor"],
   liberar_excecao_choque: ["diretor"],
   registrar_justificativa_atraso: ["diretor"],
@@ -56,20 +42,16 @@ const MATRIZ: Record<Acao, Posicao[]> = {
 
   // Condução do projeto — o consultor não define cronograma nem move o
   // ciclo de vida do projeto (§4)
-  definir_cronograma: ["diretor", "gerente", "coordenador"],
   mudar_status_projeto: ["diretor", "gerente", "coordenador"],
 
   // Todo mundo (a regra de herança do §3 já está refletida aqui)
-  marcar_kickoff: ["diretor", "gerente", "coordenador", "consultor"],
-  criar_tarefa: ["diretor", "gerente", "coordenador", "consultor"],
-  mover_tarefa: ["diretor", "gerente", "coordenador", "consultor"],
   registrar_reuniao: ["diretor", "gerente", "coordenador", "consultor"],
 
-  // A Avaliação de Desempenho saiu desta matriz: virou permissão de CARGO
-  // (`pode_gerenciar_desempenho` e `pode_definir_formulario_desempenho`), para
-  // a diretoria poder delegar o painel sem promover ninguém de posição. Deixar
-  // as entradas aqui criaria uma segunda fonte de verdade divergindo do
-  // backend.
+  // As 10 ações da tabela do §3 saíram desta matriz: viraram caixas de CARGO,
+  // editáveis na tela de Cargos (a posição agora só define o padrão com que o
+  // cargo nasce). Deixá-las aqui criaria uma segunda fonte de verdade
+  // divergindo do backend — foi o que já aconteceu uma vez.
+  // O que sobrou aqui é o que ficou FORA da tabela e segue travado por posição.
 };
 
 export function pode(usuario: Usuario | null | undefined, acao: Acao): boolean {

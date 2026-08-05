@@ -62,43 +62,62 @@ import { LIST_MAX_VISIVEIS, TableScrollWrap } from "@/styles/shared.styled";
 // pode fazer — sem depender de abrir o modal para descobrir.
 const PERMISSOES = [
   {
-    campo: "pode_agendar_banca" as const,
-    titulo: "Agendar bancas",
-    descricao: "Criar, editar e cancelar bancas, e registrar realização e resultado.",
-  },
-  {
-    campo: "pode_definir_formulario" as const,
-    titulo: "Editar formulário de banca",
+    campo: "pode_criar_projeto" as const,
+    titulo: "Criar projeto e alocar equipe",
     descricao:
-      "Abrir a página Avaliações: montar os critérios do formulário de banca e consultar as notas lançadas. Não tem relação com a Avaliação de Desempenho.",
+      "Abrir um projeto novo e escolher coordenador e consultores na criação.",
   },
   {
-    campo: "pode_gerenciar_membros" as const,
-    titulo: "Gerenciar membros",
-    descricao: "Cadastrar pessoas e editar posição, status e frentes de cada uma.",
-  },
-  {
-    campo: "pode_gerenciar_nucleo" as const,
-    titulo: "Gerenciar núcleo e configurações",
-    descricao: "Editar frentes, escopos, o semestre vigente e o calendário.",
-  },
-  {
-    campo: "pode_gerenciar_desempenho" as const,
-    titulo: "Acessar avaliação de desempenho",
+    campo: "pode_editar_equipe" as const,
+    titulo: "Editar a equipe de um projeto",
     descricao:
-      "Abrir o painel de Avaliação de Desempenho: ver os resultados (quem avaliou quem, avaliados, relatórios e pendências) e administrar lotes e mentorias.",
+      "Trocar o coordenador e adicionar ou remover consultores de um projeto que já existe.",
   },
   {
-    campo: "pode_definir_formulario_desempenho" as const,
-    titulo: "Editar formulário de desempenho",
+    campo: "pode_gerir_membros" as const,
+    titulo: "Gerir membros (posição e status)",
     descricao:
-      "Montar as seções e os critérios dos formulários de Avaliação de Desempenho — o que todo mundo responde. Separada de acessar os resultados.",
+      "Abrir a página Membros: cadastrar pessoas e mudar a posição, o status e as frentes de cada uma.",
   },
   {
-    campo: "pode_gerenciar_cargos" as const,
-    titulo: "Gerenciar cargos e permissões",
+    campo: "pode_marcar_kickoff" as const,
+    titulo: "Marcar kickoff e data de entrega",
+    descricao: "Registrar a data de kickoff do projeto e a data de entrega ao cliente.",
+  },
+  {
+    campo: "pode_definir_cronograma" as const,
+    titulo: "Definir cronograma por escopo (etapas, banca)",
     descricao:
-      "Criar cargos e marcar as permissões desta tela. Só tem efeito para quem também é Diretor(a) — é o que impede alguém de se auto-conceder permissões.",
+      "Criar e mover etapas e marcos, oficializar o cronograma de um escopo e agendar as bancas.",
+  },
+  {
+    campo: "pode_aprovar_reajuste" as const,
+    titulo: "Aprovar reajuste de cronograma",
+    descricao:
+      "Liberar a mudança de um cronograma já oficializado. A tela de reajuste ainda não existe — a caixa fica pronta para quando ela for construída.",
+  },
+  {
+    campo: "pode_criar_tarefa" as const,
+    titulo: "Criar tarefa",
+    descricao: "Abrir tarefas novas no quadro de um projeto.",
+  },
+  {
+    campo: "pode_mover_editar_tarefa" as const,
+    titulo: "Mover e editar tarefa",
+    descricao:
+      "Arrastar tarefas entre colunas e editar título, responsável, prazo e descrição.",
+  },
+  {
+    campo: "pode_ver_proprios_projetos" as const,
+    titulo: "Ver os próprios projetos",
+    descricao:
+      "Enxergar a lista de projetos. O que aparece continua limitado pelo recorte de visão: coordenador e consultor só veem onde estão alocados.",
+  },
+  {
+    campo: "pode_ver_monitoramento" as const,
+    titulo: "Monitoramento e alocação",
+    descricao:
+      "Abrir o Monitoramento: visão geral, execução, alocação de pessoas e atrasos.",
   },
 ];
 
@@ -145,14 +164,16 @@ export function Config() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  if (!usuario?.cargo.pode_gerenciar_nucleo) {
+  // Núcleo e Configurações ficaram fora da tabela das 10, então voltam a ser
+  // restritos à diretoria por posição.
+  if (usuario?.posicao !== "diretor") {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Editar cargo é editar quem pode o quê: exige a caixa E a posição, igual
-  // ao `require_pode_gerenciar_cargos` do backend. Só a caixa deixaria alguém
-  // abrir o próprio cargo e marcar o resto.
-  const podeEditarCargos = usuario.posicao === "diretor" && usuario.cargo.pode_gerenciar_cargos;
+  // Editar cargo é editar quem pode o quê. Sem caixa própria (ela saiu com as
+  // 7 antigas), a trava é a posição — que não se edita por aqui, e por isso
+  // ninguém consegue se auto-conceder permissão.
+  const podeEditarCargos = usuario.posicao === "diretor";
 
   if (erro) {
     return (

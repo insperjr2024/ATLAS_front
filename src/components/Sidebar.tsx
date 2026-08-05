@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { pode, rotuloProjetos } from "@/utils/permissoes";
+import { rotuloProjetos } from "@/utils/permissoes";
 import insperJrLogo from "@/assets/insperjr.png";
 import { BarChart3, FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, Award, GraduationCap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -67,28 +67,28 @@ const navItems: NavItemConfig[] = [
     path: "/monitoramento",
     prefixo: true,
     section: "admin",
-    visiblePorPosicao: (u) => pode(u, "ver_monitoramento"),
+    visible: (c) => c.pode_ver_monitoramento,
   },
   {
     icon: LayoutDashboard,
     label: "Núcleo",
     path: "/nucleo",
     section: "admin",
-    visible: (c) => c.pode_gerenciar_nucleo,
+    visiblePorPosicao: (u) => u.posicao === "diretor",
   },
   {
     icon: Users,
     label: "Membros",
     path: "/membros",
     section: "admin",
-    visible: (c) => c.pode_gerenciar_membros,
+    visible: (c) => c.pode_gerir_membros,
   },
   {
     icon: ClipboardCheck,
     label: "Avaliações",
     path: "/avaliacoes",
     section: "admin",
-    visible: (c) => c.pode_definir_formulario,
+    visiblePorPosicao: (u) => u.posicao === "diretor",
   },
   {
     icon: Award,
@@ -96,14 +96,14 @@ const navItems: NavItemConfig[] = [
     path: "/avaliacao-desempenho/painel",
     section: "admin",
     prefixo: true,
-    visible: (c) => c.pode_gerenciar_desempenho,
+    visiblePorPosicao: (u) => u.posicao === "diretor" || u.posicao === "gerente",
   },
   {
     icon: Settings,
     label: "Configurações",
     path: "/config",
     section: "admin",
-    visible: (c) => c.pode_gerenciar_nucleo,
+    visiblePorPosicao: (u) => u.posicao === "diretor",
   },
 ];
 
