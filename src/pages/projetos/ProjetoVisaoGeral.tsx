@@ -69,6 +69,8 @@ import {
   BancaLinha,
   BancaEscopo,
   BancaData,
+  EscopoPicker,
+  EscopoOpcao,
 } from "./Projetos.styled";
 import { useProjeto } from "./ProjetoPage";
 
@@ -446,7 +448,24 @@ function BancasPorFrente() {
                 ) : (
                   escoposDaFrente.map((escopo) => (
                     <BancaLinha key={escopo.id}>
-                      <BancaEscopo>{escopo.nome}</BancaEscopo>
+                      <BancaEscopo>
+                        {escopo.nome}
+                        {/* Sem esta linha, a mesma data repetida em dois
+                            escopos pareceria cadastro duplicado — e não é:
+                            é uma banca só avaliando os dois. */}
+                        {escopo.banca && escopo.banca.escopo_ids.length > 1 && (
+                          <small>
+                            mesma banca de{" "}
+                            {projeto.escopos
+                              .filter(
+                                (e) =>
+                                  e.id !== escopo.id && escopo.banca!.escopo_ids.includes(e.id),
+                              )
+                              .map((e) => e.nome)
+                              .join(", ")}
+                          </small>
+                        )}
+                      </BancaEscopo>
                       {escopo.banca ? (
                         <>
                           <BancaData>
@@ -479,16 +498,18 @@ function BancasPorFrente() {
         )}
 
         <LegendaTabela>
-          Cada escopo tem a sua própria banca (§5.5), e a banca herda a frente do escopo — é ela que
-          define a composição exigida e quem pode ser escalado. A data é a mesma que aparece em
-          Bancas e no cronograma: um registro só, lido de três lugares.
+          Cada escopo tem no máximo uma banca (§5.5), mas uma banca pode avaliar vários escopos do
+          projeto — quem marca escolhe quais. A banca herda as frentes dos escopos que cobre, e são
+          elas que definem a composição exigida e quem pode ser escalado. A data é a mesma que
+          aparece em Bancas e no cronograma: um registro só, lido de três lugares.
         </LegendaTabela>
       </PageCardContent>
 
       {marcando && token && (
         <MarcarBancaModal
           escopo={marcando}
-          frente={nomeFrente(marcando.frente_id)}
+          escoposDoProjeto={projeto.escopos}
+          nomeFrente={nomeFrente}
           ehDiretor={usuario?.posicao === "diretor"}
           token={token}
           onClose={() => setMarcando(null)}
@@ -503,22 +524,30 @@ function BancasPorFrente() {
 }
 
 /**
- * Marcar ou remarcar a banca de um escopo.
+ * Marcar ou remarcar a banca de um escopo — e escolher que outros escopos do
+ * projeto entram nela.
  *
  * 🔒 Remarcar exige justificativa e é só da diretoria (§5.6) — o backend
  * recusa com 422 e a mensagem aparece aqui. O campo só é pedido quando já
  * existe data, que é quando a regra vale.
+ *
+ * Escopo que já tem banca própria aparece bloqueado: juntá-lo aqui apagaria
+ * em silêncio a data marcada nele. Para juntar os dois é preciso desmarcar a
+ * banca do outro antes — o backend recusa do mesmo jeito, a lista só antecipa
+ * a recusa.
  */
 function MarcarBancaModal({
   escopo,
-  frente,
+  escoposDoProjeto,
+  nomeFrente,
   ehDiretor,
   token,
   onClose,
   onSalvo,
 }: {
   escopo: EscopoVendido;
-  frente: string;
+  escoposDoProjeto: EscopoVendido[];
+  nomeFrente: (id: number) => string;
   ehDiretor: boolean;
   token: string;
   onClose: () => void;
@@ -527,15 +556,45 @@ function MarcarBancaModal({
   const remarcacao = Boolean(escopo.banca?.data_hora);
   const [dataHora, setDataHora] = useState(escopo.banca?.data_hora?.slice(0, 16) ?? "");
   const [justificativa, setJustificativa] = useState("");
+  const [selecionados, setSelecionados] = useState<number[]>(
+    escopo.banca?.escopo_ids ?? [escopo.id],
+  );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+
+  // Cancelado não tem por que entrar em banca; o resto do projeto é elegível.
+  const candidatos = escoposDoProjeto.filter(
+    (e) => e.id === escopo.id || e.status !== "cancelado",
+  );
+  // A banca deste escopo é a "nossa": os escopos que ela já cobre continuam
+  // marcáveis; os presos a OUTRA banca, não.
+  const bloqueado = (e: EscopoVendido) =>
+    e.id !== escopo.id && Boolean(e.banca) && e.banca!.id !== escopo.banca?.id;
+
+  const frentesEnvolvidas = [
+    ...new Set(
+      candidatos.filter((e) => selecionados.includes(e.id)).map((e) => e.frente_id),
+    ),
+  ];
+
+  function alternar(id: number) {
+    setSelecionados((atuais) =>
+      atuais.includes(id) ? atuais.filter((x) => x !== id) : [...atuais, id],
+    );
+  }
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     setSalvando(true);
     setErro("");
     try {
-      await marcarBancaDoEscopo(escopo.id, dataHora, token, justificativa.trim() || undefined);
+      await marcarBancaDoEscopo(
+        escopo.id,
+        dataHora,
+        token,
+        justificativa.trim() || undefined,
+        [...new Set([escopo.id, ...selecionados])],
+      );
       onSalvo();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao marcar a banca");
@@ -553,7 +612,7 @@ function MarcarBancaModal({
       >
         <ModalHeader>
           <ModalTitle id="marcar-banca">
-            {remarcacao ? "Remarcar banca" : "Marcar banca"} · {frente}
+            {remarcacao ? "Remarcar banca" : "Marcar banca"} · {escopo.nome}
           </ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
@@ -562,9 +621,35 @@ function MarcarBancaModal({
         <form onSubmit={salvar}>
           <ModalBody>
             <DataRow>
-              <DataLabel>Escopo</DataLabel>
-              <span>{escopo.nome}</span>
+              <DataLabel>Escopos nesta banca</DataLabel>
+              <EscopoPicker>
+                {candidatos.map((e) => {
+                  const travado = bloqueado(e);
+                  return (
+                    <EscopoOpcao key={e.id} $bloqueado={travado}>
+                      <input
+                        type="checkbox"
+                        checked={e.id === escopo.id || selecionados.includes(e.id)}
+                        // O escopo de onde a banca está sendo marcada entra
+                        // sempre — desmarcá-lo deixaria a ação sem sentido.
+                        disabled={travado || e.id === escopo.id}
+                        onChange={() => alternar(e.id)}
+                      />
+                      <span>{e.nome}</span>
+                      <small>
+                        {travado ? "já tem banca própria" : nomeFrente(e.frente_id)}
+                      </small>
+                    </EscopoOpcao>
+                  );
+                })}
+              </EscopoPicker>
             </DataRow>
+            {frentesEnvolvidas.length > 1 && (
+              <EmptyText>
+                Esta banca vai cobrir {frentesEnvolvidas.map(nomeFrente).join(" e ")} — a composição
+                exigida passa a somar as duas frentes (§8).
+              </EmptyText>
+            )}
             <DataRow>
               <DataLabel>Data e hora</DataLabel>
               <FieldInput

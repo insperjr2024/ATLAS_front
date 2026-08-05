@@ -179,21 +179,34 @@ export function marcarEntregaEscopo(escopoId: number, data: string, token: strin
   );
 }
 
-/** Marca a banca do escopo — escreve na MESMA linha que `/bancas` lê (§8). */
+/**
+ * Marca a banca do escopo — escreve na MESMA linha que `/bancas` lê (§8).
+ *
+ * `escopoIds` é o conjunto COMPLETO de escopos que a banca passa a cobrir (o
+ * da URL entra de qualquer jeito). Omitido, os vínculos atuais ficam como
+ * estão — é o caminho de quem só quer mexer na data.
+ */
 export function marcarBancaDoEscopo(
   escopoId: number,
   dataHora: string,
   token: string,
   justificativa?: string,
+  escopoIds?: number[],
 ) {
-  return apiFetch<{ id: number; data_hora: string; status: string }>(
-    `/escopos-projeto/${escopoId}/banca`,
-    {
-      method: "PUT",
-      token,
-      body: JSON.stringify({ data_hora: dataHora, justificativa: justificativa ?? null }),
-    },
-  );
+  return apiFetch<{
+    id: number;
+    data_hora: string;
+    status: string;
+    projeto_escopo_ids: number[];
+  }>(`/escopos-projeto/${escopoId}/banca`, {
+    method: "PUT",
+    token,
+    body: JSON.stringify({
+      data_hora: dataHora,
+      justificativa: justificativa ?? null,
+      escopo_ids: escopoIds ?? null,
+    }),
+  });
 }
 
 export const ROTULO_STATUS_ESCOPO: Record<string, string> = {
