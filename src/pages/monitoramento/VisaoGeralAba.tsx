@@ -1,7 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/context/AuthContext";
 import { getVisaoGeral, type VisaoGeral } from "@/lib/monitoramento";
 import { formatarData, formatarDataHora, ROTULO_STATUS } from "@/lib/projetos";
@@ -19,20 +16,35 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  GraficoTendencia,
   ItemAtencao,
   ItemLista,
   KpiCard,
   KpiGrid,
+  KpiNota,
   KpiRotulo,
   KpiValor,
+  LinkProjeto,
   ListaSimples,
   PainelGrid,
   Pilula,
   SparkBarra,
+  SparkColuna,
   SparkRotulos,
   Sparkline,
+  type NivelSeveridade,
 } from "./Monitoramento.styled";
 import { useMonitoramento } from "./MonitoramentoLayout";
+
+/** Itens sem contagem de dias (kickoff não marcado, sem reunião na semana) não
+ *  são menos importantes — só não têm magnitude. Ficam no degrau do meio em
+ *  vez de fingir gravidade que não foi medida. */
+function nivelAtencao(dias: number | null): NivelSeveridade {
+  if (dias == null) return "media";
+  if (dias > 10) return "critica";
+  if (dias > 3) return "media";
+  return "leve";
+}
 
 export function VisaoGeralAba() {
   const { token } = useAuth();
@@ -96,15 +108,15 @@ export function VisaoGeralAba() {
           <KpiRotulo>Atrasados</KpiRotulo>
         </KpiCard>
         <KpiCard>
-          {/* 🎯 O placar da gestão: só as bancas contam — a entrega ao cliente
+          {/* O placar da gestão: só as bancas contam — a entrega ao cliente
               depende da agenda dele e é acompanhada à parte (§7.1). */}
           <KpiValor $destaque={dados.placar_gestao.percentual >= 80 ? "ok" : "alerta"}>
             {dados.placar_gestao.percentual}%
           </KpiValor>
           <KpiRotulo>Placar da gestão</KpiRotulo>
-          <EmptyText style={{ fontSize: "0.7rem" }}>
+          <KpiNota>
             {dados.placar_gestao.no_prazo}/{dados.placar_gestao.total_ativos} com bancas em dia
-          </EmptyText>
+          </KpiNota>
         </KpiCard>
       </KpiGrid>
 
@@ -157,22 +169,35 @@ export function VisaoGeralAba() {
                 ))}
               </ListaSimples>
             )}
-            <Sparkline>
-              {dados.entregas.tendencia.map((t) => (
-                <SparkBarra key={t.inicio} $altura={(t.total / maxTendencia) * 100} title={`${t.total} entrega(s)`} />
-              ))}
-            </Sparkline>
-            <SparkRotulos>
-              <span>{format(new Date(`${dados.entregas.tendencia[0]?.inicio}T12:00:00`), "dd/MM", { locale: ptBR })}</span>
-              <span>ritmo das últimas 8 semanas</span>
-              <span>hoje</span>
-            </SparkRotulos>
+            {/* Sem esse guard a tela QUEBRA quando não há tendência: o
+                `tendencia[0]?.inicio` vira `undefined`, a data sai
+                `"undefinedT12:00:00"` e o `format` do date-fns lança
+                `RangeError: Invalid time value` em vez de renderizar. */}
+            {dados.entregas.tendencia.length > 0 && (
+              <GraficoTendencia>
+                <Sparkline>
+                  {dados.entregas.tendencia.map((t) => (
+                    /* O alvo do hover é a COLUNA inteira, não a barra: numa
+                       semana sem entrega a barra tem 2px e o `title` com o
+                       total nunca aparece justo onde precisa explicar. */
+                    <SparkColuna key={t.inicio} title={`${formatarData(t.inicio)}: ${t.total} entrega(s)`}>
+                      <SparkBarra $altura={(t.total / maxTendencia) * 100} />
+                    </SparkColuna>
+                  ))}
+                </Sparkline>
+                <SparkRotulos>
+                  <span>{formatarData(dados.entregas.tendencia[0].inicio)}</span>
+                  <span>ritmo das últimas 8 semanas</span>
+                  <span>hoje</span>
+                </SparkRotulos>
+              </GraficoTendencia>
+            )}
           </PageCardContent>
         </PageCard>
 
         <PageCard>
           <PageCardHeader>
-            <PageCardTitle>★ Bancas nos próximos 7 dias</PageCardTitle>
+            <PageCardTitle>Bancas nos próximos 7 dias</PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
             {dados.bancas_proximas.length === 0 ? (
@@ -194,7 +219,7 @@ export function VisaoGeralAba() {
 
         <PageCard>
           <PageCardHeader>
-            <PageCardTitle>😴 Tempo parado entre escopos</PageCardTitle>
+            <PageCardTitle>Tempo parado entre escopos</PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
             {dados.tempo_parado.length === 0 ? (
@@ -203,9 +228,9 @@ export function VisaoGeralAba() {
               <ListaSimples>
                 {dados.tempo_parado.map((p) => (
                   <ItemLista key={p.projeto_id}>
-                    <Link to={`/projetos/${p.projeto_id}`}>
+                    <LinkProjeto to={`/projetos/${p.projeto_id}`}>
                       {p.projeto_nome} — entregou {p.escopo_entregue}
-                    </Link>
+                    </LinkProjeto>
                     <small>há {p.dias_parado} dias</small>
                   </ItemLista>
                 ))}
@@ -217,7 +242,7 @@ export function VisaoGeralAba() {
 
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>🚨 Atenção agora ({dados.atencao_agora.length})</PageCardTitle>
+          <PageCardTitle>Atenção agora ({dados.atencao_agora.length})</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
           {dados.atencao_agora.length === 0 ? (
@@ -225,9 +250,11 @@ export function VisaoGeralAba() {
           ) : (
             <ListaSimples>
               {dados.atencao_agora.map((item, i) => (
-                <ItemAtencao key={i}>
+                /* A cor do marcador carrega a gravidade: sem ela uma lista de
+                   15 itens grita igual e a diretoria não sabe por onde começar. */
+                <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
                   <strong>
-                    <Link to={`/projetos/${item.projeto_id}`}>{item.projeto_nome}</Link>
+                    <LinkProjeto to={`/projetos/${item.projeto_id}`}>{item.projeto_nome}</LinkProjeto>
                   </strong>
                   {/* O motivo vem pronto e específico do backend — §7.1 é
                       explícito que não pode ser rótulo genérico. */}

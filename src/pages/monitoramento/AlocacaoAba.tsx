@@ -14,8 +14,15 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  BarraCarga,
+  BarraCargaPreenchida,
+  BarraCargaTrilho,
+  ChipProjeto,
+  ChipsProjetos,
   DataTable,
   Pilula,
+  SemDado,
+  TabelaRolagem,
   TableBody,
   TableCell,
   TableHead,
@@ -95,6 +102,11 @@ function TabelaCarga({
   linhas: LinhaCarga[];
   vazio: string;
 }) {
+  /* A escala é POR TABELA, não global: coordenador e consultor carregam
+     volumes diferentes por natureza, e uma régua só faria a tabela dos
+     consultores parecer vazia ao lado da dos coordenadores. */
+  const maiorCarga = Math.max(1, ...linhas.map((l) => l.total));
+
   return (
     <PageCard>
       <PageCardHeader>
@@ -104,34 +116,59 @@ function TabelaCarga({
         {linhas.length === 0 ? (
           <EmptyText>{vazio}</EmptyText>
         ) : (
-          <DataTable>
-            <TableHead>
-              <TableRow>
-                <TableHeadCell>Nome</TableHeadCell>
-                <TableHeadCell>Projetos ativos</TableHeadCell>
-                <TableHeadCell>Quais</TableHeadCell>
-                <TableHeadCell>Situação</TableHeadCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {linhas.map((linha) => (
-                <TableRow key={linha.usuario_id}>
-                  <TableCell>{linha.nome}</TableCell>
-                  <TableCell>{linha.total}</TableCell>
-                  <TableCell>{linha.projetos.join(", ") || "—"}</TableCell>
-                  <TableCell>
-                    {linha.carga_alta ? (
-                      <Pilula $tom="alerta">carga alta</Pilula>
-                    ) : linha.disponivel ? (
-                      <Pilula $tom="ok">disponível</Pilula>
-                    ) : (
-                      <Pilula $tom="neutro">alocado</Pilula>
-                    )}
-                  </TableCell>
+          <TabelaRolagem $min="40rem">
+            <DataTable>
+              <TableHead>
+                <TableRow>
+                  <TableHeadCell>Nome</TableHeadCell>
+                  <TableHeadCell>Projetos ativos</TableHeadCell>
+                  <TableHeadCell>Quais</TableHeadCell>
+                  <TableHeadCell>Situação</TableHeadCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </DataTable>
+              </TableHead>
+              <TableBody>
+                {linhas.map((linha) => (
+                  <TableRow key={linha.usuario_id}>
+                    <TableCell>{linha.nome}</TableCell>
+                    <TableCell>
+                      {/* 4 projetos é muito ou pouco depende de quantos os
+                          colegas carregam — daí a barra contra o maior da
+                          tabela, e não o número solto. */}
+                      <BarraCarga>
+                        <strong>{linha.total}</strong>
+                        <BarraCargaTrilho aria-hidden="true">
+                          <BarraCargaPreenchida
+                            $pct={(linha.total / maiorCarga) * 100}
+                            $alta={linha.carga_alta}
+                          />
+                        </BarraCargaTrilho>
+                      </BarraCarga>
+                    </TableCell>
+                    <TableCell>
+                      {linha.projetos.length > 0 ? (
+                        <ChipsProjetos>
+                          {linha.projetos.map((nome, i) => (
+                            <ChipProjeto key={`${nome}-${i}`}>{nome}</ChipProjeto>
+                          ))}
+                        </ChipsProjetos>
+                      ) : (
+                        <SemDado>—</SemDado>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {linha.carga_alta ? (
+                        <Pilula $tom="alerta">carga alta</Pilula>
+                      ) : linha.disponivel ? (
+                        <Pilula $tom="ok">disponível</Pilula>
+                      ) : (
+                        <Pilula $tom="neutro">alocado</Pilula>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </DataTable>
+          </TabelaRolagem>
         )}
       </PageCardContent>
     </PageCard>
