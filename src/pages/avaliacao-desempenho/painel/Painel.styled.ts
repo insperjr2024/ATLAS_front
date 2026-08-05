@@ -98,6 +98,40 @@ export const SubItemMeta = styled.span`
   color: ${theme.colors.mutedForeground};
 `;
 
+// "Quem não preencheu": um card por avaliador (não uma linha por par), com
+// todo mundo que falta avaliar reunido numa frase só — escaneia muito mais
+// rápido que uma lista plana de "Fulano → Beltrano" repetindo o mesmo nome.
+export const PendenciaCard = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid color-mix(in srgb, ${theme.colors.destructive} 35%, transparent);
+  background: color-mix(in srgb, ${theme.colors.destructive} 6%, ${theme.colors.background});
+`;
+
+export const PendenciaIcone = styled.div`
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+  color: ${theme.colors.destructive};
+`;
+
+export const PendenciaTexto = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.5;
+  color: ${theme.colors.foreground};
+`;
+
+export const PendenciaNome = styled.strong`
+  font-weight: ${theme.fontWeight.semibold};
+`;
+
+export const PendenciaFaltamRotulo = styled.span`
+  color: ${theme.colors.mutedForeground};
+`;
+
 export const LotesStack = styled.div`
   display: flex;
   flex-direction: column;

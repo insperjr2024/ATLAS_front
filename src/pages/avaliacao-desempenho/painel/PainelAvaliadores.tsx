@@ -3,8 +3,10 @@ import { useAuth } from "@/context/AuthContext";
 import { deleteAvaliacao, getAvaliacaoDetalhe, getAvaliacoes } from "@/lib/desempenho-avaliacoes";
 import { getLotes } from "@/lib/desempenho-lotes";
 import { getUsuarios } from "@/lib/usuarios";
+import { getProjetos } from "@/lib/projetos";
 import type { DesempenhoAvaliacao, DesempenhoAvaliacaoDetalhe, DesempenhoLote, DesempenhoTipo } from "@/types/desempenho";
 import type { UsuarioResumo } from "@/types/auth";
+import type { ProjetoResumo } from "@/types/projeto";
 import {
   EmptyText,
   ErrorBlock,
@@ -45,6 +47,7 @@ export function PainelAvaliadores() {
   const [avaliacoes, setAvaliacoes] = useState<DesempenhoAvaliacao[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [lotes, setLotes] = useState<DesempenhoLote[]>([]);
+  const [projetos, setProjetos] = useState<ProjetoResumo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [expandido, setExpandido] = useState<number | null>(null);
@@ -58,10 +61,16 @@ export function PainelAvaliadores() {
     setCarregando(true);
     setErro("");
     try {
-      const [a, u, l] = await Promise.all([getAvaliacoes(token), getUsuarios(token), getLotes(token, false)]);
+      const [a, u, l, p] = await Promise.all([
+        getAvaliacoes(token),
+        getUsuarios(token),
+        getLotes(token, false),
+        getProjetos(token),
+      ]);
       setAvaliacoes(a);
       setUsuarios(u);
       setLotes(l);
+      setProjetos(p);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar avaliações");
     } finally {
@@ -76,6 +85,13 @@ export function PainelAvaliadores() {
 
   const nomes = useMemo(() => new Map(usuarios.map((u) => [u.id, u.nome])), [usuarios]);
   const tipoPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.tipo])), [lotes]);
+  const projetoIdsPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.projeto_ids])), [lotes]);
+  const nomeProjetoPorId = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
+
+  function projetosDoLote(loteId: number): string {
+    const ids = projetoIdsPorLote.get(loteId) ?? [];
+    return ids.map((id) => nomeProjetoPorId.get(id)).filter(Boolean).join(", ") || "—";
+  }
 
   const avaliacoesFiltradas = useMemo(() => {
     if (filtroTipo === "todos") return avaliacoes;
@@ -105,11 +121,17 @@ export function PainelAvaliadores() {
     }
   }
 
-  async function handleRemover(avaliacaoId: number) {
+  async function handleRemover(avaliacao: DesempenhoAvaliacao) {
     if (!token) return;
-    await deleteAvaliacao(avaliacaoId, token);
-    setAvaliacoes((atual) => atual.filter((a) => a.id !== avaliacaoId));
-    setAvaliacaoExpandidaId(null);
+    const nomeAvaliado = nomes.get(avaliacao.avaliado_id) ?? `Usuário ${avaliacao.avaliado_id}`;
+    if (!confirm(`Remover a avaliação sobre ${nomeAvaliado}? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await deleteAvaliacao(avaliacao.id, token);
+      setAvaliacoes((atual) => atual.filter((a) => a.id !== avaliacao.id));
+      setAvaliacaoExpandidaId(null);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao remover a avaliação");
+    }
   }
 
   if (erro) {
@@ -163,6 +185,8 @@ export function PainelAvaliadores() {
                             <span>
                               {nomes.get(a.avaliado_id) ?? `Usuário ${a.avaliado_id}`}
                               {" · "}
+                              {projetosDoLote(a.lote_id)}
+                              {" · "}
                               {formatarData(a.criado_em)}
                             </span>
                             <SubItemMeta>
@@ -170,7 +194,7 @@ export function PainelAvaliadores() {
                               <PageButtonSm $variant="outline" type="button" onClick={() => toggleDetalhe(a.id)}>
                                 {expandidaAqui ? "Ocultar" : "Detalhes"}
                               </PageButtonSm>
-                              <PageButtonSm $variant="ghost" type="button" onClick={() => handleRemover(a.id)}>
+                              <PageButtonSm $variant="ghost" type="button" onClick={() => handleRemover(a)}>
                                 Remover
                               </PageButtonSm>
                             </SubItemMeta>

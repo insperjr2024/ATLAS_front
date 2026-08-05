@@ -23,9 +23,9 @@ function slug(texto: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function nomeArquivo(projeto: string, extensao: string): string {
+function nomeArquivo(projeto: string, extensao: string, prefixo = "cronograma"): string {
   const hoje = new Date().toISOString().slice(0, 10);
-  return `cronograma-${slug(projeto)}-${hoje}.${extensao}`;
+  return `${prefixo}-${slug(projeto)}-${hoje}.${extensao}`;
 }
 
 /**
@@ -48,7 +48,7 @@ export async function exportarPNG(alvo: HTMLElement, nomeProjeto: string): Promi
   baixar(dataUrl, nomeArquivo(nomeProjeto, "png"));
 }
 
-export async function exportarPDF(alvo: HTMLElement, nomeProjeto: string): Promise<void> {
+export async function exportarPDF(alvo: HTMLElement, nomeProjeto: string, prefixoArquivo = "cronograma"): Promise<void> {
   const [{ toPng }, { jsPDF }] = await Promise.all([
     import("html-to-image"),
     import("jspdf"),
@@ -82,7 +82,7 @@ export async function exportarPDF(alvo: HTMLElement, nomeProjeto: string): Promi
     }
   }
 
-  pdf.save(nomeArquivo(nomeProjeto, "pdf"));
+  pdf.save(nomeArquivo(nomeProjeto, "pdf", prefixoArquivo));
 }
 
 function baixar(dataUrl: string, nome: string): void {

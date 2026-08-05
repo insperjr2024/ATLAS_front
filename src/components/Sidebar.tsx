@@ -2,7 +2,7 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { pode, rotuloProjetos } from "@/utils/permissoes";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, Award, GraduationCap } from "lucide-react";
+import { BarChart3, FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarContainer,
@@ -85,13 +85,13 @@ const navItems: NavItemConfig[] = [
   },
   {
     icon: ClipboardCheck,
-    label: "Avaliações",
+    label: "Avaliação de Banca",
     path: "/avaliacoes",
     section: "admin",
     visible: (c) => c.pode_definir_formulario,
   },
   {
-    icon: Award,
+    icon: Star,
     label: "Avaliação de Desempenho",
     path: "/avaliacao-desempenho/painel",
     section: "admin",

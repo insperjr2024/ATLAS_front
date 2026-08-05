@@ -7,6 +7,21 @@ export const RelatorioStack = styled.div`
   gap: ${theme.spacing.lg};
 `;
 
+export const RelatorioTopoRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;
+
+// Agrupa tudo que entra no PDF (cabeçalho, abas, notas, comentários) num único
+// nó — é o que a exportação (`exportarPDF`) fotografa. Precisa do próprio
+// flex+gap porque, sem isso, virar filho único do RelatorioStack colapsaria o
+// espaçamento entre as seções internas.
+export const RelatorioConteudo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.lg};
+`;
+
 export const RelatorioPessoaHeader = styled.div`
   display: flex;
   flex-direction: column;
