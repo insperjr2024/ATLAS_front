@@ -88,10 +88,15 @@ export function PainelMentoria() {
     }
   }
 
-  async function handleRemover(mentoriaId: number) {
+  async function handleRemover(mentoria: DesempenhoMentoria) {
     if (!token) return;
-    await deleteMentoria(mentoriaId, token);
-    setMentorias((atual) => atual.filter((m) => m.id !== mentoriaId));
+    if (!confirm(`Remover o vínculo de mentoria com ${mentoria.mentorado_nome}? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await deleteMentoria(mentoria.id, token);
+      setMentorias((atual) => atual.filter((m) => m.id !== mentoria.id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao remover a mentoria");
+    }
   }
 
   if (erro) {
@@ -159,7 +164,7 @@ export function PainelMentoria() {
                 {lista.map((m) => (
                   <MentoriaLinha key={m.id}>
                     <span>{m.mentorado_nome}</span>
-                    <PageButtonSm $variant="outline" type="button" onClick={() => handleRemover(m.id)}>
+                    <PageButtonSm $variant="outline" type="button" onClick={() => handleRemover(m)}>
                       Remover
                     </PageButtonSm>
                   </MentoriaLinha>

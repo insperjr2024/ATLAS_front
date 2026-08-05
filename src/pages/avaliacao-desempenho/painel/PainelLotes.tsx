@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   abrirLote,
@@ -35,10 +36,13 @@ import {
   LoteCardMeta,
   LoteCardTitulo,
   LotesStack,
+  PendenciaCard,
+  PendenciaFaltamRotulo,
+  PendenciaIcone,
+  PendenciaNome,
+  PendenciaTexto,
   ProjetoChip,
   ProjetoChipsRow,
-  SubItem,
-  SubItemMeta,
   SubLista,
 } from "./Painel.styled";
 
@@ -59,6 +63,30 @@ function statusLote(lote: DesempenhoLote): { rotulo: string; tone: "success" | "
   return new Date(lote.data_inicio) > new Date()
     ? { rotulo: "Agendado", tone: "warning" }
     : { rotulo: "Encerrado", tone: "muted" };
+}
+
+interface PendenciasDoAvaliador {
+  avaliadorId: number;
+  avaliadorNome: string;
+  itens: DesempenhoPendencia[];
+}
+
+// Agrupa por AVALIADOR (quem falta preencher), não por par — um card por
+// pessoa com todo mundo que falta avaliar junto é o que dá pra escanear
+// rápido; uma linha por par vira uma parede de texto repetindo nomes.
+function agruparPendenciasPorAvaliador(pendencias: DesempenhoPendencia[]): PendenciasDoAvaliador[] {
+  const grupos = new Map<number, PendenciasDoAvaliador>();
+  for (const p of pendencias) {
+    if (p.respondida) continue;
+    const atual = grupos.get(p.avaliador_id) ?? {
+      avaliadorId: p.avaliador_id,
+      avaliadorNome: p.avaliador_nome ?? `Usuário ${p.avaliador_id}`,
+      itens: [],
+    };
+    atual.itens.push(p);
+    grupos.set(p.avaliador_id, atual);
+  }
+  return Array.from(grupos.values());
 }
 
 export function PainelLotes() {
@@ -356,6 +384,8 @@ export function PainelLotes() {
             <LotesStack>
             {lotes.map((lote) => {
               const status = statusLote(lote);
+              const gruposPendencias =
+                pendenciasLoteId === lote.id ? agruparPendenciasPorAvaliador(pendencias) : [];
               return (
                 <LoteCard key={lote.id}>
                   <LoteCardHeader>
@@ -464,19 +494,28 @@ export function PainelLotes() {
 
                   {pendenciasLoteId === lote.id && (
                     <SubLista>
-                      {pendencias.length === 0 ? (
+                      {gruposPendencias.length === 0 ? (
                         <EmptyText>Ninguém pendente neste lote.</EmptyText>
                       ) : (
-                        pendencias
-                          .filter((p) => !p.respondida)
-                          .map((p, i) => (
-                            <SubItem key={i}>
-                              <span>
-                                {p.avaliador_nome} → {p.avaliado_nome}
-                              </span>
-                              <SubItemMeta>{p.projeto_nomes.filter(Boolean).join(", ")}</SubItemMeta>
-                            </SubItem>
-                          ))
+                        gruposPendencias.map((grupo) => (
+                          <PendenciaCard key={grupo.avaliadorId}>
+                            <PendenciaIcone>
+                              <AlertTriangle size={16} />
+                            </PendenciaIcone>
+                            <PendenciaTexto>
+                              <PendenciaNome>{grupo.avaliadorNome}</PendenciaNome>{" "}
+                              <PendenciaFaltamRotulo>falta avaliar:</PendenciaFaltamRotulo>{" "}
+                              {grupo.itens.map((p, i) => (
+                                <span key={p.avaliado_id}>
+                                  {p.avaliado_nome}
+                                  {p.projeto_nomes.filter(Boolean).length > 0 &&
+                                    ` (${p.projeto_nomes.filter(Boolean).join(", ")})`}
+                                  {i < grupo.itens.length - 1 ? ", " : ""}
+                                </span>
+                              ))}
+                            </PendenciaTexto>
+                          </PendenciaCard>
+                        ))
                       )}
                     </SubLista>
                   )}

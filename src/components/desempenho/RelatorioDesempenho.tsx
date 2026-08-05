@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { EmptyText } from "@/styles/page.styled";
+import { useMemo, useRef, useState } from "react";
+import { EmptyText, PageButtonSm } from "@/styles/page.styled";
+import { exportarPDF } from "@/components/cronograma-pintado/exportar";
 import type { DesempenhoRelatorio, DesempenhoRelatorioLote, DesempenhoTipo } from "@/types/desempenho";
 import {
   ComentarioItem,
@@ -13,10 +14,12 @@ import {
   NotaGeralLabel,
   NotaGeralQuantidade,
   NotaGeralRow,
+  RelatorioConteudo,
   RelatorioPessoaHeader,
   RelatorioPessoaMeta,
   RelatorioPessoaNome,
   RelatorioStack,
+  RelatorioTopoRow,
   RespostaTextoBlock,
   SectionTitle,
   StarBarFill,
@@ -112,6 +115,18 @@ interface RelatorioDesempenhoProps {
 export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoProps) {
   const [tipoAtivo, setTipoAtivo] = useState<DesempenhoTipo>("periodico");
   const [loteIdFiltro, setLoteIdFiltro] = useState<number | null>(null);
+  const [exportando, setExportando] = useState(false);
+  const conteudoRef = useRef<HTMLDivElement>(null);
+
+  async function handleExportarPDF() {
+    if (!conteudoRef.current) return;
+    setExportando(true);
+    try {
+      await exportarPDF(conteudoRef.current, pessoa?.nome ?? "relatorio", "relatorio-desempenho");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const lotesDoTipo = useMemo(
     () => relatorio.lotes.filter((l) => l.tipo === tipoAtivo),
@@ -128,6 +143,13 @@ export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoPr
 
   return (
     <RelatorioStack>
+      <RelatorioTopoRow>
+        <PageButtonSm type="button" $variant="outline" onClick={handleExportarPDF} disabled={exportando}>
+          {exportando ? "Gerando PDF..." : "Baixar PDF"}
+        </PageButtonSm>
+      </RelatorioTopoRow>
+
+      <RelatorioConteudo ref={conteudoRef}>
       {pessoa && (
         <RelatorioPessoaHeader>
           <RelatorioPessoaNome>{pessoa.nome}</RelatorioPessoaNome>
@@ -228,6 +250,7 @@ export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoPr
           )}
         </>
       )}
+      </RelatorioConteudo>
     </RelatorioStack>
   );
 }
