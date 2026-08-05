@@ -25,6 +25,7 @@ export type Acao =
   | "mover_tarefa"
   | "registrar_reuniao"
   | "ver_monitoramento"
+  | "ver_tarefas_gerais"
   | "filtrar_por_frente";
 
 const MATRIZ: Record<Acao, Posicao[]> = {
@@ -48,6 +49,10 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   //: As colunas do kanban são por projeto, mas quem as edita é sempre a
   //: diretoria — o time move cards, não redesenha o fluxo.
   configurar_colunas: ["diretor"],
+  /** O board macro de tarefas (todos os projetos juntos) — o backend usa
+   *  require_diretor, não require_gestao: mais informal que os números
+   *  agregados do resto do Monitoramento, então fica só pra diretoria. */
+  ver_tarefas_gerais: ["diretor"],
 
   // Condução do projeto — o consultor não define cronograma nem move o
   // ciclo de vida do projeto (§4)

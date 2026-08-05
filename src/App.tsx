@@ -28,6 +28,7 @@ import { VisaoGeralAba } from "@/pages/monitoramento/VisaoGeralAba";
 import { ExecucaoAba } from "@/pages/monitoramento/ExecucaoAba";
 import { AlocacaoAba } from "@/pages/monitoramento/AlocacaoAba";
 import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
+import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 
 export default function App() {
   return (
@@ -72,6 +73,7 @@ export default function App() {
                   <Route path="execucao" element={<ExecucaoAba />} />
                   <Route path="alocacao" element={<AlocacaoAba />} />
                   <Route path="atrasos" element={<AtrasosAba />} />
+                  <Route path="tarefas" element={<TarefasGeraisAba />} />
                 </Route>
               </Route>
 
