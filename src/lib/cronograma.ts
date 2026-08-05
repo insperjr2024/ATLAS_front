@@ -18,7 +18,7 @@ export function createEtapa(
   });
 }
 
-/** ⭐ O que o arrasto chama: um gesto = uma requisição, por intervalo. */
+/** O que o arrasto chama: um gesto = uma requisição, por intervalo. */
 export function moverEtapa(etapaId: number, inicio: string, fim: string, token: string) {
   return apiFetch(`/cronograma/etapas/${etapaId}`, {
     method: "PUT",
@@ -39,6 +39,7 @@ export function editarEtapa(
   });
 }
 
+/** Apaga a etapa e, com ela, a pintura dos dias que eram dela. */
 export function deleteEtapa(etapaId: number, token: string) {
   return apiFetch(`/cronograma/etapas/${etapaId}`, { method: "DELETE", token });
 }
@@ -66,20 +67,8 @@ export function oficializarCronograma(escopoId: number, token: string) {
 
 /* ------------------------------------------------------------------ */
 
-/**
- * Os meses a empilhar, derivados da janela que o backend calculou.
- *
- * O backend já decide início/fim (e aplica o teto de 18 meses) — aqui é só
- * expandir para a lista de 1ºs-de-mês.
- */
-export function mesesDaJanela(inicio: string, fim: string): Date[] {
-  const meses: Date[] = [];
-  const atual = new Date(`${inicio}T12:00:00`);
-  atual.setDate(1);
-  const limite = new Date(`${fim}T12:00:00`);
-  while (atual <= limite) {
-    meses.push(new Date(atual));
-    atual.setMonth(atual.getMonth() + 1);
-  }
-  return meses;
-}
+/* `mesesDaJanela` vivia aqui: expandia a janela do backend na lista de meses a
+   empilhar. Saiu quando o cronograma passou a ter as visões de dia/semana/mês
+   (`components/cronograma-pintado/visao.ts`), que derivam o período em foco a
+   partir de uma data de referência — a janela agora só delimita a navegação.
+   Se um dia voltar a visão de "projeto inteiro", é este o ponto de partida. */
