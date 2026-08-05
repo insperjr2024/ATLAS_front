@@ -335,3 +335,19 @@ export const LoginErrorMessage = styled.p`
   text-align: center;
 `;
 
+/** O par do `LoginErrorMessage`, para confirmação — usado pelo "enviamos o
+ *  link" da recuperação de senha. Mesma estrutura, tom de sucesso: as duas
+ *  ocupam o mesmo lugar na tela e precisam ter o mesmo peso visual, mudando
+ *  só a cor. */
+export const LoginSuccessMessage = styled.p`
+  font-size: 0.85rem;
+  color: ${theme.colors.success};
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: ${theme.borderRadius.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  margin: 0;
+  text-align: center;
+  line-height: 1.5;
+`;
+

@@ -7,6 +7,7 @@ import { RequirePosicao } from "@/routes/RequirePosicao";
 import { Layout } from "@/components/Layout";
 import { Login } from "@/pages/Login";
 import { EsqueciSenha } from "@/pages/EsqueciSenha";
+import { RedefinirSenha } from "@/pages/RedefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { Calendario } from "@/pages/Calendario";
@@ -49,6 +50,10 @@ export default function App() {
           <Route path="/" element={<Navigate to="/projetos" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          {/* Pública e obrigatoriamente ACIMA do catch-all: é o destino do link
+              que vai no e-mail, e quem clica nele está justamente sem conseguir
+              logar. Caindo no `*` iria para /projetos e de lá para /login. */}
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />
