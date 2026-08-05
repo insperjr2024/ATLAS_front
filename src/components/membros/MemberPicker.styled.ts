@@ -59,7 +59,7 @@ export const AddRow = styled.div`
   }
 `;
 
-/** A contagem "2 de 2–3" — vira vermelha quando a regra não está satisfeita. */
+/** A contagem de consultores selecionados — vira vermelha em caso de erro. */
 export const CountHint = styled.p<{ $ok: boolean }>`
   margin: 0;
   font-size: ${theme.fontSize.xs};

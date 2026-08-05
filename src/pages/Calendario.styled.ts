@@ -273,66 +273,20 @@ export const EmptyUpcoming = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
-/* ---- Modal (reutilizado por Bancas) ---- */
+/* ---- Modal ----
+   O chrome mudou-se para `styles/modal.styled.ts` e é re-exportado aqui, para
+   os arquivos que já importavam daqui seguirem funcionando. Código NOVO importa
+   do arquivo compartilhado. */
 
-export const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: ${theme.spacing.md};
-  background: rgb(0 0 0 / 45%);
-`;
-
-export const ModalContent = styled.div`
-  width: 100%;
-  max-width: 28rem;
-  max-height: min(90vh, 640px);
-  overflow-y: auto;
-  border-radius: ${theme.borderRadius.xl};
-  border: 1px solid ${theme.colors.border};
-  background: ${theme.colors.card};
-  box-shadow: ${theme.shadows.lg};
-`;
-
-export const ModalHeader = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.lg};
-  border-bottom: 1px solid ${theme.colors.border};
-`;
-
-export const ModalTitle = styled.h2`
-  margin: 0;
-  font-size: ${theme.fontSize.lg};
-  font-weight: ${theme.fontWeight.semibold};
-`;
-
-export const ModalClose = styled.button`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: none;
-  border-radius: ${theme.borderRadius.md};
-  background: transparent;
-  color: ${theme.colors.mutedForeground};
-  cursor: pointer;
-
-  &:hover {
-    background: ${theme.colors.muted};
-    color: ${theme.colors.foreground};
-  }
-`;
-
-export const ModalBody = styled.div`
-  padding: ${theme.spacing.lg};
-`;
+export {
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalClose,
+  ModalBody,
+  ModalFooter,
+} from "@/styles/modal.styled";
 
 export const ModalDetailList = styled.dl`
   display: flex;
@@ -358,14 +312,6 @@ export const DetailValue = styled.dd`
   margin: 0;
   text-align: right;
   color: ${theme.colors.foreground};
-`;
-
-export const ModalFooter = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  border-top: 1px solid ${theme.colors.border};
 `;
 
 export const RetryButton = styled.button`

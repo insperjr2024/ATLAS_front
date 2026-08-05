@@ -22,11 +22,15 @@ function formatApiDetail(detail: unknown): string {
 
 export async function apiFetch<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
   const { token, headers, ...rest } = options;
+  // FormData define seu próprio Content-Type (com o boundary do multipart) —
+  // se a gente fixar "application/json" aqui, o navegador não sobrescreve e o
+  // backend não consegue parsear o corpo.
+  const isFormData = rest.body instanceof FormData;
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...rest,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },

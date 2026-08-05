@@ -10,24 +10,33 @@ import type { Posicao, StatusUsuario, Usuario } from "@/types/auth";
 export type Acao =
   | "criar_projeto"
   | "editar_equipe"
+  | "arquivar_projeto"
   | "gerir_membros"
   | "marcar_kickoff"
   | "mudar_status_projeto"
+  | "mover_projeto_kanban"
   | "definir_cronograma"
   | "aprovar_reajuste"
   | "remarcar_banca"
   | "liberar_excecao_choque"
   | "registrar_justificativa_atraso"
+  | "configurar_colunas"
   | "criar_tarefa"
   | "mover_tarefa"
   | "registrar_reuniao"
   | "ver_monitoramento"
-  | "filtrar_por_frente";
+  | "filtrar_por_frente"
+  | "gerenciar_lote_desempenho"
+  | "editar_formulario_desempenho"
+  | "gerenciar_mentoria"
+  | "ver_relatorio_de_qualquer_um"
+  | "ver_tarefas_gerais";
 
 const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão — restrito às lideranças
   criar_projeto: ["diretor", "gerente"],
   editar_equipe: ["diretor", "gerente"],
+  arquivar_projeto: ["diretor", "gerente"],
   ver_monitoramento: ["diretor", "gerente"],
 
   // Só a diretoria
@@ -37,6 +46,17 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   liberar_excecao_choque: ["diretor"],
   registrar_justificativa_atraso: ["diretor"],
   filtrar_por_frente: ["diretor"],
+  /** O kanban de projetos muda o ciclo de vida por arrasto — mais informal
+   *  que os botões de `mudar_status_projeto`, por isso fica restrito à
+   *  diretoria, mesmo o botão equivalente aceitando gerente/coordenador. */
+  mover_projeto_kanban: ["diretor"],
+  //: As colunas do kanban são por projeto, mas quem as edita é sempre a
+  //: diretoria — o time move cards, não redesenha o fluxo.
+  configurar_colunas: ["diretor"],
+  /** O board macro de tarefas (todos os projetos juntos) — o backend usa
+   *  require_diretor, não require_gestao: mais informal que os números
+   *  agregados do resto do Monitoramento, então fica só pra diretoria. */
+  ver_tarefas_gerais: ["diretor"],
 
   // Condução do projeto — o consultor não define cronograma nem move o
   // ciclo de vida do projeto (§4)
@@ -48,6 +68,13 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   criar_tarefa: ["diretor", "gerente", "coordenador", "consultor"],
   mover_tarefa: ["diretor", "gerente", "coordenador", "consultor"],
   registrar_reuniao: ["diretor", "gerente", "coordenador", "consultor"],
+
+  // Avaliação de Desempenho — periódica/finalização de consultores e
+  // coordenadores (não confundir com o feedback de banca).
+  gerenciar_lote_desempenho: ["diretor", "gerente"],
+  editar_formulario_desempenho: ["diretor"],
+  gerenciar_mentoria: ["diretor", "gerente"],
+  ver_relatorio_de_qualquer_um: ["diretor", "gerente"],
 };
 
 export function pode(usuario: Usuario | null | undefined, acao: Acao): boolean {

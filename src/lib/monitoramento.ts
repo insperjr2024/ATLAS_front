@@ -138,6 +138,40 @@ export interface Atrasos {
   }[];
 }
 
+/** Espelha `Urgencia` de `types/tarefa.ts` — mesma gradação, backend igual. */
+export type UrgenciaTarefa = "vencida" | "critica" | "atencao" | "normal";
+
+export interface ColunaAgregada {
+  /** Nome normalizado (minúsculo, sem espaço nas pontas) — chave de
+   *  agrupamento, já que colunas de projetos diferentes podem se chamar
+   *  igual (ou quase). */
+  chave: string;
+  /** Nome de exibição — o da primeira coluna encontrada com esse nome. */
+  nome: string;
+  cor: string;
+}
+
+export interface TarefaAgregada {
+  id: number;
+  titulo: string;
+  projeto_id: number;
+  projeto_nome: string;
+  cliente: string;
+  responsavel_id: number;
+  responsavel_nome: string;
+  prazo: string;
+  grupo_coluna: string;
+  coluna_nome: string;
+  vencida: boolean;
+  urgencia: UrgenciaTarefa;
+  dias_para_prazo: number | null;
+}
+
+export interface TarefasGerais {
+  colunas: ColunaAgregada[];
+  tarefas: TarefaAgregada[];
+}
+
 function query(frenteId?: number | null): string {
   return frenteId ? `?frente_id=${frenteId}` : "";
 }
@@ -156,4 +190,8 @@ export function getAlocacao(token: string, frenteId?: number | null) {
 
 export function getAtrasos(token: string, frenteId?: number | null) {
   return apiFetch<Atrasos>(`/monitoramento/atrasos${query(frenteId)}`, { token });
+}
+
+export function getTarefasGerais(token: string, frenteId?: number | null) {
+  return apiFetch<TarefasGerais>(`/monitoramento/tarefas${query(frenteId)}`, { token });
 }

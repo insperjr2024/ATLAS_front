@@ -1,0 +1,27 @@
+import styled from "styled-components";
+import { theme } from "@/styles/theme";
+
+export const MentoradosList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+export const MentoradoButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: ${theme.colors.primary};
+  }
+`;

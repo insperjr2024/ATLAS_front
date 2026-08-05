@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { getCargos } from "@/lib/cargos";
 import { frentesDoUsuario, nomeCargo, normalizarTexto } from "@/lib/nucleo";
-import { getUsuarios, updateUsuario } from "@/lib/usuarios";
+import { getUsuarios, registrarUsuario, transferirDiretoria, updateUsuario } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import type { Frente } from "@/types/banca";
 import type { Cargo, Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
@@ -62,6 +62,7 @@ import {
   FiltersRow,
   SearchField,
   FilterSelect,
+  HeaderActions,
 } from "./Membros.styled";
 import { TableScrollWrap } from "@/styles/shared.styled";
 
@@ -80,6 +81,8 @@ export function Membros() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [membroDetalhe, setMembroDetalhe] = useState<UsuarioResumo | null>(null);
+  const [criandoMembro, setCriandoMembro] = useState(false);
+  const [transferindo, setTransferindo] = useState(false);
   const [termoPesquisa, setTermoPesquisa] = useState("");
   const [filtroCargo, setFiltroCargo] = useState("");
   const [filtroFrente, setFiltroFrente] = useState("");
@@ -111,7 +114,7 @@ export function Membros() {
 
   const membrosAtivos = useMemo(() => membros.filter((m) => m.ativo).length, [membros]);
 
-  if (!usuario?.cargo.pode_gerenciar_cargos) {
+  if (!usuario?.cargo.pode_gerenciar_membros) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -154,6 +157,17 @@ export function Membros() {
             {membros.length} usuários cadastrados · {membrosAtivos} ativos
           </PageSubheading>
         </PageHeaderText>
+        {/* §10: ninguém se auto-registra — só a diretoria pré-cadastra. */}
+        {usuario?.posicao === "diretor" && (
+          <HeaderActions>
+            <PageButton $variant="outline" type="button" onClick={() => setTransferindo(true)}>
+              Transferir diretoria
+            </PageButton>
+            <PageButton type="button" onClick={() => setCriandoMembro(true)}>
+              Adicionar membro
+            </PageButton>
+          </HeaderActions>
+        )}
       </PageHeaderRow>
 
       <PageCard>
@@ -259,7 +273,322 @@ export function Membros() {
           }}
         />
       )}
+
+      {criandoMembro && token && (
+        <NovoMembroModal
+          contexto={contexto}
+          token={token}
+          onClose={() => setCriandoMembro(false)}
+          onCriado={() => {
+            setCriandoMembro(false);
+            carregarMembros();
+          }}
+        />
+      )}
+
+      {transferindo && token && usuario && (
+        <TransferirDiretoriaModal
+          membros={membros}
+          diretorAtualId={usuario.id}
+          token={token}
+          onClose={() => setTransferindo(false)}
+          onTransferido={() => {
+            setTransferindo(false);
+            carregarMembros();
+          }}
+        />
+      )}
     </PageStack>
+  );
+}
+
+/**
+ * §10 — a virada de gestão. Antes disto a troca eram duas edições soltas
+ * (promover uma, rebaixar a outra) e entre elas a plataforma podia ficar com
+ * dois diretores ou com nenhum. Aqui é um passo só: o backend promove antes de
+ * desligar, e quem sai vira ex-membro — o caso de "fim de gestão".
+ */
+function TransferirDiretoriaModal({
+  membros,
+  diretorAtualId,
+  token,
+  onClose,
+  onTransferido,
+}: {
+  membros: UsuarioResumo[];
+  diretorAtualId: number;
+  token: string;
+  onClose: () => void;
+  onTransferido: () => void;
+}) {
+  const [novoDiretorId, setNovoDiretorId] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  // Quem pode receber: qualquer pessoa ativa que não seja você. A diretoria
+  // que sai é sempre quem está fazendo a transferência.
+  const elegiveis = membros.filter((m) => m.id !== diretorAtualId && m.status === "ativo");
+  const escolhido = elegiveis.find((m) => String(m.id) === novoDiretorId);
+
+  async function handleTransferir(e: React.FormEvent) {
+    e.preventDefault();
+    if (!escolhido) {
+      setErro("Escolha quem vai receber a diretoria.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      await transferirDiretoria(
+        { novo_diretor_id: escolhido.id, diretor_atual_id: diretorAtualId },
+        token,
+      );
+      onTransferido();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao transferir a diretoria");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="transferir-titulo">
+        <ModalHeader>
+          <ModalTitle id="transferir-titulo">Transferir diretoria</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+
+        <FormStack onSubmit={handleTransferir}>
+          <ModalBody>
+            <EditSection>
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-diretor">Quem assume a diretoria</FieldLabel>
+                <FieldSelect
+                  id="novo-diretor"
+                  value={novoDiretorId}
+                  onChange={(e) => setNovoDiretorId(e.target.value)}
+                  required
+                >
+                  <option value="">Selecione…</option>
+                  {elegiveis.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome} · {ROTULO_POSICAO[m.posicao]}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FieldGroup>
+
+              <EditSectionTitle>O que acontece com você</EditSectionTitle>
+
+              <EmptyText style={{ fontSize: "0.7rem" }}>
+                {escolhido ? (
+                  <>
+                    <strong>{escolhido.nome}</strong> passa a ser Diretor(a) e você vira{" "}
+                    <strong>Ex-membro</strong> — o fim de gestão do §10. Você sai da plataforma
+                    na hora, mas todo o seu histórico é preservado.
+                  </>
+                ) : (
+                  <>
+                    Quem assume vira Diretor(a) e você vira <strong>Ex-membro</strong>, mantendo o
+                    histórico. A plataforma nunca fica sem diretoria: a promoção acontece antes.
+                  </>
+                )}
+              </EmptyText>
+
+              {erro && <FormErrorText>{erro}</FormErrorText>}
+            </EditSection>
+          </ModalBody>
+          <ModalFooter>
+            <PageButton $variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </PageButton>
+            <PageButton type="submit" disabled={salvando || !escolhido}>
+              {salvando ? "Transferindo…" : "Transferir diretoria"}
+            </PageButton>
+          </ModalFooter>
+        </FormStack>
+      </WideModalContent>
+    </ModalOverlay>
+  );
+}
+
+function NovoMembroModal({
+  contexto,
+  token,
+  onClose,
+  onCriado,
+}: {
+  contexto: Contexto;
+  token: string;
+  onClose: () => void;
+  onCriado: () => void;
+}) {
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [posicao, setPosicao] = useState<Posicao>("consultor");
+  const [cargoId, setCargoId] = useState("");
+  const [frenteIds, setFrenteIds] = useState<number[]>([]);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  // §3: o recorte de visão do gerente sai de `usuario_frente` — sem nenhuma
+  // frente marcada ele entra na plataforma sem enxergar projeto nenhum.
+  const frenteObrigatoria = posicao === "gerente";
+
+  function toggleFrente(id: number) {
+    setFrenteIds((lista) => (lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]));
+  }
+
+  async function handleCriar(e: React.FormEvent) {
+    e.preventDefault();
+    if (frenteObrigatoria && frenteIds.length === 0) {
+      setErro("Selecione ao menos uma frente — é ela que define os projetos que o gerente enxerga.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      const criado = await registrarUsuario(
+        {
+          nome: nome.trim(),
+          email_insper: email.trim(),
+          senha,
+          posicao,
+          cargo_id: cargoId ? Number(cargoId) : null,
+        },
+        token,
+      );
+      if (frenteIds.length > 0) {
+        await syncFrentesUsuario(criado.id, frenteIds, [], token);
+      }
+      onCriado();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao cadastrar o membro");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="novo-membro-titulo">
+        <ModalHeader>
+          <ModalTitle id="novo-membro-titulo">Adicionar membro</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+
+        <FormStack onSubmit={handleCriar}>
+          <ModalBody>
+            <EditSection>
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-nome">Nome</FieldLabel>
+                <FieldInput
+                  id="novo-membro-nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Nome completo"
+                  required
+                />
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-email">E-mail Insper</FieldLabel>
+                <FieldInput
+                  id="novo-membro-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nome@al.insper.edu.br"
+                  required
+                />
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-senha">Senha</FieldLabel>
+                <FieldInput
+                  id="novo-membro-senha"
+                  type="password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="Senha provisória"
+                  minLength={6}
+                  required
+                />
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-posicao">Posição na plataforma</FieldLabel>
+                <FieldSelect
+                  id="novo-membro-posicao"
+                  value={posicao}
+                  onChange={(e) => setPosicao(e.target.value as Posicao)}
+                  required
+                >
+                  {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((p) => (
+                    <option key={p} value={p}>
+                      {ROTULO_POSICAO[p]}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FieldGroup>
+
+              {/* Logo abaixo da posição: para o gerente, escolher a frente é
+                  parte de definir a posição, não um detalhe solto. */}
+              <FieldGroup>
+                <FieldLabel>{frenteObrigatoria ? "Frentes que o gerente lidera *" : "Frentes"}</FieldLabel>
+                <CheckboxGrid>
+                  {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
+                  {contexto.frentes.map((frente) => (
+                    <CheckboxLabel key={frente.id}>
+                      <input
+                        type="checkbox"
+                        checked={frenteIds.includes(frente.id)}
+                        onChange={() => toggleFrente(frente.id)}
+                      />
+                      {frente.nome}
+                    </CheckboxLabel>
+                  ))}
+                </CheckboxGrid>
+                {frenteObrigatoria && (
+                  <EmptyText style={{ fontSize: "0.7rem" }}>
+                    O gerente só enxerga os projetos das frentes marcadas aqui (§3) — sem nenhuma
+                    marcada, ele entra na plataforma sem ver projeto algum.
+                  </EmptyText>
+                )}
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-cargo">Cargo (permissões de banca)</FieldLabel>
+                <FieldSelect id="novo-membro-cargo" value={cargoId} onChange={(e) => setCargoId(e.target.value)}>
+                  <option value="">Cargo padrão configurado</option>
+                  {contexto.cargos.map((cargo) => (
+                    <option key={cargo.id} value={cargo.id}>
+                      {cargo.nome}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FieldGroup>
+
+              {erro && <FormErrorText>{erro}</FormErrorText>}
+            </EditSection>
+          </ModalBody>
+          <ModalFooter>
+            <PageButton $variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </PageButton>
+            <PageButton type="submit" disabled={salvando}>
+              {salvando ? "Cadastrando…" : "Cadastrar"}
+            </PageButton>
+          </ModalFooter>
+        </FormStack>
+      </WideModalContent>
+    </ModalOverlay>
   );
 }
 
@@ -288,12 +617,19 @@ function MembroModal({
 
   const frentesMembro = frentesDoUsuario(contexto.usuariosFrentes, contexto.frentes, membro.id);
 
+  // §3: promover a gerente sem vincular frente deixa a conta sem enxergar nada.
+  const frenteObrigatoria = posicao === "gerente";
+
   function toggleFrente(id: number) {
     setFrenteIds((lista) => (lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]));
   }
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
+    if (frenteObrigatoria && frenteIds.length === 0) {
+      setErro("Selecione ao menos uma frente — é ela que define os projetos que o gerente enxerga.");
+      return;
+    }
     setSalvando(true);
     setErro("");
     try {
@@ -393,18 +729,7 @@ function MembroModal({
                 </FieldGroup>
 
                 <FieldGroup>
-                  <FieldLabel htmlFor="cargo-membro">Cargo (permissões de banca)</FieldLabel>
-                  <FieldSelect id="cargo-membro" value={cargoId} onChange={(e) => setCargoId(e.target.value)} required>
-                    {contexto.cargos.map((cargo) => (
-                      <option key={cargo.id} value={cargo.id}>
-                        {cargo.nome}
-                      </option>
-                    ))}
-                  </FieldSelect>
-                </FieldGroup>
-
-                <FieldGroup>
-                  <FieldLabel>Frentes</FieldLabel>
+                  <FieldLabel>{frenteObrigatoria ? "Frentes que o gerente lidera *" : "Frentes"}</FieldLabel>
                   <CheckboxGrid>
                     {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
                     {contexto.frentes.map((frente) => (
@@ -418,6 +743,23 @@ function MembroModal({
                       </CheckboxLabel>
                     ))}
                   </CheckboxGrid>
+                  {frenteObrigatoria && (
+                    <EmptyText style={{ fontSize: "0.7rem" }}>
+                      O gerente só enxerga os projetos das frentes marcadas aqui (§3) — sem nenhuma
+                      marcada, ele fica sem ver projeto algum.
+                    </EmptyText>
+                  )}
+                </FieldGroup>
+
+                <FieldGroup>
+                  <FieldLabel htmlFor="cargo-membro">Cargo (permissões de banca)</FieldLabel>
+                  <FieldSelect id="cargo-membro" value={cargoId} onChange={(e) => setCargoId(e.target.value)} required>
+                    {contexto.cargos.map((cargo) => (
+                      <option key={cargo.id} value={cargo.id}>
+                        {cargo.nome}
+                      </option>
+                    ))}
+                  </FieldSelect>
                 </FieldGroup>
 
                 <FieldGroup>

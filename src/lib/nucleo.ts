@@ -1,14 +1,24 @@
 import type { BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente } from "@/types/banca";
 import type { Cargo, UsuarioFrente, UsuarioResumo } from "@/types/auth";
 
+/**
+ * Um cargo sem nenhuma caixa marcada é de consultor. Precisa listar TODAS as
+ * permissões: esquecer uma faria um cargo administrativo passar por consultor.
+ */
+function semNenhumaPermissao(cargo: Cargo): boolean {
+  return (
+    !cargo.pode_agendar_banca &&
+    !cargo.pode_definir_formulario &&
+    !cargo.pode_gerenciar_cargos &&
+    !cargo.pode_gerenciar_membros &&
+    !cargo.pode_gerenciar_nucleo
+  );
+}
+
 export function consultoresDoNucleo(usuarios: UsuarioResumo[], cargos: Cargo[]): UsuarioResumo[] {
   const idsConsultor = new Set(
     cargos
-      .filter(
-        (c) =>
-          c.nome.toLowerCase().includes("consultor") ||
-          (!c.pode_agendar_banca && !c.pode_gerenciar_cargos && !c.pode_definir_formulario),
-      )
+      .filter((c) => c.nome.toLowerCase().includes("consultor") || semNenhumaPermissao(c))
       .map((c) => c.id),
   );
   return usuarios.filter((u) => u.ativo && idsConsultor.has(u.cargo_id));

@@ -1,6 +1,3 @@
-/** As 5 colunas do kanban (§4). */
-export type StatusTarefa = "a_fazer" | "em_andamento" | "validacao" | "concluido" | "cancelado";
-
 export interface Tarefa {
   id: number;
   projeto_id: number;
@@ -8,13 +5,31 @@ export interface Tarefa {
   titulo: string;
   responsavel_id: number;
   prazo: string;
-  status: StatusTarefa;
+  /** A coluna do kanban — configurável pela diretoria, não mais um ENUM. */
+  coluna_id: number;
   criado_por: number;
   criado_em: string;
   /** Só muda quando o STATUS muda — alimenta a "última movimentação" do §7.2. */
   movida_em: string;
-  /** 🧮 Derivado pelo backend, nunca gravado: prazo passado + status ativo. */
+  /**
+   * 🧮 Derivado pelo backend, nunca gravado: prazo passado + a coluna atual
+   * não marcada como "encerra a tarefa".
+   */
   vencida: boolean;
+  /** ⏰ A gradação que o card usa para avisar ANTES do prazo estourar. */
+  urgencia: Urgencia;
+  /** Dias corridos até o prazo. Negativo = já passou. */
+  dias_para_prazo: number | null;
+}
+
+export type Urgencia = "vencida" | "critica" | "atencao" | "normal";
+
+export interface ComentarioTarefa {
+  id: number;
+  tarefa_id: number;
+  autor_id: number;
+  texto: string;
+  criado_em: string;
 }
 
 export interface ReuniaoSemanal {
