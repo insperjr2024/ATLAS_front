@@ -416,7 +416,7 @@ function BancasPorFrente() {
   return (
     <PageCard>
       <PageCardHeader>
-        <PageCardTitle>Bancas por frente</PageCardTitle>
+        <PageCardTitle>Bancas por escopo</PageCardTitle>
       </PageCardHeader>
       <PageCardContent>
         {frenteIds.length === 0 ? (
