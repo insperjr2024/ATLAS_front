@@ -15,10 +15,12 @@ import {
   getEscopos,
   getFrentes,
   podeGerenciarBanca,
+  ROTULO_STATUS_BANCA,
   syncBancaFrentes,
   syncEquipeProjeto,
   toDateInputValue,
   toTimeInputValue,
+  tomDoStatusBanca,
   updateBanca,
 } from "@/lib/bancas";
 import { getCargos } from "@/lib/cargos";
@@ -33,7 +35,7 @@ import {
   isPerguntaOpcional,
   submeterAvaliacao,
 } from "@/lib/avaliacoes";
-import { NotaSlider, NotaSliderGroup } from "@/components/NotaSlider";
+import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
 import type { Banca, BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente, FormularioAtivo } from "@/types/banca";
 import type { Cargo, UsuarioResumo } from "@/types/auth";
 import {
@@ -52,20 +54,13 @@ import {
   PageCardContent,
   PageButton,
   PageButtonSm,
+  PageBadge,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
 import {
-  DataTable,
-  TableHead,
-  TableHeadCell,
-  TableBody,
-  TableRow,
-  NameCell,
-  TableCell,
-  ActionsCell,
   DetailList,
   DetailRow,
   DetailTerm,
@@ -93,11 +88,28 @@ import {
   PageHeaderText,
   PageHeading,
   PageSubheading,
-  TableScrollWrap,
+  ListScrollWrap,
   LIST_MAX_VISIVEIS,
   SectionGroup,
-  SectionTitle,
+  TabBar,
+  TabButton,
+  TabCount,
+  BancaLinha,
+  BancaData,
+  BancaDataDiaSemana,
+  BancaDataDia,
+  BancaInfo,
+  BancaNomeLinha,
+  BancaNome,
+  BancaMeta,
+  BancaAcoes,
 } from "./Bancas.styled";
+
+type AbaBancas = "meus" | "alocacao" | "avaliacao";
+
+function porDataMaisProxima(a: Banca, b: Banca): number {
+  return new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime();
+}
 
 interface Contexto {
   usuarios: UsuarioResumo[];
@@ -123,6 +135,7 @@ export function Bancas() {
   const [bancaAvaliar, setBancaAvaliar] = useState<Banca | null>(null);
   const [bancaEditar, setBancaEditar] = useState<Banca | null>(null);
   const [criarAberto, setCriarAberto] = useState(false);
+  const [aba, setAba] = useState<AbaBancas>("alocacao");
 
   const podeAgendar = !!usuario?.cargo.pode_definir_cronograma;
 
@@ -150,7 +163,8 @@ export function Bancas() {
       setParaAvaliar(
         avaliarResp
           .map((item) => bancasResp.find((b) => b.id === item.banca_id))
-          .filter((b): b is Banca => b != null),
+          .filter((b): b is Banca => b != null)
+          .sort(porDataMaisProxima),
       );
       const bancasAvaliadasIds = new Set(
         avaliacoesResp
@@ -199,29 +213,41 @@ export function Bancas() {
   // declaradas depois — o TS não sabe quando elas rodam. Segurar o valor
   // numa const resolve sem espalhar `usuario!` pelo arquivo.
   const usuarioLogado = usuario;
+  const contextoAtual = contexto;
 
   function candidaturaDe(bancaId: number) {
     return candidaturas.find((c) => c.banca_id === bancaId && c.usuario_id === usuarioLogado.id);
   }
 
-  const bancasDoProjeto = bancas
-    .filter(
-      (b) =>
-        b.coordenador_id === usuario.id ||
-        contexto.equipesProjeto.some((e) => e.banca_id === b.id && e.usuario_id === usuario.id),
-    )
-    .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime());
+  // Coordenador ou membro da equipe daquela banca — o próprio grupo, que não
+  // pode se candidatar a assistir/avaliar a própria banca.
+  function ehDoProprioGrupo(banca: Banca): boolean {
+    return (
+      banca.coordenador_id === usuarioLogado.id ||
+      contextoAtual.equipesProjeto.some((e) => e.banca_id === banca.id && e.usuario_id === usuarioLogado.id)
+    );
+  }
+
+  const bancasDoProjeto = bancas.filter(ehDoProprioGrupo).sort(porDataMaisProxima);
+
+  const mostrarMeusProjetos = podeAgendar || bancasDoProjeto.length > 0;
 
   // ⚠ `aceitaInscricao` no lugar da comparação com a string antiga: uma banca
   // `atrasada` continua nestes baldes. Trocar só o literal a faria sumir da
   // tela inteira.
-  const jaAlocado = bancas.filter((b) => aceitaInscricao(b.status) && candidaturaDe(b.id));
-  const lotadas = bancas.filter(
-    (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados >= b.vagas,
-  );
-  const disponiveisParaAlocacao = bancas.filter(
-    (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados < b.vagas,
-  );
+  const jaAlocado = bancas
+    .filter((b) => aceitaInscricao(b.status) && candidaturaDe(b.id))
+    .sort(porDataMaisProxima);
+  const lotadas = bancas
+    .filter(
+      (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados >= b.vagas && !ehDoProprioGrupo(b),
+    )
+    .sort(porDataMaisProxima);
+  const disponiveisParaAlocacao = bancas
+    .filter(
+      (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados < b.vagas && !ehDoProprioGrupo(b),
+    )
+    .sort(porDataMaisProxima);
 
   async function handleAlocar(bancaId: number) {
     if (!token) return;
@@ -268,7 +294,24 @@ export function Bancas() {
         )}
       </PageHeaderRow>
 
-      {(podeAgendar || bancasDoProjeto.length > 0) && (
+      <TabBar>
+        {mostrarMeusProjetos && (
+          <TabButton type="button" $ativa={aba === "meus"} onClick={() => setAba("meus")}>
+            Meus projetos
+            <TabCount>{bancasDoProjeto.length}</TabCount>
+          </TabButton>
+        )}
+        <TabButton type="button" $ativa={aba === "alocacao"} onClick={() => setAba("alocacao")}>
+          Alocação
+          <TabCount>{jaAlocado.length + disponiveisParaAlocacao.length + lotadas.length}</TabCount>
+        </TabButton>
+        <TabButton type="button" $ativa={aba === "avaliacao"} onClick={() => setAba("avaliacao")}>
+          Avaliação
+          <TabCount>{paraAvaliar.length + jaAvaliadas.length}</TabCount>
+        </TabButton>
+      </TabBar>
+
+      {aba === "meus" && mostrarMeusProjetos && (
         <SecaoBancas
           titulo="Bancas dos meus projetos"
           bancas={bancasDoProjeto}
@@ -282,51 +325,53 @@ export function Bancas() {
         />
       )}
 
-      <SectionGroup>
-        <SectionTitle>Bancas futuras</SectionTitle>
-        <SecaoBancas
-          titulo="Já alocado"
-          bancas={jaAlocado}
-          contexto={contexto}
-          acao="deslocar"
-          onAcao={handleDesalocar}
-          onVerMais={setBancaDetalhe}
-        />
-        <SecaoBancas
-          titulo="Disponíveis para alocação"
-          bancas={disponiveisParaAlocacao}
-          contexto={contexto}
-          acao="alocar"
-          onAcao={handleAlocar}
-          onVerMais={setBancaDetalhe}
-        />
-        <SecaoBancas
-          titulo="Com alocação máxima"
-          bancas={lotadas}
-          contexto={contexto}
-          acao="nenhuma"
-          onVerMais={setBancaDetalhe}
-        />
-      </SectionGroup>
+      {aba === "alocacao" && (
+        <SectionGroup>
+          <SecaoBancas
+            titulo="Já alocado"
+            bancas={jaAlocado}
+            contexto={contexto}
+            acao="deslocar"
+            onAcao={handleDesalocar}
+            onVerMais={setBancaDetalhe}
+          />
+          <SecaoBancas
+            titulo="Disponíveis para alocação"
+            bancas={disponiveisParaAlocacao}
+            contexto={contexto}
+            acao="alocar"
+            onAcao={handleAlocar}
+            onVerMais={setBancaDetalhe}
+          />
+          <SecaoBancas
+            titulo="Com alocação máxima"
+            bancas={lotadas}
+            contexto={contexto}
+            acao="nenhuma"
+            onVerMais={setBancaDetalhe}
+          />
+        </SectionGroup>
+      )}
 
-      <SectionGroup>
-        <SectionTitle>Bancas realizadas</SectionTitle>
-        <SecaoBancas
-          titulo="Com avaliação pendente"
-          bancas={paraAvaliar}
-          contexto={contexto}
-          acao="avaliar"
-          onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
-          onVerMais={setBancaDetalhe}
-        />
-        <SecaoBancas
-          titulo="Avaliadas"
-          bancas={jaAvaliadas}
-          contexto={contexto}
-          acao="nenhuma"
-          onVerMais={setBancaDetalhe}
-        />
-      </SectionGroup>
+      {aba === "avaliacao" && (
+        <SectionGroup>
+          <SecaoBancas
+            titulo="Com avaliação pendente"
+            bancas={paraAvaliar}
+            contexto={contexto}
+            acao="avaliar"
+            onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
+            onVerMais={setBancaDetalhe}
+          />
+          <SecaoBancas
+            titulo="Avaliadas"
+            bancas={jaAvaliadas}
+            contexto={contexto}
+            acao="nenhuma"
+            onVerMais={setBancaDetalhe}
+          />
+        </SectionGroup>
+      )}
 
       <VerMaisModal
         banca={bancaDetalhe}
@@ -367,6 +412,7 @@ export function Bancas() {
         <AvaliarModal
           banca={bancaAvaliar}
           formulario={formulario}
+          escopos={contexto.escopos}
           token={token}
           onClose={() => setBancaAvaliar(null)}
           onEnviada={() => {
@@ -406,67 +452,80 @@ function SecaoBancas({
     <PageCard>
       <PageCardHeader>
         <PageCardTitle>{titulo}</PageCardTitle>
+        <PageBadge $tone="muted">{bancas.length}</PageBadge>
       </PageCardHeader>
       <PageCardContent>
         {bancas.length === 0 && <EmptyText>Nenhuma banca aqui.</EmptyText>}
         {bancas.length > 0 && (
-          <TableScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
-            <DataTable>
-              <TableHead>
-                <TableRow>
-                  <TableHeadCell>Nome</TableHeadCell>
-                  <TableHeadCell>Data</TableHeadCell>
-                  <TableHeadCell>Hora</TableHeadCell>
-                  <TableHeadCell>Coord</TableHeadCell>
-                  <TableHeadCell>Alocados</TableHeadCell>
-                  <TableHeadCell />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {bancas.map((banca) => {
-                  const dataHora = new Date(banca.data_hora);
-                  const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
-                  const podeGerenciar = gerenciar && usuarioId != null && podeGerenciarBanca(banca, usuarioId);
-                  return (
-                    <TableRow key={banca.id}>
-                      <NameCell>{banca.nome_projeto}</NameCell>
-                      <TableCell>{dataHora.toLocaleDateString("pt-BR")}</TableCell>
-                      <TableCell>{dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</TableCell>
-                      <TableCell>{nomeUsuario(contexto.usuarios, banca.coordenador_id)}</TableCell>
-                      <TableCell>
-                        {banca.alocados}/{banca.vagas}
-                      </TableCell>
-                      <ActionsCell>
-                        <PageButtonSm $variant="outline" type="button" onClick={() => onVerMais(banca)}>
-                          Ver mais
-                        </PageButtonSm>
-                        {podeGerenciar && onEditar && (
-                          <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(banca)}>
-                            Editar
-                          </PageButtonSm>
-                        )}
-                        {podeGerenciar && onExcluir && (
-                          <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(banca)}>
-                            Excluir
-                          </PageButtonSm>
-                        )}
-                        {acao !== "nenhuma" && onAcao && (
-                          <PageButtonSm
-                            $variant={acao === "deslocar" ? "outline" : "primary"}
-                            type="button"
-                            disabled={lotada}
-                            onClick={() => onAcao(banca.id)}
-                          >
-                            {lotada ? "Lotada" : acao === "alocar" ? "Alocar-se" : acao === "deslocar" ? "Deslocar-se" : "Avaliar"}
-                          </PageButtonSm>
-                        )}
-                      </ActionsCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </DataTable>
-          </TableScrollWrap>
+          <ListScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
+            {bancas.map((banca) => {
+              const dataHora = new Date(banca.data_hora);
+              const diaSemana = dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+              const hora = dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+              const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
+              const podeGerenciar = gerenciar && usuarioId != null && podeGerenciarBanca(banca, usuarioId);
+              const escopoNome = nomeEscopo(contexto.escopos, banca.escopo_id);
+
+              return (
+                <BancaLinha key={banca.id}>
+                  <BancaData>
+                    <BancaDataDiaSemana>{diaSemana}</BancaDataDiaSemana>
+                    <BancaDataDia>{dataHora.getDate()}</BancaDataDia>
+                  </BancaData>
+
+                  <BancaInfo>
+                    <BancaNomeLinha>
+                      <BancaNome>{banca.nome_projeto}</BancaNome>
+                      {escopoNome && <PageBadge $tone="muted">{escopoNome}</PageBadge>}
+                      {acao === "avaliar" && <PageBadge $tone="warning">Pendente</PageBadge>}
+                      {acao === "deslocar" && <PageBadge $tone="default">Inscrito</PageBadge>}
+                      {acao === "alocar" &&
+                        (lotada ? (
+                          <PageBadge $tone="danger">Lotada</PageBadge>
+                        ) : (
+                          <PageBadge $tone="success">{banca.vagas - banca.alocados} vaga(s)</PageBadge>
+                        ))}
+                      {acao === "nenhuma" && (
+                        <PageBadge $tone={tomDoStatusBanca(banca.status)}>
+                          {ROTULO_STATUS_BANCA[banca.status]}
+                        </PageBadge>
+                      )}
+                    </BancaNomeLinha>
+                    <BancaMeta>
+                      {hora} · {nomeUsuario(contexto.usuarios, banca.coordenador_id)} ·{" "}
+                      {banca.alocados}/{banca.vagas} alocados
+                    </BancaMeta>
+                  </BancaInfo>
+
+                  <BancaAcoes>
+                    <PageButtonSm $variant="outline" type="button" onClick={() => onVerMais(banca)}>
+                      Ver mais
+                    </PageButtonSm>
+                    {podeGerenciar && onEditar && (
+                      <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(banca)}>
+                        Editar
+                      </PageButtonSm>
+                    )}
+                    {podeGerenciar && onExcluir && (
+                      <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(banca)}>
+                        Excluir
+                      </PageButtonSm>
+                    )}
+                    {acao !== "nenhuma" && onAcao && (
+                      <PageButtonSm
+                        $variant={acao === "deslocar" ? "outline" : "primary"}
+                        type="button"
+                        disabled={lotada}
+                        onClick={() => onAcao(banca.id)}
+                      >
+                        {lotada ? "Lotada" : acao === "alocar" ? "Alocar-se" : acao === "deslocar" ? "Deslocar-se" : "Avaliar"}
+                      </PageButtonSm>
+                    )}
+                  </BancaAcoes>
+                </BancaLinha>
+              );
+            })}
+          </ListScrollWrap>
         )}
       </PageCardContent>
     </PageCard>
@@ -723,29 +782,55 @@ function VerMaisModal({
   );
 }
 
+const OUTRO = "outro" as const;
+
 function AvaliarModal({
   banca,
   formulario,
+  escopos,
   token,
   onClose,
   onEnviada,
 }: {
   banca: Banca;
   formulario: FormularioAtivo | null;
+  escopos: Escopo[];
   token: string;
   onClose: () => void;
   onEnviada: () => void;
 }) {
+  const { usuario } = useAuth();
+  const escoposOrdenados = escopos.slice().sort((a, b) => a.nome.localeCompare(b.nome));
+
+  // Bloco 1 — a diretoria pede de novo mesmo o sistema já sabendo quem
+  // está logado e qual o escopo cadastrado da banca: são só o ponto de
+  // partida, o avaliador pode confirmar diferente.
+  const [nomeAvaliador, setNomeAvaliador] = useState(usuario?.nome ?? "");
+  const [tipoAvaliador, setTipoAvaliador] = useState<"consultor" | "lideranca">(
+    usuario && usuario.posicao !== "consultor" ? "lideranca" : "consultor",
+  );
+  const [projetoAvaliado, setProjetoAvaliado] = useState(banca.nome_projeto);
+  const [escopoSelecionado, setEscopoSelecionado] = useState<number | typeof OUTRO | "">(
+    banca.escopo_id ?? OUTRO,
+  );
+  const [escopoOutro, setEscopoOutro] = useState("");
+
+  // O Bloco 2 (critérios técnicos) depende do que foi respondido AQUI —
+  // "Escopo Avaliado" — não de `banca.escopo_id` direto: é essa resposta
+  // que decide o bloco, mesmo já vindo prenchida a partir da banca.
+  const escopoIdParaFiltro = typeof escopoSelecionado === "number" ? escopoSelecionado : null;
+
   const perguntasVisiveis = (formulario?.perguntas ?? [])
     .slice()
     .sort((a, b) => a.ordem - b.ordem)
+    .filter((p) => p.escopo_id == null || p.escopo_id === escopoIdParaFiltro)
     .filter((p) => !isComentarioFeedbackPergunta(p.tipo_resposta, p.texto));
 
   const perguntasNota = perguntasVisiveis.filter((p) => isPerguntaNota(p.tipo_resposta));
   const perguntasTexto = perguntasVisiveis.filter((p) => !isPerguntaNota(p.tipo_resposta));
 
-  const [notas, setNotas] = useState<Record<number, number>>(() =>
-    Object.fromEntries(perguntasNota.map((p) => [p.id, 0])),
+  const [notas, setNotas] = useState<Record<number, number | null>>(() =>
+    Object.fromEntries(perguntasNota.map((p) => [p.id, null])),
   );
   const [respostasTexto, setRespostasTexto] = useState<Record<number, string>>({});
   const [comentario, setComentario] = useState("");
@@ -755,17 +840,33 @@ function AvaliarModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!formulario) return;
+    const faltando = perguntasNota.some((p) => notas[p.id] == null);
+    if (faltando) {
+      setErro("Selecione uma nota de 1 a 5 para todos os critérios.");
+      return;
+    }
     setEnviando(true);
     setErro("");
     try {
-      const avaliacao = await createAvaliacao({ banca_id: banca.id, formulario_id: formulario.id }, token);
+      const avaliacao = await createAvaliacao(
+        {
+          banca_id: banca.id,
+          formulario_id: formulario.id,
+          nome_avaliador: nomeAvaliador.trim() || undefined,
+          tipo_avaliador: tipoAvaliador,
+          projeto_avaliado: projetoAvaliado.trim() || undefined,
+          escopo_avaliado_id: escopoIdParaFiltro,
+          escopo_avaliado_outro: escopoIdParaFiltro == null ? escopoOutro.trim() || null : null,
+        },
+        token,
+      );
       for (const pergunta of perguntasVisiveis) {
         if (isPerguntaNota(pergunta.tipo_resposta)) {
           await createAvaliacaoNota(
             {
               avaliacao_id: avaliacao.id,
               pergunta_id: pergunta.id,
-              nota: notas[pergunta.id] ?? 0,
+              nota: notas[pergunta.id] as number,
             },
             token,
           );
@@ -807,18 +908,77 @@ function AvaliarModal({
         ) : (
           <FormStack onSubmit={handleSubmit}>
             <ModalBody>
+              <FieldGroup>
+                <FieldLabel htmlFor="bloco1-nome">Nome</FieldLabel>
+                <FieldInput
+                  id="bloco1-nome"
+                  value={nomeAvaliador}
+                  onChange={(e) => setNomeAvaliador(e.target.value)}
+                  required
+                />
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel htmlFor="bloco1-tipo">Consultor ou Liderança</FieldLabel>
+                <FieldSelect
+                  id="bloco1-tipo"
+                  value={tipoAvaliador}
+                  onChange={(e) => setTipoAvaliador(e.target.value as "consultor" | "lideranca")}
+                >
+                  <option value="consultor">Consultor</option>
+                  <option value="lideranca">Liderança</option>
+                </FieldSelect>
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel htmlFor="bloco1-projeto">Projeto Avaliado</FieldLabel>
+                <FieldInput
+                  id="bloco1-projeto"
+                  value={projetoAvaliado}
+                  onChange={(e) => setProjetoAvaliado(e.target.value)}
+                  placeholder="ex. PROJETO I"
+                  required
+                />
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel htmlFor="bloco1-escopo">Escopo Avaliado</FieldLabel>
+                <FieldSelect
+                  id="bloco1-escopo"
+                  value={escopoSelecionado}
+                  onChange={(e) =>
+                    setEscopoSelecionado(e.target.value === OUTRO ? OUTRO : Number(e.target.value))
+                  }
+                >
+                  {escoposOrdenados.map((escopo) => (
+                    <option key={escopo.id} value={escopo.id}>
+                      {escopo.nome}
+                    </option>
+                  ))}
+                  <option value={OUTRO}>Outro</option>
+                </FieldSelect>
+              </FieldGroup>
+              {escopoIdParaFiltro == null && (
+                <FieldGroup>
+                  <FieldLabel htmlFor="bloco1-escopo-outro">Qual escopo?</FieldLabel>
+                  <FieldInput
+                    id="bloco1-escopo-outro"
+                    value={escopoOutro}
+                    onChange={(e) => setEscopoOutro(e.target.value)}
+                    required
+                  />
+                </FieldGroup>
+              )}
+
               {perguntasNota.length > 0 && (
-                <NotaSliderGroup>
+                <NotaEscalaGrupo>
                   {perguntasNota.map((pergunta) => (
-                    <NotaSlider
+                    <NotaEscala
                       key={pergunta.id}
                       id={`pergunta-${pergunta.id}`}
                       label={pergunta.texto}
-                      value={notas[pergunta.id] ?? 0}
+                      value={notas[pergunta.id] ?? null}
                       onChange={(valor) => setNotas((n) => ({ ...n, [pergunta.id]: valor }))}
                     />
                   ))}
-                </NotaSliderGroup>
+                </NotaEscalaGrupo>
               )}
               {perguntasTexto.map((pergunta) => (
                 <FieldGroup key={pergunta.id}>

@@ -51,7 +51,18 @@ export function getNotasPorPergunta(bancaId: number, token: string) {
   return apiFetch<NotaPorPergunta[]>(`/bancas/${bancaId}/notas-por-pergunta`, { token });
 }
 
-export function createAvaliacao(dados: { banca_id: number; formulario_id: number }, token: string) {
+export function createAvaliacao(
+  dados: {
+    banca_id: number;
+    formulario_id: number;
+    nome_avaliador?: string;
+    tipo_avaliador?: "consultor" | "lideranca";
+    projeto_avaliado?: string;
+    escopo_avaliado_id?: number | null;
+    escopo_avaliado_outro?: string | null;
+  },
+  token: string,
+) {
   return apiFetch<Avaliacao>("/avaliacoes", {
     method: "POST",
     token,
