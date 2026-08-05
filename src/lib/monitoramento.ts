@@ -48,17 +48,46 @@ export interface VisaoGeral {
   }[];
 }
 
+export interface LinhaTarefas {
+  projeto_id: number;
+  projeto_nome: string;
+  status: string;
+  distribuiu_na_semana: boolean;
+  total: number;
+  ativas: number;
+  vencidas: number;
+  /** Nunca recebeu tarefa nenhuma. */
+  sem_tarefas: boolean;
+  /** Tem tarefas, mas todas concluídas ou canceladas — o quadro zerou e não
+   *  veio o próximo lote. Situação diferente de `sem_tarefas`. */
+  sem_tarefas_ativas: boolean;
+  /** Dias ÚTEIS desde a última tarefa criada (ou desde o kickoff, se nunca
+   *  houve nenhuma). `null` = projeto ainda sem kickoff. */
+  dias_uteis_sem_tarefa: number | null;
+  /** De ONDE o campo acima conta, lido do banco por `_marco_sem_tarefa`.
+   *
+   *  Vem na resposta porque o número de dias sozinho é ambíguo — não dá para
+   *  saber se ele partiu do kickoff ou da última tarefa criada. Deduzir isso
+   *  no front pelo `sem_tarefas` funcionava por coincidência e quebraria em
+   *  silêncio se o filtro da lista mudasse. */
+  marco_sem_tarefa: "kickoff" | "ultima_tarefa" | null;
+  /** A data do marco acima. `null` = projeto ainda sem kickoff. */
+  data_marco_sem_tarefa: string | null;
+  /** O pior atraso do quadro, em dias ÚTEIS. */
+  atraso_maximo_dias_uteis: number;
+  ultima_movimentacao: string | null;
+}
+
 export interface Execucao {
   semana: { inicio: string; fim: string };
-  tarefas: {
-    projeto_id: number;
-    projeto_nome: string;
-    distribuiu_na_semana: boolean;
-    total: number;
-    ativas: number;
-    vencidas: number;
-    ultima_movimentacao: string | null;
-  }[];
+  resumo_tarefas: {
+    projetos: number;
+    sem_tarefas: number;
+    sem_tarefas_ativas: number;
+    sem_distribuir_na_semana: number;
+    com_vencidas: number;
+  };
+  tarefas: LinhaTarefas[];
   reunioes: {
     projeto_id: number;
     projeto_nome: string;
@@ -96,6 +125,8 @@ export interface Atrasos {
       dias: number;
       escopo: string;
       projeto_escopo_id: number | null;
+      /** A data que venceu: a banca não realizada ou a entrega planejada. */
+      data_referencia: string | null;
     }[];
   }[];
   por_coordenador: {

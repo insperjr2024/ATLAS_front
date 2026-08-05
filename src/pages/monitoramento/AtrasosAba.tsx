@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAtrasos, type Atrasos } from "@/lib/monitoramento";
-import { ROTULO_STATUS } from "@/lib/projetos";
+import { formatarData, ROTULO_STATUS } from "@/lib/projetos";
 import type { StatusProjeto } from "@/types/projeto";
+
+type LinhaProjeto = Atrasos["por_projeto"][number];
+type Motivo = LinhaProjeto["motivos"][number];
 import {
   PageStack,
   PageCard,
@@ -17,22 +19,45 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  AtrasoCorpo,
+  AtrasoDias,
+  AtrasoTitulo,
+  BarraCelula,
+  BarraCelulaPreenchida,
+  BarraCelulaTrilho,
   DataTable,
-  ItemAtencao,
+  EstadoLimpo,
+  EstadoLimpoIcone,
+  FaixaResumo,
+  Legenda,
+  LegendaItem,
+  LinhaAtraso,
+  LinkProjeto,
   ListaSimples,
+  MotivoData,
+  MotivoDias,
+  MotivoItem,
+  MotivoLista,
+  MotivoTag,
   Pilula,
+  ResumoItem,
+  ResumoRotulo,
+  ResumoValor,
+  SemDado,
+  TabelaRolagem,
   TableBody,
   TableCell,
   TableHead,
   TableHeadCell,
   TableRow,
+  type NivelSeveridade,
 } from "./Monitoramento.styled";
 import { useMonitoramento } from "./MonitoramentoLayout";
 
 const ROTULO_MOTIVO: Record<string, string> = {
   banca: "banca",
-  entrega_interna: "entrega (interno)",
-  entrega_externa: "entrega (agenda do cliente)",
+  entrega_interna: "entrega",
+  entrega_externa: "agenda do cliente",
 };
 
 /**
@@ -41,7 +66,19 @@ const ROTULO_MOTIVO: Record<string, string> = {
  * à parte, com a distinção interno/externo, para não penalizar o time pelo
  * que não é dele.
  *
- * ⏱ Os dias são CORRIDOS, não úteis — é a única régua do sistema assim.
+ * Os dias aqui são ÚTEIS, pelo calendário do Insper — a mesma régua da aba de
+ * Execução. O texto do §7.4 dizia "corridos", mas a diretoria confirmou em
+ * 2026-08-04 que são úteis: cobrar fim de semana, feriado e semana de provas
+ * seria cobrar tempo em que o time não tinha como trabalhar. Não há mais duas
+ * réguas no sistema, então os números das duas abas se comparam.
+ *
+ * **`dias_totais` é SOMA, não duração.** O backend acumula os dias de todos os
+ * motivos do projeto (`AtrasoProjeto.dias_totais`) e ordena a lista por ela.
+ * Soma responde "quanto atraso este projeto acumula"; não responde "há quanto
+ * tempo ele está atrasado" — três escopos com 4 dias cada somam 12 sem que
+ * nada esteja parado há 12 dias. Por isso a tela separa as duas leituras: o
+ * número grande é a soma (para bater com a ordem da lista) e a COR vem do pior
+ * motivo isolado, que é sobre o que os cortes do `nivel()` foram escritos.
  */
 export function AtrasosAba() {
   const { token } = useAuth();
@@ -68,6 +105,37 @@ export function AtrasosAba() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, frenteId]);
 
+  const projetos = dados?.por_projeto ?? [];
+  const coordenadores = dados?.por_coordenador ?? [];
+
+  /* A régua das barras da tabela de coordenadores: o maior acumulado dela.
+     Comparar coordenador com coordenador é o ponto — o §7.4 quer padrão
+     recorrente, e padrão só aparece na comparação entre pares. */
+  const piorCoordenador = useMemo(
+    () => Math.max(1, ...coordenadores.map((c) => c.dias_acumulados)),
+    [coordenadores],
+  );
+  const diasAcumulados = useMemo(
+    () => projetos.reduce((soma, p) => soma + p.dias_totais, 0),
+    [projetos],
+  );
+
+  /* O "pior caso" da faixa é o maior atraso ISOLADO da visão, não a maior
+     soma. É o número que a diretoria usa para dizer "o pior que temos hoje é
+     um escopo parado há N dias" — e a maior soma não sustenta essa frase. */
+  const piorMotivo = useMemo(
+    () => Math.max(0, ...projetos.flatMap((p) => p.motivos.map((m) => m.dias))),
+    [projetos],
+  );
+
+  /* Quantos estão atrasados APENAS pela agenda do cliente. O §7.4 tira esses
+     do que se cobra do time, e a faixa precisa dizer isso — senão "8 projetos
+     atrasados" vira cobrança de coisa que o time não controla. */
+  const somenteExterno = useMemo(
+    () => projetos.filter(apenasExterno).length,
+    [projetos],
+  );
+
   if (erro) {
     return (
       <ErrorBlock>
@@ -83,36 +151,127 @@ export function AtrasosAba() {
 
   return (
     <PageStack>
+      {projetos.length > 0 && (
+        <FaixaResumo>
+          <ResumoItem>
+            {/* A contagem fica neutra de propósito. Tingi-la com a gravidade do
+                PIOR projeto diria que os 12 estão críticos quando só um está. */}
+            <ResumoValor>{projetos.length}</ResumoValor>
+            <ResumoRotulo>
+              {projetos.length === 1 ? "projeto atrasado" : "projetos atrasados"}
+              {somenteExterno > 0 &&
+                ` · ${somenteExterno} só por agenda do cliente`}
+            </ResumoRotulo>
+          </ResumoItem>
+          <ResumoItem>
+            <ResumoValor>
+              {diasAcumulados}
+              <small>dias</small>
+            </ResumoValor>
+            <ResumoRotulo>dias úteis somados (todos os motivos)</ResumoRotulo>
+          </ResumoItem>
+          <ResumoItem>
+            <ResumoValor $nivel={nivel(piorMotivo)}>
+              {piorMotivo}
+              <small>dias</small>
+            </ResumoValor>
+            <ResumoRotulo>pior atraso isolado, em dias úteis</ResumoRotulo>
+          </ResumoItem>
+        </FaixaResumo>
+      )}
+
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Por projeto ({dados.por_projeto.length})</PageCardTitle>
+          <PageCardTitle>Por projeto</PageCardTitle>
+          {projetos.length > 0 && (
+            /* A legenda diz de onde vem a cor. Sem esse "pior motivo" escrito,
+               quem vê "12 dias" em âmbar ao lado de "9 dias" em vermelho lê a
+               escala como quebrada — quando na verdade os 12 são 3+4+5. */
+            <Legenda>
+              <LegendaItem $nivel="leve">até 3 dias</LegendaItem>
+              <LegendaItem $nivel="media">4 a 10</LegendaItem>
+              <LegendaItem $nivel="critica">mais de 10</LegendaItem>
+              <li>cor pelo pior motivo, não pela soma</li>
+            </Legenda>
+          )}
         </PageCardHeader>
         <PageCardContent>
-          {dados.por_projeto.length === 0 ? (
-            <EmptyText>Nenhum projeto atrasado. 🎉</EmptyText>
+          {projetos.length === 0 ? (
+            <EstadoLimpo>
+              <EstadoLimpoIcone aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="m4 12.5 5.5 5.5L20 6.5" />
+                </svg>
+              </EstadoLimpoIcone>
+              <strong>Nenhum projeto atrasado</strong>
+              <span>
+                Todas as bancas e entregas da sua visão estão dentro da data planejada.
+              </span>
+            </EstadoLimpo>
           ) : (
             <ListaSimples>
-              {dados.por_projeto.map((p) => (
-                <ItemAtencao key={p.projeto_id}>
-                  <strong>
-                    <Link to={`/projetos/${p.projeto_id}`}>{p.projeto_nome}</Link>{" "}
-                    <Pilula $tom="neutro">
-                      {ROTULO_STATUS[p.status as StatusProjeto] ?? p.status}
-                    </Pilula>
-                  </strong>
-                  {p.motivos.map((m, i) => (
-                    <span key={i}>
-                      · {m.descricao} <Pilula $tom="alerta">{ROTULO_MOTIVO[m.tipo] ?? m.tipo}</Pilula>
-                    </span>
-                  ))}
-                </ItemAtencao>
-              ))}
+              {projetos.map((p) => {
+                const externo = apenasExterno(p);
+                /* A cor vem do pior motivo isolado — os cortes do `nivel()`
+                   foram escritos sobre o cronograma de UM escopo (§5.6), não
+                   sobre a soma do projeto. Quando o atraso é todo externo a
+                   cor sai de cena: §7.4 não cobra isso do time. */
+                const grau = nivel(pior(p.motivos.filter((m) => !ehExterno(m))));
+                /* Uma soma só é soma quando há o que somar. Com um motivo só,
+                   "soma" confunde: o número É a duração. */
+                const somando = p.motivos.length > 1;
+                return (
+                  <LinhaAtraso key={p.projeto_id}>
+                    <AtrasoDias $nivel={grau} $externo={externo}>
+                      <strong>{p.dias_totais}</strong>
+                      <span>{somando ? "soma" : "dias"}</span>
+                    </AtrasoDias>
+
+                    <AtrasoCorpo>
+                      <AtrasoTitulo>
+                        <LinkProjeto to={`/projetos/${p.projeto_id}`}>{p.projeto_nome}</LinkProjeto>
+                        <Pilula $tom="neutro">
+                          {ROTULO_STATUS[p.status as StatusProjeto] ?? p.status}
+                        </Pilula>
+                        {externo && <Pilula $tom="atencao">espera do cliente</Pilula>}
+                      </AtrasoTitulo>
+
+                      <MotivoLista>
+                        {/* Os motivos descem do pior para o menor: numa lista
+                            de 5 escopos, é o primeiro que explica a linha. */}
+                        {[...p.motivos]
+                          .sort((a, b) => b.dias - a.dias)
+                          .map((m, i) => (
+                            /* O escopo sozinho NÃO é chave única: o mesmo
+                               escopo pode entrar duas vezes, uma pela banca e
+                               outra pela entrega. O par tipo+escopo é. */
+                            <MotivoItem key={`${m.tipo}-${m.projeto_escopo_id ?? i}`}>
+                              <MotivoTag $externo={ehExterno(m)}>
+                                {ROTULO_MOTIVO[m.tipo] ?? m.tipo}
+                              </MotivoTag>
+                              <span>{m.escopo}</span>
+                              <MotivoDias $nivel={nivel(m.dias)} $externo={ehExterno(m)}>
+                                {m.dias} {m.dias === 1 ? "dia" : "dias"}
+                              </MotivoDias>
+                              {m.data_referencia && (
+                                <MotivoData>vencia {formatarData(m.data_referencia)}</MotivoData>
+                              )}
+                            </MotivoItem>
+                          ))}
+                      </MotivoLista>
+                    </AtrasoCorpo>
+                  </LinhaAtraso>
+                );
+              })}
             </ListaSimples>
           )}
-          <EmptyText style={{ marginTop: "0.75rem" }}>
-            A justificativa do atraso (o porquê, digitado pela diretoria) entra junto com o módulo de
-            governança — o alerta acima é automático, como o §7.4 pede.
-          </EmptyText>
         </PageCardContent>
       </PageCard>
 
@@ -121,43 +280,90 @@ export function AtrasosAba() {
           <PageCardTitle>Por coordenador</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
-          {dados.por_coordenador.length === 0 ? (
+          {coordenadores.length === 0 ? (
             <EmptyText>Nenhum coordenador na sua visão.</EmptyText>
           ) : (
-            <>
+            <TabelaRolagem $min="34rem">
               <DataTable>
                 <TableHead>
                   <TableRow>
                     <TableHeadCell>Coordenador</TableHeadCell>
                     <TableHeadCell>Projetos</TableHeadCell>
                     <TableHeadCell>Atrasados</TableHeadCell>
-                    <TableHeadCell>Dias acumulados</TableHeadCell>
+                    <TableHeadCell>Dias somados</TableHeadCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {dados.por_coordenador.map((c) => (
+                  {coordenadores.map((c) => (
                     <TableRow key={c.usuario_id}>
                       <TableCell>{c.nome}</TableCell>
                       <TableCell>{c.projetos}</TableCell>
                       <TableCell>
                         {c.atrasados > 0 ? (
-                          <Pilula $tom="alerta">{c.atrasados}</Pilula>
+                          <Pilula $tom="alerta">
+                            {c.atrasados} de {c.projetos}
+                          </Pilula>
                         ) : (
-                          <Pilula $tom="ok">0</Pilula>
+                          <Pilula $tom="ok">nenhum</Pilula>
                         )}
                       </TableCell>
-                      <TableCell>{c.dias_acumulados}</TableCell>
+                      <TableCell>
+                        {c.dias_acumulados === 0 ? (
+                          <SemDado>—</SemDado>
+                        ) : (
+                          /* A barra é decorativa: o número ao lado já diz o
+                             valor, e sem `aria-hidden` o leitor de tela
+                             anuncia uma div vazia no meio da célula. */
+                          <BarraCelula>
+                            <strong>{c.dias_acumulados}</strong>
+                            <BarraCelulaTrilho aria-hidden="true">
+                              <BarraCelulaPreenchida
+                                $pct={(c.dias_acumulados / piorCoordenador) * 100}
+                                $nivel={nivel(c.dias_acumulados)}
+                              />
+                            </BarraCelulaTrilho>
+                          </BarraCelula>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </DataTable>
-              <EmptyText style={{ marginTop: "0.75rem" }}>
-                O objetivo aqui é identificar padrão recorrente, não julgar um caso isolado (§7.4).
-              </EmptyText>
-            </>
+            </TabelaRolagem>
           )}
         </PageCardContent>
       </PageCard>
     </PageStack>
   );
+}
+
+/**
+ * Os cortes: até 3 dias ainda cabe em reagendar dentro da semana; até 10 é uma
+ * banca perdida que dá para recuperar no mês; acima disso o cronograma do
+ * escopo já não fecha sem reajuste formal (§5.6).
+ *
+ * Repare que a régua é o cronograma de UM escopo. Por isso ela se aplica ao
+ * atraso de um motivo isolado, e não à soma do projeto — ver `pior()`.
+ */
+function nivel(dias: number): NivelSeveridade {
+  if (dias > 10) return "critica";
+  if (dias > 3) return "media";
+  return "leve";
+}
+
+/** §7.4: a entrega que escorregou por agenda do cliente não é atraso do time. */
+function ehExterno(m: Motivo): boolean {
+  return m.tipo === "entrega_externa";
+}
+
+/** O maior atraso da lista. Zero quando não há motivo — um projeto atrasado
+ *  só por agenda do cliente cai aqui, e "leve" é o degrau certo: a cor dele é
+ *  desligada de qualquer forma pelo `$externo`. */
+function pior(motivos: Motivo[]): number {
+  return Math.max(0, ...motivos.map((m) => m.dias));
+}
+
+/** Todo o atraso do projeto vem da agenda do cliente. */
+function apenasExterno(p: LinhaProjeto): boolean {
+  return p.motivos.length > 0 && p.motivos.every(ehExterno);
 }
