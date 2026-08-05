@@ -39,4 +39,9 @@ export interface UsuarioResumo {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
+  /**
+   * Carga atual da pessoa (§7.3): projetos em que ela está alocada hoje,
+   * sem contar os finalizados nem os arquivados.
+   */
+  projetos_alocados: number;
 }
