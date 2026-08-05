@@ -35,8 +35,9 @@ export interface Banca extends BancaBase {
   alocados: number;
   semestre_id: number;
   semestre_nome: string;
-  // F5 — a costura com o projeto.
-  projeto_escopo_id: number | null;
+  /** A costura com o projeto: os escopos vendidos que esta banca cobre.
+   *  Vazio nas bancas legadas, que não têm escopo vendido. */
+  projeto_escopo_ids: number[];
   realizado_em: string | null;
   resultado: ResultadoBanca | null;
 }

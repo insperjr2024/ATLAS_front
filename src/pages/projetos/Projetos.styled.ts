@@ -579,16 +579,73 @@ export const BancaLinha = styled.div`
   }
 `;
 
-/** O nome do escopo, que ocupa a folga e empurra data e status para a direita. */
+/** O nome do escopo, que ocupa a folga e empurra data e status para a direita.
+ *
+ * O `small` é o aviso de banca compartilhada — quando a mesma banca avalia
+ * mais de um escopo, cada linha diz com quem divide, senão a data repetida em
+ * duas linhas pareceria erro de cadastro. */
 export const BancaEscopo = styled.span`
   flex: 1;
   min-width: 10rem;
   font-size: ${theme.fontSize.sm};
   color: ${theme.colors.foreground};
+
+  small {
+    display: block;
+    margin-top: 2px;
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
 `;
 
 export const BancaData = styled.span`
   font-size: ${theme.fontSize.sm};
   font-variant-numeric: tabular-nums;
   color: ${theme.colors.foreground};
+`;
+
+/* ------------------------------------------------------------------ */
+/* Escolher os escopos que entram numa banca                           */
+/* ------------------------------------------------------------------ */
+
+/** A lista de escopos do projeto dentro do modal de marcar banca. */
+export const EscopoPicker = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  padding: ${theme.spacing.xs};
+  max-height: 14rem;
+  overflow-y: auto;
+`;
+
+/** Uma opção da lista. `$bloqueado` = escopo que já tem banca própria. */
+export const EscopoOpcao = styled.label<{ $bloqueado?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  border-radius: ${theme.borderRadius.sm};
+  font-size: ${theme.fontSize.sm};
+  color: ${({ $bloqueado }) =>
+    $bloqueado ? theme.colors.mutedForeground : theme.colors.foreground};
+  cursor: ${({ $bloqueado }) => ($bloqueado ? "not-allowed" : "pointer")};
+
+  &:hover {
+    background: ${({ $bloqueado }) => ($bloqueado ? "transparent" : theme.colors.muted)};
+  }
+
+  input {
+    accent-color: ${theme.colors.primary};
+  }
+
+  span {
+    flex: 1;
+  }
+
+  small {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
 `;
