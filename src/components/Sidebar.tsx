@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { rotuloProjetos } from "@/utils/permissoes";
+import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
+import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarContainer,
@@ -14,6 +17,12 @@ import {
   Footer,
   UserName,
   LogoutButton,
+  NotificacoesWrap,
+  SinoButton,
+  SinoBadge,
+  NotificacoesPainel,
+  NotificacaoItem,
+  NotificacaoVazia,
 } from "./Sidebar.styled";
 
 type UsuarioLogado = NonNullable<ReturnType<typeof useAuth>["usuario"]>;
@@ -108,8 +117,29 @@ const navItems: NavItemConfig[] = [
 ];
 
 export function Sidebar() {
-  const { usuario, logout } = useAuth();
+  const { usuario, token, logout } = useAuth();
   const location = useLocation();
+  const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
+  const [painelAberto, setPainelAberto] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    getNotificacoes(token).then(setNotificacoes).catch(() => setNotificacoes([]));
+  }, [token]);
+
+  const naoLidas = notificacoes.filter((n) => !n.lida).length;
+
+  async function abrirNotificacao(notificacao: Notificacao) {
+    if (notificacao.lida || !token) return;
+    try {
+      await marcarNotificacaoLida(notificacao.id, token);
+      setNotificacoes((lista) =>
+        lista.map((n) => (n.id === notificacao.id ? { ...n, lida: true } : n)),
+      );
+    } catch {
+      // Silencioso: marcar como lida é conveniência, não vale travar a UI.
+    }
+  }
 
   const itensVisiveis = navItems.filter((item) => {
     if (item.visiblePorPosicao) {
@@ -158,6 +188,28 @@ export function Sidebar() {
 
       <Footer>
         {usuario && <UserName>{usuario.nome}</UserName>}
+        <NotificacoesWrap>
+          <SinoButton type="button" onClick={() => setPainelAberto((v) => !v)} aria-expanded={painelAberto}>
+            <Bell size={16} />
+            Notificações
+            {naoLidas > 0 && <SinoBadge>{naoLidas}</SinoBadge>}
+          </SinoButton>
+          {painelAberto && (
+            <NotificacoesPainel role="menu">
+              {notificacoes.length === 0 && <NotificacaoVazia>Nenhuma notificação ainda.</NotificacaoVazia>}
+              {notificacoes.map((notificacao) => (
+                <NotificacaoItem
+                  key={notificacao.id}
+                  type="button"
+                  $lida={notificacao.lida}
+                  onClick={() => abrirNotificacao(notificacao)}
+                >
+                  {notificacao.mensagem}
+                </NotificacaoItem>
+              ))}
+            </NotificacoesPainel>
+          )}
+        </NotificacoesWrap>
         <LogoutButton onClick={logout} type="button">
           <LogOut size={20} />
           <span>Sair</span>

@@ -6,6 +6,7 @@ import type {
   Candidatura,
   EquipeProjeto,
   Escopo,
+  EscopoVendidoResumo,
   Frente,
   StatusBanca,
 } from "@/types/banca";
@@ -38,6 +39,10 @@ export function getEscopos(token: string) {
   return apiFetch<Escopo[]>("/escopos", { token });
 }
 
+export function getEscoposVendidos(token: string) {
+  return apiFetch<EscopoVendidoResumo[]>("/escopos-projeto", { token });
+}
+
 export function getFrentes(token: string) {
   return apiFetch<Frente[]>("/frentes", { token });
 }
@@ -56,12 +61,15 @@ export interface CreateBancaPayload {
   data_hora: string;
   consultor_ids: number[];
   frente_ids: number[];
+  /** Só a diretoria manda isto — ver `require_diretor` no backend. */
+  piso_minimo_override?: number | null;
 }
 
 export interface UpdateBancaPayload {
   nome_projeto?: string;
   escopo_id?: number;
   data_hora?: string;
+  piso_minimo_override?: number | null;
 }
 
 export function createBanca(dados: CreateBancaPayload, token: string) {
