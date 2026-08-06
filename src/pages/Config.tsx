@@ -214,10 +214,6 @@ export function Config() {
         </PageHeaderText>
       </PageHeaderRow>
 
-      {/* Vem primeiro de propósito: é a carga que define o dia útil (§5.4),
-          e sem ela toda a contagem do sistema fica errada. */}
-      <CalendarioAcademicoCard />
-
       <SituacoesCargaCard />
 
       <PageCard>
