@@ -17,6 +17,10 @@ export {
   NameCell,
 } from "../Bancas.styled";
 
+/** O grid de cards do §6.2, reaproveitado pelo board macro de cronogramas
+ *  (§7) — mesma grade responsiva da listagem de projetos. */
+export { CardGrid, ProjetoCard, CardTitle, CardCliente } from "../projetos/Projetos.styled";
+
 /**
  * A tabela das abas, um degrau acima da `DataTable` genérica.
  *
@@ -958,4 +962,22 @@ export const SwimCellVazia = styled.p`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
   text-align: center;
+`;
+
+/* ------------------------------------------------------------------ */
+/* Board macro de cronogramas — mini-calendários por projeto (§7)      */
+/* ------------------------------------------------------------------ */
+
+/** O rodapé do card: o escopo que decide a posição na fila, com a `Pilula`
+ *  de urgência ao lado — texto e cor juntos, para não depender só da cor. */
+export const CronogramaCardRodape = styled.p`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding-top: ${theme.spacing.sm};
+  border-top: 1px solid ${theme.colors.border};
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.foreground};
 `;

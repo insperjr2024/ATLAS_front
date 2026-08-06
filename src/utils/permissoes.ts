@@ -17,7 +17,8 @@ export type Acao =
   | "configurar_colunas"
   | "registrar_reuniao"
   | "filtrar_por_frente"
-  | "ver_tarefas_gerais";
+  | "ver_tarefas_gerais"
+  | "ver_cronogramas_gerais";
 
 const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão — restrito às lideranças
@@ -39,6 +40,9 @@ const MATRIZ: Record<Acao, Posicao[]> = {
    *  require_diretor, não require_gestao: mais informal que os números
    *  agregados do resto do Monitoramento, então fica só pra diretoria. */
   ver_tarefas_gerais: ["diretor"],
+  /** O board macro de cronogramas (todos os projetos juntos) — mesma trava
+   *  do board de tarefas: o backend usa require_diretor. */
+  ver_cronogramas_gerais: ["diretor"],
 
   // Condução do projeto — o consultor não define cronograma nem move o
   // ciclo de vida do projeto (§4)

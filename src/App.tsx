@@ -42,6 +42,7 @@ import { PainelLotes } from "@/pages/avaliacao-desempenho/painel/PainelLotes";
 import { PainelMentoria } from "@/pages/avaliacao-desempenho/painel/PainelMentoria";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
+import { CronogramasGeraisAba } from "@/pages/monitoramento/CronogramasGeraisAba";
 
 export default function App() {
   return (
@@ -95,6 +96,7 @@ export default function App() {
                   <Route path="alocacao" element={<AlocacaoAba />} />
                   <Route path="atrasos" element={<AtrasosAba />} />
                   <Route path="tarefas" element={<TarefasGeraisAba />} />
+                  <Route path="cronogramas" element={<CronogramasGeraisAba />} />
                 </Route>
               </Route>
 
