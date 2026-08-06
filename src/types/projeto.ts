@@ -54,6 +54,9 @@ export interface BancaDoEscopo {
   realizado_em: string | null;
   resultado: ResultadoBanca | null;
   status: StatusBanca;
+  /** Todos os escopos que esta banca cobre, este incluído — uma banca pode
+   *  avaliar mais de um escopo do projeto de uma vez. */
+  escopo_ids: number[];
 }
 
 /**

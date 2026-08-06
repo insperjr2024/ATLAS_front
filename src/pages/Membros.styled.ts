@@ -110,3 +110,9 @@ export const FilterSelect = styled.select`
     border-color: ${theme.colors.ring};
   }
 `;
+
+export const HeaderActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;

@@ -9,7 +9,6 @@ export const PageStack = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.lg};
-  max-width: 1200px;
 `;
 
 export const Breadcrumb = styled.nav`

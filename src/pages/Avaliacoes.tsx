@@ -8,8 +8,10 @@ import {
   getAvaliacoesNotas,
   getFormularioAtivo,
   getNotasPorPergunta,
+  isPerguntaNota,
 } from "@/lib/avaliacoes";
-import { getEscopos } from "@/lib/bancas";
+import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
+import { getEscopos, getFrentes } from "@/lib/bancas";
 import { getHistoricoBancas } from "@/lib/historico";
 import { nomeEscopo, nomeUsuario } from "@/lib/nucleo";
 import { getSemestres } from "@/lib/semestres";
@@ -18,9 +20,11 @@ import type {
   Avaliacao,
   AvaliacaoNota,
   Escopo,
+  Frente,
   FormularioAtivo,
   HistoricoBanca,
   NotaPorPergunta,
+  PerguntaNovaVersao,
   Semestre,
 } from "@/types/banca";
 import type { UsuarioResumo } from "@/types/auth";
@@ -56,6 +60,7 @@ import {
   FiltersRow,
   FilterSelect,
   FormHint,
+  CardActions,
   ModalOverlay,
   ModalHeader,
   ModalTitle,
@@ -64,12 +69,26 @@ import {
   ModalFooter,
   WideModalContent,
   FormStack,
+  FieldGroup,
+  FieldLabel,
   FieldInput,
+  FieldTextarea,
   FieldSelect,
   FormErrorText,
   PerguntaEditorList,
   PerguntaEditorRow,
+  PerguntaSecao,
+  PerguntaSecaoTitulo,
+  PerguntaSecaoVazia,
+  PerguntaGrupoFrente,
   RemoveButton,
+  MoveButton,
+  MoveButtonGroup,
+  FormularioResumo,
+  FormularioResumoItem,
+  FormularioResumoValor,
+  FormularioResumoLabel,
+  PreviewToggleRow,
   SectionTitle,
   NotaFinalDestaque,
   AvaliacaoBlock,
@@ -89,6 +108,7 @@ function formatNota(nota: number | null | undefined): string {
 interface PerguntaEditavel {
   texto: string;
   tipo_resposta: "nota" | "texto";
+  escopo_id: number | null;
 }
 
 export function Avaliacoes() {
@@ -99,6 +119,7 @@ export function Avaliacoes() {
   const [avaliacoesNotas, setAvaliacoesNotas] = useState<AvaliacaoNota[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [escopos, setEscopos] = useState<Escopo[]>([]);
+  const [frentes, setFrentes] = useState<Frente[]>([]);
   const [semestres, setSemestres] = useState<Semestre[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -111,14 +132,15 @@ export function Avaliacoes() {
   const [bancaDetalhe, setBancaDetalhe] = useState<HistoricoBanca | null>(null);
   const [editarFormulario, setEditarFormulario] = useState(false);
 
-  const podeEditarFormulario = !!usuario?.cargo.pode_definir_formulario;
+  // O formulário de banca saiu das caixas de cargo: volta a ser da diretoria.
+  const podeEditarFormulario = usuario?.posicao === "diretor";
 
   async function buscar() {
     if (!token) return;
     setCarregando(true);
     setErro("");
     try {
-      const [historicoResp, formularioResp, avaliacoesResp, notasResp, usuariosResp, escoposResp, semestresResp] =
+      const [historicoResp, formularioResp, avaliacoesResp, notasResp, usuariosResp, escoposResp, frentesResp, semestresResp] =
         await Promise.all([
           getHistoricoBancas(token),
           getFormularioAtivo(token).catch(() => null),
@@ -126,6 +148,7 @@ export function Avaliacoes() {
           getAvaliacoesNotas(token),
           getUsuarios(token),
           getEscopos(token),
+          getFrentes(token),
           getSemestres(token),
         ]);
       setHistorico(historicoResp);
@@ -134,6 +157,7 @@ export function Avaliacoes() {
       setAvaliacoesNotas(notasResp);
       setUsuarios(usuariosResp);
       setEscopos(escoposResp);
+      setFrentes(frentesResp);
       setSemestres(semestresResp);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar avaliações");
@@ -164,7 +188,7 @@ export function Avaliacoes() {
       .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
   }, [historico, filtroSemestre, filtroCoordenador, filtroConsultor, filtroEscopo, avaliacoes]);
 
-  if (!usuario?.cargo.pode_definir_formulario && !usuario?.cargo.pode_gerenciar_cargos) {
+  if (usuario?.posicao !== "diretor") {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -271,12 +295,39 @@ export function Avaliacoes() {
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>Formulário padrão de avaliação</PageCardTitle>
-          {podeEditarFormulario && (
-            <PageButtonSm type="button" onClick={() => setEditarFormulario(true)}>
-              Editar
-            </PageButtonSm>
-          )}
         </PageCardHeader>
+        <PageCardContent>
+          {formulario ? (
+            <FormularioResumo>
+              <FormularioResumoItem>
+                <FormularioResumoValor>{formulario.perguntas.length}</FormularioResumoValor>
+                <FormularioResumoLabel>Perguntas cadastradas</FormularioResumoLabel>
+              </FormularioResumoItem>
+              <FormularioResumoItem>
+                <FormularioResumoValor>
+                  {new Set(formulario.perguntas.map((p) => p.escopo_id).filter((id) => id != null)).size}
+                </FormularioResumoValor>
+                <FormularioResumoLabel>Escopos com pergunta própria</FormularioResumoLabel>
+              </FormularioResumoItem>
+              <FormularioResumoItem>
+                <FormularioResumoValor>
+                  {escopos.length -
+                    new Set(formulario.perguntas.map((p) => p.escopo_id).filter((id) => id != null)).size}
+                </FormularioResumoValor>
+                <FormularioResumoLabel>Escopos ainda sem pergunta</FormularioResumoLabel>
+              </FormularioResumoItem>
+            </FormularioResumo>
+          ) : (
+            <EmptyText>Nenhum formulário ativo configurado no momento.</EmptyText>
+          )}
+          {podeEditarFormulario && (
+            <CardActions>
+              <PageButton type="button" onClick={() => setEditarFormulario(true)}>
+                Editar formulário
+              </PageButton>
+            </CardActions>
+          )}
+        </PageCardContent>
       </PageCard>
 
       {bancaDetalhe && token && (
@@ -293,6 +344,8 @@ export function Avaliacoes() {
       {editarFormulario && token && (
         <EditarFormularioModal
           formulario={formulario}
+          escopos={escopos}
+          frentes={frentes}
           token={token}
           onClose={() => setEditarFormulario(false)}
           onSalvo={(novo) => {
@@ -406,30 +459,85 @@ function VerAvaliacoesModal({
   );
 }
 
+/** Seção "Geral" (Bloco 1/3, sem escopo) mais uma por escopo do catálogo,
+ *  agrupadas por frente. Escopo sem pergunta ainda (ex.: Simulação e
+ *  Otimização de Processos) aparece do mesmo jeito, com a seção vazia e o
+ *  botão de adicionar — a diretoria cadastra as dela quando quiser. */
+function agruparPorFrente(escopos: Escopo[], frentes: Frente[]) {
+  const porFrente = new Map<number, Escopo[]>();
+  for (const escopo of escopos) {
+    if (escopo.frente_id == null) continue;
+    const lista = porFrente.get(escopo.frente_id) ?? [];
+    lista.push(escopo);
+    porFrente.set(escopo.frente_id, lista);
+  }
+  return frentes
+    .slice()
+    .sort((a, b) => a.nome.localeCompare(b.nome))
+    .map((frente) => ({
+      frente,
+      escopos: (porFrente.get(frente.id) ?? []).slice().sort((a, b) => a.nome.localeCompare(b.nome)),
+    }))
+    .filter((grupo) => grupo.escopos.length > 0);
+}
+
 function EditarFormularioModal({
   formulario,
+  escopos,
+  frentes,
   token,
   onClose,
   onSalvo,
 }: {
   formulario: FormularioAtivo | null;
+  escopos: Escopo[];
+  frentes: Frente[];
   token: string;
   onClose: () => void;
   onSalvo: (formulario: FormularioAtivo) => void;
 }) {
   const [perguntas, setPerguntas] = useState<PerguntaEditavel[]>(() =>
-    (formulario?.perguntas ?? [{ texto: "", tipo_resposta: "nota" as const, ordem: 1 }])
+    (formulario?.perguntas ?? [])
       .slice()
       .sort((a, b) => a.ordem - b.ordem)
-      .map((p) => ({ texto: p.texto, tipo_resposta: p.tipo_resposta })),
+      .map((p) => ({ texto: p.texto, tipo_resposta: p.tipo_resposta, escopo_id: p.escopo_id })),
   );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  const [previsualizando, setPrevisualizando] = useState(false);
 
-  function atualizar(index: number, campo: keyof PerguntaEditavel, valor: string) {
+  const gruposPorFrente = useMemo(() => agruparPorFrente(escopos, frentes), [escopos, frentes]);
+
+  function atualizar(index: number, campo: "texto" | "tipo_resposta", valor: string) {
     setPerguntas((lista) =>
       lista.map((p, i) => (i === index ? { ...p, [campo]: valor } : p)),
     );
+  }
+
+  function adicionar(escopoId: number | null) {
+    setPerguntas((lista) => [...lista, { texto: "", tipo_resposta: "nota", escopo_id: escopoId }]);
+  }
+
+  function remover(index: number) {
+    setPerguntas((lista) => lista.filter((_, i) => i !== index));
+  }
+
+  /** Reordena dentro do mesmo escopo (a ordem só importa entre perguntas do
+   *  mesmo bloco — Geral e cada escopo são exibidos e reagrupados por tipo
+   *  separadamente na hora da avaliação). */
+  function mover(escopoId: number | null, posicaoNaSecao: number, direcao: -1 | 1) {
+    setPerguntas((lista) => {
+      const indicesDaSecao = lista
+        .map((_, i) => i)
+        .filter((i) => lista[i].escopo_id === escopoId);
+      const alvoPos = posicaoNaSecao + direcao;
+      if (alvoPos < 0 || alvoPos >= indicesDaSecao.length) return lista;
+      const i1 = indicesDaSecao[posicaoNaSecao];
+      const i2 = indicesDaSecao[alvoPos];
+      const nova = lista.slice();
+      [nova[i1], nova[i2]] = [nova[i2], nova[i1]];
+      return nova;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -443,11 +551,14 @@ function EditarFormularioModal({
     setErro("");
     try {
       const novo = await createNovaVersaoFormulario(
-        validas.map((p, i) => ({
-          texto: p.texto.trim(),
-          ordem: i + 1,
-          tipo_resposta: p.tipo_resposta,
-        })),
+        validas.map(
+          (p, i): PerguntaNovaVersao => ({
+            texto: p.texto.trim(),
+            ordem: i + 1,
+            tipo_resposta: p.tipo_resposta,
+            escopo_id: p.escopo_id,
+          }),
+        ),
         token,
       );
       onSalvo(novo);
@@ -456,6 +567,93 @@ function EditarFormularioModal({
     } finally {
       setSalvando(false);
     }
+  }
+
+  function renderSecao(titulo: string, escopoId: number | null) {
+    const linhas = perguntas
+      .map((p, index) => ({ ...p, index }))
+      .filter((p) => p.escopo_id === escopoId);
+
+    return (
+      <PerguntaSecao key={escopoId ?? "geral"}>
+        <PerguntaSecaoTitulo>{titulo}</PerguntaSecaoTitulo>
+        {linhas.length === 0 && <PerguntaSecaoVazia>Nenhuma pergunta ainda.</PerguntaSecaoVazia>}
+        <PerguntaEditorList>
+          {linhas.map(({ index, texto, tipo_resposta }, posicao) => (
+            <PerguntaEditorRow key={index}>
+              <FieldInput
+                value={texto}
+                onChange={(e) => atualizar(index, "texto", e.target.value)}
+                placeholder="Texto da pergunta"
+                required
+              />
+              <FieldSelect
+                value={tipo_resposta}
+                onChange={(e) => atualizar(index, "tipo_resposta", e.target.value)}
+                aria-label="Tipo da pergunta"
+              >
+                <option value="nota">Nota — escala de 1 a 5</option>
+                <option value="texto">Texto</option>
+              </FieldSelect>
+              <MoveButtonGroup>
+                <MoveButton
+                  type="button"
+                  aria-label="Mover para cima"
+                  disabled={posicao === 0}
+                  onClick={() => mover(escopoId, posicao, -1)}
+                >
+                  ▲
+                </MoveButton>
+                <MoveButton
+                  type="button"
+                  aria-label="Mover para baixo"
+                  disabled={posicao === linhas.length - 1}
+                  onClick={() => mover(escopoId, posicao, 1)}
+                >
+                  ▼
+                </MoveButton>
+              </MoveButtonGroup>
+              <RemoveButton type="button" onClick={() => remover(index)}>
+                Remover
+              </RemoveButton>
+            </PerguntaEditorRow>
+          ))}
+        </PerguntaEditorList>
+        <PageButtonSm type="button" $variant="outline" onClick={() => adicionar(escopoId)}>
+          <Plus size={14} />
+          Adicionar pergunta
+        </PageButtonSm>
+      </PerguntaSecao>
+    );
+  }
+
+  /** Mesma seção, mas como quem vai preencher a avaliação vai ver — os
+   *  componentes reais do formulário (NotaEscala) desabilitados, sem os
+   *  controles de edição. */
+  function renderSecaoPreview(titulo: string, escopoId: number | null) {
+    const linhas = perguntas.filter((p) => p.escopo_id === escopoId && p.texto.trim());
+    const notas = linhas.filter((p) => isPerguntaNota(p.tipo_resposta));
+    const textos = linhas.filter((p) => !isPerguntaNota(p.tipo_resposta));
+
+    return (
+      <PerguntaSecao key={escopoId ?? "geral"}>
+        <PerguntaSecaoTitulo>{titulo}</PerguntaSecaoTitulo>
+        {linhas.length === 0 && <PerguntaSecaoVazia>Nenhuma pergunta ainda.</PerguntaSecaoVazia>}
+        {notas.length > 0 && (
+          <NotaEscalaGrupo>
+            {notas.map((p, i) => (
+              <NotaEscala key={i} label={p.texto} value={null} disabled />
+            ))}
+          </NotaEscalaGrupo>
+        )}
+        {textos.map((p, i) => (
+          <FieldGroup key={i}>
+            <FieldLabel>{p.texto}</FieldLabel>
+            <FieldTextarea disabled placeholder="Resposta em texto" />
+          </FieldGroup>
+        ))}
+      </PerguntaSecao>
+    );
   }
 
   return (
@@ -471,49 +669,45 @@ function EditarFormularioModal({
           <ModalBody>
             <FormHint>
               Uma nova versão será criada para o semestre atual. Bancas já avaliadas mantêm o formulário anterior.
+              As perguntas "Geral" aparecem em toda avaliação; as de um escopo só aparecem quando a banca
+              avaliada é daquele escopo.
             </FormHint>
-            <PerguntaEditorList>
-              {perguntas.map((p, index) => (
-                <PerguntaEditorRow key={index}>
-                  <FieldInput
-                    value={p.texto}
-                    onChange={(e) => atualizar(index, "texto", e.target.value)}
-                    placeholder={`Pergunta ${index + 1}`}
-                    required
-                  />
-                  <FieldSelect
-                    value={p.tipo_resposta}
-                    onChange={(e) => atualizar(index, "tipo_resposta", e.target.value)}
-                    aria-label={`Tipo da pergunta ${index + 1}`}
-                  >
-                    <option value="nota">Nota — slider (0–5)</option>
-                    <option value="texto">Texto</option>
-                  </FieldSelect>
-                  <RemoveButton
-                    type="button"
-                    onClick={() => setPerguntas((lista) => lista.filter((_, i) => i !== index))}
-                    disabled={perguntas.length <= 1}
-                  >
-                    Remover
-                  </RemoveButton>
-                </PerguntaEditorRow>
-              ))}
-            </PerguntaEditorList>
-            <PageButton
-              type="button"
-              $variant="outline"
-              onClick={() => setPerguntas((lista) => [...lista, { texto: "", tipo_resposta: "nota" }])}
-            >
-              <Plus size={16} />
-              Adicionar pergunta
-            </PageButton>
+
+            <PreviewToggleRow>
+              <PageButtonSm type="button" $variant="outline" onClick={() => setPrevisualizando((v) => !v)}>
+                {previsualizando ? "Voltar a editar" : "Pré-visualizar"}
+              </PageButtonSm>
+            </PreviewToggleRow>
+
+            {previsualizando ? (
+              <>
+                {renderSecaoPreview("Geral (informações iniciais e avaliação final)", null)}
+                {gruposPorFrente.map(({ frente, escopos: escoposDaFrente }) => (
+                  <PerguntaGrupoFrente key={frente.id}>
+                    <SectionTitle>{frente.nome}</SectionTitle>
+                    {escoposDaFrente.map((escopo) => renderSecaoPreview(escopo.nome, escopo.id))}
+                  </PerguntaGrupoFrente>
+                ))}
+              </>
+            ) : (
+              <>
+                {renderSecao("Geral (informações iniciais e avaliação final)", null)}
+                {gruposPorFrente.map(({ frente, escopos: escoposDaFrente }) => (
+                  <PerguntaGrupoFrente key={frente.id}>
+                    <SectionTitle>{frente.nome}</SectionTitle>
+                    {escoposDaFrente.map((escopo) => renderSecao(escopo.nome, escopo.id))}
+                  </PerguntaGrupoFrente>
+                ))}
+              </>
+            )}
+
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>
           <ModalFooter>
             <PageButton $variant="outline" type="button" onClick={onClose}>
               Cancelar
             </PageButton>
-            <PageButton type="submit" disabled={salvando}>
+            <PageButton type="submit" disabled={salvando || previsualizando}>
               {salvando ? "Salvando..." : "Publicar nova versão"}
             </PageButton>
           </ModalFooter>

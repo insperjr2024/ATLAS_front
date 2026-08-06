@@ -5,12 +5,10 @@ export function getCargos(token: string) {
   return apiFetch<Cargo[]>("/cargos", { token });
 }
 
-export interface CargoPayload {
-  nome: string;
-  pode_definir_formulario: boolean;
-  pode_agendar_banca: boolean;
-  pode_gerenciar_cargos: boolean;
-}
+/** O cargo sem o `id` — derivado de `Cargo` de propósito: uma permissão nova
+ *  entra no payload sozinha, em vez de ser esquecida aqui e nunca chegar na
+ *  API. */
+export type CargoPayload = Omit<Cargo, "id">;
 
 export function createCargo(dados: CargoPayload, token: string) {
   return apiFetch<Cargo>("/cargos", {

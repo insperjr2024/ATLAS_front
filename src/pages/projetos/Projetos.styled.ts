@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
+import type { TonsColuna } from "@/lib/colunas-tarefa";
 
 export {
   PageHeaderRow,
@@ -369,6 +370,110 @@ export const DataLabel = styled.span`
   color: ${theme.colors.mutedForeground};
 `;
 
+/**
+ * O card de Datas em grade, não em linhas empilhadas — uma linha por campo
+ * deixava letra minúscula boiando numa fileira inteira de espaço vazio à
+ * direita. Aqui cada campo é uma célula (rótulo em cima, valor embaixo),
+ * então o card usa a largura toda em vez de só a coluna da esquerda.
+ */
+export const DatasGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: ${theme.spacing.lg} ${theme.spacing.xl};
+`;
+
+export const DataItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+`;
+
+export const DataItemLabel = styled.span`
+  font-size: ${theme.fontSize.xs};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/**
+ * Troca de etapa como lista, não como botõezinhos de avançar/voltar — a
+ * pílula colorida é a MESMA paleta do kanban de projetos (`CORES_STATUS`),
+ * pra escolher a fase aqui não parecer um controle diferente do kanban.
+ */
+export const EtapaSeletorWrap = styled.div`
+  position: relative;
+`;
+
+export const EtapaBotaoAtual = styled.button<{ $cor: TonsColuna }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid ${({ $cor }) => $cor.borda};
+  border-radius: ${theme.borderRadius.md};
+  background: ${({ $cor }) => $cor.fundo};
+  color: ${({ $cor }) => $cor.texto};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+`;
+
+export const EtapaMenu = styled.div`
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: ${theme.spacing.xs};
+  min-width: 15rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.background};
+  box-shadow: ${theme.shadows.lg};
+`;
+
+export const EtapaOpcaoBotao = styled.button<{ $cor: TonsColuna | null }>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  background: ${({ $cor }) => $cor?.fundo ?? "transparent"};
+  color: ${({ $cor }) => $cor?.texto ?? theme.colors.foreground};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.96);
+  }
+`;
+
+export const EdicaoBotoes = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.sm};
+`;
+
+export const DataItemValor = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSize.base};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+`;
+
 export const EquipeList = styled.ul`
   display: flex;
   flex-direction: column;
@@ -579,16 +684,73 @@ export const BancaLinha = styled.div`
   }
 `;
 
-/** O nome do escopo, que ocupa a folga e empurra data e status para a direita. */
+/** O nome do escopo, que ocupa a folga e empurra data e status para a direita.
+ *
+ * O `small` é o aviso de banca compartilhada — quando a mesma banca avalia
+ * mais de um escopo, cada linha diz com quem divide, senão a data repetida em
+ * duas linhas pareceria erro de cadastro. */
 export const BancaEscopo = styled.span`
   flex: 1;
   min-width: 10rem;
   font-size: ${theme.fontSize.sm};
   color: ${theme.colors.foreground};
+
+  small {
+    display: block;
+    margin-top: 2px;
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
 `;
 
 export const BancaData = styled.span`
   font-size: ${theme.fontSize.sm};
   font-variant-numeric: tabular-nums;
   color: ${theme.colors.foreground};
+`;
+
+/* ------------------------------------------------------------------ */
+/* Escolher os escopos que entram numa banca                           */
+/* ------------------------------------------------------------------ */
+
+/** A lista de escopos do projeto dentro do modal de marcar banca. */
+export const EscopoPicker = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  padding: ${theme.spacing.xs};
+  max-height: 14rem;
+  overflow-y: auto;
+`;
+
+/** Uma opção da lista. `$bloqueado` = escopo que já tem banca própria. */
+export const EscopoOpcao = styled.label<{ $bloqueado?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  border-radius: ${theme.borderRadius.sm};
+  font-size: ${theme.fontSize.sm};
+  color: ${({ $bloqueado }) =>
+    $bloqueado ? theme.colors.mutedForeground : theme.colors.foreground};
+  cursor: ${({ $bloqueado }) => ($bloqueado ? "not-allowed" : "pointer")};
+
+  &:hover {
+    background: ${({ $bloqueado }) => ($bloqueado ? "transparent" : theme.colors.muted)};
+  }
+
+  input {
+    accent-color: ${theme.colors.primary};
+  }
+
+  span {
+    flex: 1;
+  }
+
+  small {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
 `;

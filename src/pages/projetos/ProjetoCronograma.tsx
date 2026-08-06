@@ -61,7 +61,6 @@ import {
   type Visao,
 } from "@/components/cronograma-pintado/visao";
 import type { CronogramaResposta } from "@/types/cronograma";
-import { pode } from "@/utils/permissoes";
 import {
   PageStack,
   PageButton,
@@ -127,7 +126,7 @@ export function ProjetoCronograma() {
     trechos: number;
   } | null>(null);
 
-  const podeEditar = pode(usuario, "definir_cronograma");
+  const podeEditar = !!usuario?.cargo.pode_definir_cronograma;
 
   const carregar = useCallback(async () => {
     if (!token) return;

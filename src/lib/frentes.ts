@@ -5,19 +5,23 @@ export function getFrentes(token: string) {
   return apiFetch<Frente[]>("/frentes", { token });
 }
 
-export function createFrente(nome: string, token: string) {
+export function createFrente(dados: { nome: string; piso_banca?: number }, token: string) {
   return apiFetch<Frente>("/frentes", {
     method: "POST",
     token,
-    body: JSON.stringify({ nome }),
+    body: JSON.stringify(dados),
   });
 }
 
-export function updateFrente(frenteId: number, nome: string, token: string) {
+export function updateFrente(
+  frenteId: number,
+  dados: { nome?: string; piso_banca?: number },
+  token: string,
+) {
   return apiFetch<Frente>(`/frentes/${frenteId}`, {
     method: "PATCH",
     token,
-    body: JSON.stringify({ nome }),
+    body: JSON.stringify(dados),
   });
 }
 

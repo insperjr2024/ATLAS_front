@@ -260,3 +260,123 @@ export const SectionTitle = styled.h2`
   font-weight: ${theme.fontWeight.semibold};
   color: ${theme.colors.foreground};
 `;
+
+export const BancaLinha = styled.div`
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: 0.625rem 0.25rem;
+  border-bottom: 1px solid ${theme.colors.border};
+  transition: background ${theme.transitions.fast};
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: ${theme.colors.muted};
+  }
+`;
+
+export const BancaData = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.muted};
+  line-height: 1.15;
+`;
+
+export const BancaDataDiaSemana = styled.span`
+  font-size: 0.625rem;
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.mutedForeground};
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+`;
+
+export const BancaDataDia = styled.span`
+  font-size: ${theme.fontSize.lg};
+  font-weight: ${theme.fontWeight.bold};
+  color: ${theme.colors.foreground};
+`;
+
+export const BancaInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  min-width: 0;
+`;
+
+export const BancaNomeLinha = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+export const BancaNome = styled.span`
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+export const BancaMeta = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const BancaAcoes = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  flex-wrap: wrap;
+  justify-content: flex-end;
+`;
+
+export const TabCount = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.3rem;
+  margin-left: 0.375rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.muted};
+  color: ${theme.colors.mutedForeground};
+  font-size: 0.6875rem;
+  font-weight: ${theme.fontWeight.semibold};
+`;
+
+export const TabBar = styled.nav`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid ${theme.colors.border};
+`;
+
+export const TabButton = styled.button<{ $ativa: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.875rem;
+  border: none;
+  background: none;
+  border-bottom: 2px solid ${({ $ativa }) => ($ativa ? theme.colors.primary : "transparent")};
+  margin-bottom: -1px;
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${({ $ativa }) => ($ativa ? theme.colors.primary : theme.colors.mutedForeground)};
+  cursor: pointer;
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+`;

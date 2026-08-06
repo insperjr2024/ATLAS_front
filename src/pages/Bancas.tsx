@@ -13,12 +13,15 @@ import {
   getBancasParaAvaliar,
   getEquipesProjeto,
   getEscopos,
+  getEscoposVendidos,
   getFrentes,
   podeGerenciarBanca,
+  ROTULO_STATUS_BANCA,
   syncBancaFrentes,
   syncEquipeProjeto,
   toDateInputValue,
   toTimeInputValue,
+  tomDoStatusBanca,
   updateBanca,
 } from "@/lib/bancas";
 import { getCargos } from "@/lib/cargos";
@@ -33,8 +36,24 @@ import {
   isPerguntaOpcional,
   submeterAvaliacao,
 } from "@/lib/avaliacoes";
-import { NotaSlider, NotaSliderGroup } from "@/components/NotaSlider";
-import type { Banca, BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente, FormularioAtivo } from "@/types/banca";
+import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
+import {
+  cancelarSolicitacaoTroca,
+  confirmarSolicitacaoTroca,
+  createSolicitacaoTroca,
+  getSolicitacoesTroca,
+} from "@/lib/solicitacoes-troca";
+import type {
+  Banca,
+  BancaFrente,
+  Candidatura,
+  EquipeProjeto,
+  Escopo,
+  EscopoVendidoResumo,
+  Frente,
+  FormularioAtivo,
+} from "@/types/banca";
+import type { SolicitacaoTroca } from "@/types/notificacao";
 import type { Cargo, UsuarioResumo } from "@/types/auth";
 import {
   avaliadoresDaBanca,
@@ -52,20 +71,13 @@ import {
   PageCardContent,
   PageButton,
   PageButtonSm,
+  PageBadge,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
 import {
-  DataTable,
-  TableHead,
-  TableHeadCell,
-  TableBody,
-  TableRow,
-  NameCell,
-  TableCell,
-  ActionsCell,
   DetailList,
   DetailRow,
   DetailTerm,
@@ -93,20 +105,43 @@ import {
   PageHeaderText,
   PageHeading,
   PageSubheading,
-  TableScrollWrap,
+  ListScrollWrap,
   LIST_MAX_VISIVEIS,
   SectionGroup,
-  SectionTitle,
+  TabBar,
+  TabButton,
+  TabCount,
+  BancaLinha,
+  BancaData,
+  BancaDataDiaSemana,
+  BancaDataDia,
+  BancaInfo,
+  BancaNomeLinha,
+  BancaNome,
+  BancaMeta,
+  BancaAcoes,
 } from "./Bancas.styled";
+
+type AbaBancas = "meus" | "alocacao" | "avaliacao";
+
+function porDataMaisProxima(a: Banca, b: Banca): number {
+  return new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime();
+}
 
 interface Contexto {
   usuarios: UsuarioResumo[];
   cargos: Cargo[];
   escopos: Escopo[];
+  escoposVendidos: EscopoVendidoResumo[];
   frentes: Frente[];
   bancasFrentes: BancaFrente[];
   equipesProjeto: EquipeProjeto[];
   candidaturas: Candidatura[];
+  solicitacoesTroca: SolicitacaoTroca[];
+  /** banca_id → prazo de avaliação — separado de `Banca` porque
+   *  `paraAvaliar` funde `BancaParaAvaliar` com a `Banca` cheia e descarta os
+   *  campos extras (ver `recarregar`). */
+  prazosAvaliacao: Record<number, { prazoAvaliacao: string; prazoExpirado: boolean }>;
 }
 
 export function Bancas() {
@@ -123,15 +158,16 @@ export function Bancas() {
   const [bancaAvaliar, setBancaAvaliar] = useState<Banca | null>(null);
   const [bancaEditar, setBancaEditar] = useState<Banca | null>(null);
   const [criarAberto, setCriarAberto] = useState(false);
+  const [aba, setAba] = useState<AbaBancas>("alocacao");
 
-  const podeAgendar = !!usuario?.cargo.pode_agendar_banca;
+  const podeAgendar = !!usuario?.cargo.pode_definir_cronograma;
 
   async function recarregar() {
     if (!token || !usuario) return;
     setCarregando(true);
     setErro("");
     try {
-      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, cargos, escopos, frentes, bancasFrentes, equipesProjeto, formularioAtivo] =
+      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, cargos, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca] =
         await Promise.all([
           getBancas(token),
           getCandidaturas(token),
@@ -140,17 +176,20 @@ export function Bancas() {
           getUsuarios(token),
           getCargos(token),
           getEscopos(token),
+          getEscoposVendidos(token),
           getFrentes(token),
           getBancasFrentes(token),
           getEquipesProjeto(token),
           getFormularioAtivo(token).catch(() => null),
+          getSolicitacoesTroca(token),
         ]);
       setBancas(bancasResp);
       setCandidaturas(candidaturasResp);
       setParaAvaliar(
         avaliarResp
           .map((item) => bancasResp.find((b) => b.id === item.banca_id))
-          .filter((b): b is Banca => b != null),
+          .filter((b): b is Banca => b != null)
+          .sort(porDataMaisProxima),
       );
       const bancasAvaliadasIds = new Set(
         avaliacoesResp
@@ -168,7 +207,23 @@ export function Bancas() {
           )
           .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()),
       );
-      setContexto({ usuarios, cargos, escopos, frentes, bancasFrentes, equipesProjeto, candidaturas: candidaturasResp });
+      setContexto({
+        usuarios,
+        cargos,
+        escopos,
+        escoposVendidos,
+        frentes,
+        bancasFrentes,
+        equipesProjeto,
+        candidaturas: candidaturasResp,
+        solicitacoesTroca,
+        prazosAvaliacao: Object.fromEntries(
+          avaliarResp.map((item) => [
+            item.banca_id,
+            { prazoAvaliacao: item.prazo_avaliacao, prazoExpirado: item.prazo_expirado },
+          ]),
+        ),
+      });
       setFormulario(formularioAtivo);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar bancas");
@@ -199,29 +254,41 @@ export function Bancas() {
   // declaradas depois — o TS não sabe quando elas rodam. Segurar o valor
   // numa const resolve sem espalhar `usuario!` pelo arquivo.
   const usuarioLogado = usuario;
+  const contextoAtual = contexto;
 
   function candidaturaDe(bancaId: number) {
     return candidaturas.find((c) => c.banca_id === bancaId && c.usuario_id === usuarioLogado.id);
   }
 
-  const bancasDoProjeto = bancas
-    .filter(
-      (b) =>
-        b.coordenador_id === usuario.id ||
-        contexto.equipesProjeto.some((e) => e.banca_id === b.id && e.usuario_id === usuario.id),
-    )
-    .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime());
+  // Coordenador ou membro da equipe daquela banca — o próprio grupo, que não
+  // pode se candidatar a assistir/avaliar a própria banca.
+  function ehDoProprioGrupo(banca: Banca): boolean {
+    return (
+      banca.coordenador_id === usuarioLogado.id ||
+      contextoAtual.equipesProjeto.some((e) => e.banca_id === banca.id && e.usuario_id === usuarioLogado.id)
+    );
+  }
+
+  const bancasDoProjeto = bancas.filter(ehDoProprioGrupo).sort(porDataMaisProxima);
+
+  const mostrarMeusProjetos = podeAgendar || bancasDoProjeto.length > 0;
 
   // ⚠ `aceitaInscricao` no lugar da comparação com a string antiga: uma banca
   // `atrasada` continua nestes baldes. Trocar só o literal a faria sumir da
   // tela inteira.
-  const jaAlocado = bancas.filter((b) => aceitaInscricao(b.status) && candidaturaDe(b.id));
-  const lotadas = bancas.filter(
-    (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados >= b.vagas,
-  );
-  const disponiveisParaAlocacao = bancas.filter(
-    (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados < b.vagas,
-  );
+  const jaAlocado = bancas
+    .filter((b) => aceitaInscricao(b.status) && candidaturaDe(b.id))
+    .sort(porDataMaisProxima);
+  const lotadas = bancas
+    .filter(
+      (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados >= b.vagas && !ehDoProprioGrupo(b),
+    )
+    .sort(porDataMaisProxima);
+  const disponiveisParaAlocacao = bancas
+    .filter(
+      (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados < b.vagas && !ehDoProprioGrupo(b),
+    )
+    .sort(porDataMaisProxima);
 
   async function handleAlocar(bancaId: number) {
     if (!token) return;
@@ -234,6 +301,37 @@ export function Bancas() {
     if (!token || !candidatura) return;
     await desalocar(candidatura.id, token);
     recarregar();
+  }
+
+  async function handlePedirTroca(bancaId: number) {
+    const candidatura = candidaturaDe(bancaId);
+    if (!token || !candidatura) return;
+    try {
+      await createSolicitacaoTroca(candidatura.id, token);
+      recarregar();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao pedir troca");
+    }
+  }
+
+  async function handleConfirmarTroca(solicitacaoId: number) {
+    if (!token) return;
+    try {
+      await confirmarSolicitacaoTroca(solicitacaoId, token);
+      recarregar();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao confirmar troca");
+    }
+  }
+
+  async function handleCancelarTroca(solicitacaoId: number) {
+    if (!token) return;
+    try {
+      await cancelarSolicitacaoTroca(solicitacaoId, token);
+      recarregar();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao cancelar troca");
+    }
   }
 
   async function handleExcluir(banca: Banca) {
@@ -268,7 +366,24 @@ export function Bancas() {
         )}
       </PageHeaderRow>
 
-      {(podeAgendar || bancasDoProjeto.length > 0) && (
+      <TabBar>
+        {mostrarMeusProjetos && (
+          <TabButton type="button" $ativa={aba === "meus"} onClick={() => setAba("meus")}>
+            Meus projetos
+            <TabCount>{bancasDoProjeto.length}</TabCount>
+          </TabButton>
+        )}
+        <TabButton type="button" $ativa={aba === "alocacao"} onClick={() => setAba("alocacao")}>
+          Alocação
+          <TabCount>{jaAlocado.length + disponiveisParaAlocacao.length + lotadas.length}</TabCount>
+        </TabButton>
+        <TabButton type="button" $ativa={aba === "avaliacao"} onClick={() => setAba("avaliacao")}>
+          Avaliação
+          <TabCount>{paraAvaliar.length + jaAvaliadas.length}</TabCount>
+        </TabButton>
+      </TabBar>
+
+      {aba === "meus" && mostrarMeusProjetos && (
         <SecaoBancas
           titulo="Bancas dos meus projetos"
           bancas={bancasDoProjeto}
@@ -282,51 +397,63 @@ export function Bancas() {
         />
       )}
 
-      <SectionGroup>
-        <SectionTitle>Bancas futuras</SectionTitle>
-        <SecaoBancas
-          titulo="Já alocado"
-          bancas={jaAlocado}
-          contexto={contexto}
-          acao="deslocar"
-          onAcao={handleDesalocar}
-          onVerMais={setBancaDetalhe}
-        />
-        <SecaoBancas
-          titulo="Disponíveis para alocação"
-          bancas={disponiveisParaAlocacao}
-          contexto={contexto}
-          acao="alocar"
-          onAcao={handleAlocar}
-          onVerMais={setBancaDetalhe}
-        />
-        <SecaoBancas
-          titulo="Com alocação máxima"
-          bancas={lotadas}
-          contexto={contexto}
-          acao="nenhuma"
-          onVerMais={setBancaDetalhe}
-        />
-      </SectionGroup>
+      {aba === "alocacao" && (
+        <SectionGroup>
+          <SecaoBancas
+            titulo="Já alocado"
+            bancas={jaAlocado}
+            contexto={contexto}
+            acao="deslocar"
+            usuarioId={usuario.id}
+            onAcao={handleDesalocar}
+            onPedirTroca={handlePedirTroca}
+            onCancelarTroca={handleCancelarTroca}
+            onVerMais={setBancaDetalhe}
+          />
+          <SecaoBancas
+            titulo="Disponíveis para alocação"
+            bancas={disponiveisParaAlocacao}
+            contexto={contexto}
+            acao="alocar"
+            onAcao={handleAlocar}
+            onVerMais={setBancaDetalhe}
+          />
+          <SecaoBancas
+            titulo="Com alocação máxima"
+            bancas={lotadas}
+            contexto={contexto}
+            acao="nenhuma"
+            onVerMais={setBancaDetalhe}
+          />
+          <SecaoTrocas
+            solicitacoes={contexto.solicitacoesTroca}
+            bancas={bancas}
+            usuarioId={usuario.id}
+            onConfirmar={handleConfirmarTroca}
+            onCancelar={handleCancelarTroca}
+          />
+        </SectionGroup>
+      )}
 
-      <SectionGroup>
-        <SectionTitle>Bancas realizadas</SectionTitle>
-        <SecaoBancas
-          titulo="Com avaliação pendente"
-          bancas={paraAvaliar}
-          contexto={contexto}
-          acao="avaliar"
-          onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
-          onVerMais={setBancaDetalhe}
-        />
-        <SecaoBancas
-          titulo="Avaliadas"
-          bancas={jaAvaliadas}
-          contexto={contexto}
-          acao="nenhuma"
-          onVerMais={setBancaDetalhe}
-        />
-      </SectionGroup>
+      {aba === "avaliacao" && (
+        <SectionGroup>
+          <SecaoBancas
+            titulo="Com avaliação pendente"
+            bancas={paraAvaliar}
+            contexto={contexto}
+            acao="avaliar"
+            onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
+            onVerMais={setBancaDetalhe}
+          />
+          <SecaoBancas
+            titulo="Avaliadas"
+            bancas={jaAvaliadas}
+            contexto={contexto}
+            acao="nenhuma"
+            onVerMais={setBancaDetalhe}
+          />
+        </SectionGroup>
+      )}
 
       <VerMaisModal
         banca={bancaDetalhe}
@@ -341,6 +468,7 @@ export function Bancas() {
         <BancaFormModal
           contexto={contexto}
           token={token}
+          ehDiretor={usuario.posicao === "diretor"}
           onClose={() => setCriarAberto(false)}
           onSalvo={() => {
             setCriarAberto(false);
@@ -354,6 +482,7 @@ export function Bancas() {
           banca={bancaEditar}
           contexto={contexto}
           token={token}
+          ehDiretor={usuario.posicao === "diretor"}
           onClose={() => setBancaEditar(null)}
           onSalvo={() => {
             setBancaEditar(null);
@@ -367,6 +496,7 @@ export function Bancas() {
         <AvaliarModal
           banca={bancaAvaliar}
           formulario={formulario}
+          escopos={contexto.escopos}
           token={token}
           onClose={() => setBancaAvaliar(null)}
           onEnviada={() => {
@@ -390,6 +520,8 @@ function SecaoBancas({
   gerenciar,
   onEditar,
   onExcluir,
+  onPedirTroca,
+  onCancelarTroca,
 }: {
   titulo: string;
   bancas: Banca[];
@@ -401,72 +533,231 @@ function SecaoBancas({
   gerenciar?: boolean;
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
+  onPedirTroca?: (bancaId: number) => void;
+  onCancelarTroca?: (solicitacaoId: number) => void;
 }) {
   return (
     <PageCard>
       <PageCardHeader>
         <PageCardTitle>{titulo}</PageCardTitle>
+        <PageBadge $tone="muted">{bancas.length}</PageBadge>
       </PageCardHeader>
       <PageCardContent>
         {bancas.length === 0 && <EmptyText>Nenhuma banca aqui.</EmptyText>}
         {bancas.length > 0 && (
-          <TableScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
-            <DataTable>
-              <TableHead>
-                <TableRow>
-                  <TableHeadCell>Nome</TableHeadCell>
-                  <TableHeadCell>Data</TableHeadCell>
-                  <TableHeadCell>Hora</TableHeadCell>
-                  <TableHeadCell>Coord</TableHeadCell>
-                  <TableHeadCell>Alocados</TableHeadCell>
-                  <TableHeadCell />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {bancas.map((banca) => {
-                  const dataHora = new Date(banca.data_hora);
-                  const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
-                  const podeGerenciar = gerenciar && usuarioId != null && podeGerenciarBanca(banca, usuarioId);
-                  return (
-                    <TableRow key={banca.id}>
-                      <NameCell>{banca.nome_projeto}</NameCell>
-                      <TableCell>{dataHora.toLocaleDateString("pt-BR")}</TableCell>
-                      <TableCell>{dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</TableCell>
-                      <TableCell>{nomeUsuario(contexto.usuarios, banca.coordenador_id)}</TableCell>
-                      <TableCell>
-                        {banca.alocados}/{banca.vagas}
-                      </TableCell>
-                      <ActionsCell>
-                        <PageButtonSm $variant="outline" type="button" onClick={() => onVerMais(banca)}>
-                          Ver mais
-                        </PageButtonSm>
-                        {podeGerenciar && onEditar && (
-                          <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(banca)}>
-                            Editar
-                          </PageButtonSm>
-                        )}
-                        {podeGerenciar && onExcluir && (
-                          <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(banca)}>
-                            Excluir
-                          </PageButtonSm>
-                        )}
-                        {acao !== "nenhuma" && onAcao && (
+          <ListScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
+            {bancas.map((banca) => {
+              const dataHora = new Date(banca.data_hora);
+              const diaSemana = dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+              const hora = dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+              const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
+              const podeGerenciar = gerenciar && usuarioId != null && podeGerenciarBanca(banca, usuarioId);
+              // Banca legada (sem escopo vendido vinculado) mostra o escopo do
+              // catálogo, singular, como sempre foi. Banca costurada a
+              // escopo(s) do projeto mostra todos os que ela cobre — uma
+              // banca pode juntar mais de um (§8), e o campo antigo só
+              // guardava o primeiro.
+              const nomesEscopos =
+                banca.projeto_escopo_ids.length > 0
+                  ? banca.projeto_escopo_ids
+                      .map((id) => contexto.escoposVendidos.find((e) => e.id === id)?.nome)
+                      .filter((nome): nome is string => !!nome)
+                  : [nomeEscopo(contexto.escopos, banca.escopo_id)];
+              const minhaCandidatura =
+                acao === "deslocar" && usuarioId != null
+                  ? contexto.candidaturas.find((c) => c.banca_id === banca.id && c.usuario_id === usuarioId)
+                  : undefined;
+              const minhaSolicitacaoPendente = minhaCandidatura
+                ? contexto.solicitacoesTroca.find(
+                    (s) => s.candidatura_id === minhaCandidatura.id && s.status === "pendente",
+                  )
+                : undefined;
+              const prazo = acao === "avaliar" ? contexto.prazosAvaliacao[banca.id] : undefined;
+              const prazoExpirado = !!prazo?.prazoExpirado;
+
+              return (
+                <BancaLinha key={banca.id}>
+                  <BancaData>
+                    <BancaDataDiaSemana>{diaSemana}</BancaDataDiaSemana>
+                    <BancaDataDia>{dataHora.getDate()}</BancaDataDia>
+                  </BancaData>
+
+                  <BancaInfo>
+                    <BancaNomeLinha>
+                      <BancaNome>{banca.nome_projeto}</BancaNome>
+                      {nomesEscopos.map((nome, i) => (
+                        <PageBadge key={`${nome}-${i}`} $tone="muted">
+                          {nome}
+                        </PageBadge>
+                      ))}
+                      {acao === "avaliar" && (
+                        <PageBadge $tone={prazoExpirado ? "danger" : "warning"}>
+                          {prazoExpirado
+                            ? "Prazo esgotado"
+                            : prazo
+                              ? `Prazo: ${new Date(prazo.prazoAvaliacao).toLocaleDateString("pt-BR")}`
+                              : "Pendente"}
+                        </PageBadge>
+                      )}
+                      {acao === "deslocar" && <PageBadge $tone="default">Inscrito</PageBadge>}
+                      {acao === "alocar" &&
+                        (lotada ? (
+                          <PageBadge $tone="danger">Lotada</PageBadge>
+                        ) : (
+                          <PageBadge $tone="success">{banca.vagas - banca.alocados} vaga(s)</PageBadge>
+                        ))}
+                      {acao === "nenhuma" && (
+                        <PageBadge $tone={tomDoStatusBanca(banca.status)}>
+                          {ROTULO_STATUS_BANCA[banca.status]}
+                        </PageBadge>
+                      )}
+                    </BancaNomeLinha>
+                    <BancaMeta>
+                      {hora} · {nomeUsuario(contexto.usuarios, banca.coordenador_id)} ·{" "}
+                      {banca.alocados}/{banca.vagas} alocados
+                    </BancaMeta>
+                  </BancaInfo>
+
+                  <BancaAcoes>
+                    <PageButtonSm $variant="outline" type="button" onClick={() => onVerMais(banca)}>
+                      Ver mais
+                    </PageButtonSm>
+                    {podeGerenciar && onEditar && (
+                      <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(banca)}>
+                        Editar
+                      </PageButtonSm>
+                    )}
+                    {podeGerenciar && onExcluir && (
+                      <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(banca)}>
+                        Excluir
+                      </PageButtonSm>
+                    )}
+                    {acao === "deslocar" && minhaCandidatura && (
+                      <>
+                        {minhaSolicitacaoPendente && onCancelarTroca ? (
                           <PageButtonSm
-                            $variant={acao === "deslocar" ? "outline" : "primary"}
+                            $variant="outline"
                             type="button"
-                            disabled={lotada}
-                            onClick={() => onAcao(banca.id)}
+                            onClick={() => onCancelarTroca(minhaSolicitacaoPendente.id)}
                           >
-                            {lotada ? "Lotada" : acao === "alocar" ? "Alocar-se" : acao === "deslocar" ? "Deslocar-se" : "Avaliar"}
+                            Cancelar troca
                           </PageButtonSm>
+                        ) : (
+                          onPedirTroca && (
+                            <PageButtonSm $variant="outline" type="button" onClick={() => onPedirTroca(banca.id)}>
+                              Pedir troca
+                            </PageButtonSm>
+                          )
                         )}
-                      </ActionsCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </DataTable>
-          </TableScrollWrap>
+                      </>
+                    )}
+                    {acao !== "nenhuma" && onAcao && (
+                      <PageButtonSm
+                        $variant={acao === "deslocar" ? "outline" : "primary"}
+                        type="button"
+                        disabled={lotada || prazoExpirado}
+                        onClick={() => onAcao(banca.id)}
+                      >
+                        {lotada
+                          ? "Lotada"
+                          : prazoExpirado
+                            ? "Prazo esgotado"
+                            : acao === "alocar"
+                              ? "Alocar-se"
+                              : acao === "deslocar"
+                                ? "Deslocar-se"
+                                : "Avaliar"}
+                      </PageButtonSm>
+                    )}
+                  </BancaAcoes>
+                </BancaLinha>
+              );
+            })}
+          </ListScrollWrap>
+        )}
+      </PageCardContent>
+    </PageCard>
+  );
+}
+
+/** Pedidos abertos de troca de candidatura (§8): qualquer consultor elegível
+ *  pode confirmar; quem pediu vê os próprios pedidos aqui também, com opção
+ *  de cancelar (o mesmo botão também aparece em "Já alocado", junto da
+ *  banca — os dois lugares fazem a mesma coisa, de propósito). */
+function SecaoTrocas({
+  solicitacoes,
+  bancas,
+  usuarioId,
+  onConfirmar,
+  onCancelar,
+}: {
+  solicitacoes: SolicitacaoTroca[];
+  bancas: Banca[];
+  usuarioId: number;
+  onConfirmar: (solicitacaoId: number) => void;
+  onCancelar: (solicitacaoId: number) => void;
+}) {
+  const pendentes = solicitacoes.filter((s) => s.status === "pendente");
+  const disponiveis = pendentes.filter((s) => s.usuario_original_id !== usuarioId);
+  const minhas = pendentes.filter((s) => s.usuario_original_id === usuarioId);
+  const total = disponiveis.length + minhas.length;
+
+  function linha(solicitacao: SolicitacaoTroca, propria: boolean) {
+    const banca = bancas.find((b) => b.id === solicitacao.banca_id);
+    const dataHora = banca ? new Date(banca.data_hora) : null;
+    return (
+      <BancaLinha key={solicitacao.id}>
+        <BancaData>
+          {dataHora && (
+            <>
+              <BancaDataDiaSemana>
+                {dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
+              </BancaDataDiaSemana>
+              <BancaDataDia>{dataHora.getDate()}</BancaDataDia>
+            </>
+          )}
+        </BancaData>
+        <BancaInfo>
+          <BancaNomeLinha>
+            <BancaNome>{banca?.nome_projeto ?? `Banca ${solicitacao.banca_id}`}</BancaNome>
+            <PageBadge $tone={propria ? "default" : "warning"}>
+              {propria ? "Meu pedido" : "Troca aberta"}
+            </PageBadge>
+          </BancaNomeLinha>
+          {dataHora && (
+            <BancaMeta>
+              {dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </BancaMeta>
+          )}
+        </BancaInfo>
+        <BancaAcoes>
+          {propria ? (
+            <PageButtonSm $variant="outline" type="button" onClick={() => onCancelar(solicitacao.id)}>
+              Cancelar
+            </PageButtonSm>
+          ) : (
+            <PageButtonSm type="button" onClick={() => onConfirmar(solicitacao.id)}>
+              Confirmar
+            </PageButtonSm>
+          )}
+        </BancaAcoes>
+      </BancaLinha>
+    );
+  }
+
+  return (
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>Trocas disponíveis</PageCardTitle>
+        <PageBadge $tone="muted">{total}</PageBadge>
+      </PageCardHeader>
+      <PageCardContent>
+        {total === 0 && <EmptyText>Nenhuma solicitação de troca no momento.</EmptyText>}
+        {total > 0 && (
+          <ListScrollWrap $scrollable={total > LIST_MAX_VISIVEIS}>
+            {disponiveis.map((s) => linha(s, false))}
+            {minhas.map((s) => linha(s, true))}
+          </ListScrollWrap>
         )}
       </PageCardContent>
     </PageCard>
@@ -477,12 +768,14 @@ function BancaFormModal({
   banca,
   contexto,
   token,
+  ehDiretor,
   onClose,
   onSalvo,
 }: {
   banca?: Banca | null;
   contexto: Contexto;
   token: string;
+  ehDiretor: boolean;
   onClose: () => void;
   onSalvo: () => void;
 }) {
@@ -497,6 +790,9 @@ function BancaFormModal({
   );
   const [frenteIds, setFrenteIds] = useState<number[]>(() =>
     banca ? contexto.bancasFrentes.filter((bf) => bf.banca_id === banca.id).map((bf) => bf.frente_id) : [],
+  );
+  const [pisoOverride, setPisoOverride] = useState(
+    banca?.piso_minimo_override != null ? String(banca.piso_minimo_override) : "",
   );
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
@@ -514,6 +810,11 @@ function BancaFormModal({
     setErro("");
     try {
       const dataHora = new Date(`${data}T${hora}:00`).toISOString();
+      const pisoMinimoOverride = ehDiretor
+        ? pisoOverride.trim() === ""
+          ? null
+          : Number(pisoOverride)
+        : undefined;
       if (editando && banca) {
         await updateBanca(
           banca.id,
@@ -521,6 +822,7 @@ function BancaFormModal({
             nome_projeto: nomeProjeto.trim(),
             escopo_id: Number(escopoId),
             data_hora: dataHora,
+            ...(pisoMinimoOverride !== undefined ? { piso_minimo_override: pisoMinimoOverride } : {}),
           },
           token,
         );
@@ -534,6 +836,7 @@ function BancaFormModal({
             data_hora: dataHora,
             consultor_ids: consultorIds,
             frente_ids: frenteIds,
+            ...(pisoMinimoOverride !== undefined ? { piso_minimo_override: pisoMinimoOverride } : {}),
           },
           token,
         );
@@ -590,6 +893,22 @@ function BancaFormModal({
                 ))}
               </FieldSelect>
             </FieldGroup>
+
+            {ehDiretor && (
+              <FieldGroup>
+                <FieldLabel htmlFor="piso-override">
+                  Piso mínimo desta banca (opcional)
+                </FieldLabel>
+                <FieldInput
+                  id="piso-override"
+                  type="number"
+                  min={0}
+                  value={pisoOverride}
+                  onChange={(e) => setPisoOverride(e.target.value)}
+                  placeholder="Deixe em branco para usar o padrão da(s) frente(s)"
+                />
+              </FieldGroup>
+            )}
 
             <FieldGroup>
               <FieldLabel>Consultores do projeto</FieldLabel>
@@ -723,29 +1042,55 @@ function VerMaisModal({
   );
 }
 
+const OUTRO = "outro" as const;
+
 function AvaliarModal({
   banca,
   formulario,
+  escopos,
   token,
   onClose,
   onEnviada,
 }: {
   banca: Banca;
   formulario: FormularioAtivo | null;
+  escopos: Escopo[];
   token: string;
   onClose: () => void;
   onEnviada: () => void;
 }) {
+  const { usuario } = useAuth();
+  const escoposOrdenados = escopos.slice().sort((a, b) => a.nome.localeCompare(b.nome));
+
+  // Bloco 1 — a diretoria pede de novo mesmo o sistema já sabendo quem
+  // está logado e qual o escopo cadastrado da banca: são só o ponto de
+  // partida, o avaliador pode confirmar diferente.
+  const [nomeAvaliador, setNomeAvaliador] = useState(usuario?.nome ?? "");
+  const [tipoAvaliador, setTipoAvaliador] = useState<"consultor" | "lideranca">(
+    usuario && usuario.posicao !== "consultor" ? "lideranca" : "consultor",
+  );
+  const [projetoAvaliado, setProjetoAvaliado] = useState(banca.nome_projeto);
+  const [escopoSelecionado, setEscopoSelecionado] = useState<number | typeof OUTRO | "">(
+    banca.escopo_id ?? OUTRO,
+  );
+  const [escopoOutro, setEscopoOutro] = useState("");
+
+  // O Bloco 2 (critérios técnicos) depende do que foi respondido AQUI —
+  // "Escopo Avaliado" — não de `banca.escopo_id` direto: é essa resposta
+  // que decide o bloco, mesmo já vindo prenchida a partir da banca.
+  const escopoIdParaFiltro = typeof escopoSelecionado === "number" ? escopoSelecionado : null;
+
   const perguntasVisiveis = (formulario?.perguntas ?? [])
     .slice()
     .sort((a, b) => a.ordem - b.ordem)
+    .filter((p) => p.escopo_id == null || p.escopo_id === escopoIdParaFiltro)
     .filter((p) => !isComentarioFeedbackPergunta(p.tipo_resposta, p.texto));
 
   const perguntasNota = perguntasVisiveis.filter((p) => isPerguntaNota(p.tipo_resposta));
   const perguntasTexto = perguntasVisiveis.filter((p) => !isPerguntaNota(p.tipo_resposta));
 
-  const [notas, setNotas] = useState<Record<number, number>>(() =>
-    Object.fromEntries(perguntasNota.map((p) => [p.id, 0])),
+  const [notas, setNotas] = useState<Record<number, number | null>>(() =>
+    Object.fromEntries(perguntasNota.map((p) => [p.id, null])),
   );
   const [respostasTexto, setRespostasTexto] = useState<Record<number, string>>({});
   const [comentario, setComentario] = useState("");
@@ -755,17 +1100,33 @@ function AvaliarModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!formulario) return;
+    const faltando = perguntasNota.some((p) => notas[p.id] == null);
+    if (faltando) {
+      setErro("Selecione uma nota de 1 a 5 para todos os critérios.");
+      return;
+    }
     setEnviando(true);
     setErro("");
     try {
-      const avaliacao = await createAvaliacao({ banca_id: banca.id, formulario_id: formulario.id }, token);
+      const avaliacao = await createAvaliacao(
+        {
+          banca_id: banca.id,
+          formulario_id: formulario.id,
+          nome_avaliador: nomeAvaliador.trim() || undefined,
+          tipo_avaliador: tipoAvaliador,
+          projeto_avaliado: projetoAvaliado.trim() || undefined,
+          escopo_avaliado_id: escopoIdParaFiltro,
+          escopo_avaliado_outro: escopoIdParaFiltro == null ? escopoOutro.trim() || null : null,
+        },
+        token,
+      );
       for (const pergunta of perguntasVisiveis) {
         if (isPerguntaNota(pergunta.tipo_resposta)) {
           await createAvaliacaoNota(
             {
               avaliacao_id: avaliacao.id,
               pergunta_id: pergunta.id,
-              nota: notas[pergunta.id] ?? 0,
+              nota: notas[pergunta.id] as number,
             },
             token,
           );
@@ -807,18 +1168,77 @@ function AvaliarModal({
         ) : (
           <FormStack onSubmit={handleSubmit}>
             <ModalBody>
+              <FieldGroup>
+                <FieldLabel htmlFor="bloco1-nome">Nome</FieldLabel>
+                <FieldInput
+                  id="bloco1-nome"
+                  value={nomeAvaliador}
+                  onChange={(e) => setNomeAvaliador(e.target.value)}
+                  required
+                />
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel htmlFor="bloco1-tipo">Consultor ou Liderança</FieldLabel>
+                <FieldSelect
+                  id="bloco1-tipo"
+                  value={tipoAvaliador}
+                  onChange={(e) => setTipoAvaliador(e.target.value as "consultor" | "lideranca")}
+                >
+                  <option value="consultor">Consultor</option>
+                  <option value="lideranca">Liderança</option>
+                </FieldSelect>
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel htmlFor="bloco1-projeto">Projeto Avaliado</FieldLabel>
+                <FieldInput
+                  id="bloco1-projeto"
+                  value={projetoAvaliado}
+                  onChange={(e) => setProjetoAvaliado(e.target.value)}
+                  placeholder="ex. PROJETO I"
+                  required
+                />
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel htmlFor="bloco1-escopo">Escopo Avaliado</FieldLabel>
+                <FieldSelect
+                  id="bloco1-escopo"
+                  value={escopoSelecionado}
+                  onChange={(e) =>
+                    setEscopoSelecionado(e.target.value === OUTRO ? OUTRO : Number(e.target.value))
+                  }
+                >
+                  {escoposOrdenados.map((escopo) => (
+                    <option key={escopo.id} value={escopo.id}>
+                      {escopo.nome}
+                    </option>
+                  ))}
+                  <option value={OUTRO}>Outro</option>
+                </FieldSelect>
+              </FieldGroup>
+              {escopoIdParaFiltro == null && (
+                <FieldGroup>
+                  <FieldLabel htmlFor="bloco1-escopo-outro">Qual escopo?</FieldLabel>
+                  <FieldInput
+                    id="bloco1-escopo-outro"
+                    value={escopoOutro}
+                    onChange={(e) => setEscopoOutro(e.target.value)}
+                    required
+                  />
+                </FieldGroup>
+              )}
+
               {perguntasNota.length > 0 && (
-                <NotaSliderGroup>
+                <NotaEscalaGrupo>
                   {perguntasNota.map((pergunta) => (
-                    <NotaSlider
+                    <NotaEscala
                       key={pergunta.id}
                       id={`pergunta-${pergunta.id}`}
                       label={pergunta.texto}
-                      value={notas[pergunta.id] ?? 0}
+                      value={notas[pergunta.id] ?? null}
                       onChange={(valor) => setNotas((n) => ({ ...n, [pergunta.id]: valor }))}
                     />
                   ))}
-                </NotaSliderGroup>
+                </NotaEscalaGrupo>
               )}
               {perguntasTexto.map((pergunta) => (
                 <FieldGroup key={pergunta.id}>

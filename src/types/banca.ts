@@ -25,6 +25,9 @@ export interface BancaBase {
   escopo_id: number | null; // vazio quando o escopo vendido é um "Outro"
   coordenador_id: number;
   data_hora: string; // ISO 8601
+  /** Nulo = usa a soma do piso das frentes vinculadas (§8). Só a diretoria
+   *  define — ver `podeAgendar`/`usuario.posicao === "diretor"` no form. */
+  piso_minimo_override: number | null;
 }
 
 // Campos calculados que a API adiciona em GET /bancas e GET /bancas/{id}
@@ -35,8 +38,9 @@ export interface Banca extends BancaBase {
   alocados: number;
   semestre_id: number;
   semestre_nome: string;
-  // F5 — a costura com o projeto.
-  projeto_escopo_id: number | null;
+  /** A costura com o projeto: os escopos vendidos que esta banca cobre.
+   *  Vazio nas bancas legadas, que não têm escopo vendido. */
+  projeto_escopo_ids: number[];
   realizado_em: string | null;
   resultado: ResultadoBanca | null;
 }
@@ -66,9 +70,31 @@ export interface Escopo {
   ativo: boolean;
 }
 
+/** Nome resolvido de um escopo VENDIDO (de um projeto), de todos os
+ *  projetos — usado só pra página Bancas resolver `Banca.projeto_escopo_ids`
+ *  em nomes, já que ela lista bancas de projetos diferentes ao mesmo tempo.
+ *  Versão enxuta de `EscopoVendido` (`types/projeto.ts`), sem a contagem de
+ *  dias, que não faz sentido fora do contexto de um projeto só. */
+export interface EscopoVendidoResumo {
+  id: number;
+  projeto_id: number;
+  nome: string;
+}
+
 export interface Frente {
   id: number;
   nome: string;
+  ativa: boolean;
+  /** Mínimo de membros da frente exigido numa banca (§8) — editável pela
+   *  diretoria em Config. */
+  piso_banca: number;
+}
+
+export interface Configuracao {
+  id: number;
+  /** Teto de pessoas por banca (§8) — editável pela diretoria em Config. */
+  vagas_por_banca: number;
+  cargo_padrao_id: number | null;
 }
 
 export interface BancaFrente {
@@ -89,6 +115,9 @@ export interface Pergunta {
   texto: string;
   ordem: number;
   tipo_resposta: "nota" | "texto";
+  /** Nulo = pergunta universal (aparece em toda banca); com valor, só
+   *  aparece quando a banca avaliada é daquele escopo. */
+  escopo_id: number | null;
 }
 
 export interface FormularioAtivo {
@@ -107,6 +136,7 @@ export interface PerguntaNovaVersao {
   texto: string;
   ordem: number;
   tipo_resposta: "nota" | "texto";
+  escopo_id: number | null;
 }
 
 export interface BancaParaAvaliar {
@@ -114,6 +144,10 @@ export interface BancaParaAvaliar {
   banca_id: number;
   nome_projeto: string;
   data_hora: string;
+  /** 2 dias corridos a partir de `banca.realizado_em` (§8) — depois disso o
+   *  envio da avaliação é bloqueado, não só destacado. */
+  prazo_avaliacao: string;
+  prazo_expirado: boolean;
 }
 
 export interface Avaliacao {
@@ -124,6 +158,15 @@ export interface Avaliacao {
   status: "rascunho" | "submetida";
   comentario_feedback: string | null;
   submetida_em: string | null;
+  /** Bloco 1 do formulário — resposta livre, não necessariamente igual ao
+   *  cadastro do sistema (o avaliador pode confirmar diferente). */
+  nome_avaliador: string | null;
+  tipo_avaliador: "consultor" | "lideranca" | null;
+  projeto_avaliado: string | null;
+  /** O escopo que o próprio avaliador confirmou — decide o Bloco 2, não
+   *  necessariamente o mesmo de `banca.escopo_id`. */
+  escopo_avaliado_id: number | null;
+  escopo_avaliado_outro: string | null;
 }
 
 export interface AvaliacaoNota {

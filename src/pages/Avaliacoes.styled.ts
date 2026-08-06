@@ -100,12 +100,44 @@ export const PerguntaEditorList = styled.div`
 
 export const PerguntaEditorRow = styled.div`
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: ${theme.spacing.sm};
   align-items: start;
 
   @media (max-width: ${theme.breakpoints.sm}px) {
     grid-template-columns: 1fr;
+  }
+`;
+
+export const MoveButtonGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+export const MoveButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.0625rem;
+  padding: 0;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.sm};
+  background: ${theme.colors.background};
+  color: ${theme.colors.mutedForeground};
+  font-size: ${theme.fontSize.xs};
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: ${theme.colors.foreground};
+    border-color: ${theme.colors.foreground};
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
   }
 `;
 
@@ -125,6 +157,38 @@ export const RemoveButton = styled.button`
   &:hover {
     background: color-mix(in srgb, ${theme.colors.destructive} 8%, white);
   }
+`;
+
+/** Um bloco por escopo (ou o "Geral", fora de qualquer frente) no editor de
+ *  formulário — cada um com sua própria lista de perguntas e botão de
+ *  adicionar, para o Bloco 2 poder variar por tipo de entrega. */
+export const PerguntaSecao = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.background};
+`;
+
+export const PerguntaSecaoTitulo = styled.h4`
+  margin: 0;
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
+`;
+
+export const PerguntaSecaoVazia = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const PerguntaGrupoFrente = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
 `;
 
 export const AvaliacaoBlock = styled.div`
@@ -156,6 +220,34 @@ export const SectionTitle = styled.h3`
   font-size: ${theme.fontSize.sm};
   font-weight: ${theme.fontWeight.semibold};
   color: ${theme.colors.foreground};
+`;
+
+export const FormularioResumo = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.lg};
+`;
+
+export const FormularioResumoItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+`;
+
+export const FormularioResumoValor = styled.span`
+  font-size: ${theme.fontSize.xl};
+  font-weight: ${theme.fontWeight.bold};
+  color: ${theme.colors.foreground};
+`;
+
+export const FormularioResumoLabel = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const PreviewToggleRow = styled.div`
+  display: flex;
+  justify-content: flex-end;
 `;
 
 export const NotaFinalDestaque = styled.p`

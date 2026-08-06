@@ -28,7 +28,7 @@ export function useMonitoramento() {
 /**
  * O shell do monitoramento (§7). As 4 abas são sub-rotas.
  *
- * 🔐 O seletor de frente só aparece para a diretoria (§7.5: "o gerente fica
+ * O seletor de frente só aparece para a diretoria (§7.5: "o gerente fica
  * travado na própria frente"). Mas quem **decide** é o backend: mesmo que o
  * gerente forje um `?frente_id=`, `aplicar_recorte_visao` restringe às
  * frentes dele. Esconder o seletor é conveniência de UI.
@@ -39,6 +39,7 @@ export function MonitoramentoLayout() {
   const [frenteId, setFrenteId] = useState<number | null>(null);
 
   const podeFiltrar = pode(usuario, "filtrar_por_frente");
+  const podeVerTarefasGerais = pode(usuario, "ver_tarefas_gerais");
 
   useEffect(() => {
     if (!token) return;
@@ -82,6 +83,7 @@ export function MonitoramentoLayout() {
         <TabLink to="/monitoramento/execucao">Execução</TabLink>
         <TabLink to="/monitoramento/alocacao">Alocação</TabLink>
         <TabLink to="/monitoramento/atrasos">Atrasos</TabLink>
+        {podeVerTarefasGerais && <TabLink to="/monitoramento/tarefas">Tarefas</TabLink>}
       </TabBar>
 
       <Outlet context={contexto} />
