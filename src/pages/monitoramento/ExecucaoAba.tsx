@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getExecucao, type Execucao, type LinhaTarefas } from "@/lib/monitoramento";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
+import { ConteudoPaginado, POR_PAGINA_TABELA, Paginacao, usePaginacao } from "./Paginacao";
 import {
   PageStack,
   PageCard,
@@ -9,6 +10,7 @@ import {
   PageCardTitle,
   PageCardContent,
   PageButton,
+  PageButtonSm,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
@@ -16,12 +18,14 @@ import {
 } from "@/styles/page.styled";
 import {
   CelulaDias,
+  ConteudoCarregando,
   DataTable,
   FaixaResumo,
   ItemAtencao,
   LinkProjeto,
   ListaSimples,
-  NotaRodape,
+  NavegacaoSemana,
+  ValorDeHoje,
   ResumoItem,
   ResumoRotulo,
   ResumoValor,
@@ -36,7 +40,7 @@ import {
   type NivelSeveridade,
   type TomPilula,
 } from "./Monitoramento.styled";
-import { useMonitoramento } from "./MonitoramentoLayout";
+import { useFiltroFrente } from "./FiltroFrente";
 
 /**
  * §7.2 — ver quem não está distribuindo tarefa nem fazendo reunião, sem
@@ -49,17 +53,21 @@ import { useMonitoramento } from "./MonitoramentoLayout";
  */
 export function ExecucaoAba() {
   const { token } = useAuth();
-  const { frenteId } = useMonitoramento();
+  const { frenteId, seletor } = useFiltroFrente();
   const [dados, setDados] = useState<Execucao | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  /* `null` = semana de hoje. Guardamos um DIA, não a semana: o servidor
+     normaliza para a segunda, então o front não precisa saber onde a semana
+     começa — e não corre o risco de discordar dele. */
+  const [referencia, setReferencia] = useState<string | null>(null);
 
   async function carregar() {
     if (!token) return;
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getExecucao(token, frenteId));
+      setDados(await getExecucao(token, frenteId, referencia ?? undefined));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar a execução");
     } finally {
@@ -70,7 +78,15 @@ export function ExecucaoAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId]);
+  }, [token, frenteId, referencia]);
+
+  /** Anda `dias` a partir do início da semana exibida. */
+  function navegar(dias: number) {
+    if (!dados) return;
+    const base = new Date(`${dados.semana.inicio}T12:00:00`);
+    base.setDate(base.getDate() + dias);
+    setReferencia(base.toISOString().slice(0, 10));
+  }
 
   /* Quem precisa de ação sobe. Sem isso a diretoria varre uma tabela de 30
      linhas para achar as 3 que importam. */
@@ -88,24 +104,49 @@ export function ExecucaoAba() {
     () => tarefasOrdenadas.filter((t) => t.sem_tarefas || t.sem_tarefas_ativas),
     [tarefasOrdenadas],
   );
+  // Ordenada por severidade logo acima, então cortar esconde a cauda e não o
+  // que pede ação. Fica antes dos `return` de erro e carregando — hook depois
+  // deles seria condicional.
+  const listaSemTarefa = usePaginacao(semTarefa);
+  // As duas tabelas da aba passam de 50 linhas com o núcleo cheio. Rolagem
+  // interna dava ~5 telas dentro do card, capturando a roda do mouse; página
+  // resolve sem aninhar rolagem.
+  const paginaTarefas = usePaginacao(tarefasOrdenadas, POR_PAGINA_TABELA);
+  const paginaReunioes = usePaginacao(dados?.reunioes ?? [], POR_PAGINA_TABELA);
 
   if (erro) {
     return (
-      <ErrorBlock>
-        <ErrorText>{erro}</ErrorText>
-        <PageButton $variant="outline" onClick={carregar}>
-          Tentar novamente
-        </PageButton>
-      </ErrorBlock>
+      <PageStack>
+        {seletor}
+        <ErrorBlock>
+          <ErrorText>{erro}</ErrorText>
+          <PageButton $variant="outline" onClick={carregar}>
+            Tentar novamente
+          </PageButton>
+        </ErrorBlock>
+      </PageStack>
     );
   }
 
-  if (carregando || !dados) return <PageLoadingBlock />;
+  /* Esqueleto SÓ na primeira carga. Ao trocar de semana os dados anteriores
+     ficam na tela até os novos chegarem — trocar tudo por um bloco vazio
+     desmonta a tabela, e o navegador perde a posição do scroll: a pessoa
+     clica em "anterior" e é jogada de volta pro topo da página. */
+  if (!dados) {
+    return (
+      <PageStack>
+        {seletor}
+        <PageLoadingBlock />
+      </PageStack>
+    );
+  }
 
   const resumo = dados.resumo_tarefas;
 
   return (
+    <ConteudoCarregando $carregando={carregando}>
     <PageStack>
+      {seletor}
       {/* Faixa, e não grade de cards: são cinco recortes da MESMA população de
           projetos, então precisam ser lidos lado a lado. Cinco cartões
           idênticos sugeririam cinco assuntos independentes. É o mesmo padrão
@@ -145,23 +186,26 @@ export function ExecucaoAba() {
             <PageCardTitle>Projetos sem tarefa atribuída ({semTarefa.length})</PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
-            <ListaSimples>
-              {semTarefa.map((linha) => (
-                <ItemAtencao key={linha.projeto_id} $nivel={nivelSemTarefa(linha)}>
-                  <strong>
-                    <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`}>{linha.projeto_nome}</LinkProjeto>{" "}
-                    {/* Mesmos tons da coluna "Ativas" da tabela abaixo, para as
-                        duas leituras da mesma situação não se contradizerem. */}
-                    {linha.sem_tarefas ? (
-                      <Pilula $tom="alerta">nunca recebeu tarefa</Pilula>
-                    ) : (
-                      <Pilula $tom="atencao">quadro zerado</Pilula>
-                    )}
-                  </strong>
-                  <span>{motivoSemTarefa(linha)}</span>
-                </ItemAtencao>
-              ))}
-            </ListaSimples>
+            <ConteudoPaginado estado={listaSemTarefa}>
+              <ListaSimples>
+                {listaSemTarefa.visiveis.map((linha) => (
+                  <ItemAtencao key={linha.projeto_id} $nivel={nivelSemTarefa(linha)}>
+                    <strong>
+                      <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`}>{linha.projeto_nome}</LinkProjeto>{" "}
+                      {/* Mesmos tons da coluna "Ativas" da tabela abaixo, para as
+                          duas leituras da mesma situação não se contradizerem. */}
+                      {linha.sem_tarefas ? (
+                        <Pilula $tom="alerta">nunca recebeu tarefa</Pilula>
+                      ) : (
+                        <Pilula $tom="atencao">quadro zerado</Pilula>
+                      )}
+                    </strong>
+                    <span>{motivoSemTarefa(linha)}</span>
+                  </ItemAtencao>
+                ))}
+              </ListaSimples>
+            </ConteudoPaginado>
+            <Paginacao estado={listaSemTarefa} />
           </PageCardContent>
         </PageCard>
       )}
@@ -171,7 +215,31 @@ export function ExecucaoAba() {
           <PageCardTitle>
             Tarefas · semana de {formatarData(dados.semana.inicio)} a{" "}
             {formatarData(dados.semana.fim)}
+            {dados.semana.eh_passada && (
+              <Pilula $tom="neutro">{rotuloSemana(dados.semana.semanas_atras)}</Pilula>
+            )}
           </PageCardTitle>
+          <NavegacaoSemana>
+            <PageButtonSm $variant="outline" onClick={() => navegar(-7)} disabled={carregando}>
+              ← Anterior
+            </PageButtonSm>
+            {/* "Hoje" some na semana atual: botão que não faz nada só ocupa
+                espaço e faz a pessoa clicar para descobrir isso. */}
+            {dados.semana.eh_passada && (
+              <PageButtonSm $variant="outline" onClick={() => setReferencia(null)} disabled={carregando}>
+                Hoje
+              </PageButtonSm>
+            )}
+            <PageButtonSm
+              $variant="outline"
+              onClick={() => navegar(7)}
+              /* O backend recusa data futura com 422 — travar aqui evita o
+                 erro em vez de deixar a pessoa provocá-lo. */
+              disabled={carregando || dados.semana.eh_atual}
+            >
+              Próxima →
+            </PageButtonSm>
+          </NavegacaoSemana>
         </PageCardHeader>
         <PageCardContent>
           {dados.tarefas.length === 0 ? (
@@ -180,7 +248,8 @@ export function ExecucaoAba() {
             <>
               {/* 7 colunas não cabem num celular. Rolar na horizontal preserva
                   a leitura da linha; espremer quebraria cada célula em três. */}
-              <TabelaRolagem $min="52rem">
+              <ConteudoPaginado estado={paginaTarefas}>
+                <TabelaRolagem $min="52rem">
                 <DataTable>
                   <TableHead>
                     <TableRow>
@@ -194,7 +263,7 @@ export function ExecucaoAba() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {tarefasOrdenadas.map((linha) => (
+                    {paginaTarefas.visiveis.map((linha) => (
                       <TableRow key={linha.projeto_id}>
                         <TableCell>
                           <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`}>
@@ -214,6 +283,13 @@ export function ExecucaoAba() {
                             <Pilula $tom="alerta">nenhuma tarefa</Pilula>
                           ) : linha.sem_tarefas_ativas ? (
                             <Pilula $tom="atencao">quadro zerado</Pilula>
+                          ) : dados.semana.eh_passada ? (
+                            /* A explicação vai no tooltip, não em parágrafo:
+                               interessa a quem estranhar o selo, e é a minoria
+                               das visitas à tela. */
+                            <ValorDeHoje title="Depende de onde a tarefa está no quadro agora — o sistema não guarda o histórico de movimentação entre colunas.">
+                              {linha.ativas}
+                            </ValorDeHoje>
                           ) : (
                             linha.ativas
                           )}
@@ -255,6 +331,9 @@ export function ExecucaoAba() {
                           )}
                         </TableCell>
                         <TableCell>
+                          {/* Sem selo "hoje": o backend corta em `<= fim da
+                              semana`, então a data sempre cai dentro da janela
+                              do cabeçalho. */}
                           {linha.ultima_movimentacao ? (
                             formatarDataHora(linha.ultima_movimentacao)
                           ) : (
@@ -266,11 +345,8 @@ export function ExecucaoAba() {
                   </TableBody>
                 </DataTable>
               </TabelaRolagem>
-              <NotaRodape>
-                Os dias são <strong>úteis</strong>, pelo calendário do Insper: fim de semana,
-                feriado e semana de provas não contam. Vale para todo o monitoramento, inclusive
-                a aba de Atrasos.
-              </NotaRodape>
+            </ConteudoPaginado>
+            <Paginacao estado={paginaTarefas} />
             </>
           )}
         </PageCardContent>
@@ -284,7 +360,9 @@ export function ExecucaoAba() {
           {dados.reunioes.length === 0 ? (
             <EmptyText>Nenhum projeto na sua visão.</EmptyText>
           ) : (
-            <TabelaRolagem $min="30rem">
+            <>
+              <ConteudoPaginado estado={paginaReunioes}>
+                <TabelaRolagem $min="30rem">
               <DataTable>
                 <TableHead>
                   <TableRow>
@@ -294,7 +372,7 @@ export function ExecucaoAba() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {dados.reunioes.map((linha) => (
+                  {paginaReunioes.visiveis.map((linha) => (
                     <TableRow key={linha.projeto_id}>
                       <TableCell>
                         <LinkProjeto to={`/projetos/${linha.projeto_id}/reunioes`}>{linha.projeto_nome}</LinkProjeto>
@@ -317,12 +395,21 @@ export function ExecucaoAba() {
                   ))}
                 </TableBody>
               </DataTable>
-            </TabelaRolagem>
+                </TabelaRolagem>
+              </ConteudoPaginado>
+              <Paginacao estado={paginaReunioes} />
+            </>
           )}
         </PageCardContent>
       </PageCard>
     </PageStack>
+    </ConteudoCarregando>
   );
+}
+
+/** "semana passada", "2 semanas atrás", "3 semanas atrás"... */
+function rotuloSemana(semanasAtras: number): string {
+  return semanasAtras === 1 ? "semana passada" : `${semanasAtras} semanas atrás`;
 }
 
 function plural(dias: number): string {
