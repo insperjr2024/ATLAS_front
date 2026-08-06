@@ -37,11 +37,11 @@ function equatorPoints(n: number): Point[] {
   return pts;
 }
 
-/** Fixos, sempre no globo — o resto vem de `GET /auth/membros-nomes`. Sem
- *  a Heloísa aqui: com ela sobrava só o polo norte (José) e o equador, e as
- *  duas posições coincidiam durante a rotação — ela já aparece sozinha,
- *  como ponto dinâmico normal, pela conta real dela. */
-const NOMES_FIXOS = ["Henrique M.", "João B.", "Enzo P.", "Mateus L."];
+/** Fixos, sempre no globo — o resto vem de `GET /auth/membros-nomes`. Um
+ *  nome que colidisse com o do polo norte (José) durante a rotação some
+ *  sozinho pelo sistema de colisão abaixo (prioridade + fade), então não
+ *  precisa mais ficar de fora daqui por causa disso. */
+const NOMES_FIXOS = ["Heloísa N.", "Henrique M.", "João B.", "Enzo P.", "Mateus L."];
 
 /** Fixo no polo norte, fora da linha do equador dos outros fundadores. */
 const NOME_POLO_NORTE = "José S.";

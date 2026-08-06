@@ -68,7 +68,10 @@ export function Login() {
     setErro("");
     setCarregando(true);
     try {
-      await login(email, senha);
+      // Copiar/colar credenciais costuma trazer um espaço ou quebra de linha
+      // junto — sem isso, um e-mail/senha corretos "sobrando um espaço"
+      // caem como "Email ou senha incorretos" sem nenhuma pista do porquê.
+      await login(email.trim(), senha.trim());
       navigate("/projetos");
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao fazer login");
