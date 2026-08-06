@@ -1,12 +1,19 @@
 import styled from "styled-components";
 import { NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
+import { FieldInput } from "@/pages/Bancas.styled";
 
 export const FiltrosRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: ${theme.spacing.sm};
   margin-bottom: ${theme.spacing.md};
+
+  /* Sem isso, cada select estica pra ocupar a largura toda do card — bonito
+     num formulário de 1 campo, ruim numa fileira de 3 filtros lado a lado. */
+  & > * {
+    flex: 0 1 12rem;
+  }
 `;
 
 export const CampoInlineRow = styled.div`
@@ -74,6 +81,14 @@ export const PessoaResumo = styled.span`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
   font-weight: ${theme.fontWeight.normal};
+`;
+
+/** Frente(s) e semestre da pessoa — vermelho claro de propósito: é contexto
+ *  pra ler o nome, não um alerta nem um dado igual aos outros da linha. */
+export const PessoaContexto = styled.span`
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.normal};
+  color: color-mix(in srgb, ${theme.colors.destructive} 65%, ${theme.colors.mutedForeground});
 `;
 
 export const SubLista = styled.div`
@@ -354,10 +369,28 @@ export const AbaButton = styled.button<{ $active: boolean }>`
 export const SecaoEditorBlock = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md};
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.lg};
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+`;
+
+/** Só os campos DA SEÇÃO (título + descrição) — separado da lista de
+ *  critérios por `CriteriosLista` logo abaixo, pra não virar uma pilha só
+ *  de campo atrás de campo sem dizer o que é o quê. */
+export const SecaoCamposProprios = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+export const CriteriosLista = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding-top: ${theme.spacing.sm};
+  border-top: 1px solid ${theme.colors.border};
 `;
 
 export const CriterioEditorRow = styled.div`
@@ -367,10 +400,22 @@ export const CriterioEditorRow = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
+/** O rótulo do critério é o campo mais importante da linha — sem largura
+ *  mínima própria, ele encolhia até truncar o texto ao dividir espaço com o
+ *  select de tipo e o botão de remover. */
+export const CriterioLabelInput = styled(FieldInput)`
+  flex: 1 1 14rem;
+  min-width: 10rem;
+`;
+
+/** Um critério é um card À PARTE dentro da seção — fundo próprio, não só
+ *  uma linha separada por borda (que sumia visualmente entre tantos campos
+ *  parecidos). É isso que faz "onde começa o critério 2" ficar óbvio. */
 export const CriterioEditorBlock = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${theme.spacing.xs};
-  padding-bottom: ${theme.spacing.xs};
-  border-bottom: 1px solid ${theme.colors.border};
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.muted};
 `;
