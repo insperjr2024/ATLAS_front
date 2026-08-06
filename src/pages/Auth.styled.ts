@@ -3,21 +3,9 @@ import { Link } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import { Button } from "@/components/ui/button";
 
-/* =========================================================================
-   Login — painel dividido (imagem da equipe + formulário), inspirado na
-   página de login do GP II. Exports namespaced "Login*" pra não colidir
-   com nada — só o Login.tsx importa deste arquivo.
-   ========================================================================= */
-
 const loginFadeUp = keyframes`
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 `;
 
 const loginCursorBlink = keyframes`
@@ -25,7 +13,6 @@ const loginCursorBlink = keyframes`
   51%, 100% { opacity: 0; }
 `;
 
-/* Staggered reveal: cada filho entra um tempo depois do anterior */
 const loginRevealStagger = css`
   & > * {
     opacity: 0;
@@ -38,113 +25,95 @@ const loginRevealStagger = css`
   & > *:nth-child(5) { animation-delay: 0.38s; }
 
   @media (prefers-reduced-motion: reduce) {
-    & > * {
-      opacity: 1;
-      animation: none;
-    }
+    & > * { opacity: 1; animation: none; }
   }
 `;
-
-/* ---------- Página ---------- */
 
 export const AuthPageWrapper = styled.div`
   min-height: 100vh;
   display: flex;
 `;
 
-/* Some abaixo de 1024px — em telas estreitas só o formulário aparece */
 export const LoginLeftPanel = styled.div`
   display: none;
   width: 50%;
   position: relative;
   overflow: hidden;
-  background: ${theme.colors.primary};
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, ${theme.colors.primary} 45%, black) 0%,
+    ${theme.colors.primary} 100%
+  );
 
   @media (min-width: 1024px) {
     display: flex;
   }
 `;
 
-export const LoginPanelImage = styled.img`
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-export const LoginPanelOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 0, 0, 0.65) 0%,
-    rgba(0, 0, 0, 0.55) 40%,
-    rgba(0, 0, 0, 0.5) 70%,
-    rgba(0, 0, 0, 0.45) 100%
-  );
-  pointer-events: none;
-`;
-
-export const LoginPanelContent = styled.div`
+export const LoginLeftPanelContent = styled.div`
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  min-height: 100%;
-  padding: ${theme.spacing["2xl"]};
-`;
-
-export const LoginPanelTextContainer = styled.div`
-  max-width: 560px;
   width: 100%;
-  text-align: left;
-`;
-
-export const LoginPanelTitleBlock = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: calc(${theme.spacing["2xl"]} + 4rem) ${theme.spacing["2xl"]} ${theme.spacing["2xl"]};
+  gap: 2.25rem;
 `;
 
-export const LoginPanelTitle = styled.h1`
-  /* GP II carrega a família estática como "Inter"; aqui ela vem do
-     @fontsource-variable/inter, registrada como "Inter Variable" — pedir
-     "Inter" literal não casava com nada instalado e caía pro fallback
-     (system-ui/Segoe UI), uma tipografia bem diferente. */
-  font-family: "Inter Variable", system-ui, -apple-system, sans-serif;
+export const LoginGlobeHalo = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 50%;
+  }
+
+  &::before { width: 128%; height: 128%; }
+  &::after { width: 158%; height: 52%; }
+`;
+
+export const LoginHeadline = styled.h1`
   font-size: clamp(2rem, 4vw, 2.75rem);
-  /* GP II carrega só até o peso 700 (Google Fonts wght@400;500;600;700) — aqui a
-     fonte é variável e tem 800 de verdade, o que ficava visivelmente mais grosso
-     que o original. 700 é o que o GP II realmente renderiza. */
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.02em;
   color: #ffffff;
   margin: 0;
+  margin-top: 2.5rem;
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 `;
 
-export const LoginPanelTitleAccent = styled.span`
-  color: ${theme.colors.accent};
+export const LoginHeadlineAccent = styled.span`
+  color: #ffd9d9;
 `;
 
-export const LoginPanelTitleCursor = styled.span`
+export const LoginHeadlineCursor = styled.span`
   display: inline-block;
   width: 3px;
   height: 1em;
   margin-left: 2px;
   vertical-align: text-bottom;
-  background: ${theme.colors.accent};
+  background: #ffffff;
   animation: ${loginCursorBlink} 0.8s step-end infinite;
 `;
 
-export const LoginPanelSubtitle = styled.p`
+export const LoginTagline = styled.p`
+  max-width: 32rem;
   font-size: ${theme.fontSize.lg};
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.95);
-  line-height: 1.7;
+  color: ${theme.colors.mutedForeground};
+  line-height: 1.6;
   letter-spacing: 0.01em;
   margin: 0;
 `;
@@ -162,6 +131,23 @@ export const LoginRightPanel = styled.div`
   }
 `;
 
+export const LoginFormPanel = styled.div`
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: ${theme.spacing.md};
+  overflow: hidden;
+  background: ${theme.colors.background};
+  box-shadow: -6px 0 18px -8px rgba(0, 0, 0, 0.35);
+
+  @media (min-width: ${theme.breakpoints.sm}px) {
+    padding: ${theme.spacing.xl};
+  }
+`;
+
 export const LoginFormWrapper = styled.div`
   width: 100%;
   max-width: 28rem;
@@ -170,15 +156,9 @@ export const LoginFormWrapper = styled.div`
   gap: ${theme.spacing.xl};
   ${loginRevealStagger};
 
-  & > * {
-    width: 100%;
-  }
+  & > * { width: 100%; }
 `;
 
-/* ---------- Cabeçalho ---------- */
-
-/* Bloco único do header: logo grande + subtítulo no mesmo eixo, igual ao GP II —
-   sem título de página separado, o logo já ocupa esse lugar. */
 export const LoginHeaderBlock = styled.div`
   width: 100%;
   display: flex;
@@ -220,8 +200,6 @@ export const LoginFormSubtitle = styled.p`
   text-align: left;
 `;
 
-/* ---------- Formulário ---------- */
-
 export const LoginAuthForm = styled.form`
   display: flex;
   flex-direction: column;
@@ -247,17 +225,9 @@ export const LoginForgotLink = styled(Link)`
   text-decoration: none;
   cursor: pointer;
 
-  &:hover {
-    text-decoration: underline;
-  }
+  &:hover { text-decoration: underline; }
 `;
 
-/*
- * O Input deste projeto (shadcn mais novo) tem h-8 por padrão — bem menor que
- * o h-11 (2.75rem) do Input do GP II. Pra ficar no mesmo formato/altura,
- * fixamos aqui o que lá vem de graça do componente; o resto (padding-left só
- * pro ícone) é o mesmo wrapper do GP II.
- */
 export const LoginInputWrapper = styled.div`
   position: relative;
 
@@ -265,13 +235,17 @@ export const LoginInputWrapper = styled.div`
     height: 2.75rem;
     border-radius: ${theme.borderRadius.lg};
     padding-left: 2.5rem;
+    transition: border-color ${theme.transitions.fast}, box-shadow ${theme.transitions.fast};
+  }
+
+  &:focus-within input {
+    border-color: ${theme.colors.accent};
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.accent} 16%, transparent);
   }
 `;
 
 export const LoginInputWrapperWithRight = styled(LoginInputWrapper)`
-  & input {
-    padding-right: 2.5rem;
-  }
+  & input { padding-right: 2.5rem; }
 `;
 
 export const LoginIconWrapper = styled.span`
@@ -298,17 +272,9 @@ export const LoginTogglePasswordBtn = styled.button`
   color: ${theme.colors.mutedForeground};
   transition: color ${theme.transitions.fast};
 
-  &:hover {
-    color: ${theme.colors.foreground};
-  }
+  &:hover { color: ${theme.colors.foreground}; }
 `;
 
-/*
- * Mesmo botão do GP II: outline vermelho que vira preenchido no hover. O
- * Button daqui não tem variant "accent" (nem precisa — tudo abaixo é
- * !important), mas o size="lg" dele é h-9 (36px) contra o h-11 (44px) do
- * GP II, então a altura vem fixa aqui pra bater com a altura dos inputs.
- */
 export const LoginSubmitButton = styled(Button)`
   width: 100%;
   height: 2.75rem;
@@ -335,10 +301,6 @@ export const LoginErrorMessage = styled.p`
   text-align: center;
 `;
 
-/** O par do `LoginErrorMessage`, para confirmação — usado pelo "enviamos o
- *  link" da recuperação de senha. Mesma estrutura, tom de sucesso: as duas
- *  ocupam o mesmo lugar na tela e precisam ter o mesmo peso visual, mudando
- *  só a cor. */
 export const LoginSuccessMessage = styled.p`
   font-size: 0.85rem;
   color: ${theme.colors.success};
@@ -350,4 +312,3 @@ export const LoginSuccessMessage = styled.p`
   text-align: center;
   line-height: 1.5;
 `;
-
