@@ -116,3 +116,30 @@ export const HeaderActions = styled.div`
   flex-wrap: wrap;
   gap: ${theme.spacing.sm};
 `;
+
+/* ------------------------------------------------------------------ */
+/* Senha de primeiro acesso (§10)                                      */
+/* ------------------------------------------------------------------ */
+
+export const SenhaProvisoriaCaixa = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  border: 1px dashed ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.muted};
+`;
+
+/** Monoespaçada e espaçada: esta senha vai ser LIDA e digitada à mão — em
+ *  fonte proporcional, `O` e `0` (que o gerador já evita) e `rn`/`m` viram
+ *  fonte de erro na hora de repassar. */
+export const SenhaProvisoriaValor = styled.code`
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: ${theme.fontSize.lg};
+  font-weight: ${theme.fontWeight.medium};
+  letter-spacing: 0.08em;
+  color: ${theme.colors.foreground};
+  user-select: all;
+`;
