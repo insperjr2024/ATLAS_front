@@ -5,7 +5,7 @@ import { rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, Gauge, ClipboardList, Calendar, CalendarCog, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarContainer,
@@ -106,6 +106,13 @@ const navItems: NavItemConfig[] = [
     section: "admin",
     prefixo: true,
     visiblePorPosicao: (u) => u.posicao === "diretor" || u.posicao === "gerente",
+  },
+  {
+    icon: CalendarCog,
+    label: "Calendários base",
+    path: "/calendarios-base",
+    section: "admin",
+    visiblePorPosicao: (u) => u.posicao === "diretor",
   },
   {
     icon: Settings,
