@@ -839,6 +839,88 @@ export const NotaRodape = styled.p`
    projetos é muito ou pouco depende de quantos os colegas carregam. Por isso
    a coluna vira barra, medida contra o maior da tabela. */
 
+/* ─── Card "com demanda alta" (§7.3) ──────────────────────────────────────
+   Duas colunas lado a lado — coordenadores e consultores — porque as escalas
+   são diferentes por papel e comparar um com o outro não faz sentido. Em tela
+   estreita empilha. */
+
+export const DemandaAltaGrupo = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: ${theme.spacing.lg};
+
+  @media (min-width: ${theme.breakpoints.md}px) {
+    grid-template-columns: 1fr 1fr;
+  }
+`;
+
+export const DemandaAltaTitulo = styled.h3`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: ${theme.colors.mutedForeground};
+
+  /* Uma linha fina puxando o título até a borda da coluna: separa os dois
+     papéis sem precisar de moldura, que engordaria o card. */
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: ${theme.colors.border};
+  }
+`;
+
+export const DemandaAltaLista = styled.ul`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+  margin: 0;
+  padding: 0;
+  list-style: none;
+`;
+
+export const DemandaAltaPessoa = styled.li`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
+  padding: 0.4rem 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.muted};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+
+  /* O nome pode ser longo e não pode empurrar a contagem para fora: ele
+     encolhe e trunca, a contagem nunca. */
+  strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: ${theme.fontWeight.medium};
+  }
+`;
+
+/** Os projetos da pessoa, listados abaixo do nome dela no card.
+ *
+ *  Saber QUAIS projetos é o que torna o card acionável: "Ana está com 4"
+ *  sozinho não diz de onde tirar carga. */
+export const DemandaAltaProjetos = styled.span`
+  display: block;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.normal};
+  color: ${theme.colors.mutedForeground};
+`;
+
 export const ChipsProjetos = styled.div`
   display: flex;
   flex-wrap: wrap;

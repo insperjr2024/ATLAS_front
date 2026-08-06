@@ -20,6 +20,11 @@ import {
   ChipProjeto,
   ChipsProjetos,
   DataTable,
+  DemandaAltaGrupo,
+  DemandaAltaLista,
+  DemandaAltaPessoa,
+  DemandaAltaProjetos,
+  DemandaAltaTitulo,
   Pilula,
   SemDado,
   TabelaRolagem,
@@ -71,10 +76,13 @@ export function AlocacaoAba() {
 
   if (carregando || !dados) return <PageLoadingBlock />;
 
+  const { demanda_alta } = dados;
+  const total = demanda_alta.coordenadores.length + demanda_alta.consultores.length;
+
   return (
     <PageStack>
       <TabelaCarga
-        titulo="Coordenadores (o gargalo)"
+        titulo="Coordenadores"
         linhas={dados.coordenadores}
         vazio="Nenhum coordenador na sua visão."
       />
@@ -86,7 +94,65 @@ export function AlocacaoAba() {
       {!dados.grade_horaria_disponivel && (
         <EmptyText>Carga medida em projetos ativos — grade horária ainda não disponível.</EmptyText>
       )}
+
+      {/* Fecha a aba porque é a conclusão dela: as tabelas acima ordenam do
+          menos carregado para o mais, então quem está sobrecarregado cai no
+          fim das duas. Este card é onde ele aparece junto — sem isso, inverter
+          a ordem das tabelas teria escondido o gargalo do §7.3. */}
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>
+            Consultores e coordenadores com demanda alta{total > 0 && ` (${total})`}
+          </PageCardTitle>
+        </PageCardHeader>
+        <PageCardContent>
+          {total === 0 ? (
+            <EmptyText>Ninguém na faixa mais alta da escala.</EmptyText>
+          ) : (
+            <DemandaAltaGrupo>
+              <ColunaDemandaAlta papel="Consultores" linhas={demanda_alta.consultores} />
+              <ColunaDemandaAlta papel="Coordenadores" linhas={demanda_alta.coordenadores} />
+            </DemandaAltaGrupo>
+          )}
+        </PageCardContent>
+      </PageCard>
     </PageStack>
+  );
+}
+
+/** Uma coluna do card: o papel, e quem dele caiu na faixa mais alta.
+ *
+ *  Quem entra na lista é decisão do backend (`demanda_alta`), tomada pela
+ *  POSIÇÃO da faixa na escala — não pelo nome nem pela cor, que a diretoria
+ *  edita à vontade. Se a tela procurasse por "Carga alta" ou por vermelho, uma
+ *  renomeada esvaziaria o card sem ninguém perceber. */
+function ColunaDemandaAlta({ papel, linhas }: { papel: string; linhas: LinhaCarga[] }) {
+  return (
+    <div>
+      <DemandaAltaTitulo>{papel}</DemandaAltaTitulo>
+      {linhas.length === 0 ? (
+        <EmptyText>Ninguém com demanda alta.</EmptyText>
+      ) : (
+        <DemandaAltaLista>
+          {linhas.map((linha) => (
+            <DemandaAltaPessoa key={linha.usuario_id}>
+              <strong>
+                {linha.nome}
+                {linha.projetos.length > 0 && (
+                  <DemandaAltaProjetos>{linha.projetos.join(", ")}</DemandaAltaProjetos>
+                )}
+              </strong>
+              {/* A pílula usa a cor que a diretoria deu à faixa. Se ela pintou
+                  de verde, fica verde: quem manda na cor é a configuração, e
+                  não a tela decidir que estar no topo é ruim. */}
+              <Pilula $tom={linha.situacao?.tom ?? "neutro"}>
+                {linha.total} {linha.total === 1 ? "projeto" : "projetos"}
+              </Pilula>
+            </DemandaAltaPessoa>
+          ))}
+        </DemandaAltaLista>
+      )}
+    </div>
   );
 }
 
@@ -136,7 +202,7 @@ function TabelaCarga({
                         <BarraCargaTrilho aria-hidden="true">
                           <BarraCargaPreenchida
                             $pct={(linha.total / maiorCarga) * 100}
-                            $alta={linha.carga_alta}
+                            $alta={linha.demanda_alta}
                           />
                         </BarraCargaTrilho>
                       </BarraCarga>
@@ -153,12 +219,13 @@ function TabelaCarga({
                       )}
                     </TableCell>
                     <TableCell>
-                      {linha.carga_alta ? (
-                        <Pilula $tom="alerta">carga alta</Pilula>
-                      ) : linha.disponivel ? (
-                        <Pilula $tom="ok">disponível</Pilula>
+                      {/* Nome e cor vêm da escala que a diretoria definiu em
+                          Configurações — a tela não decide o que é "carga
+                          alta". */}
+                      {linha.situacao ? (
+                        <Pilula $tom={linha.situacao.tom}>{linha.situacao.nome}</Pilula>
                       ) : (
-                        <Pilula $tom="neutro">alocado</Pilula>
+                        <SemDado>—</SemDado>
                       )}
                     </TableCell>
                   </TableRow>

@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { TomSituacao } from "@/lib/situacoes-carga";
 
 /* Os tipos espelham `use_cases/monitoramento/monitoramento.py`. */
 
@@ -118,13 +119,33 @@ export interface LinhaCarga {
   posicao: string;
   total: number;
   projetos: string[];
-  carga_alta: boolean;
-  disponivel: boolean;
+  /** A situação resolvida pela escala do papel (§7.3), definida pela diretoria
+   *  em Configurações. Vem pronta do backend porque a regra é dele — a tela
+   *  reimplementá-la seria convite para divergirem.
+   *
+   *  `null` quando o total fica abaixo do menor mínimo da escala — a diretoria
+   *  pode subir o mínimo da primeira faixa para deixar os menos carregados sem
+   *  rótulo. A tela mostra um travessão. */
+  situacao: { nome: string; tom: TomSituacao } | null;
+  /** A pessoa caiu na faixa mais alta do seu papel.
+   *
+   *  Quem decide é o backend, pela POSIÇÃO da faixa na escala — não pelo nome
+   *  nem pela cor, que são livres. Sem isso, a tela teria de procurar por
+   *  `tom === "alerta"` ou pelo nome "Carga alta", e trocar a cor de uma faixa
+   *  esvaziaria o destaque em silêncio. */
+  demanda_alta: boolean;
 }
 
 export interface Alocacao {
   coordenadores: LinhaCarga[];
   consultores: LinhaCarga[];
+  /** Quem caiu na faixa mais alta do seu papel, já filtrado pelo backend.
+   *  É o que devolve a leitura de "quem é o gargalo" (§7.3), perdida quando as
+   *  duas tabelas passaram a ordenar do menos carregado para o mais. */
+  demanda_alta: {
+    coordenadores: LinhaCarga[];
+    consultores: LinhaCarga[];
+  };
   grade_horaria_disponivel: boolean;
 }
 
