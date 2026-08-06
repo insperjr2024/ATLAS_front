@@ -31,3 +31,10 @@ export function redefinirSenha(token: string, novaSenha: string) {
     body: JSON.stringify({ token, nova_senha: novaSenha }),
   });
 }
+
+/** Primeiros nomes dos membros ativos — só decoração da tela de login (o
+ *  globo), nada de e-mail/cargo/posição. Pública pelo mesmo motivo das
+ *  duas de cima: a tela de login não tem token nenhum ainda. */
+export function getPrimeirosNomes() {
+  return apiFetch<string[]>("/auth/membros-nomes");
+}

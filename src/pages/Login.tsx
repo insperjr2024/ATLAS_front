@@ -2,24 +2,21 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { getPrimeirosNomes } from "@/lib/auth";
+import { MembersGlobe } from "@/components/MembersGlobe";
 import insperJrLogo from "@/assets/insperjr2.png";
-import equipeJrImg from "@/assets/EquipeJr2026.png";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import {
   AuthPageWrapper,
   LoginLeftPanel,
-  LoginPanelImage,
-  LoginPanelOverlay,
-  LoginPanelContent,
-  LoginPanelTextContainer,
-  LoginPanelTitleBlock,
-  LoginPanelTitle,
-  LoginPanelTitleAccent,
-  LoginPanelTitleCursor,
-  LoginPanelSubtitle,
-  LoginRightPanel,
+  LoginLeftPanelContent,
+  LoginGlobeHalo,
+  LoginHeadline,
+  LoginHeadlineAccent,
+  LoginHeadlineCursor,
+  LoginFormPanel,
   LoginFormWrapper,
   LoginHeaderBlock,
   LoginFormLogoWrap,
@@ -37,7 +34,7 @@ import {
   LoginErrorMessage,
 } from "./Auth.styled";
 
-const TITULO_BOAS_VINDAS = "Bem-vindo à Insper Jr";
+const TITULO_BOAS_VINDAS = "Bem-vindo ao ATLAS";
 const INICIO_DESTAQUE = "Bem-vindo à ".length;
 const VELOCIDADE_DIGITACAO_MS = 80;
 
@@ -48,6 +45,7 @@ export function Login() {
   const [carregando, setCarregando] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [tamanhoDigitado, setTamanhoDigitado] = useState(0);
+  const [nomes, setNomes] = useState<string[]>([]);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -59,13 +57,18 @@ export function Login() {
     return () => clearTimeout(t);
   }, [tamanhoDigitado, digitacaoCompleta]);
 
+  useEffect(() => {
+    getPrimeirosNomes()
+      .then(setNomes)
+      .catch(() => setNomes([]));
+  }, []);
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setErro("");
     setCarregando(true);
     try {
       await login(email, senha);
-      // 🏠 A primeira tela depois do login é /projetos, não o desempenho pessoal.
       navigate("/projetos");
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao fazer login");
@@ -77,30 +80,23 @@ export function Login() {
   return (
     <AuthPageWrapper>
       <LoginLeftPanel>
-        <LoginPanelImage src={equipeJrImg} alt="Equipe Insper Jr." />
-        <LoginPanelOverlay />
-        <LoginPanelContent>
-          <LoginPanelTextContainer>
-            <LoginPanelTitleBlock>
-              <LoginPanelTitle>
-                {TITULO_BOAS_VINDAS.slice(0, Math.min(tamanhoDigitado, INICIO_DESTAQUE))}
-                {tamanhoDigitado > INICIO_DESTAQUE && (
-                  <LoginPanelTitleAccent>
-                    {TITULO_BOAS_VINDAS.slice(INICIO_DESTAQUE, tamanhoDigitado)}
-                  </LoginPanelTitleAccent>
-                )}
-                {!digitacaoCompleta && <LoginPanelTitleCursor aria-hidden />}
-              </LoginPanelTitle>
-              <LoginPanelSubtitle>
-                A Insper Jr é uma das maiores empresas juniores do país, com diversas frentes de
-                atuação, englobando alunos de todos os cursos de faculdade.
-              </LoginPanelSubtitle>
-            </LoginPanelTitleBlock>
-          </LoginPanelTextContainer>
-        </LoginPanelContent>
+        <LoginLeftPanelContent>
+          <LoginGlobeHalo>
+            <MembersGlobe nomes={nomes} />
+          </LoginGlobeHalo>
+          <LoginHeadline>
+            {TITULO_BOAS_VINDAS.slice(0, Math.min(tamanhoDigitado, INICIO_DESTAQUE))}
+            {tamanhoDigitado > INICIO_DESTAQUE && (
+              <LoginHeadlineAccent>
+                {TITULO_BOAS_VINDAS.slice(INICIO_DESTAQUE, tamanhoDigitado)}
+              </LoginHeadlineAccent>
+            )}
+            {!digitacaoCompleta && <LoginHeadlineCursor aria-hidden />}
+          </LoginHeadline>
+        </LoginLeftPanelContent>
       </LoginLeftPanel>
 
-      <LoginRightPanel>
+      <LoginFormPanel>
         <LoginFormWrapper>
           <LoginHeaderBlock>
             <LoginFormLogoWrap>
@@ -172,7 +168,7 @@ export function Login() {
             </LoginSubmitButton>
           </LoginAuthForm>
         </LoginFormWrapper>
-      </LoginRightPanel>
+      </LoginFormPanel>
     </AuthPageWrapper>
   );
 }
