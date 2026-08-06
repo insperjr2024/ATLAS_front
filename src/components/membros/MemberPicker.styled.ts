@@ -48,6 +48,12 @@ export const ChipRemove = styled.button`
   }
 `;
 
+export const FiltroFrentesRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm} ${theme.spacing.md};
+`;
+
 export const AddRow = styled.div`
   display: flex;
   flex-wrap: wrap;

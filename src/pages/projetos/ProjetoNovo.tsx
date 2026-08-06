@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { createProjeto, uploadAnexoProposta } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
+import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import { getEscopos } from "@/lib/escopos";
 import {
   MemberPicker,
@@ -18,7 +19,7 @@ import {
   validarEscopos,
   type EscopoEmEdicao,
 } from "@/components/escopos/EscopoPicker";
-import type { UsuarioResumo } from "@/types/auth";
+import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { Escopo, Frente } from "@/types/banca";
 import {
   PageStack,
@@ -78,6 +79,7 @@ export function ProjetoNovo() {
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [catalogo, setCatalogo] = useState<Escopo[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
+  const [usuariosFrentes, setUsuariosFrentes] = useState<UsuarioFrente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState("");
 
@@ -105,16 +107,18 @@ export function ProjetoNovo() {
     setCarregando(true);
     setErroCarga("");
     try {
-      const [frentesResp, usuariosResp, catalogoResp] = await Promise.all([
+      const [frentesResp, usuariosResp, catalogoResp, usuariosFrentesResp] = await Promise.all([
         getFrentes(token),
         getUsuarios(token),
         getEscopos(token),
+        getUsuariosFrentes(token),
       ]);
       setFrentes(frentesResp);
       setCatalogo(catalogoResp.filter((e) => e.ativo));
       setUsuarios(
         usuariosResp.filter((u) => u.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
       );
+      setUsuariosFrentes(usuariosFrentesResp);
     } catch (err) {
       setErroCarga(err instanceof Error ? err.message : "Erro ao carregar o formulário");
     } finally {
@@ -348,6 +352,9 @@ export function ProjetoNovo() {
                 valor={equipe}
                 onChange={setEquipe}
                 desabilitado={salvando}
+                usuariosFrentes={usuariosFrentes}
+                frentes={frentes}
+                frenteIdsProjeto={frenteIds}
               />
 
               <FieldGroup>
