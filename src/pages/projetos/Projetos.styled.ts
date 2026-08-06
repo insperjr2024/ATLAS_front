@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import type { TonsColuna } from "@/lib/colunas-tarefa";
@@ -747,17 +747,38 @@ export const HistoricoLinhas = styled.div`
   overflow: hidden;
 `;
 
-export const HistoricoLinha = styled.div`
+const realce = keyframes`
+  0%, 100% { background: transparent; }
+  25%, 75% { background: color-mix(in srgb, ${theme.colors.primary} 12%, transparent); }
+`;
+
+export const HistoricoLinha = styled.div<{ $destaque?: boolean; $realcado?: boolean }>`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: ${theme.spacing.md};
   padding: ${theme.spacing.md} ${theme.spacing.lg};
+  /* Espaço pro scroll não esconder a linha embaixo de nada quando a gente
+     pula direto pra ela vindo de "Justificar atraso" (§7.4/§5.6). */
+  scroll-margin-top: 2rem;
 
   & + & {
     border-top: 1px solid ${theme.colors.border};
   }
+
+  ${({ $destaque }) =>
+    $destaque &&
+    css`
+      background: color-mix(in srgb, ${theme.colors.mutedForeground} 4%, transparent);
+      border-left: 3px solid color-mix(in srgb, ${theme.colors.destructive} 45%, transparent);
+    `}
+
+  ${({ $realcado }) =>
+    $realcado &&
+    css`
+      animation: ${realce} 1.8s ease-in-out;
+    `}
 `;
 
 export const HistoricoLinhaTransicao = styled.div`
@@ -785,6 +806,78 @@ export const HistoricoAutorChip = styled.span`
   background: ${theme.colors.secondary};
   color: ${theme.colors.foreground};
   font-weight: ${theme.fontWeight.medium};
+`;
+
+/** §7.4 — a linha de nota de atraso ocupa a largura toda: é texto livre da
+ *  diretoria, não cabe ao lado de uma pílula de status como a transição. */
+export const HistoricoNotaLinha = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  width: 100%;
+`;
+
+export const HistoricoNotaCabecalho = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+export const HistoricoNotaTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: ${theme.borderRadius.full};
+  background: color-mix(in srgb, ${theme.colors.destructive} 14%, transparent);
+  color: ${theme.colors.destructive};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+`;
+
+/** O nome do escopo, texto corrido. Pro TIPO do motivo (banca/entrega), ver
+ *  `HistoricoNotaMotivoTag` — mesma linguagem visual do `MotivoTag` da aba
+ *  Atrasos, pra a nota no histórico parecer a mesma coisa que gerou ela. */
+export const HistoricoNotaMotivo = styled.span`
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const HistoricoNotaMotivoTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: ${theme.borderRadius.md};
+  background: color-mix(in srgb, ${theme.colors.foreground} 8%, transparent);
+  color: ${theme.colors.foreground};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
+
+export const HistoricoNotaTexto = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.5;
+  color: ${theme.colors.foreground};
+  white-space: pre-wrap;
+`;
+
+/** Excluir uma nota (§7.4/§5.6) — não é edição de rotina, então fica discreto
+ *  e vermelho, só pra quem tem a permissão (a mesma trava de quem registra). */
+export const HistoricoExcluirBtn = styled.button`
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.destructive};
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
 `;
 
 /** Os botões do cabeçalho da aba de tarefas, lado a lado. */

@@ -116,12 +116,44 @@ export interface ProjetoCompleto extends ProjetoResumo {
  * mudou sozinho (o kickoff, por exemplo), não uma pessoa clicando.
  */
 export interface StatusHistorico {
+  tipo: "status";
   id: number;
   status_anterior: StatusProjeto | null;
   status_novo: StatusProjeto;
   alterado_por: number | null;
   alterado_em: string;
 }
+
+/**
+ * A nota de atraso da diretoria (§7.4) — `projeto_justificativa_atraso`, na
+ * mesma linha do tempo do histórico de status. `alterado_em` aqui é quando a
+ * nota foi registrada, não uma "mudança" — o nome é o mesmo do status pra dar
+ * uma chave só pra ordenar/agrupar por dia.
+ */
+export interface JustificativaAtrasoHistorico {
+  tipo: "justificativa_atraso";
+  id: number;
+  projeto_escopo_id: number | null;
+  /** "banca" | "entrega_interna" | "entrega_externa" | null (nota geral). */
+  motivo_tipo: string | null;
+  texto: string;
+  registrado_por: number;
+  alterado_em: string;
+}
+
+/** A remarcação de uma banca já vencida (§5.6) — `projeto_remarcacao_banca`. */
+export interface RemarcacaoBancaHistorico {
+  tipo: "remarcacao_banca";
+  id: number;
+  projeto_escopo_id: number | null;
+  data_anterior: string;
+  data_nova: string;
+  justificativa: string;
+  registrado_por: number;
+  alterado_em: string;
+}
+
+export type HistoricoEntrada = StatusHistorico | JustificativaAtrasoHistorico | RemarcacaoBancaHistorico;
 
 /** O que o formulário de equipe manda de volta — sem `entrou_em`, que é do backend. */
 export interface MembroEquipePayload {

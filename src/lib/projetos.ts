@@ -2,10 +2,10 @@ import { apiFetch } from "@/lib/api";
 import { API_URL } from "@/config/config";
 import type {
   EscopoVendido,
+  HistoricoEntrada,
   MembroEquipePayload,
   ProjetoCompleto,
   ProjetoResumo,
-  StatusHistorico,
   StatusProjeto,
 } from "@/types/projeto";
 
@@ -162,7 +162,42 @@ export function updateDiaReuniaoPadrao(projetoId: number, diaReuniaoPadrao: numb
 }
 
 export function getHistoricoProjeto(projetoId: number, token: string) {
-  return apiFetch<StatusHistorico[]>(`/projetos/${projetoId}/historico`, { token });
+  return apiFetch<HistoricoEntrada[]>(`/projetos/${projetoId}/historico`, { token });
+}
+
+/** §7.4 — só a diretoria; o backend recusa com 403 quem não for. */
+export function registrarJustificativaAtraso(
+  projetoId: number,
+  texto: string,
+  token: string,
+  projetoEscopoId?: number,
+  motivoTipo?: string,
+) {
+  return apiFetch<HistoricoEntrada>(`/projetos/${projetoId}/justificativa-atraso`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({
+      texto,
+      projeto_escopo_id: projetoEscopoId ?? null,
+      motivo_tipo: motivoTipo ?? null,
+    }),
+  });
+}
+
+/** §7.4 — não é edição de rotina, é pra corrigir engano/teste. Só diretoria. */
+export function excluirJustificativaAtraso(projetoId: number, justificativaId: number, token: string) {
+  return apiFetch<null>(`/projetos/${projetoId}/justificativa-atraso/${justificativaId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+/** §5.6 — mesma lógica da justificativa de atraso acima. Só diretoria. */
+export function excluirRemarcacaoBanca(projetoId: number, remarcacaoId: number, token: string) {
+  return apiFetch<null>(`/projetos/${projetoId}/remarcacao-banca/${remarcacaoId}`, {
+    method: "DELETE",
+    token,
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -241,6 +276,15 @@ export const ROTULO_STATUS_ESCOPO: Record<string, string> = {
   em_andamento: "Em andamento",
   entregue: "Entregue",
   cancelado: "Cancelado",
+};
+
+/** §7.4 — o `tipo` de `MotivoAtraso`, usado tanto na aba Atrasos quanto no
+ *  histórico do projeto (pra mostrar a que motivo uma justificativa se
+ *  refere). Um só lugar pras duas telas não divergirem no rótulo. */
+export const ROTULO_MOTIVO_ATRASO: Record<string, string> = {
+  banca: "Banca",
+  entrega_interna: "Entrega",
+  entrega_externa: "Agenda do cliente",
 };
 
 /* ------------------------------------------------------------------ */

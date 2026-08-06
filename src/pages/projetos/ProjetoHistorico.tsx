@@ -1,8 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { CORES_STATUS, formatarDataHora, getHistoricoProjeto, ROTULO_STATUS } from "@/lib/projetos";
+import { pode } from "@/utils/permissoes";
+import {
+  CORES_STATUS,
+  excluirJustificativaAtraso,
+  excluirRemarcacaoBanca,
+  formatarDataHora,
+  getHistoricoProjeto,
+  ROTULO_MOTIVO_ATRASO,
+  ROTULO_STATUS,
+} from "@/lib/projetos";
 import { tonsDaColuna } from "@/lib/colunas-tarefa";
-import type { StatusHistorico } from "@/types/projeto";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
+import type {
+  HistoricoEntrada,
+  JustificativaAtrasoHistorico,
+  RemarcacaoBancaHistorico,
+  StatusHistorico,
+} from "@/types/projeto";
 import type { StatusProjeto } from "@/types/projeto";
 import {
   PageStack,
@@ -22,6 +38,7 @@ import {
   FieldInput,
   HistoricoAutorChip,
   HistoricoDiaGrupo,
+  HistoricoExcluirBtn,
   HistoricoDiaTitulo,
   HistoricoFiltroGrupo,
   HistoricoFiltroLabel,
@@ -34,6 +51,12 @@ import {
   HistoricoLinhas,
   HistoricoLinhaMeta,
   HistoricoLinhaTransicao,
+  HistoricoNotaCabecalho,
+  HistoricoNotaLinha,
+  HistoricoNotaMotivo,
+  HistoricoNotaMotivoTag,
+  HistoricoNotaTag,
+  HistoricoNotaTexto,
   HistoricoResumoBarraFill,
   HistoricoResumoBarraTrilha,
   HistoricoResumoCabecalho,
@@ -61,16 +84,50 @@ function chaveDia(iso: string): string {
   return iso.slice(0, 10);
 }
 
+function ehStatus(h: HistoricoEntrada): h is StatusHistorico {
+  return h.tipo === "status";
+}
+
+/** Quem registrou a linha, seja transição de status ou nota de atraso. */
+function autorDe(h: HistoricoEntrada): number | null {
+  return ehStatus(h) ? h.alterado_por : h.registrado_por;
+}
+
 /**
- * Por enquanto só o histórico de status. Reajustes de cronograma e
- * remarcações de banca entram aqui na F11, na mesma linha do tempo.
+ * Status (F4) e justificativa de atraso (§7.4) na mesma linha do tempo.
+ * Reajustes de cronograma e remarcações de banca entram aqui na F11.
  */
 export function ProjetoHistorico() {
   const { projeto, usuarios } = useProjeto();
-  const { token } = useAuth();
-  const [historico, setHistorico] = useState<StatusHistorico[]>([]);
+  const { token, usuario } = useAuth();
+  const location = useLocation();
+  const [historico, setHistorico] = useState<HistoricoEntrada[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  // Mesma trava de quem registra (§7.4/§5.6) — não é edição de rotina, é
+  // pra corrigir engano/teste.
+  const podeExcluir = pode(usuario, "registrar_justificativa_atraso");
+  const [excluindo, setExcluindo] = useState<
+    JustificativaAtrasoHistorico | RemarcacaoBancaHistorico | null
+  >(null);
+
+  // Quem acabou de justificar um atraso (ou remarcar uma banca) chega aqui
+  // via `#justificativa-7`/`#remarcacao-3` — sem isso a pessoa caía no topo
+  // da lista inteira e tinha que procurar a nota que acabou de escrever.
+  const [realcado, setRealcado] = useState<string | null>(null);
+  const jaRolouRef = useRef(false);
+  useEffect(() => {
+    if (carregando || jaRolouRef.current) return;
+    const alvo = location.hash.replace("#", "");
+    if (!alvo) return;
+    jaRolouRef.current = true;
+    const elemento = document.getElementById(alvo);
+    if (!elemento) return;
+    elemento.scrollIntoView({ behavior: "smooth", block: "center" });
+    setRealcado(alvo);
+    const t = setTimeout(() => setRealcado(null), 1800);
+    return () => clearTimeout(t);
+  }, [carregando, location.hash]);
 
   const [statusFiltro, setStatusFiltro] = useState<Set<StatusProjeto>>(new Set());
   const [autorFiltro, setAutorFiltro] = useState("");
@@ -90,6 +147,19 @@ export function ProjetoHistorico() {
     }
   }
 
+  async function excluir(linha: JustificativaAtrasoHistorico | RemarcacaoBancaHistorico) {
+    if (!token) return;
+    if (linha.tipo === "justificativa_atraso") {
+      await excluirJustificativaAtraso(projeto.id, linha.id, token);
+    } else {
+      await excluirRemarcacaoBanca(projeto.id, linha.id, token);
+    }
+    // No sucesso quem chamou desmonta o ConfirmarModal (ver o próprio
+    // componente) — precisa fechar aqui antes de recarregar.
+    setExcluindo(null);
+    await carregar();
+  }
+
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,9 +171,11 @@ export function ProjetoHistorico() {
   // distância até a PRÓXIMA linha (ou até agora, pra quem está vigente).
   // Soma por status pra dar conta de quem visitou a mesma etapa mais de
   // uma vez (voltou e avançou de novo).
+  const historicoStatus = useMemo(() => historico.filter(ehStatus), [historico]);
+
   const resumoPorStatus = useMemo(() => {
-    if (historico.length === 0) return [];
-    const ascendente = [...historico].sort((a, b) => a.alterado_em.localeCompare(b.alterado_em));
+    if (historicoStatus.length === 0) return [];
+    const ascendente = [...historicoStatus].sort((a, b) => a.alterado_em.localeCompare(b.alterado_em));
     const duracoes = new Map<StatusProjeto, number>();
     for (let i = 0; i < ascendente.length; i++) {
       const inicio = new Date(ascendente[i].alterado_em).getTime();
@@ -116,21 +188,21 @@ export function ProjetoHistorico() {
     return [...duracoes.entries()]
       .map(([status, ms]) => ({ status, ms, percent: (ms / total) * 100 }))
       .sort((a, b) => b.ms - a.ms);
-  }, [historico]);
+  }, [historicoStatus]);
 
   const statusPresentes = useMemo(
-    () => [...new Set(historico.map((h) => h.status_novo))].sort(
+    () => [...new Set(historicoStatus.map((h) => h.status_novo))].sort(
       (a, b) => (resumoPorStatus.find((r) => r.status === a)?.ms ?? 0) < (resumoPorStatus.find((r) => r.status === b)?.ms ?? 0) ? 1 : -1,
     ),
-    [historico, resumoPorStatus],
+    [historicoStatus, resumoPorStatus],
   );
 
   const autoresPresentes = useMemo(() => {
-    const ids = [...new Set(historico.map((h) => h.alterado_por).filter((id): id is number => id !== null))];
+    const ids = [...new Set(historico.map(autorDe).filter((id): id is number => id !== null))];
     return ids.sort((a, b) => nomeUsuario(a).localeCompare(nomeUsuario(b), "pt-BR"));
   }, [historico, usuarios]);
 
-  const temAutomatico = historico.some((h) => h.alterado_por === null);
+  const temAutomatico = historicoStatus.some((h) => h.alterado_por === null);
 
   function alternarStatusFiltro(status: StatusProjeto) {
     setStatusFiltro((atual) => {
@@ -152,9 +224,13 @@ export function ProjetoHistorico() {
 
   const historicoFiltrado = useMemo(() => {
     return historico.filter((linha) => {
-      if (statusFiltro.size > 0 && !statusFiltro.has(linha.status_novo)) return false;
-      if (autorFiltro === "automatico" && linha.alterado_por !== null) return false;
-      if (autorFiltro && autorFiltro !== "automatico" && String(linha.alterado_por) !== autorFiltro) return false;
+      // O filtro de status pinta as PÍLULAS de transição — uma nota de
+      // atraso não tem status, então fica de fora só se o usuário estiver
+      // filtrando por status (senão ela sempre aparece).
+      if (statusFiltro.size > 0 && (!ehStatus(linha) || !statusFiltro.has(linha.status_novo))) return false;
+      const autor = autorDe(linha);
+      if (autorFiltro === "automatico" && autor !== null) return false;
+      if (autorFiltro && autorFiltro !== "automatico" && String(autor) !== autorFiltro) return false;
       const dia = chaveDia(linha.alterado_em);
       if (dataInicio && dia < dataInicio) return false;
       if (dataFim && dia > dataFim) return false;
@@ -164,7 +240,7 @@ export function ProjetoHistorico() {
 
   const gruposPorDia = useMemo(() => {
     const ordenado = [...historicoFiltrado].sort((a, b) => b.alterado_em.localeCompare(a.alterado_em));
-    const grupos = new Map<string, StatusHistorico[]>();
+    const grupos = new Map<string, HistoricoEntrada[]>();
     for (const linha of ordenado) {
       const chave = chaveDia(linha.alterado_em);
       const lista = grupos.get(chave) ?? [];
@@ -305,9 +381,77 @@ export function ProjetoHistorico() {
                 <HistoricoDiaTitulo>{rotuloDia(linhas[0].alterado_em)}</HistoricoDiaTitulo>
                 <HistoricoLinhas>
                   {linhas.map((linha) => {
+                    if (linha.tipo === "justificativa_atraso") {
+                      const escopo = projeto.escopos.find((e) => e.id === linha.projeto_escopo_id);
+                      const idAncora = `justificativa-${linha.id}`;
+                      return (
+                        <HistoricoLinha
+                          key={idAncora}
+                          id={idAncora}
+                          $destaque
+                          $realcado={realcado === idAncora}
+                        >
+                          <HistoricoNotaLinha>
+                            <HistoricoNotaCabecalho>
+                              <HistoricoNotaTag>Justificativa de Atraso</HistoricoNotaTag>
+                              {linha.motivo_tipo && (
+                                <HistoricoNotaMotivoTag>
+                                  {ROTULO_MOTIVO_ATRASO[linha.motivo_tipo] ?? linha.motivo_tipo}
+                                </HistoricoNotaMotivoTag>
+                              )}
+                              {escopo && <HistoricoNotaMotivo>{escopo.nome}</HistoricoNotaMotivo>}
+                            </HistoricoNotaCabecalho>
+                            <HistoricoNotaTexto>{linha.texto}</HistoricoNotaTexto>
+                          </HistoricoNotaLinha>
+                          <HistoricoLinhaMeta>
+                            <HistoricoAutorChip>{nomeUsuario(linha.registrado_por)}</HistoricoAutorChip>
+                            <span>{formatarDataHora(linha.alterado_em)}</span>
+                            {podeExcluir && (
+                              <HistoricoExcluirBtn type="button" onClick={() => setExcluindo(linha)}>
+                                Excluir
+                              </HistoricoExcluirBtn>
+                            )}
+                          </HistoricoLinhaMeta>
+                        </HistoricoLinha>
+                      );
+                    }
+
+                    if (linha.tipo === "remarcacao_banca") {
+                      const escopo = projeto.escopos.find((e) => e.id === linha.projeto_escopo_id);
+                      const idAncora = `remarcacao-${linha.id}`;
+                      return (
+                        <HistoricoLinha
+                          key={idAncora}
+                          id={idAncora}
+                          $destaque
+                          $realcado={realcado === idAncora}
+                        >
+                          <HistoricoNotaLinha>
+                            <HistoricoNotaCabecalho>
+                              <HistoricoNotaTag>Remarcação de Banca</HistoricoNotaTag>
+                              {escopo && <HistoricoNotaMotivo>{escopo.nome}</HistoricoNotaMotivo>}
+                              <HistoricoNotaMotivo>
+                                {formatarDataHora(linha.data_anterior)} → {formatarDataHora(linha.data_nova)}
+                              </HistoricoNotaMotivo>
+                            </HistoricoNotaCabecalho>
+                            <HistoricoNotaTexto>{linha.justificativa}</HistoricoNotaTexto>
+                          </HistoricoNotaLinha>
+                          <HistoricoLinhaMeta>
+                            <HistoricoAutorChip>{nomeUsuario(linha.registrado_por)}</HistoricoAutorChip>
+                            <span>{formatarDataHora(linha.alterado_em)}</span>
+                            {podeExcluir && (
+                              <HistoricoExcluirBtn type="button" onClick={() => setExcluindo(linha)}>
+                                Excluir
+                              </HistoricoExcluirBtn>
+                            )}
+                          </HistoricoLinhaMeta>
+                        </HistoricoLinha>
+                      );
+                    }
+
                     const tonsNovo = tonsDaColuna(CORES_STATUS[linha.status_novo]);
                     return (
-                      <HistoricoLinha key={linha.id}>
+                      <HistoricoLinha key={`status-${linha.id}`}>
                         <HistoricoLinhaTransicao>
                           {linha.status_anterior && (
                             <>
@@ -339,6 +483,15 @@ export function ProjetoHistorico() {
           )}
         </PageStack>
       </HistoricoGrid>
+
+      {excluindo && (
+        <ConfirmarModal
+          titulo={excluindo.tipo === "justificativa_atraso" ? "Excluir justificativa" : "Excluir remarcação"}
+          mensagem="Isso apaga o registro do histórico do projeto. Não dá pra desfazer."
+          onConfirmar={() => excluir(excluindo)}
+          onCancelar={() => setExcluindo(null)}
+        />
+      )}
     </PageStack>
   );
 }
