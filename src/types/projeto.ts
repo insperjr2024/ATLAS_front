@@ -97,6 +97,13 @@ export interface ProjetoCompleto extends ProjetoResumo {
   link_proposta: string | null;
   anexo_proposta_nome: string | null;
   dias_ambientacao: number;
+  /**
+   * 🤖 O último dia de ambientação (§5.3) — kickoff + `dias_ambientacao` dias
+   * ÚTEIS, calculado pelo backend. Passado ele, o projeto vira Em andamento
+   * sozinho. `null` = sem janela (sem kickoff ou zero dias), e aí a saída de
+   * Ambientação continua sendo pela mão de alguém.
+   */
+  fim_ambientacao: string | null;
   data_entrega_cliente: string | null;
   /** 1 = segunda … 7 = domingo. */
   dia_reuniao_padrao: number | null;
