@@ -40,6 +40,10 @@ export interface ProjetoResumo {
   /** A banca ainda não realizada mais próxima, de qualquer escopo deste
    *  projeto. `null` se nenhuma estiver marcada ou todas já aconteceram. */
   proxima_banca: string | null;
+  /** "Limpar histórico": corte de exibição da timeline (aba Histórico) —
+   *  não apaga nada, as linhas anteriores continuam usadas na contagem de
+   *  dias (§5.4). `null` = nada oculto, mostra a timeline inteira. */
+  historico_oculto_ate: string | null;
 }
 
 export interface MembroProjeto {

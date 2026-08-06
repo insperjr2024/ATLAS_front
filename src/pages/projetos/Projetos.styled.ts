@@ -823,6 +823,25 @@ export const HistoricoTimelineMeta = styled.div`
   color: ${theme.colors.mutedForeground};
 `;
 
+export const HistoricoCarregarMais = styled.button`
+  display: block;
+  margin: ${theme.spacing.sm} auto 0;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+  transition: border-color ${theme.transitions.fast}, background ${theme.transitions.fast};
+
+  &:hover {
+    border-color: ${theme.colors.ring};
+    background: ${theme.colors.muted};
+  }
+`;
+
 /** Os botões do cabeçalho da aba de tarefas, lado a lado. */
 export const HeaderAcoes = styled.div`
   display: flex;

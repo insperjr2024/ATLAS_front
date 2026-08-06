@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { theme } from "@/styles/theme";
-import { CORES_STATUS, formatarDataHora, getHistoricoProjeto, ROTULO_STATUS } from "@/lib/projetos";
+import {
+  CORES_STATUS,
+  formatarDataHora,
+  getHistoricoProjeto,
+  mostrarHistoricoCompleto,
+  ocultarHistorico,
+  ROTULO_STATUS,
+} from "@/lib/projetos";
 import { tonsDaColuna } from "@/lib/colunas-tarefa";
 import type { StatusHistorico } from "@/types/projeto";
 import type { StatusProjeto } from "@/types/projeto";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   PageStack,
   PageCard,
@@ -20,8 +28,11 @@ import {
 import { Ponto, ColunaPilula } from "@/components/kanban/Kanban.styled";
 import { FieldSelect } from "@/pages/Bancas.styled";
 import {
+  AvisoBanner,
   FieldInput,
+  HeaderAcoes,
   HistoricoAutorChip,
+  HistoricoCarregarMais,
   HistoricoFiltroGrupo,
   HistoricoFiltroLabel,
   HistoricoFiltroPill,
@@ -68,11 +79,13 @@ function chaveDia(iso: string): string {
 /** Timeline vertical das mudanças de status do projeto, com resumo de tempo
  *  por etapa e filtros por status/autor/período. */
 export function ProjetoHistorico() {
-  const { projeto, usuarios } = useProjeto();
+  const { projeto, usuarios, recarregar } = useProjeto();
   const { token } = useAuth();
   const [historico, setHistorico] = useState<StatusHistorico[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [confirmandoLimpar, setConfirmandoLimpar] = useState(false);
+  const [mostrandoTudo, setMostrandoTudo] = useState(false);
 
   const [statusFiltro, setStatusFiltro] = useState<Set<StatusProjeto>>(new Set());
   const [autorFiltro, setAutorFiltro] = useState("");
@@ -99,6 +112,28 @@ export function ProjetoHistorico() {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, projeto.id]);
+
+  // "Limpar histórico" não apaga linha nenhuma — só marca o corte de
+  // exibição no projeto (ver OcultarHistoricoUseCase no back). Por isso um
+  // recarregar() (atualiza o projeto no contexto, pro banner aparecer) e um
+  // carregar() (o back já devolve a lista filtrada pelo novo corte).
+  async function limparHistorico() {
+    if (!token) return;
+    await ocultarHistorico(projeto.id, token);
+    setConfirmandoLimpar(false);
+    await Promise.all([recarregar(), carregar()]);
+  }
+
+  async function mostrarTudo() {
+    if (!token) return;
+    setMostrandoTudo(true);
+    try {
+      await mostrarHistoricoCompleto(projeto.id, token);
+      await Promise.all([recarregar(), carregar()]);
+    } finally {
+      setMostrandoTudo(false);
+    }
+  }
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
 
@@ -197,6 +232,17 @@ export function ProjetoHistorico() {
     return [...grupos.entries()];
   }, [historicoFiltrado]);
 
+  // A lista não vem toda de uma vez — só os dias mais recentes, com um botão
+  // pra pedir mais. Sem isso, um projeto de gestões passadas vira uma
+  // rolagem infinita de dias que ninguém pediu pra ver.
+  const DIAS_POR_PAGINA = 10;
+  const [diasVisiveis, setDiasVisiveis] = useState(DIAS_POR_PAGINA);
+  useEffect(() => {
+    setDiasVisiveis(DIAS_POR_PAGINA);
+  }, [statusFiltro, autorFiltro, dataInicio, dataFim]);
+  const gruposVisiveis = gruposPorDia.slice(0, diasVisiveis);
+  const temMaisDias = gruposPorDia.length > diasVisiveis;
+
   if (erro) {
     return (
       <ErrorBlock>
@@ -212,19 +258,48 @@ export function ProjetoHistorico() {
 
   if (historico.length === 0) {
     return (
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>Mudanças de status</PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          <EmptyText>Nenhuma mudança registrada.</EmptyText>
-        </PageCardContent>
-      </PageCard>
+      <PageStack>
+        {projeto.historico_oculto_ate && (
+          <AvisoBanner>
+            Histórico anterior a {formatarDataHora(projeto.historico_oculto_ate)} está oculto.
+            <PageButton type="button" $variant="outline" disabled={mostrandoTudo} onClick={mostrarTudo}>
+              {mostrandoTudo ? "Mostrando…" : "Mostrar tudo"}
+            </PageButton>
+          </AvisoBanner>
+        )}
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>Mudanças de status</PageCardTitle>
+          </PageCardHeader>
+          <PageCardContent>
+            <EmptyText>
+              {projeto.historico_oculto_ate
+                ? "Está tudo oculto no momento — use \"Mostrar tudo\" acima pra ver de novo."
+                : "Nenhuma mudança registrada."}
+            </EmptyText>
+          </PageCardContent>
+        </PageCard>
+      </PageStack>
     );
   }
 
   return (
     <PageStack>
+      {projeto.historico_oculto_ate && (
+        <AvisoBanner>
+          Histórico anterior a {formatarDataHora(projeto.historico_oculto_ate)} está oculto.
+          <PageButton type="button" $variant="outline" disabled={mostrandoTudo} onClick={mostrarTudo}>
+            {mostrandoTudo ? "Mostrando…" : "Mostrar tudo"}
+          </PageButton>
+        </AvisoBanner>
+      )}
+
+      <HeaderAcoes style={{ justifyContent: "flex-end" }}>
+        <PageButton type="button" $variant="outline" onClick={() => setConfirmandoLimpar(true)}>
+          Limpar histórico
+        </PageButton>
+      </HeaderAcoes>
+
       <HistoricoGrid>
         <PageCard>
           <PageCardHeader>
@@ -341,13 +416,15 @@ export function ProjetoHistorico() {
             </PageCard>
           ) : (
             <HistoricoTimeline>
-              {gruposPorDia.map(([dia, linhas], indiceGrupo) => (
+              {gruposVisiveis.map(([dia, linhas], indiceGrupo) => (
                 <div key={dia}>
                   <HistoricoTimelineDiaTitulo>{rotuloDia(linhas[0].alterado_em)}</HistoricoTimelineDiaTitulo>
                   {linhas.map((linha, indiceLinha) => {
                     const tonsNovo = tonsDaColuna(CORES_STATUS[linha.status_novo]);
                     const ultimo =
-                      indiceGrupo === gruposPorDia.length - 1 && indiceLinha === linhas.length - 1;
+                      !temMaisDias &&
+                      indiceGrupo === gruposVisiveis.length - 1 &&
+                      indiceLinha === linhas.length - 1;
                     return (
                       <HistoricoTimelineItem key={linha.id}>
                         <HistoricoTimelineTrilho $ultimo={ultimo}>
@@ -384,8 +461,32 @@ export function ProjetoHistorico() {
               ))}
             </HistoricoTimeline>
           )}
+          {temMaisDias && (
+            <HistoricoCarregarMais
+              type="button"
+              onClick={() => setDiasVisiveis((atual) => atual + DIAS_POR_PAGINA)}
+            >
+              Carregar mais dias
+            </HistoricoCarregarMais>
+          )}
         </PageStack>
       </HistoricoGrid>
+
+      {confirmandoLimpar && (
+        <ConfirmarModal
+          titulo="Limpar histórico"
+          mensagem={
+            <>
+              As mudanças de status de até agora saem da timeline. Nada é apagado de verdade — elas
+              continuam contando pros dias já usados pelos escopos deste projeto, só não aparecem mais
+              aqui. Dá pra trazer tudo de volta depois, em "Mostrar tudo".
+            </>
+          }
+          rotuloConfirmar="Limpar"
+          onCancelar={() => setConfirmandoLimpar(false)}
+          onConfirmar={limparHistorico}
+        />
+      )}
     </PageStack>
   );
 }
