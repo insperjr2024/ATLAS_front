@@ -860,7 +860,8 @@ export const AvisoSomenteLeitura = styled.p`
 export const SwimGrid = styled.div<{ $colunas: number }>`
   display: grid;
   grid-template-columns: 10rem repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(11rem, 1fr));
-  gap: ${theme.spacing.sm};
+  row-gap: ${theme.spacing.xl};
+  column-gap: ${theme.spacing.md};
   overflow-x: auto;
   padding-bottom: ${theme.spacing.sm};
   align-items: start;
@@ -889,6 +890,16 @@ export const SwimGrid = styled.div<{ $colunas: number }>`
 export const SwimHeaderCell = styled.div`
   display: flex;
   align-items: center;
+`;
+
+/** A linha entre uma faixa de projeto e a próxima — mesmo cinza neutro dos
+ *  outros divisores da tela (Atrasos, Alocação), sem cor de destaque: aqui é
+ *  só separação visual, a cor de alerta fica reservada pra quando algo
+ *  realmente precisa de atenção. */
+export const SwimDivisor = styled.div`
+  grid-column: 1 / -1;
+  height: 1px;
+  background: ${theme.colors.border};
 `;
 
 /**

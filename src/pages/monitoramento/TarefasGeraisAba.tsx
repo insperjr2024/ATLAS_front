@@ -18,6 +18,7 @@ import {
   AvisoSomenteLeitura,
   SwimCell,
   SwimCellVazia,
+  SwimDivisor,
   SwimGrid,
   SwimHeaderCell,
   SwimLabelCell,
@@ -120,8 +121,9 @@ export function TarefasGeraisAba() {
           );
         })}
 
-        {projetos.map((projeto) => (
+        {projetos.map((projeto, indice) => (
           <Fragment key={projeto.id}>
+            {indice > 0 && <SwimDivisor />}
             <SwimLabelCell
               $cor={corDoProjeto(projeto.id)}
               role="button"
