@@ -5,7 +5,6 @@ import { useAuth } from "@/context/AuthContext";
 import { createCargo, deleteCargo, getCargos, updateCargo, type CargoPayload } from "@/lib/cargos";
 import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/escopos";
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
-import { CalendarioAcademicoCard } from "./config/CalendarioAcademicoCard";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
 import { ConfiguracaoBancaCard } from "./config/ConfiguracaoBancaCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
