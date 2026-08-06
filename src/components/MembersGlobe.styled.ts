@@ -35,4 +35,5 @@ export const NameSlot = styled.span`
   color: #ffffff;
   pointer-events: none;
   user-select: none;
+  transition: opacity 0.35s ease;
 `;

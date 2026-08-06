@@ -76,6 +76,10 @@ export function MembersGlobe({ nomes }: MembersGlobeProps) {
   const lastMoveTimeRef = useRef(0);
   const dragVelocityRef = useRef(0);
   const angularVelocityRef = useRef(AUTO_ROT_SPEED);
+  // Visibilidade do frame anterior, pra dar histerese na colisão de nomes —
+  // sem isso, um nome bem na borda do limiar pisca a cada pixel de diferença
+  // durante o arrasto.
+  const visivelAnteriorRef = useRef<Map<number, boolean>>(new Map());
   const returnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const returningRef = useRef(false);
   const returnStartRef = useRef(0);
@@ -255,22 +259,40 @@ export function MembersGlobe({ nomes }: MembersGlobeProps) {
     };
   });
 
-  // Nenhum nome pode sobrepor outro: prioridade pros fixos, depois pelos
-  // mais perto da câmera — cada candidato só fica visível se não colidir
+  // Nenhum nome pode sobrepor outro: prioridade pros fixos, depois por
+  // ordem fixa de índice — cada candidato só fica visível se não colidir
   // (bounding box) com um rótulo de prioridade maior que já ficou.
+  //
+  // A prioridade NÃO pode depender de profundidade (z): dois nomes cruzando
+  // caminho têm profundidades quase iguais, e um empate que troca de lado a
+  // cada frame troca o "vencedor" da colisão — cada um pisca no lugar do
+  // outro, mesmo com a histerese abaixo (que só protege contra o PRÓPRIO
+  // limiar de cada nome, não contra trocar de vencedor). Índice fixo garante
+  // que, entre dois que colidem, sempre é o mesmo que aparece.
+  //
+  // Com histerese: o limiar pra ESCONDER quem já estava visível é mais
+  // apertado, e pra MOSTRAR quem já estava escondido é mais largo — sem
+  // isso, um nome bem em cima da borda do limiar pisca a cada frame durante
+  // o arrasto (a posição varia 1px e ele cruza o limiar pra lá e pra cá).
+  const HISTERESE = 10;
+  const visivelAntes = visivelAnteriorRef.current;
   const visiveis = new Set<number>();
   const porPrioridade = [...placed].sort((a, b) => {
     if (a.fixo !== b.fixo) return a.fixo ? -1 : 1;
-    return b.zIndex - a.zIndex;
+    return a.idx - b.idx;
   });
   for (const candidato of porPrioridade) {
+    const estavaVisivel = visivelAntes.get(candidato.idx) ?? true;
+    const ajuste = estavaVisivel ? -HISTERESE : HISTERESE;
     const colide = [...visiveis].some((idx) => {
       const v = placed[idx];
-      const folgaX = (candidato.largura + v.largura) / 2 + 6;
-      return Math.abs(candidato.left - v.left) < folgaX && Math.abs(candidato.top - v.top) < 22;
+      const folgaX = (candidato.largura + v.largura) / 2 + 6 + ajuste;
+      const folgaY = 22 + ajuste;
+      return Math.abs(candidato.left - v.left) < folgaX && Math.abs(candidato.top - v.top) < folgaY;
     });
     if (!colide) visiveis.add(candidato.idx);
   }
+  visivelAnteriorRef.current = new Map(placed.map((it) => [it.idx, visiveis.has(it.idx)]));
 
   const meridianLines = useMemo(() => {
     const lines: { d: string; key: string }[] = [];
@@ -336,12 +358,12 @@ export function MembersGlobe({ nomes }: MembersGlobeProps) {
           ))}
         </Wire>
 
-        {placed.filter((it) => visiveis.has(it.idx)).map((it) => (
+        {placed.map((it) => (
           <NameSlot
             key={it.idx}
             style={{
               transform: `translate(-50%, -50%) translate3d(${it.left}px, ${it.top}px, 0) scale(${it.scale})`,
-              opacity: it.opacity,
+              opacity: visiveis.has(it.idx) ? it.opacity : 0,
               filter: it.blur > 0.05 ? `blur(${it.blur.toFixed(2)}px)` : "none",
               zIndex: it.zIndex,
               fontWeight: it.fixo ? theme.fontWeight.bold : theme.fontWeight.medium,
