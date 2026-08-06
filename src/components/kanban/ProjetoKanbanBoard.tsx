@@ -24,6 +24,7 @@ import {
   CardTopo,
   Coluna,
   ColunaPilula,
+  ColunaRotuloTexto,
   ColunaTitulo,
   ColunaVazia,
   Contador,
@@ -132,7 +133,7 @@ function ColunaDrop({
       <ColunaTitulo>
         <ColunaPilula $cor={tons}>
           <Ponto $cor={tons.ponto} />
-          {rotulo}
+          <ColunaRotuloTexto>{rotulo}</ColunaRotuloTexto>
         </ColunaPilula>
         <Contador>{projetos.length}</Contador>
       </ColunaTitulo>
