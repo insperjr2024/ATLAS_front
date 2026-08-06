@@ -258,7 +258,7 @@ export function ProjetoReunioes() {
             reunião pode ser movida e pode haver mais de uma na mesma semana — cada dia marcado é um
             registro. ▶ A <strong>primeira reunião de um escopo</strong> é a reunião inicial dele: é
             ela que faz a contagem de dias começar a correr, e ela só é aceita depois que a{" "}
-            <strong>data da banca</strong> daquele escopo já está marcada (§5.4).
+            <strong>data da banca</strong> daquele escopo já está marcada.
           </EmptyText>
         </PageCardContent>
       </PageCard>
@@ -321,6 +321,17 @@ export function ProjetoReunioes() {
  * largada dele com 422, e mostrar o botão clicável seria empurrar a pessoa
  * para um erro que a tela já sabe prever.
  */
+/** A reunião normalmente é registrada depois de acontecer ("foi"), mas nada
+ *  trava marcar um dia futuro da semana (útil pra já reservar a data) — "foi"
+ *  fica errado nesse caso. Ajusta o tempo verbal pela data em vez de fixar
+ *  no passado. */
+function tempoVerbal(dia: string): string {
+  const hoje = chaveData(new Date());
+  if (dia > hoje) return "será";
+  if (dia === hoje) return "é";
+  return "foi";
+}
+
 function SeletorDeEscopo({
   dia,
   escopos,
@@ -335,7 +346,7 @@ function SeletorDeEscopo({
   return (
     <EscolhaEscopoPainel>
       <EscolhaEscopoTitulo>
-        Sobre qual escopo foi a reunião de {formatarData(dia)}?
+        Sobre qual escopo {tempoVerbal(dia)} a reunião de {formatarData(dia)}?
       </EscolhaEscopoTitulo>
       <EscolhaEscopoLista>
         {escopos.map((escopo) => {
@@ -348,7 +359,7 @@ function SeletorDeEscopo({
               disabled={semBanca}
               title={
                 semBanca
-                  ? "A contagem só começa com a reunião inicial E a data da banca (§5.4) — marque a banca na aba Visão geral"
+                  ? "A contagem só começa com a reunião inicial E a data da banca — marque a banca na aba Visão geral"
                   : undefined
               }
               onClick={() => onEscolher(escopo.id)}

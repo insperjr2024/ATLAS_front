@@ -9,8 +9,6 @@ import {
   getCronograma,
   moverEtapa,
   oficializarCronograma,
-  responderReajuste,
-  solicitarReajuste,
 } from "@/lib/cronograma";
 import { formatarData } from "@/lib/projetos";
 import { chaveData } from "@/components/calendario/semanas";
@@ -81,8 +79,6 @@ import {
 } from "@/components/cronograma-pintado/trechos";
 import { ExportarPdfModal } from "./ExportarPdfModal";
 import { NovaEtapaModal } from "./NovaEtapaModal";
-import { ResponderReajusteModal } from "./ResponderReajusteModal";
-import { SolicitarReajusteModal } from "./SolicitarReajusteModal";
 import { useProjeto } from "./ProjetoPage";
 
 
@@ -131,11 +127,8 @@ export function ProjetoCronograma() {
     nome: string;
     trechos: number;
   } | null>(null);
-  const [solicitandoReajuste, setSolicitandoReajuste] = useState(false);
-  const [respondendoReajuste, setRespondendoReajuste] = useState(false);
 
   const podeEditar = !!usuario?.cargo.pode_definir_cronograma;
-  const podeAprovarReajuste = !!usuario?.cargo.pode_aprovar_reajuste;
 
   const carregar = useCallback(async () => {
     if (!token) return;
@@ -658,20 +651,6 @@ export function ProjetoCronograma() {
     await carregar();
   }
 
-  async function pedirReajuste(motivo: string) {
-    if (!token || !escopo) return;
-    await solicitarReajuste(escopo.id, motivo, token);
-    setSolicitandoReajuste(false);
-    await carregar();
-  }
-
-  async function responderPedidoReajuste(aprovado: boolean, justificativa: string) {
-    if (!token || !escopo?.reajuste_pendente) return;
-    await responderReajuste(escopo.reajuste_pendente.id, aprovado, justificativa, token);
-    setRespondendoReajuste(false);
-    await carregar();
-  }
-
   /**
    * Gera o PDF ou a imagem a partir de uma cópia FORA DA TELA com os meses
    * escolhidos.
@@ -740,30 +719,9 @@ export function ProjetoCronograma() {
 
   return (
     <PageStack>
-      {oficializado && !escopo!.reajuste_pendente && (
+      {oficializado && (
         <AvisoBanner>
-          <Lock size={14} /> Cronograma oficializado em{" "}
-          {formatarData(escopo!.cronograma_oficializado_em)}. Qualquer mudança agora exige uma
-          solicitação de reajuste aprovada pela diretoria.
-          {podeEditar && (
-            <PageButton type="button" $variant="outline" onClick={() => setSolicitandoReajuste(true)}>
-              Solicitar reajuste
-            </PageButton>
-          )}
-        </AvisoBanner>
-      )}
-
-      {oficializado && escopo!.reajuste_pendente && (
-        <AvisoBanner>
-          <Lock size={14} />{" "}
-          {podeAprovarReajuste
-            ? "Há um pedido de reajuste de cronograma esperando sua resposta."
-            : `Pedido de reajuste enviado em ${formatarData(escopo!.reajuste_pendente.criado_em)} — aguardando aprovação da diretoria.`}
-          {podeAprovarReajuste && (
-            <PageButton type="button" $variant="outline" onClick={() => setRespondendoReajuste(true)}>
-              Ver pedido
-            </PageButton>
-          )}
+          Cronograma oficializado em {formatarData(escopo!.cronograma_oficializado_em)}.
         </AvisoBanner>
       )}
 
@@ -826,12 +784,7 @@ export function ProjetoCronograma() {
             <input
               type="date"
               value={escopo.data_entrega_planejada?.slice(0, 10) ?? ""}
-              disabled={oficializado}
-              title={
-                oficializado
-                  ? "Cronograma oficializado: mudar exige reajuste aprovado pela diretoria"
-                  : `Entrega planejada de ${escopo.nome}`
-              }
+              title={`Entrega planejada de ${escopo.nome}`}
               onChange={(e) => salvarEntrega(e.target.value)}
             />
           </FieldEntrega>
@@ -1149,28 +1102,10 @@ export function ProjetoCronograma() {
       {confirmandoOficializacao && (
         <ConfirmarModal
           titulo="Oficializar cronograma"
-          mensagem="Oficializar trava o cronograma: qualquer mudança passa a exigir reajuste aprovado pela diretoria. Confirma?"
+          mensagem="Marca este cronograma como oficializado. Confirma?"
           rotuloConfirmar="Oficializar"
           onCancelar={() => setConfirmandoOficializacao(false)}
           onConfirmar={oficializar}
-        />
-      )}
-
-      {solicitandoReajuste && escopo && (
-        <SolicitarReajusteModal
-          nomeEscopo={escopo.nome}
-          onCancelar={() => setSolicitandoReajuste(false)}
-          onSolicitar={pedirReajuste}
-        />
-      )}
-
-      {respondendoReajuste && escopo?.reajuste_pendente && (
-        <ResponderReajusteModal
-          nomeEscopo={escopo.nome}
-          motivo={escopo.reajuste_pendente.motivo}
-          solicitadoPorNome={escopo.reajuste_pendente.solicitado_por_nome ?? "Alguém"}
-          onCancelar={() => setRespondendoReajuste(false)}
-          onResponder={responderPedidoReajuste}
         />
       )}
     </PageStack>

@@ -390,7 +390,7 @@ function TransferirDiretoriaModal({
                 {escolhido ? (
                   <>
                     <strong>{escolhido.nome}</strong> passa a ser Diretor(a) e você vira{" "}
-                    <strong>Ex-membro</strong> — o fim de gestão do §10. Você sai da plataforma
+                    <strong>Ex-membro</strong> — o fim de gestão. Você sai da plataforma
                     na hora, mas todo o seu histórico é preservado.
                   </>
                 ) : (
@@ -594,7 +594,7 @@ function NovoMembroModal({
                 </CheckboxGrid>
                 {frenteObrigatoria && (
                   <EmptyText style={{ fontSize: "0.7rem" }}>
-                    O gerente só enxerga os projetos desta frente (§3) — sem nenhuma marcada, ele
+                    O gerente só enxerga os projetos desta frente — sem nenhuma marcada, ele
                     entra na plataforma sem ver projeto algum.
                   </EmptyText>
                 )}
@@ -819,7 +819,7 @@ function MembroModal({
                   </CheckboxGrid>
                   {frenteObrigatoria && (
                     <EmptyText style={{ fontSize: "0.7rem" }}>
-                      O gerente só enxerga os projetos desta frente (§3) — sem nenhuma marcada, ele
+                      O gerente só enxerga os projetos desta frente — sem nenhuma marcada, ele
                       fica sem ver projeto algum.
                     </EmptyText>
                   )}
@@ -853,7 +853,7 @@ function MembroModal({
                   <EmptyText style={{ fontSize: "0.7rem" }}>
                     <strong>Ex-membro</strong>: saiu por vontade própria ou fim de gestão — perde o
                     acesso, mantém o histórico. <strong>Desligado</strong>: removido da plataforma.
-                    Em ambos, a participação em projetos passados permanece íntegra (§10).
+                    Em ambos, a participação em projetos passados permanece íntegra.
                   </EmptyText>
                 </FieldGroup>
 

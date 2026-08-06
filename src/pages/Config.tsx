@@ -93,12 +93,6 @@ const PERMISSOES = [
       "Criar e mover etapas e marcos, oficializar o cronograma de um escopo e agendar as bancas.",
   },
   {
-    campo: "pode_aprovar_reajuste" as const,
-    titulo: "Aprovar reajuste de cronograma",
-    descricao:
-      "Liberar a mudança de um cronograma já oficializado. A tela de reajuste ainda não existe — a caixa fica pronta para quando ela for construída.",
-  },
-  {
     campo: "pode_criar_tarefa" as const,
     titulo: "Criar tarefa",
     descricao: "Abrir tarefas novas no quadro de um projeto.",

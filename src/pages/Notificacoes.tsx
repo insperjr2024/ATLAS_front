@@ -16,7 +16,6 @@ import {
   GraduationCap,
   ListChecks,
   Megaphone,
-  RefreshCw,
   SlidersHorizontal,
   Star,
   Truck,
@@ -97,9 +96,6 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   },
   pdi_prazo_proximo: { icone: GraduationCap, rotulo: "Prazo de PDI próximo", alerta: true },
   pdi_prazo_vencido: { icone: GraduationCap, rotulo: "Prazo de PDI vencido", alerta: true },
-  // Reajuste de cronograma (§5.6) — pedido do coordenador, resposta da diretoria.
-  reajuste_solicitado: { icone: RefreshCw, rotulo: "Pedido de reajuste", alerta: true },
-  reajuste_respondido: { icone: RefreshCw, rotulo: "Reajuste respondido", alerta: false },
 };
 
 /** A ordem dos chips: os 5 do briefing (§6.6) primeiro, na ordem em que ele os
@@ -121,16 +117,13 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "lote_desempenho_aberto",
   "pdi_prazo_proximo",
   "pdi_prazo_vencido",
-  "reajuste_solicitado",
-  "reajuste_respondido",
   "banca_aviso",
 ];
 
 /** O filtro só oferece o que aquela pessoa é capaz de receber — sem isso, o
- *  consultor via chip pra "Pedido de reajuste" (só diretor recebe) e nunca
- *  tinha nada pra mostrar nele. Os tipos fora deste switch valem pra
- *  qualquer cargo (equipe + liderança, ou individual por participação em
- *  banca), então não entram aqui. */
+ *  consultor via chip pra tipo que nunca chega pra ele. Os tipos fora deste
+ *  switch valem pra qualquer cargo (equipe + liderança, ou individual por
+ *  participação em banca), então não entram aqui. */
 function tipoVisivelPara(tipo: TipoNotificacao, usuario: Usuario | null): boolean {
   if (!usuario) return true;
   switch (tipo) {
@@ -140,17 +133,11 @@ function tipoVisivelPara(tipo: TipoNotificacao, usuario: Usuario | null): boolea
     case "banca_nao_marcada":
     case "projeto_sem_reuniao":
       return usuario.posicao !== "consultor";
-    // Mentor é sempre coordenador (regra 2.5); fora isso só a diretoria
-    // acompanha PDI. Gerente e consultor nunca recebem.
+    // Mentor pode ser coordenador, gerente ou diretor (2026-08-06); fora
+    // isso, diretoria acompanha todo PDI. Só consultor nunca recebe.
     case "pdi_prazo_proximo":
     case "pdi_prazo_vencido":
-      return usuario.posicao === "coordenador" || usuario.posicao === "diretor";
-    // §5.6: só quem aprova reajuste (a diretoria) recebe o pedido.
-    case "reajuste_solicitado":
-      return !!usuario.cargo.pode_aprovar_reajuste;
-    // E só quem pode solicitar reajuste recebe a resposta a ele.
-    case "reajuste_respondido":
-      return !!usuario.cargo.pode_definir_cronograma;
+      return usuario.posicao !== "consultor";
     default:
       return true;
   }

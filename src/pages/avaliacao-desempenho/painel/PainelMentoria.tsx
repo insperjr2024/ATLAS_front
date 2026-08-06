@@ -53,7 +53,11 @@ export function PainelMentoria() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const coordenadores = useMemo(() => usuarios.filter((u) => u.posicao === "coordenador"), [usuarios]);
+  // Mentor pode ser coordenador, gerente ou diretor (2026-08-06) — não só coordenador.
+  const mentoresElegiveis = useMemo(
+    () => usuarios.filter((u) => u.posicao === "coordenador" || u.posicao === "gerente" || u.posicao === "diretor"),
+    [usuarios],
+  );
   const mentoradosJaAlocados = useMemo(() => new Set(mentorias.map((m) => m.mentorado_id)), [mentorias]);
   const candidatosMentorado = useMemo(
     () => usuarios.filter((u) => u.posicao === "consultor" && !mentoradosJaAlocados.has(u.id)),
@@ -119,10 +123,10 @@ export function PainelMentoria() {
         <PageCardContent>
           <FormStack onSubmit={handleCriar}>
             <FieldGroup>
-              <FieldLabel htmlFor="mentor">Mentor (coordenador)</FieldLabel>
+              <FieldLabel htmlFor="mentor">Mentor</FieldLabel>
               <FieldSelect id="mentor" value={mentorId} onChange={(e) => setMentorId(e.target.value)} required>
                 <option value="">Selecione...</option>
-                {coordenadores.map((c) => (
+                {mentoresElegiveis.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nome}
                   </option>

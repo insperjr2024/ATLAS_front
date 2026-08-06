@@ -12,9 +12,6 @@ export type TipoNotificacao =
   // 📌 PDI (relatório de mentoria) — mesmo motivo
   | "pdi_prazo_proximo"
   | "pdi_prazo_vencido"
-  // 📌 Reajuste de cronograma (§5.6) — pedido do coordenador, resposta da diretoria
-  | "reajuste_solicitado"
-  | "reajuste_respondido"
   // 📌 eventos de bancas (§8) — entram por `utils/notificar.py` no backend
   | "escalacao_banca"
   | "troca_banca"

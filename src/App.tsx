@@ -110,7 +110,9 @@ export default function App() {
               <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenho />} />
               <Route path="/avaliacao-desempenho/relatorio" element={<MeuRelatorio />} />
 
-              <Route element={<RequirePosicao posicoes={["coordenador"]} />}>
+              {/* Mentor pode ser coordenador, gerente ou diretor (2026-08-06) —
+                  não só coordenador. */}
+              <Route element={<RequirePosicao posicoes={["coordenador", "gerente", "diretor"]} />}>
                 <Route path="/avaliacao-desempenho/mentorados" element={<MeusMentorados />} />
               </Route>
 

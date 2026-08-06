@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { theme } from "@/styles/theme";
 import { CORES_STATUS, formatarDataHora, getHistoricoProjeto, ROTULO_STATUS } from "@/lib/projetos";
 import { tonsDaColuna } from "@/lib/colunas-tarefa";
 import type { StatusHistorico } from "@/types/projeto";
@@ -21,8 +22,6 @@ import { FieldSelect } from "@/pages/Bancas.styled";
 import {
   FieldInput,
   HistoricoAutorChip,
-  HistoricoDiaGrupo,
-  HistoricoDiaTitulo,
   HistoricoFiltroGrupo,
   HistoricoFiltroLabel,
   HistoricoFiltroPill,
@@ -30,16 +29,21 @@ import {
   HistoricoFiltrosCard,
   HistoricoGrid,
   HistoricoLimparFiltros,
-  HistoricoLinha,
-  HistoricoLinhas,
-  HistoricoLinhaMeta,
-  HistoricoLinhaTransicao,
+  HistoricoPeriodoPills,
   HistoricoResumoBarraFill,
   HistoricoResumoBarraTrilha,
   HistoricoResumoCabecalho,
   HistoricoResumoLinha,
   HistoricoResumoLista,
   HistoricoResumoNome,
+  HistoricoTimeline,
+  HistoricoTimelineConteudo,
+  HistoricoTimelineDiaTitulo,
+  HistoricoTimelineItem,
+  HistoricoTimelineMeta,
+  HistoricoTimelinePonto,
+  HistoricoTimelineTransicao,
+  HistoricoTimelineTrilho,
 } from "./Projetos.styled";
 import { useProjeto } from "./ProjetoPage";
 
@@ -61,10 +65,8 @@ function chaveDia(iso: string): string {
   return iso.slice(0, 10);
 }
 
-/**
- * Por enquanto só o histórico de status. Reajustes de cronograma e
- * remarcações de banca entram aqui na F11, na mesma linha do tempo.
- */
+/** Timeline vertical das mudanças de status do projeto, com resumo de tempo
+ *  por etapa e filtros por status/autor/período. */
 export function ProjetoHistorico() {
   const { projeto, usuarios } = useProjeto();
   const { token } = useAuth();
@@ -76,6 +78,9 @@ export function ProjetoHistorico() {
   const [autorFiltro, setAutorFiltro] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
+  /** Qual pill de período rápido está ativa — `null` quando as datas vieram
+   *  de edição manual (ou não há filtro), pra não marcar um pill errado. */
+  const [periodoRapido, setPeriodoRapido] = useState<number | null>(null);
 
   async function carregar() {
     if (!token) return;
@@ -146,6 +151,24 @@ export function ProjetoHistorico() {
     setAutorFiltro("");
     setDataInicio("");
     setDataFim("");
+    setPeriodoRapido(null);
+  }
+
+  // Atalho pros recortes de data mais pedidos — sem isso, "só a última
+  // semana" exigia calcular a data de cabeça e digitar nos dois campos.
+  function aplicarPeriodoRapido(dias: number) {
+    const fim = new Date();
+    const inicio = new Date();
+    inicio.setDate(inicio.getDate() - dias);
+    setDataInicio(inicio.toISOString().slice(0, 10));
+    setDataFim(fim.toISOString().slice(0, 10));
+    setPeriodoRapido(dias);
+  }
+
+  function editarDataManual(campo: "inicio" | "fim", valor: string) {
+    setPeriodoRapido(null);
+    if (campo === "inicio") setDataInicio(valor);
+    else setDataFim(valor);
   }
 
   const filtroAtivo = statusFiltro.size > 0 || autorFiltro !== "" || dataInicio !== "" || dataFim !== "";
@@ -267,12 +290,29 @@ export function ProjetoHistorico() {
             </HistoricoFiltroGrupo>
 
             <HistoricoFiltroGrupo>
+              <HistoricoFiltroLabel>Período</HistoricoFiltroLabel>
+              <HistoricoPeriodoPills>
+                {[7, 30, 90].map((dias) => (
+                  <HistoricoFiltroPill
+                    key={dias}
+                    type="button"
+                    $ativo={periodoRapido === dias}
+                    $cor={theme.colors.primary}
+                    onClick={() => aplicarPeriodoRapido(dias)}
+                  >
+                    {dias} dias
+                  </HistoricoFiltroPill>
+                ))}
+              </HistoricoPeriodoPills>
+            </HistoricoFiltroGrupo>
+
+            <HistoricoFiltroGrupo>
               <HistoricoFiltroLabel htmlFor="historico-data-inicio">De</HistoricoFiltroLabel>
               <FieldInput
                 id="historico-data-inicio"
                 type="date"
                 value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
+                onChange={(e) => editarDataManual("inicio", e.target.value)}
               />
             </HistoricoFiltroGrupo>
 
@@ -282,7 +322,7 @@ export function ProjetoHistorico() {
                 id="historico-data-fim"
                 type="date"
                 value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
+                onChange={(e) => editarDataManual("fim", e.target.value)}
               />
             </HistoricoFiltroGrupo>
 
@@ -300,42 +340,49 @@ export function ProjetoHistorico() {
               </PageCardContent>
             </PageCard>
           ) : (
-            gruposPorDia.map(([dia, linhas]) => (
-              <HistoricoDiaGrupo key={dia}>
-                <HistoricoDiaTitulo>{rotuloDia(linhas[0].alterado_em)}</HistoricoDiaTitulo>
-                <HistoricoLinhas>
-                  {linhas.map((linha) => {
+            <HistoricoTimeline>
+              {gruposPorDia.map(([dia, linhas], indiceGrupo) => (
+                <div key={dia}>
+                  <HistoricoTimelineDiaTitulo>{rotuloDia(linhas[0].alterado_em)}</HistoricoTimelineDiaTitulo>
+                  {linhas.map((linha, indiceLinha) => {
                     const tonsNovo = tonsDaColuna(CORES_STATUS[linha.status_novo]);
+                    const ultimo =
+                      indiceGrupo === gruposPorDia.length - 1 && indiceLinha === linhas.length - 1;
                     return (
-                      <HistoricoLinha key={linha.id}>
-                        <HistoricoLinhaTransicao>
-                          {linha.status_anterior && (
-                            <>
-                              <ColunaPilula $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior])}>
-                                <Ponto $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior]).ponto} />
-                                {ROTULO_STATUS[linha.status_anterior]}
-                              </ColunaPilula>
-                              <span>→</span>
-                            </>
-                          )}
-                          <ColunaPilula $cor={tonsNovo}>
-                            <Ponto $cor={tonsNovo.ponto} />
-                            {ROTULO_STATUS[linha.status_novo]}
-                          </ColunaPilula>
-                          {!linha.status_anterior && <span>· projeto criado</span>}
-                        </HistoricoLinhaTransicao>
-                        <HistoricoLinhaMeta>
-                          <HistoricoAutorChip>
-                            {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "🤖 automático"}
-                          </HistoricoAutorChip>
-                          <span>{formatarDataHora(linha.alterado_em)}</span>
-                        </HistoricoLinhaMeta>
-                      </HistoricoLinha>
+                      <HistoricoTimelineItem key={linha.id}>
+                        <HistoricoTimelineTrilho $ultimo={ultimo}>
+                          <HistoricoTimelinePonto $cor={tonsNovo.ponto} />
+                        </HistoricoTimelineTrilho>
+                        <HistoricoTimelineConteudo>
+                          <HistoricoTimelineTransicao>
+                            {linha.status_anterior && (
+                              <>
+                                <ColunaPilula $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior])}>
+                                  <Ponto $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior]).ponto} />
+                                  {ROTULO_STATUS[linha.status_anterior]}
+                                </ColunaPilula>
+                                <span>→</span>
+                              </>
+                            )}
+                            <ColunaPilula $cor={tonsNovo}>
+                              <Ponto $cor={tonsNovo.ponto} />
+                              {ROTULO_STATUS[linha.status_novo]}
+                            </ColunaPilula>
+                            {!linha.status_anterior && <span>· projeto criado</span>}
+                          </HistoricoTimelineTransicao>
+                          <HistoricoTimelineMeta>
+                            <HistoricoAutorChip>
+                              {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "🤖 automático"}
+                            </HistoricoAutorChip>
+                            <span>{formatarDataHora(linha.alterado_em)}</span>
+                          </HistoricoTimelineMeta>
+                        </HistoricoTimelineConteudo>
+                      </HistoricoTimelineItem>
                     );
                   })}
-                </HistoricoLinhas>
-              </HistoricoDiaGrupo>
-            ))
+                </div>
+              ))}
+            </HistoricoTimeline>
           )}
         </PageStack>
       </HistoricoGrid>

@@ -1,6 +1,7 @@
 /**
- * As permissões da tabela do §3 (as 10 primeiras) + as 4 que a estenderam
- * depois, editáveis na tela de Cargos.
+ * As permissões da tabela do §3 (9 das 10 — "aprovar reajuste" saiu em
+ * 2026-08-06 junto com a feature de reajuste, removida) + as 4 que a
+ * estenderam depois, editáveis na tela de Cargos.
  *
  * A `posicao` da pessoa define só o PADRÃO com que o cargo dela nasce; daí em
  * diante quem decide é a caixa.
@@ -18,8 +19,6 @@ export interface Cargo {
   pode_marcar_kickoff: boolean;
   /** 5. Definir cronograma por escopo (etapas, banca) */
   pode_definir_cronograma: boolean;
-  /** 6. Aprovar reajuste de cronograma */
-  pode_aprovar_reajuste: boolean;
   /** 7. Criar tarefa */
   pode_criar_tarefa: boolean;
   /** 8. Mover e editar tarefa */

@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import type { TonsColuna } from "@/lib/colunas-tarefa";
@@ -723,59 +723,6 @@ export const HistoricoLimparFiltros = styled.button`
   }
 `;
 
-export const HistoricoDiaGrupo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.sm};
-`;
-
-export const HistoricoDiaTitulo = styled.p`
-  margin: 0;
-  font-size: ${theme.fontSize.xs};
-  font-weight: ${theme.fontWeight.semibold};
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: ${theme.colors.mutedForeground};
-`;
-
-export const HistoricoLinhas = styled.div`
-  display: flex;
-  flex-direction: column;
-  border-radius: ${theme.borderRadius.xl};
-  border: 1px solid ${theme.colors.border};
-  background: ${theme.colors.card};
-  overflow: hidden;
-`;
-
-export const HistoricoLinha = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-
-  & + & {
-    border-top: 1px solid ${theme.colors.border};
-  }
-`;
-
-export const HistoricoLinhaTransicao = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-`;
-
-export const HistoricoLinhaMeta = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-  font-size: ${theme.fontSize.xs};
-  color: ${theme.colors.mutedForeground};
-`;
-
 export const HistoricoAutorChip = styled.span`
   display: inline-flex;
   align-items: center;
@@ -785,6 +732,95 @@ export const HistoricoAutorChip = styled.span`
   background: ${theme.colors.secondary};
   color: ${theme.colors.foreground};
   font-weight: ${theme.fontWeight.medium};
+`;
+
+/* Timeline vertical — substitui as caixas empilhadas por dia por uma linha
+   contínua com um ponto por mudança, conectados. O agrupamento por dia vira
+   um rótulo leve dentro da própria linha, não uma caixa separada. */
+
+export const HistoricoPeriodoPills = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+`;
+
+export const HistoricoTimeline = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+export const HistoricoTimelineDiaTitulo = styled.p`
+  margin: ${theme.spacing.lg} 0 ${theme.spacing.sm} 2.25rem;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: ${theme.colors.mutedForeground};
+
+  &:first-child {
+    margin-top: 0;
+  }
+`;
+
+export const HistoricoTimelineItem = styled.div`
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  column-gap: 0.75rem;
+`;
+
+export const HistoricoTimelineTrilho = styled.div<{ $ultimo?: boolean }>`
+  position: relative;
+  display: flex;
+  justify-content: center;
+
+  ${({ $ultimo }) =>
+    !$ultimo &&
+    css`
+      &::before {
+        content: "";
+        position: absolute;
+        top: 0.85rem;
+        bottom: 0;
+        left: 50%;
+        width: 2px;
+        transform: translateX(-50%);
+        background: ${theme.colors.border};
+      }
+    `}
+`;
+
+export const HistoricoTimelinePonto = styled.div<{ $cor: string }>`
+  z-index: 1;
+  margin-top: 0.4rem;
+  width: 0.65rem;
+  height: 0.65rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: ${({ $cor }) => $cor};
+  box-shadow: 0 0 0 3px color-mix(in srgb, ${({ $cor }) => $cor} 20%, ${theme.colors.background});
+`;
+
+export const HistoricoTimelineConteudo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-bottom: ${theme.spacing.lg};
+  min-width: 0;
+`;
+
+export const HistoricoTimelineTransicao = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+`;
+
+export const HistoricoTimelineMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
 `;
 
 /** Os botões do cabeçalho da aba de tarefas, lado a lado. */
