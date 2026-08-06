@@ -1,8 +1,9 @@
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useNotificacoes } from "@/context/NotificacoesContext";
 import { rotuloProjetos } from "@/utils/permissoes";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, Gauge, ClipboardList, Calendar, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarContainer,
@@ -11,6 +12,7 @@ import {
   Nav,
   NavItem,
   SectionLabel,
+  Badge,
   Footer,
   UserName,
   LogoutButton,
@@ -57,6 +59,10 @@ const navItems: NavItemConfig[] = [
   },
   { icon: ClipboardList, label: "Bancas", path: "/bancas" },
   { icon: Calendar, label: "Calendário", path: "/calendario" },
+  // 🔔 O "sino" do §6.6. Sem `visible`/`visiblePorPosicao`: todo perfil tem
+  // notificação — o que muda é o CONTEÚDO (a liderança recebe somado), e quem
+  // decide isso é o backend, pelo recorte de visão.
+  { icon: Bell, label: "Notificações", path: "/notificacoes" },
   // A partir daqui, tudo é admin — item de Monitoramento entra na mesma
   // seção que os outros (antes ficava solto lá em cima, com o rótulo
   // "Administração" só aparecendo mais abaixo, o que dava a entender que
@@ -109,6 +115,7 @@ const navItems: NavItemConfig[] = [
 
 export function Sidebar() {
   const { usuario, logout } = useAuth();
+  const { naoLidas } = useNotificacoes();
   const location = useLocation();
 
   const itensVisiveis = navItems.filter((item) => {
@@ -150,6 +157,11 @@ export function Sidebar() {
             <NavItem key={item.path} to={item.path} $isActive={ativo}>
               <item.icon size={20} />
               <span>{item.path === "/projetos" ? rotuloProjetos(usuario) : item.label}</span>
+              {/* 99+ em vez do número cru: acima disso o badge estouraria a
+                  largura do item e empurraria o rótulo. */}
+              {item.path === "/notificacoes" && naoLidas > 0 && (
+                <Badge>{naoLidas > 99 ? "99+" : naoLidas}</Badge>
+              )}
             </NavItem>,
           );
           return entries;

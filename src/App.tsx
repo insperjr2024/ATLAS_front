@@ -14,6 +14,7 @@ import { Calendario } from "@/pages/Calendario";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Nucleo } from "@/pages/Nucleo";
 import { Membros } from "@/pages/Membros";
+import { Notificacoes } from "@/pages/Notificacoes";
 import { Avaliacoes } from "@/pages/Avaliacoes";
 import { Config } from "@/pages/Config";
 import { ProjetosList } from "@/pages/projetos/ProjetosList";
@@ -62,6 +63,10 @@ export default function App() {
                   só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
               <Route path="/calendario" element={<CalendarioGeral />} />
               <Route path="/bancas/calendario" element={<Calendario />} />
+
+              {/* 🔔 §6.6 — sem guard: todo perfil tem notificação. O que muda
+                  é o conteúdo, e quem recorta isso é o backend. */}
+              <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
               {/* Criar projeto é de diretor e gerente — guard por POSIÇÃO,

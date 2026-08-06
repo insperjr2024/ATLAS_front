@@ -51,6 +51,26 @@ export const NavItem = styled(Link)<{ $isActive: boolean }>`
   }
 `;
 
+/** A bolinha de não lidas do sino (§6.6).
+ *
+ * `margin-left: auto` empurra para a direita do item sem precisar de wrapper:
+ * o NavItem já é flex. Fica ao lado do rótulo, na mesma linha. */
+export const Badge = styled.span`
+  margin-left: auto;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--destructive);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+`;
+
 export const SectionLabel = styled.div`
   margin-top: 0.75rem;
   padding: 0.5rem 1.25rem 0.25rem;
