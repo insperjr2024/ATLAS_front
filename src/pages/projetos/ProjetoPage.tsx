@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Outlet, useOutletContext, useParams } from "react-router-dom";
+import { Outlet, useLocation, useOutletContext, useParams } from "react-router-dom";
 import { Archive, ArchiveRestore, ArrowLeft, ChevronDown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
@@ -67,10 +67,47 @@ export function useProjeto() {
  * local: é isso que deixa uma notificação abrir direto em
  * `/projetos/42/tarefas`.
  */
+/** O que uma tela de origem manda pra dizer pra onde "voltar" aponta —
+ *  ver `voltarDoLocation` logo abaixo. */
+interface VoltarState {
+  voltarPara?: string;
+  voltarRotulo?: string;
+}
+
+/**
+ * De onde "Voltar" deveria levar.
+ *
+ * Sem isto o link era fixo em `/projetos`, então quem chegava aqui a partir
+ * do board macro de Tarefas ou Cronogramas gerais (Monitoramento) e clicava
+ * em Voltar caía na listagem de projetos — perdendo o filtro/aba de onde
+ * tinha vindo, em vez de voltar pra lá. Quem navega passa `state` com o
+ * destino (`TarefasGeraisAba`, `CronogramasGeraisAba`); sem `state`, o
+ * padrão de sempre continua sendo a listagem.
+ */
+function voltarDoLocation(state: unknown): { to: string; rotulo: string } {
+  const voltar = (state ?? {}) as VoltarState;
+  if (voltar.voltarPara) {
+    return { to: voltar.voltarPara, rotulo: voltar.voltarRotulo ?? "Voltar" };
+  }
+  return { to: "/projetos", rotulo: "Voltar para projetos" };
+}
+
 export function ProjetoPage() {
   const { id } = useParams();
+  const location = useLocation();
   const { usuario, token } = useAuth();
   const projetoId = Number(id);
+  /**
+   * Capturado só na ENTRADA no projeto (quando `id` muda), não a cada
+   * navegação. As abas internas (Cronograma, Tarefas...) trocam de rota sem
+   * levar `state` — recalcular a cada `location` perderia o destino assim
+   * que a pessoa clicasse em outra aba dentro do mesmo projeto.
+   */
+  const [voltar, setVoltar] = useState(() => voltarDoLocation(location.state));
+  useEffect(() => {
+    setVoltar(voltarDoLocation(location.state));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const [projeto, setProjeto] = useState<ProjetoCompleto | null>(null);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
@@ -182,9 +219,9 @@ export function ProjetoPage() {
     <ProjetoShell>
       <ShellHeader>
         <PageHeaderText>
-          <VoltarLink to="/projetos">
+          <VoltarLink to={voltar.to}>
             <ArrowLeft size={14} />
-            Voltar para projetos
+            {voltar.rotulo}
           </VoltarLink>
           <PageHeading>{projeto.nome}</PageHeading>
           <PageSubheading>{projeto.cliente}</PageSubheading>
