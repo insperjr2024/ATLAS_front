@@ -28,6 +28,15 @@ export interface BancaBase {
   /** Nulo = usa a soma do piso das frentes vinculadas (§8). Só a diretoria
    *  define — ver `podeAgendar`/`usuario.posicao === "diretor"` no form. */
   piso_minimo_override: number | null;
+  /**
+   * O piso REAL da composição (§8), já resolvido pela API: o override quando
+   * existe, senão a soma do `piso_banca` das frentes vinculadas.
+   *
+   * ⚠ Não confundir com `vagas`, que é o TETO de quantos cabem na banca.
+   * Comparar `alocados < vagas` para dizer "abaixo do mínimo" acusa quase
+   * toda banca — o teto é 5 e o §8 pede 3 numa banca só de Business.
+   */
+  piso_minimo: number;
 }
 
 // Campos calculados que a API adiciona em GET /bancas e GET /bancas/{id}

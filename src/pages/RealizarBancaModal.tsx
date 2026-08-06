@@ -75,7 +75,7 @@ export function RealizarBancaModal({
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [onCancelar]);
 
-  const abaixoDoMinimo = candidaturas.length < banca.vagas;
+  const abaixoDoMinimo = candidaturas.length < banca.piso_minimo;
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -162,7 +162,7 @@ export function RealizarBancaModal({
                 dizer o que fazer em vez de só barrar. */}
             {abaixoDoMinimo && (
               <FormErrorText>
-                Esta banca tem {candidaturas.length} de {banca.vagas} pessoas alocadas.{" "}
+                Esta banca tem {candidaturas.length} de {banca.piso_minimo} pessoas alocadas.{" "}
                 {ehDiretor
                   ? "Como diretor, você pode registrá-la assim mesmo."
                   : "Só o Diretor de Projetos pode registrá-la abaixo do mínimo — peça a ele."}

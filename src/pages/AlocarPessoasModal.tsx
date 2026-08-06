@@ -102,8 +102,8 @@ export function AlocarPessoasModal({
 
         <ModalBody>
           <p style={{ marginTop: 0, fontSize: "0.875rem" }}>
-            {banca.alocados} de {banca.vagas} alocados. Quem está em menos bancas aparece
-            primeiro.
+            {banca.alocados} alocados · mínimo {banca.piso_minimo} · cabem {banca.vagas}. Quem
+            está em menos bancas aparece primeiro.
           </p>
 
           {erro && <FormErrorText>{erro}</FormErrorText>}

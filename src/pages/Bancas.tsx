@@ -5,7 +5,6 @@ import { Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   alocar,
-  createBanca,
   deleteBanca,
   aceitaInscricao,
   desalocar,
@@ -48,6 +47,8 @@ import {
   createSolicitacaoTroca,
   getSolicitacoesTroca,
 } from "@/lib/solicitacoes-troca";
+import { getProjetos, getEscoposProjeto, marcarBancaDoEscopo } from "@/lib/projetos";
+import type { EscopoVendido, ProjetoResumo } from "@/types/projeto";
 import type {
   Banca,
   BancaFrente,
@@ -116,6 +117,13 @@ import {
   TabBar,
   TabButton,
   TabCount,
+  BuscaLista,
+  BuscaItem,
+  BuscaTexto,
+  BuscaNome,
+  BuscaMeta,
+  EscolhidoBox,
+  EscopoIndisponivel,
   BancaLinha,
   BancaData,
   BancaDataDiaSemana,
@@ -903,6 +911,18 @@ function BancaFormModal({
   const editando = !!banca;
 
   const [nomeProjeto, setNomeProjeto] = useState(banca?.nome_projeto ?? "");
+
+  // Criar banca parte de um projeto que já existe: nada de digitar o nome.
+  // O endpoint `marcarBancaDoEscopo` deriva nome, coordenador e frentes do
+  // próprio projeto — os mesmos dados que a tela de cronograma usa.
+  const [projetos, setProjetos] = useState<ProjetoResumo[]>([]);
+  const [projetoId, setProjetoId] = useState<number | null>(null);
+  const [busca, setBusca] = useState("");
+  const [escoposCarregados, setEscoposCarregados] = useState<{
+    projetoId: number;
+    lista: EscopoVendido[];
+  } | null>(null);
+  const [escoposMarcados, setEscoposMarcados] = useState<number[]>([]);
   const [escopoId, setEscopoId] = useState(banca ? String(banca.escopo_id) : "");
   const [data, setData] = useState(banca ? toDateInputValue(banca.data_hora) : "");
   const [hora, setHora] = useState(banca ? toTimeInputValue(banca.data_hora) : "");
@@ -920,13 +940,69 @@ function BancaFormModal({
 
   const consultores = consultoresDoNucleo(contexto.usuarios, contexto.cargos);
 
+  useEffect(() => {
+    if (editando) return;
+    let ativo = true;
+    getProjetos(token)
+      .then((lista) => {
+        if (ativo) setProjetos(lista.filter((p) => !p.arquivado_em));
+      })
+      .catch(() => undefined);
+    return () => {
+      ativo = false;
+    };
+  }, [editando, token]);
+
+  useEffect(() => {
+    if (projetoId == null) return;
+    let ativo = true;
+    getEscoposProjeto(projetoId, token)
+      .then((lista) => {
+        if (ativo) setEscoposCarregados({ projetoId, lista });
+      })
+      .catch(() => {
+        if (ativo) setEscoposCarregados({ projetoId, lista: [] });
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [projetoId, token]);
+
+  // Derivados em vez de estado espelhado: a lista só vale para o projeto que
+  // a trouxe, então trocar de projeto já a invalida sozinho.
+  const escoposDoProjeto =
+    escoposCarregados?.projetoId === projetoId ? escoposCarregados.lista : [];
+  const carregandoEscopos = projetoId != null && escoposCarregados?.projetoId !== projetoId;
+
+  const projetoEscolhido = projetos.find((p) => p.id === projetoId) ?? null;
+
+  const projetosFiltrados = busca.trim()
+    ? projetos.filter((p) =>
+        `${p.nome} ${p.cliente}`.toLowerCase().includes(busca.trim().toLowerCase()),
+      )
+    : projetos;
+
+  /** Escopo que já tem banca não pode ser puxado para outra: o backend recusa
+   *  (seria apagar em silêncio a data já marcada). */
+  const escoposLivres = escoposDoProjeto.filter((e) => !e.banca);
+
+  const frentesDosEscoposMarcados = [
+    ...new Set(
+      escoposDoProjeto
+        .filter((e) => escoposMarcados.includes(e.id))
+        .map((e) => contexto.frentes.find((f) => f.id === e.frente_id)?.nome)
+        .filter((nome): nome is string => !!nome),
+    ),
+  ];
+
   function toggleId(lista: number[], id: number): number[] {
     return lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id];
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!escopoId || !data || !hora) return;
+    if (!data || !hora) return;
+    if (editando ? !escopoId : escoposMarcados.length === 0) return;
     setEnviando(true);
     setErro("");
     try {
@@ -950,17 +1026,22 @@ function BancaFormModal({
         await syncEquipeProjeto(banca.id, consultorIds, contexto.equipesProjeto, token);
         await syncBancaFrentes(banca.id, frenteIds, contexto.bancasFrentes, token);
       } else {
-        await createBanca(
-          {
-            nome_projeto: nomeProjeto.trim(),
-            escopo_id: Number(escopoId),
-            data_hora: dataHora,
-            consultor_ids: consultorIds,
-            frente_ids: frenteIds,
-            ...(pisoMinimoOverride !== undefined ? { piso_minimo_override: pisoMinimoOverride } : {}),
-          },
+        // Uma banca pode cobrir vários escopos do mesmo projeto (§8). O
+        // primeiro vai na URL, a lista completa no corpo — o backend deriva
+        // dali o nome do projeto, o coordenador e as frentes.
+        const criada = await marcarBancaDoEscopo(
+          escoposMarcados[0],
+          dataHora,
           token,
+          undefined,
+          escoposMarcados,
         );
+        if (consultorIds.length > 0) {
+          await syncEquipeProjeto(criada.id, consultorIds, contexto.equipesProjeto, token);
+        }
+        if (pisoMinimoOverride != null) {
+          await updateBanca(criada.id, { piso_minimo_override: pisoMinimoOverride }, token);
+        }
       }
       onSalvo();
     } catch (err) {
@@ -981,16 +1062,115 @@ function BancaFormModal({
         </ModalHeader>
         <FormStack onSubmit={handleSubmit}>
           <ModalBody>
-            <FieldGroup>
-              <FieldLabel htmlFor="nome-projeto">Nome do projeto</FieldLabel>
-              <FieldInput
-                id="nome-projeto"
-                value={nomeProjeto}
-                onChange={(e) => setNomeProjeto(e.target.value)}
-                placeholder="Ex.: Portugal 1"
-                required
-              />
-            </FieldGroup>
+            {editando ? (
+              <FieldGroup>
+                <FieldLabel htmlFor="nome-projeto">Nome do projeto</FieldLabel>
+                <FieldInput
+                  id="nome-projeto"
+                  value={nomeProjeto}
+                  onChange={(e) => setNomeProjeto(e.target.value)}
+                  placeholder="Ex.: Portugal 1"
+                  required
+                />
+              </FieldGroup>
+            ) : (
+              <FieldGroup>
+                <FieldLabel htmlFor="busca-projeto">Projeto</FieldLabel>
+                {projetoEscolhido ? (
+                  <EscolhidoBox>
+                    <BuscaTexto>
+                      <BuscaNome>{projetoEscolhido.nome}</BuscaNome>
+                      <BuscaMeta>{projetoEscolhido.cliente}</BuscaMeta>
+                    </BuscaTexto>
+                    <PageButtonSm
+                      $variant="outline"
+                      type="button"
+                      onClick={() => {
+                        setProjetoId(null);
+                        setEscoposMarcados([]);
+                        setBusca("");
+                      }}
+                    >
+                      Trocar
+                    </PageButtonSm>
+                  </EscolhidoBox>
+                ) : (
+                  <>
+                    <FieldInput
+                      id="busca-projeto"
+                      value={busca}
+                      onChange={(e) => setBusca(e.target.value)}
+                      placeholder="Busque pelo nome do projeto ou do cliente"
+                      autoComplete="off"
+                    />
+                    {projetos.length === 0 ? (
+                      <EmptyText>Nenhum projeto ativo para marcar banca.</EmptyText>
+                    ) : projetosFiltrados.length === 0 ? (
+                      <EmptyText>Nenhum projeto encontrado para "{busca}".</EmptyText>
+                    ) : (
+                      <BuscaLista>
+                        {projetosFiltrados.map((projeto) => (
+                          <BuscaItem
+                            key={projeto.id}
+                            type="button"
+                            onClick={() => {
+                              setProjetoId(projeto.id);
+                              setEscoposMarcados([]);
+                              // A equipe do projeto é quem apresenta, e por
+                              // isso não assiste à própria banca (§8) — já
+                              // vem marcada para não montar à mão.
+                              setConsultorIds(projeto.consultor_ids);
+                            }}
+                          >
+                            <BuscaNome>{projeto.nome}</BuscaNome>
+                            <BuscaMeta>{projeto.cliente}</BuscaMeta>
+                          </BuscaItem>
+                        ))}
+                      </BuscaLista>
+                    )}
+                  </>
+                )}
+              </FieldGroup>
+            )}
+
+            {!editando && projetoEscolhido && (
+              <FieldGroup>
+                <FieldLabel as="span">Escopos que esta banca cobre</FieldLabel>
+                {carregandoEscopos ? (
+                  <EmptyText>Carregando escopos...</EmptyText>
+                ) : escoposDoProjeto.length === 0 ? (
+                  <EmptyText>Este projeto ainda não tem escopo vendido.</EmptyText>
+                ) : escoposLivres.length === 0 ? (
+                  <EmptyText>Todos os escopos deste projeto já têm banca marcada.</EmptyText>
+                ) : (
+                  <CheckboxGrid>
+                    {escoposDoProjeto.map((escopo) => (
+                      <CheckboxLabel key={escopo.id}>
+                        <input
+                          type="checkbox"
+                          disabled={!!escopo.banca}
+                          checked={escoposMarcados.includes(escopo.id)}
+                          onChange={() => setEscoposMarcados((ids) => toggleId(ids, escopo.id))}
+                        />
+                        <span>
+                          {escopo.nome}
+                          {escopo.banca && (
+                            <>
+                              {" "}
+                              <EscopoIndisponivel>
+                                {escopo.banca.data_hora
+                                  ? `já tem banca em ${new Date(escopo.banca.data_hora).toLocaleDateString("pt-BR")}`
+                                  : "já tem banca, sem data"}
+                              </EscopoIndisponivel>
+                            </>
+                          )}
+                        </span>
+                      </CheckboxLabel>
+                    ))}
+                  </CheckboxGrid>
+                )}
+              </FieldGroup>
+            )}
 
             <DateTimeRow>
               <FieldGroup>
@@ -1003,17 +1183,19 @@ function BancaFormModal({
               </FieldGroup>
             </DateTimeRow>
 
-            <FieldGroup>
-              <FieldLabel htmlFor="escopo">Escopo</FieldLabel>
-              <FieldSelect id="escopo" value={escopoId} onChange={(e) => setEscopoId(e.target.value)} required>
-                <option value="">Selecione um escopo</option>
-                {contexto.escopos.map((escopo) => (
-                  <option key={escopo.id} value={escopo.id}>
-                    {escopo.nome}
-                  </option>
-                ))}
-              </FieldSelect>
-            </FieldGroup>
+            {editando && (
+              <FieldGroup>
+                <FieldLabel htmlFor="escopo">Escopo</FieldLabel>
+                <FieldSelect id="escopo" value={escopoId} onChange={(e) => setEscopoId(e.target.value)} required>
+                  <option value="">Selecione um escopo</option>
+                  {contexto.escopos.map((escopo) => (
+                    <option key={escopo.id} value={escopo.id}>
+                      {escopo.nome}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FieldGroup>
+            )}
 
             {ehDiretor && (
               <FieldGroup>
@@ -1048,22 +1230,35 @@ function BancaFormModal({
               </CheckboxGrid>
             </FieldGroup>
 
-            <FieldGroup>
-              <FieldLabel>Frentes</FieldLabel>
-              <CheckboxGrid>
-                {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
-                {contexto.frentes.map((frente) => (
-                  <CheckboxLabel key={frente.id}>
-                    <input
-                      type="checkbox"
-                      checked={frenteIds.includes(frente.id)}
-                      onChange={() => setFrenteIds((ids) => toggleId(ids, frente.id))}
-                    />
-                    {frente.nome}
-                  </CheckboxLabel>
-                ))}
-              </CheckboxGrid>
-            </FieldGroup>
+            {editando ? (
+              <FieldGroup>
+                <FieldLabel>Frentes</FieldLabel>
+                <CheckboxGrid>
+                  {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
+                  {contexto.frentes.map((frente) => (
+                    <CheckboxLabel key={frente.id}>
+                      <input
+                        type="checkbox"
+                        checked={frenteIds.includes(frente.id)}
+                        onChange={() => setFrenteIds((ids) => toggleId(ids, frente.id))}
+                      />
+                      {frente.nome}
+                    </CheckboxLabel>
+                  ))}
+                </CheckboxGrid>
+              </FieldGroup>
+            ) : (
+              escoposMarcados.length > 0 && (
+                <FieldGroup>
+                  <FieldLabel as="span">Frentes</FieldLabel>
+                  <BuscaMeta>
+                    {frentesDosEscoposMarcados.length > 0
+                      ? `${frentesDosEscoposMarcados.join(" · ")} — vêm dos escopos escolhidos.`
+                      : "Definidas pelos escopos escolhidos."}
+                  </BuscaMeta>
+                </FieldGroup>
+              )
+            )}
 
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>
@@ -1071,7 +1266,10 @@ function BancaFormModal({
             <PageButton $variant="outline" type="button" onClick={onClose}>
               Cancelar
             </PageButton>
-            <PageButton type="submit" disabled={enviando}>
+            <PageButton
+              type="submit"
+              disabled={enviando || (!editando && escoposMarcados.length === 0)}
+            >
               {enviando ? (editando ? "Salvando..." : "Criando...") : editando ? "Salvar" : "Criar"}
             </PageButton>
           </ModalFooter>

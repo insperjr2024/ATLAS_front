@@ -12,7 +12,6 @@ import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { Calendario } from "@/pages/Calendario";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
-import { Nucleo } from "@/pages/Nucleo";
 import { Membros } from "@/pages/Membros";
 import { Notificacoes } from "@/pages/Notificacoes";
 import { Avaliacoes } from "@/pages/Avaliacoes";
@@ -136,7 +135,6 @@ export default function App() {
                 <Route path="/avaliacoes" element={<Avaliacoes />} />
               </Route>
               <Route element={<RequirePosicao posicoes={["diretor"]} />}>
-                <Route path="/nucleo" element={<Nucleo />} />
                 <Route path="/config" element={<Config />} />
                 <Route path="/calendarios-base" element={<CalendariosBase />} />
               </Route>
