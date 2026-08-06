@@ -63,8 +63,8 @@ const navItems: NavItemConfig[] = [
     icon: GraduationCap,
     label: "Meus Mentorados",
     path: "/avaliacao-desempenho/mentorados",
-    // Regra 2.5 — mentor é sempre coordenador.
-    visiblePorPosicao: (u) => u.posicao === "coordenador",
+    // Mentor pode ser coordenador, gerente ou diretor (2026-08-06).
+    visiblePorPosicao: (u) => u.posicao === "coordenador" || u.posicao === "gerente" || u.posicao === "diretor",
   },
   { icon: ClipboardList, label: "Bancas", path: "/bancas" },
   { icon: Calendar, label: "Calendário", path: "/calendario" },
@@ -103,21 +103,21 @@ const navItems: NavItemConfig[] = [
     path: "/avaliacao-desempenho/painel",
     section: "admin",
     prefixo: true,
-    visiblePorPosicao: (u) => u.posicao === "diretor" || u.posicao === "gerente",
+    visible: (c) => c.pode_administrar_desempenho,
   },
   {
     icon: CalendarCog,
     label: "Calendários base",
     path: "/calendarios-base",
     section: "admin",
-    visiblePorPosicao: (u) => u.posicao === "diretor",
+    visible: (c) => c.pode_administrar_configuracoes,
   },
   {
     icon: Settings,
     label: "Configurações",
     path: "/config",
     section: "admin",
-    visiblePorPosicao: (u) => u.posicao === "diretor",
+    visible: (c) => c.pode_administrar_configuracoes,
   },
 ];
 

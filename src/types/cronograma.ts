@@ -69,5 +69,4 @@ export interface CronogramaResposta {
    */
   semestre: { nome: string; inicio: string; fim: string } | null;
   dias_nao_uteis: DiaNaoUtilResposta[];
-  reajuste_pendente: { id: number; solicitado_por: number; criado_em: string } | null;
 }

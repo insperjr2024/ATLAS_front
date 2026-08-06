@@ -421,7 +421,7 @@ function TabelaEscopos() {
                             <EmptyText>liberada</EmptyText>
                           )
                         ) : (
-                          <Cadeado title="A entrega só é liberada depois da banca do escopo ser aprovada (§5.5)">
+                          <Cadeado title="A entrega só é liberada depois da banca do escopo ser aprovada">
                             <Lock size={12} />
                             travada
                           </Cadeado>
@@ -567,7 +567,7 @@ function BancasPorFrente() {
         )}
 
         <LegendaTabela>
-          Cada escopo tem no máximo uma banca (§5.5), mas uma banca pode avaliar vários escopos do
+          Cada escopo tem no máximo uma banca, mas uma banca pode avaliar vários escopos do
           projeto — quem marca escolhe quais. A banca herda as frentes dos escopos que cobre, e são
           elas que definem a composição exigida e quem pode ser escalado. A data é a mesma que
           aparece em Bancas e no cronograma: um registro só, lido de três lugares.
@@ -716,7 +716,7 @@ function MarcarBancaModal({
             {frentesEnvolvidas.length > 1 && (
               <EmptyText>
                 Esta banca vai cobrir {frentesEnvolvidas.map(nomeFrente).join(" e ")} — a composição
-                exigida passa a somar as duas frentes (§8).
+                exigida passa a somar as duas frentes.
               </EmptyText>
             )}
             <DataRow>
@@ -743,14 +743,14 @@ function MarcarBancaModal({
                 </DataRow>
                 {!ehDiretor && (
                   <EmptyText>
-                    Remarcar uma banca que já tem data é decisão da diretoria (§5.6) — o servidor vai
+                    Remarcar uma banca que já tem data é decisão da diretoria — o servidor vai
                     recusar.
                   </EmptyText>
                 )}
               </>
             )}
             <EmptyText>
-              O sistema recusa duas bancas no mesmo horário; só a diretoria libera a exceção (§8).
+              O sistema recusa duas bancas no mesmo horário; só a diretoria libera a exceção.
             </EmptyText>
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>
