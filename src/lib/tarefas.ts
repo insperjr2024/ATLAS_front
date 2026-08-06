@@ -1,7 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import type {
   ComentarioTarefa,
-  ReuniaoSemanal,
+  ReuniaoRegistrada,
   ReunioesResposta,
   Tarefa,
   Urgencia,
@@ -116,11 +116,34 @@ export function getReunioes(projetoId: number, token: string) {
   return apiFetch<ReunioesResposta>(`/projetos/${projetoId}/reunioes`, { token });
 }
 
-export function createReuniao(projetoId: number, data: string, token: string) {
-  return apiFetch<ReuniaoSemanal>(`/projetos/${projetoId}/reunioes`, {
+/**
+ * ⭐ `escopoId` é o "sobre qual escopo foi" do §6.4 — e, quando é a primeira
+ * reunião daquele escopo, é o que dá a largada na contagem do §5.4. Vazio =
+ * reunião geral do projeto.
+ */
+export function createReuniao(
+  projetoId: number,
+  data: string,
+  escopoId: number | null,
+  token: string,
+) {
+  return apiFetch<ReuniaoRegistrada>(`/projetos/${projetoId}/reunioes`, {
     method: "POST",
     token,
-    body: JSON.stringify({ data_reuniao: data }),
+    body: JSON.stringify({ data_reuniao: data, projeto_escopo_id: escopoId }),
+  });
+}
+
+export function updateReuniao(
+  reuniaoId: number,
+  data: string,
+  escopoId: number | null,
+  token: string,
+) {
+  return apiFetch<ReuniaoRegistrada>(`/reunioes/${reuniaoId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ data_reuniao: data, projeto_escopo_id: escopoId }),
   });
 }
 

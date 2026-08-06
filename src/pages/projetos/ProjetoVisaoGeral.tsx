@@ -437,6 +437,9 @@ function TabelaEscopos() {
               🔒 A entrega fica travada até a banca do escopo ser aprovada. Os dias correm apenas
               enquanto o escopo está iniciado e não entregue — feriados, provas e recessos do
               calendário do Insper não contam.
+              <br />▶ Um escopo começa a contar na <strong>reunião inicial</strong> dele: registre-a
+              na aba <strong>Reuniões</strong>, escolhendo o dia e o escopo. A data da banca precisa
+              já estar marcada.
             </LegendaTabela>
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </>

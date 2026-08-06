@@ -13,6 +13,7 @@ import {
 import { formatarData } from "@/lib/projetos";
 import { chaveData } from "@/components/calendario/semanas";
 import {
+  corPeriodoEscopo,
   corSugerida,
   COR_AMBIENTACAO,
   COR_PAUSA,
@@ -260,15 +261,43 @@ export function ProjetoCronograma() {
     return lista;
   }, [dados, modoGeral, escopoSelecionado]);
 
-  const faixas = useMemo<FaixaDerivada[]>(
+  /**
+   * ⭐ O período de cada escopo (reunião inicial → banca, §5.4) chega como
+   * faixa derivada, junto de ambientação e pausa.
+   *
+   * A cor sai do ÍNDICE do escopo na lista do projeto — a mesma ordem dos
+   * grupos da legenda —, então a faixa e o título do escopo na legenda casam
+   * sem ninguém precisar decorar cor. O recorte segue o do calendário: no
+   * modo Geral aparecem todas; com um escopo selecionado, só a dele.
+   */
+  const todasAsFaixas = useMemo<FaixaDerivada[]>(() => {
+    const escopos = dados?.escopos ?? [];
+    const indicePorEscopo = new Map(escopos.map((e, i) => [e.id, i]));
+    return (dados?.faixas_derivadas ?? []).map((f) => ({
+      ...f,
+      inicio: f.inicio.slice(0, 10),
+      fim: f.fim.slice(0, 10),
+      cor:
+        f.tipo === "escopo"
+          ? corPeriodoEscopo(indicePorEscopo.get(f.projeto_escopo_id ?? -1) ?? 0)
+          : f.tipo === "ambientacao"
+            ? COR_AMBIENTACAO
+            : COR_PAUSA,
+      rotulo:
+        f.tipo === "escopo"
+          ? `${escopos.find((e) => e.id === f.projeto_escopo_id)?.nome ?? f.rotulo} — período do escopo`
+          : f.rotulo,
+    }));
+  }, [dados]);
+
+  /** O que vai para o calendário — mesmo recorte das etapas. A LEGENDA usa
+   *  `todasAsFaixas`: ela lista os escopos todos, mesmo os fora da visão. */
+  const faixas = useMemo(
     () =>
-      (dados?.faixas_derivadas ?? []).map((f) => ({
-        ...f,
-        inicio: f.inicio.slice(0, 10),
-        fim: f.fim.slice(0, 10),
-        cor: f.tipo === "ambientacao" ? COR_AMBIENTACAO : COR_PAUSA,
-      })),
-    [dados],
+      todasAsFaixas.filter(
+        (f) => f.tipo !== "escopo" || modoGeral || f.projeto_escopo_id === escopoSelecionado,
+      ),
+    [todasAsFaixas, modoGeral, escopoSelecionado],
   );
 
   const janela = useMemo(
@@ -846,9 +875,31 @@ export function ProjetoCronograma() {
               escopo só, o título continua sendo o nome dele — sem seção órfã. */}
           {dados.escopos.map((esc) => {
             const doEscopo = grupos.filter((g) => g.escopoId === esc.id);
+            const periodo = todasAsFaixas.find(
+              (f) => f.tipo === "escopo" && f.projeto_escopo_id === esc.id,
+            );
             return (
               <LegendaGrupo key={esc.id}>
                 <LegendaTitulo>{esc.nome}</LegendaTitulo>
+                {/* ⭐ A janela do §5.4, antes das etapas: é dentro dela que
+                    elas são pintadas. Sem período, o escopo ainda não teve
+                    reunião inicial — e é isso que a linha diz. */}
+                {periodo ? (
+                  <LegendaItem as="div">
+                    <Amostra $cor={periodo.cor} />
+                    <LegendaTexto>
+                      <strong>período do escopo</strong>
+                      <small>
+                        {semAno(periodo.inicio)} – {semAno(periodo.fim)} · reunião inicial → banca
+                      </small>
+                    </LegendaTexto>
+                  </LegendaItem>
+                ) : (
+                  <EmptyText>
+                    Sem período: registre a reunião inicial na aba Reuniões (a banca já precisa
+                    ter data).
+                  </EmptyText>
+                )}
                 {doEscopo.length === 0 && <EmptyText>Nenhuma etapa ainda.</EmptyText>}
                 {doEscopo.map((grupo) => (
                   <LegendaLinha key={grupo.chave}>
@@ -945,10 +996,24 @@ export function ProjetoCronograma() {
             <LegendaBox>
               {dados.escopos.map((esc) => {
                 const doEscopo = grupos.filter((g) => g.escopoId === esc.id);
-                if (doEscopo.length === 0) return null;
+                const periodo = todasAsFaixas.find(
+                  (f) => f.tipo === "escopo" && f.projeto_escopo_id === esc.id,
+                );
+                if (doEscopo.length === 0 && !periodo) return null;
                 return (
                   <LegendaGrupo key={esc.id}>
                     <LegendaTitulo>{esc.nome}</LegendaTitulo>
+                    {periodo && (
+                      <LegendaItem as="div">
+                        <Amostra $cor={periodo.cor} />
+                        <LegendaTexto>
+                          <strong>período do escopo</strong>
+                          <small>
+                            {formatarData(periodo.inicio)} – {formatarData(periodo.fim)}
+                          </small>
+                        </LegendaTexto>
+                      </LegendaItem>
+                    )}
                     {doEscopo.map((grupo) => (
                       <LegendaItem as="div" key={grupo.chave}>
                         <Amostra $cor={grupo.cor} />
