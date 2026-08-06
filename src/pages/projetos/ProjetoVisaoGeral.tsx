@@ -5,6 +5,7 @@ import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import {
   baixarAnexoProposta,
+  DIAS_REUNIAO,
   formatarData,
   formatarDataHora,
   marcarBancaDoEscopo,
@@ -14,6 +15,8 @@ import {
   ROTULO_STATUS_ESCOPO,
   rotuloDiaSemana,
   updateDescricao,
+  updateDiaReuniaoPadrao,
+  updateDiasAmbientacao,
   updateEquipe,
 } from "@/lib/projetos";
 import {
@@ -38,6 +41,7 @@ import {
 } from "@/styles/page.styled";
 import {
   FieldInput,
+  FieldSelect,
   FieldTextarea,
   FormErrorText,
   ModalOverlay,
@@ -247,14 +251,8 @@ export function ProjetoVisaoGeral() {
               recarregar={recarregar}
               tipo="entrega"
             />
-            <DataItem>
-              <DataItemLabel>Dias de ambientação</DataItemLabel>
-              <DataItemValor>{projeto.dias_ambientacao} dias úteis</DataItemValor>
-            </DataItem>
-            <DataItem>
-              <DataItemLabel>Reunião semanal</DataItemLabel>
-              <DataItemValor>{rotuloDiaSemana(projeto.dia_reuniao_padrao)}</DataItemValor>
-            </DataItem>
+            <DataEditavelDiasAmbientacao projeto={projeto} token={token} recarregar={recarregar} />
+            <DataEditavelDiaReuniao projeto={projeto} token={token} recarregar={recarregar} />
           </DatasGrid>
         </PageCardContent>
       </PageCard>
@@ -784,6 +782,11 @@ function DataEditavel({
   recarregar: () => Promise<void>;
   tipo: "kickoff" | "entrega";
 }) {
+  const { usuario } = useAuth();
+  // Mesma permissão do backend (`require_pode_marcar_kickoff` em
+  // `routers/projetos.py`) — sem esse gate o botão aparecia pra qualquer
+  // um, que só descobria que não podia depois de preencher e salvar (403).
+  const podeEditar = !!usuario?.cargo.pode_marcar_kickoff;
   const [editando, setEditando] = useState(false);
   const [data, setData] = useState(valor?.slice(0, 10) ?? "");
   const [salvando, setSalvando] = useState(false);
@@ -835,9 +838,178 @@ function DataEditavel({
         ) : (
           <>
             <span>{formatarData(valor)}</span>
-            <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
-              {valor ? "Alterar" : "Marcar"}
+            {podeEditar && (
+              <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
+                {valor ? "Alterar" : "Marcar"}
+              </PageButtonSm>
+            )}
+          </>
+        )}
+      </DataItemValor>
+      {erro && <FormErrorText>{erro}</FormErrorText>}
+    </DataItem>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function DataEditavelDiasAmbientacao({
+  projeto,
+  token,
+  recarregar,
+}: {
+  projeto: ProjetoCompleto;
+  token: string | null;
+  recarregar: () => Promise<void>;
+}) {
+  const { usuario } = useAuth();
+  const podeEditar = !!usuario?.cargo.pode_editar_equipe;
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(String(projeto.dias_ambientacao));
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function salvar() {
+    if (!token) return;
+    const numero = Number(valor);
+    if (!Number.isInteger(numero) || numero < 0 || numero > 60) {
+      setErro("Informe um número de dias úteis entre 0 e 60.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      await updateDiasAmbientacao(projeto.id, numero, token);
+      setEditando(false);
+      await recarregar();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao salvar os dias de ambientação");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <DataItem>
+      <DataItemLabel>Dias de ambientação</DataItemLabel>
+      <DataItemValor>
+        {editando ? (
+          <>
+            <FieldInput
+              type="number"
+              min={0}
+              max={60}
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              aria-label="Dias de ambientação"
+            />
+            <PageButtonSm type="button" disabled={salvando} onClick={salvar}>
+              {salvando ? "Salvando…" : "Salvar"}
             </PageButtonSm>
+            <PageButtonSm
+              type="button"
+              $variant="ghost"
+              onClick={() => {
+                setEditando(false);
+                setValor(String(projeto.dias_ambientacao));
+                setErro("");
+              }}
+            >
+              Cancelar
+            </PageButtonSm>
+          </>
+        ) : (
+          <>
+            <span>{projeto.dias_ambientacao} dias úteis</span>
+            {podeEditar && (
+              <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
+                Alterar
+              </PageButtonSm>
+            )}
+          </>
+        )}
+      </DataItemValor>
+      {erro && <FormErrorText>{erro}</FormErrorText>}
+    </DataItem>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function DataEditavelDiaReuniao({
+  projeto,
+  token,
+  recarregar,
+}: {
+  projeto: ProjetoCompleto;
+  token: string | null;
+  recarregar: () => Promise<void>;
+}) {
+  const { usuario } = useAuth();
+  const podeEditar = !!usuario?.cargo.pode_editar_equipe;
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(
+    projeto.dia_reuniao_padrao ? String(projeto.dia_reuniao_padrao) : "",
+  );
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function salvar() {
+    if (!token) return;
+    setSalvando(true);
+    setErro("");
+    try {
+      await updateDiaReuniaoPadrao(projeto.id, valor ? Number(valor) : null, token);
+      setEditando(false);
+      await recarregar();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao salvar o dia da reunião");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <DataItem>
+      <DataItemLabel>Reunião semanal</DataItemLabel>
+      <DataItemValor>
+        {editando ? (
+          <>
+            <FieldSelect
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              aria-label="Dia padrão da reunião semanal"
+            >
+              <option value="">Sem dia definido</option>
+              {DIAS_REUNIAO.map((dia) => (
+                <option key={dia.valor} value={dia.valor}>
+                  {dia.rotulo}
+                </option>
+              ))}
+            </FieldSelect>
+            <PageButtonSm type="button" disabled={salvando} onClick={salvar}>
+              {salvando ? "Salvando…" : "Salvar"}
+            </PageButtonSm>
+            <PageButtonSm
+              type="button"
+              $variant="ghost"
+              onClick={() => {
+                setEditando(false);
+                setValor(projeto.dia_reuniao_padrao ? String(projeto.dia_reuniao_padrao) : "");
+                setErro("");
+              }}
+            >
+              Cancelar
+            </PageButtonSm>
+          </>
+        ) : (
+          <>
+            <span>{rotuloDiaSemana(projeto.dia_reuniao_padrao)}</span>
+            {podeEditar && (
+              <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
+                {projeto.dia_reuniao_padrao ? "Alterar" : "Definir"}
+              </PageButtonSm>
+            )}
           </>
         )}
       </DataItemValor>

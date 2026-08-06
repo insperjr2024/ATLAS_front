@@ -23,6 +23,11 @@ import {
   PageTitle,
 } from "@/styles/page.styled";
 import {
+  AvisoFechadoCard,
+  AvisoFechadoItem,
+  AvisoFechadoLinha,
+  AvisoFechadoLista,
+  AvisoFechadoTitulo,
   CampoContador,
   ComentariosAviso,
   DoneBlock,
@@ -144,6 +149,12 @@ export function AvaliacaoDesempenho() {
 
   const nomesProjeto = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
 
+  // O backend só mantém um lote fechado na fila por uma janela (regra
+  // 2.3-bis) — o suficiente pra pessoa descobrir que perdeu o prazo, sem
+  // acumular pendência de rodada antiga pra sempre. Aparece já na tela
+  // inicial, antes de qualquer escolha de tipo.
+  const itensFechados = useMemo(() => fila.filter((item) => !item.aberto), [fila]);
+
   // `getProjetos` já aplica o recorte de visão (§3): pra coordenador e
   // consultor devolve só os projetos onde eles estão hoje — daí dá pra
   // derivar o papel de cada um sem endpoint novo (coordenador_id/
@@ -188,21 +199,34 @@ export function AvaliacaoDesempenho() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.id, token]);
 
-  const filaDoTipo = (tipo: DesempenhoTipo) => fila.filter((item) => item.lote_tipo === tipo);
+  // Só conta como "pendente" quem ainda tem lote aberto — os fechados vão
+  // pro aviso à parte (`itensFechados`), nunca travam um tipo como
+  // "concluído" nem entram na conta do que falta responder.
+  const filaDoTipo = (tipo: DesempenhoTipo) =>
+    fila.filter((item) => item.lote_tipo === tipo && item.aberto);
 
   function projetosDaPessoa(item: DesempenhoFilaItem): string {
     return item.projeto_ids.map((id) => nomesProjeto.get(id)).filter(Boolean).join(", ") || "—";
   }
 
-  function abrirFilaDoTipo(tipo: DesempenhoTipo) {
+  async function abrirFilaDoTipo(tipo: DesempenhoTipo) {
     setTipoEscolhido(tipo);
-    setFilaOriginalDoTipo(filaDoTipo(tipo));
+    setErroForm("");
     setPasso("fila");
+    // Recarrega na hora de entrar — se algum lote fechou enquanto a pessoa
+    // estava parada na tela de escolha, ela já vê o aviso "Fechado" na
+    // lista, em vez de só descobrir isso ao tentar enviar.
+    const novaFila = (await carregarFila()) ?? fila;
+    setFilaOriginalDoTipo(novaFila.filter((item) => item.lote_tipo === tipo));
   }
 
   async function abrirPessoa(item: DesempenhoFilaItem) {
     if (!token) return;
     setErroForm("");
+    if (!item.aberto) {
+      setErroForm(`O formulário "${item.lote_nome}" está fechado — não dá mais pra responder por ele.`);
+      return;
+    }
     try {
       const form = await getFormulario(item.lote_tipo, item.form_type, token);
       const rascunho = rascunhos[chave(item)];
@@ -260,6 +284,25 @@ export function AvaliacaoDesempenho() {
     setEnviandoTudo(true);
     setErroEnvio("");
     try {
+      // Confere de novo bem na hora de enviar — pode ter fechado entre abrir
+      // a fila e clicar aqui. Melhor avisar antes do que deixar cada envio
+      // estourar um erro do backend no meio do loop.
+      const filaFresca = (await carregarFila()) ?? [];
+      const porChave = new Map(filaFresca.map((item) => [chave(item), item]));
+      const fecharamAgora = filaOriginalDoTipo.filter((item) => {
+        if (!item.aberto) return false;
+        const atualizado = porChave.get(chave(item));
+        return !atualizado || !atualizado.aberto;
+      });
+      if (fecharamAgora.length > 0) {
+        setFilaOriginalDoTipo((atual) => atual.map((item) => porChave.get(chave(item)) ?? item));
+        setErroEnvio(
+          `${fecharamAgora.length === 1 ? "Um formulário fechou" : `${fecharamAgora.length} formulários fecharam`} agora — revise a lista antes de tentar de novo.`,
+        );
+        setEnviandoTudo(false);
+        return;
+      }
+
       for (const item of filaOriginalDoTipo) {
         const rascunho = rascunhos[chave(item)];
         if (!rascunho) continue;
@@ -327,10 +370,14 @@ export function AvaliacaoDesempenho() {
 
   if (passo === "carregando") return <PageLoadingBlock />;
 
-  const totalNaRodada = filaOriginalDoTipo.length;
-  const concluidosNaRodada = filaOriginalDoTipo.filter((item) => !!rascunhos[chave(item)]).length;
+  // Quem já fechou sai da conta do progresso — nunca vai dar pra responder,
+  // então não pode travar o "Enviar avaliações" das pessoas que ainda dá.
+  const itensAindaAbertos = filaOriginalDoTipo.filter((item) => item.aberto);
+  const totalNaRodada = itensAindaAbertos.length;
+  const concluidosNaRodada = itensAindaAbertos.filter((item) => !!rascunhos[chave(item)]).length;
   const progressoPercent = totalNaRodada > 0 ? (concluidosNaRodada / totalNaRodada) * 100 : 0;
   const prontoParaEnviar = totalNaRodada > 0 && concluidosNaRodada === totalNaRodada;
+  const algumFechado = filaOriginalDoTipo.some((item) => !item.aberto);
 
   // "Não quero responder o outro agora" só faz sentido quando sobra
   // exatamente UM tipo com pendência — se os dois já estão vazios (tudo
@@ -355,11 +402,36 @@ export function AvaliacaoDesempenho() {
             <InfoBannerLinha>Você faz parte de {textoParticipacoes}.</InfoBannerLinha>
           )}
           <InfoBannerLinha>
-            {fila.length > 0
-              ? `Você tem ${fila.length} ${fila.length === 1 ? "avaliação pendente" : "avaliações pendentes"}.`
+            {fila.filter((item) => item.aberto).length > 0
+              ? `Você tem ${fila.filter((item) => item.aberto).length} ${
+                  fila.filter((item) => item.aberto).length === 1
+                    ? "avaliação pendente"
+                    : "avaliações pendentes"
+                }.`
               : "Você não tem avaliações pendentes no momento."}
           </InfoBannerLinha>
         </InfoBannerCard>
+      )}
+
+      {itensFechados.length > 0 && (
+        <AvisoFechadoCard>
+          <AvisoFechadoTitulo>
+            {itensFechados.length === 1
+              ? "Um formulário fechou antes de você responder"
+              : `${itensFechados.length} formulários fecharam antes de você responder`}
+          </AvisoFechadoTitulo>
+          <AvisoFechadoLista>
+            {itensFechados.map((item) => (
+              <AvisoFechadoItem key={chave(item)}>
+                {item.avaliado_nome} — {item.lote_nome}
+              </AvisoFechadoItem>
+            ))}
+          </AvisoFechadoLista>
+          <AvisoFechadoLinha>
+            Não dá mais pra enviar essas avaliações. Se sobrar alguma outra pendência, ela continua
+            valendo normalmente.
+          </AvisoFechadoLinha>
+        </AvisoFechadoCard>
       )}
 
       {passo === "escolha" && (
@@ -371,7 +443,9 @@ export function AvaliacaoDesempenho() {
             <TipoOpcoesGrid>
               {TIPOS.map((t) => {
                 const pendentes = filaDoTipo(t.valor);
+                const fechadosDoTipo = itensFechados.filter((item) => item.lote_tipo === t.valor);
                 const concluido = pendentes.length === 0;
+                const soFechado = concluido && fechadosDoTipo.length > 0;
                 return (
                   <TipoCard
                     key={t.valor}
@@ -382,7 +456,11 @@ export function AvaliacaoDesempenho() {
                   >
                     <TipoCardHeader>
                       <TipoCardTitulo>{t.titulo}</TipoCardTitulo>
-                      {concluido && <PageBadge $tone="success">Concluída</PageBadge>}
+                      {soFechado ? (
+                        <PageBadge $tone="danger">Fechada sem resposta</PageBadge>
+                      ) : (
+                        concluido && <PageBadge $tone="success">Concluída</PageBadge>
+                      )}
                     </TipoCardHeader>
                     <TipoCardDescricao>{t.descricao}</TipoCardDescricao>
                     {!concluido && (
@@ -419,28 +497,38 @@ export function AvaliacaoDesempenho() {
               </ProgressoTexto>
             </ProgressoRow>
 
+            {algumFechado && (
+              <FormErrorText>
+                Alguns formulários fecharam enquanto você respondia — não dá mais pra enviar essas
+                avaliações. As outras continuam valendo normalmente.
+              </FormErrorText>
+            )}
+
             <FilaList>
               {filaOriginalDoTipo.map((item) => {
+                const fechado = !item.aberto;
                 const concluido = !!rascunhos[chave(item)];
                 return (
                   <FilaItem
                     key={chave(item)}
                     type="button"
-                    $clicavel
+                    $clicavel={!fechado}
+                    disabled={fechado}
                     onClick={() => abrirPessoa(item)}
                   >
                     <FilaItemInfo>
                       <FilaItemNome>{item.avaliado_nome}</FilaItemNome>
                       <FilaItemMeta>{projetosDaPessoa(item)}</FilaItemMeta>
                     </FilaItemInfo>
-                    <PageBadge $tone={concluido ? "success" : "warning"}>
-                      {concluido ? "Concluída · editar" : "Pendente"}
+                    <PageBadge $tone={fechado ? "danger" : concluido ? "success" : "warning"}>
+                      {fechado ? "Fechado" : concluido ? "Concluída · editar" : "Pendente"}
                     </PageBadge>
                   </FilaItem>
                 );
               })}
             </FilaList>
 
+            {erroForm && <FormErrorText>{erroForm}</FormErrorText>}
             {erroEnvio && <FormErrorText>{erroEnvio}</FormErrorText>}
 
             <PageButton type="button" disabled={!prontoParaEnviar || enviandoTudo} onClick={handleEnviarTodas}>

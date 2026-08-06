@@ -26,6 +26,44 @@ export const InfoBannerLinha = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
+/** Formulário(s) que fecharam antes da pessoa responder — precisa gritar
+ *  mais que o InfoBannerCard normal, por isso o tom destrutivo. */
+export const AvisoFechadoCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  border-radius: ${theme.borderRadius.xl};
+  border: 1px solid color-mix(in srgb, ${theme.colors.destructive} 40%, transparent);
+  background: color-mix(in srgb, ${theme.colors.destructive} 8%, ${theme.colors.card});
+`;
+
+export const AvisoFechadoTitulo = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.base};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.destructive};
+`;
+
+export const AvisoFechadoLista = styled.ul`
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+`;
+
+export const AvisoFechadoItem = styled.li`
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+`;
+
+export const AvisoFechadoLinha = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
 export const TipoOpcoesGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;

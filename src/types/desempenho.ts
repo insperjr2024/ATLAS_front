@@ -62,6 +62,10 @@ export interface DesempenhoFilaItem {
   lote_id: number;
   lote_nome: string;
   lote_tipo: DesempenhoTipo;
+  /** false = o lote fechou (manualmente ou pelo prazo) com essa pendência
+   *  ainda em aberto — item continua aparecendo por um tempo só pro aviso,
+   *  nunca dá pra responder por ele. */
+  aberto: boolean;
   avaliado_id: number;
   avaliado_nome: string | null;
   form_type: DesempenhoPapel;

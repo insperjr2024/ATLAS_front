@@ -22,6 +22,7 @@ import type { Frente } from "@/types/banca";
 import type { ProjetoCompleto, StatusProjeto } from "@/types/projeto";
 import { Ponto } from "@/components/kanban/Kanban.styled";
 import { pode } from "@/utils/permissoes";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   PageBadge,
   PageButtonSm,
@@ -80,6 +81,7 @@ export function ProjetoPage() {
   const [erroStatus, setErroStatus] = useState("");
   const [mudandoStatus, setMudandoStatus] = useState(false);
   const [arquivando, setArquivando] = useState(false);
+  const [confirmandoArquivamento, setConfirmandoArquivamento] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!token || !projetoId) return;
@@ -119,23 +121,18 @@ export function ProjetoPage() {
     }
   }
 
-  async function alternarArquivamento() {
+  async function confirmarArquivamento() {
     if (!token || !projeto) return;
     const arquivado = Boolean(projeto.arquivado_em);
-    const mensagem = arquivado
-      ? "Desarquivar este projeto? Ele volta a aparecer nas listagens normais."
-      : "Arquivar este projeto? Ele some das listagens normais, mas nada é apagado — dá pra desarquivar depois.";
-    if (!confirm(mensagem)) return;
     setArquivando(true);
-    setErroStatus("");
     try {
       if (arquivado) await desarquivarProjeto(projeto.id, token);
       else await arquivarProjeto(projeto.id, token);
+      setConfirmandoArquivamento(false);
       await carregar();
     } catch (err) {
-      setErroStatus(err instanceof Error ? err.message : "Erro ao arquivar o projeto");
-    } finally {
       setArquivando(false);
+      throw err;
     }
   }
 
@@ -213,7 +210,7 @@ export function ProjetoPage() {
               type="button"
               $variant="outline"
               disabled={arquivando}
-              onClick={alternarArquivamento}
+              onClick={() => setConfirmandoArquivamento(true)}
             >
               {projeto.arquivado_em ? <ArchiveRestore size={14} /> : <Archive size={14} />}
               {projeto.arquivado_em ? "Desarquivar" : "Arquivar"}
@@ -255,6 +252,20 @@ export function ProjetoPage() {
       </TabBar>
 
       <Outlet context={contexto} />
+
+      {confirmandoArquivamento && (
+        <ConfirmarModal
+          titulo={projeto.arquivado_em ? "Desarquivar projeto" : "Arquivar projeto"}
+          mensagem={
+            projeto.arquivado_em
+              ? "Desarquivar este projeto? Ele volta a aparecer nas listagens normais."
+              : "Arquivar este projeto? Ele some das listagens normais, mas nada é apagado — dá pra desarquivar depois."
+          }
+          rotuloConfirmar={projeto.arquivado_em ? "Desarquivar" : "Arquivar"}
+          onCancelar={() => setConfirmandoArquivamento(false)}
+          onConfirmar={confirmarArquivamento}
+        />
+      )}
     </ProjetoShell>
   );
 }

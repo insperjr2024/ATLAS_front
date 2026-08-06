@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
-import { createProjeto, uploadAnexoProposta } from "@/lib/projetos";
+import { createProjeto, DIAS_REUNIAO, uploadAnexoProposta } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import { getEscopos } from "@/lib/escopos";
@@ -56,14 +56,6 @@ import {
 } from "./Projetos.styled";
 
 const MAX_FRENTES = 2;
-
-const DIAS_REUNIAO = [
-  { valor: 1, rotulo: "Segunda-feira" },
-  { valor: 2, rotulo: "Terça-feira" },
-  { valor: 3, rotulo: "Quarta-feira" },
-  { valor: 4, rotulo: "Quinta-feira" },
-  { valor: 5, rotulo: "Sexta-feira" },
-];
 
 /**
  * O cadastro do §6.3.

@@ -12,6 +12,7 @@ import {
   updateLote,
 } from "@/lib/desempenho-lotes";
 import { getProjetos } from "@/lib/projetos";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { DesempenhoLote, DesempenhoPendencia, DesempenhoTipo } from "@/types/desempenho";
 import type { ProjetoResumo } from "@/types/projeto";
 import {
@@ -102,6 +103,7 @@ export function PainelLotes() {
 
   const [pendenciasLoteId, setPendenciasLoteId] = useState<number | null>(null);
   const [pendencias, setPendencias] = useState<DesempenhoPendencia[]>([]);
+  const [paraExcluir, setParaExcluir] = useState<DesempenhoLote | null>(null);
 
   const [editandoLoteId, setEditandoLoteId] = useState<number | null>(null);
   const [editNome, setEditNome] = useState("");
@@ -278,15 +280,11 @@ export function PainelLotes() {
     }
   }
 
-  async function handleExcluir(lote: DesempenhoLote) {
-    if (!token) return;
-    if (!confirm(`Excluir o lote "${lote.nome}"? Esta ação não pode ser desfeita.`)) return;
-    try {
-      await deleteLote(lote.id, token);
-      setLotes((atual) => atual.filter((l) => l.id !== lote.id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir o lote");
-    }
+  async function confirmarExclusao() {
+    if (!token || !paraExcluir) return;
+    await deleteLote(paraExcluir.id, token);
+    setLotes((atual) => atual.filter((l) => l.id !== paraExcluir.id));
+    setParaExcluir(null);
   }
 
   async function handleVerPendencias(loteId: number) {
@@ -429,7 +427,7 @@ export function PainelLotes() {
                           Pendências
                         </PageButtonSm>
                       )}
-                      <PageButtonSm $variant="ghost" type="button" onClick={() => handleExcluir(lote)}>
+                      <PageButtonSm $variant="ghost" type="button" onClick={() => setParaExcluir(lote)}>
                         Excluir
                       </PageButtonSm>
                     </LoteCardAcoes>
@@ -538,6 +536,15 @@ export function PainelLotes() {
           )}
         </PageCardContent>
       </PageCard>
+
+      {paraExcluir && (
+        <ConfirmarModal
+          titulo="Excluir lote"
+          mensagem={`Excluir o lote "${paraExcluir.nome}"? Esta ação não pode ser desfeita.`}
+          onCancelar={() => setParaExcluir(null)}
+          onConfirmar={confirmarExclusao}
+        />
+      )}
     </>
   );
 }

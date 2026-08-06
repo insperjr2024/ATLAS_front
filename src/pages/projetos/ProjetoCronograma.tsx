@@ -113,6 +113,7 @@ export function ProjetoCronograma() {
   const [visao, setVisao] = useState<Visao>("mes");
   const [referencia, setReferencia] = useState<Date | null>(null);
   const [criandoEtapa, setCriandoEtapa] = useState(false);
+  const [confirmandoOficializacao, setConfirmandoOficializacao] = useState(false);
   /** Etapas criadas na tela e ainda sem trecho — não existem no banco. */
   const [rascunhos, setRascunhos] = useState<{ escopoId: number; nome: string; cor: string }[]>([]);
   const [exportandoPdf, setExportandoPdf] = useState(false);
@@ -616,14 +617,9 @@ export function ProjetoCronograma() {
 
   async function oficializar() {
     if (!token || !escopo) return;
-    if (!confirm("Oficializar trava o cronograma: qualquer mudança passa a exigir reajuste aprovado pela diretoria. Confirma?")) return;
-    setAviso("");
-    try {
-      await oficializarCronograma(escopo.id, token);
-      await carregar();
-    } catch (err) {
-      setAviso(err instanceof Error ? err.message : "Erro ao oficializar");
-    }
+    await oficializarCronograma(escopo.id, token);
+    setConfirmandoOficializacao(false);
+    await carregar();
   }
 
   /**
@@ -791,7 +787,7 @@ export function ProjetoCronograma() {
         )}
 
         {podeEditar && escopo && !oficializado && etapas.length > 0 && escopo.banca && (
-          <BotaoBarra type="button" $variant="outline" onClick={oficializar}>
+          <BotaoBarra type="button" $variant="outline" onClick={() => setConfirmandoOficializacao(true)}>
             <Lock size={14} />
             Oficializar
           </BotaoBarra>
@@ -1033,6 +1029,16 @@ export function ProjetoCronograma() {
           }
           onCancelar={() => setEtapaParaExcluir(null)}
           onConfirmar={() => excluirGrupo(etapaParaExcluir.chave)}
+        />
+      )}
+
+      {confirmandoOficializacao && (
+        <ConfirmarModal
+          titulo="Oficializar cronograma"
+          mensagem="Oficializar trava o cronograma: qualquer mudança passa a exigir reajuste aprovado pela diretoria. Confirma?"
+          rotuloConfirmar="Oficializar"
+          onCancelar={() => setConfirmandoOficializacao(false)}
+          onConfirmar={oficializar}
         />
       )}
     </PageStack>

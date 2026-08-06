@@ -17,6 +17,7 @@ import {
   PageLoadingBlock,
 } from "@/styles/page.styled";
 import { FieldGroup, FieldLabel, FieldSelect, FormStack } from "@/pages/Bancas.styled";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { MentoriaGrupo, MentoriaGrupoTitulo, MentoriaLinha } from "./Painel.styled";
 
 export function PainelMentoria() {
@@ -30,6 +31,7 @@ export function PainelMentoria() {
   const [mentoradoId, setMentoradoId] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState("");
+  const [paraRemover, setParaRemover] = useState<DesempenhoMentoria | null>(null);
 
   async function buscar() {
     if (!token) return;
@@ -88,15 +90,11 @@ export function PainelMentoria() {
     }
   }
 
-  async function handleRemover(mentoria: DesempenhoMentoria) {
-    if (!token) return;
-    if (!confirm(`Remover o vínculo de mentoria com ${mentoria.mentorado_nome}? Esta ação não pode ser desfeita.`)) return;
-    try {
-      await deleteMentoria(mentoria.id, token);
-      setMentorias((atual) => atual.filter((m) => m.id !== mentoria.id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao remover a mentoria");
-    }
+  async function confirmarRemocao() {
+    if (!token || !paraRemover) return;
+    await deleteMentoria(paraRemover.id, token);
+    setMentorias((atual) => atual.filter((m) => m.id !== paraRemover.id));
+    setParaRemover(null);
   }
 
   if (erro) {
@@ -164,7 +162,7 @@ export function PainelMentoria() {
                 {lista.map((m) => (
                   <MentoriaLinha key={m.id}>
                     <span>{m.mentorado_nome}</span>
-                    <PageButtonSm $variant="outline" type="button" onClick={() => handleRemover(m)}>
+                    <PageButtonSm $variant="outline" type="button" onClick={() => setParaRemover(m)}>
                       Remover
                     </PageButtonSm>
                   </MentoriaLinha>
@@ -174,6 +172,16 @@ export function PainelMentoria() {
           )}
         </PageCardContent>
       </PageCard>
+
+      {paraRemover && (
+        <ConfirmarModal
+          titulo="Remover mentoria"
+          mensagem={`Remover o vínculo de mentoria com ${paraRemover.mentorado_nome}? Esta ação não pode ser desfeita.`}
+          rotuloConfirmar="Remover"
+          onCancelar={() => setParaRemover(null)}
+          onConfirmar={confirmarRemocao}
+        />
+      )}
     </>
   );
 }

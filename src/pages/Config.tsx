@@ -7,6 +7,7 @@ import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/esco
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
 import { CalendarioAcademicoCard } from "./config/CalendarioAcademicoCard";
 import { ConfiguracaoBancaCard } from "./config/ConfiguracaoBancaCard";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Escopo, Frente } from "@/types/banca";
 import type { Cargo } from "@/types/auth";
 import {
@@ -140,6 +141,19 @@ export function Config() {
   const [modalEscopo, setModalEscopo] = useState<Escopo | "novo" | null>(null);
   const [modalCargo, setModalCargo] = useState<Cargo | "novo" | null>(null);
 
+  const [paraExcluir, setParaExcluir] = useState<
+    { tipo: "frente"; item: Frente } | { tipo: "escopo"; item: Escopo } | { tipo: "cargo"; item: Cargo } | null
+  >(null);
+
+  async function confirmarExclusao() {
+    if (!token || !paraExcluir) return;
+    if (paraExcluir.tipo === "frente") await deleteFrente(paraExcluir.item.id, token);
+    else if (paraExcluir.tipo === "escopo") await deleteEscopo(paraExcluir.item.id, token);
+    else await deleteCargo(paraExcluir.item.id, token);
+    setParaExcluir(null);
+    buscar();
+  }
+
   async function buscar() {
     if (!token) return;
     setCarregando(true);
@@ -238,15 +252,7 @@ export function Config() {
                         <PageButtonSm
                           $variant="outline"
                           type="button"
-                          onClick={async () => {
-                            if (!confirm(`Excluir a frente "${frente.nome}"?`)) return;
-                            try {
-                              await deleteFrente(frente.id, token);
-                              buscar();
-                            } catch (err) {
-                              alert(err instanceof Error ? err.message : "Erro ao excluir");
-                            }
-                          }}
+                          onClick={() => setParaExcluir({ tipo: "frente", item: frente })}
                         >
                           Excluir
                         </PageButtonSm>
@@ -278,15 +284,7 @@ export function Config() {
             <TabelaNomes
               itens={escopos}
               onEditar={setModalEscopo}
-              onExcluir={async (item) => {
-                if (!confirm(`Excluir o escopo "${item.nome}"?`)) return;
-                try {
-                  await deleteEscopo(item.id, token);
-                  buscar();
-                } catch (err) {
-                  alert(err instanceof Error ? err.message : "Erro ao excluir");
-                }
-              }}
+              onExcluir={(item) => setParaExcluir({ tipo: "escopo", item })}
             />
           )}
         </PageCardContent>
@@ -343,15 +341,7 @@ export function Config() {
                           <PageButtonSm
                             $variant="outline"
                             type="button"
-                            onClick={async () => {
-                              if (!confirm(`Excluir o cargo "${cargo.nome}"?`)) return;
-                              try {
-                                await deleteCargo(cargo.id, token);
-                                buscar();
-                              } catch (err) {
-                                alert(err instanceof Error ? err.message : "Erro ao excluir");
-                              }
-                            }}
+                            onClick={() => setParaExcluir({ tipo: "cargo", item: cargo })}
                           >
                             Excluir
                           </PageButtonSm>
@@ -405,6 +395,17 @@ export function Config() {
             setModalCargo(null);
             buscar();
           }}
+        />
+      )}
+
+      {paraExcluir && (
+        <ConfirmarModal
+          titulo="Excluir"
+          mensagem={`Excluir ${
+            paraExcluir.tipo === "frente" ? "a frente" : paraExcluir.tipo === "escopo" ? "o escopo" : "o cargo"
+          } "${paraExcluir.item.nome}"?`}
+          onCancelar={() => setParaExcluir(null)}
+          onConfirmar={confirmarExclusao}
         />
       )}
     </PageStack>

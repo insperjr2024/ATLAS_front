@@ -37,6 +37,8 @@ import {
   submeterAvaliacao,
 } from "@/lib/avaliacoes";
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
+import { AlertModal } from "@/components/AlertModal";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   cancelarSolicitacaoTroca,
   confirmarSolicitacaoTroca,
@@ -159,6 +161,8 @@ export function Bancas() {
   const [bancaEditar, setBancaEditar] = useState<Banca | null>(null);
   const [criarAberto, setCriarAberto] = useState(false);
   const [aba, setAba] = useState<AbaBancas>("alocacao");
+  const [avisoErro, setAvisoErro] = useState("");
+  const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
 
   const podeAgendar = !!usuario?.cargo.pode_definir_cronograma;
 
@@ -310,7 +314,7 @@ export function Bancas() {
       await createSolicitacaoTroca(candidatura.id, token);
       recarregar();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao pedir troca");
+      setAvisoErro(err instanceof Error ? err.message : "Erro ao pedir troca");
     }
   }
 
@@ -320,7 +324,7 @@ export function Bancas() {
       await confirmarSolicitacaoTroca(solicitacaoId, token);
       recarregar();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao confirmar troca");
+      setAvisoErro(err instanceof Error ? err.message : "Erro ao confirmar troca");
     }
   }
 
@@ -330,21 +334,22 @@ export function Bancas() {
       await cancelarSolicitacaoTroca(solicitacaoId, token);
       recarregar();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao cancelar troca");
+      setAvisoErro(err instanceof Error ? err.message : "Erro ao cancelar troca");
     }
   }
 
-  async function handleExcluir(banca: Banca) {
+  function handleExcluir(banca: Banca) {
     if (!token || !podeGerenciarBanca(banca, usuarioLogado.id)) return;
-    if (!confirm(`Excluir a banca "${banca.nome_projeto}"? Esta ação não pode ser desfeita.`)) return;
-    try {
-      await deleteBanca(banca.id, token);
-      setBancaDetalhe(null);
-      setBancaEditar(null);
-      recarregar();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir banca");
-    }
+    setBancaParaExcluir(banca);
+  }
+
+  async function confirmarExclusaoBanca() {
+    if (!token || !bancaParaExcluir) return;
+    await deleteBanca(bancaParaExcluir.id, token);
+    setBancaParaExcluir(null);
+    setBancaDetalhe(null);
+    setBancaEditar(null);
+    recarregar();
   }
 
   return (
@@ -505,6 +510,17 @@ export function Bancas() {
           }}
         />
       )}
+
+      {bancaParaExcluir && (
+        <ConfirmarModal
+          titulo="Excluir banca"
+          mensagem={`Excluir a banca "${bancaParaExcluir.nome_projeto}"? Esta ação não pode ser desfeita.`}
+          onCancelar={() => setBancaParaExcluir(null)}
+          onConfirmar={confirmarExclusaoBanca}
+        />
+      )}
+
+      {avisoErro && <AlertModal mensagem={avisoErro} onFechar={() => setAvisoErro("")} />}
     </PageStack>
   );
 }
