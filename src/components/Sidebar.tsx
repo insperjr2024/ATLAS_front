@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { useNotificacoes } from "@/context/NotificacoesContext";
 import { rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
@@ -23,6 +24,7 @@ import {
   NotificacoesPainel,
   NotificacaoItem,
   NotificacaoVazia,
+  VerTodas,
 } from "./Sidebar.styled";
 
 type UsuarioLogado = NonNullable<ReturnType<typeof useAuth>["usuario"]>;
@@ -66,6 +68,9 @@ const navItems: NavItemConfig[] = [
   },
   { icon: ClipboardList, label: "Bancas", path: "/bancas" },
   { icon: Calendar, label: "Calendário", path: "/calendario" },
+  // 🔔 Notificações NÃO entram aqui: o acesso é pelo sino no rodapé, que já
+  // mostra as últimas sem trocar de página. Ter os dois seria duas portas
+  // para a mesma coisa.
   // A partir daqui, tudo é admin — item de Monitoramento entra na mesma
   // seção que os outros (antes ficava solto lá em cima, com o rótulo
   // "Administração" só aparecendo mais abaixo, o que dava a entender que
@@ -125,26 +130,41 @@ const navItems: NavItemConfig[] = [
 
 export function Sidebar() {
   const { usuario, token, logout } = useAuth();
+  // O contador vem do contexto, não desta lista: ele é atualizado a cada ~60s
+  // e também pela página /notificacoes. Contar `notificacoes.filter(...)` aqui
+  // deixaria o badge congelado no que foi carregado quando o painel abriu.
+  const { naoLidas, recarregar } = useNotificacoes();
   const location = useLocation();
+  const navigate = useNavigate();
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [painelAberto, setPainelAberto] = useState(false);
 
+  // Só busca a lista quando o painel abre. O sino sozinho precisa apenas do
+  // número, e esse já vem do contexto por uma rota bem mais barata.
   useEffect(() => {
-    if (!token) return;
-    getNotificacoes(token).then(setNotificacoes).catch(() => setNotificacoes([]));
-  }, [token]);
-
-  const naoLidas = notificacoes.filter((n) => !n.lida).length;
+    if (!painelAberto || !token) return;
+    getNotificacoes(token)
+      .then((lista) => setNotificacoes(lista.itens))
+      .catch(() => setNotificacoes([]));
+  }, [painelAberto, token]);
 
   async function abrirNotificacao(notificacao: Notificacao) {
-    if (notificacao.lida || !token) return;
-    try {
-      await marcarNotificacaoLida(notificacao.id, token);
-      setNotificacoes((lista) =>
-        lista.map((n) => (n.id === notificacao.id ? { ...n, lida: true } : n)),
-      );
-    } catch {
-      // Silencioso: marcar como lida é conveniência, não vale travar a UI.
+    if (!notificacao.lida && token) {
+      try {
+        await marcarNotificacaoLida(token, notificacao);
+        setNotificacoes((lista) =>
+          lista.map((n) => (n.chave === notificacao.chave ? { ...n, lida: true } : n)),
+        );
+        recarregar();
+      } catch {
+        // Silencioso: marcar como lida é conveniência, não vale travar a UI.
+      }
+    }
+    // Cada item abre DIRETO na rota do problema — é para isso que as abas do
+    // projeto são sub-rotas.
+    if (notificacao.rota) {
+      setPainelAberto(false);
+      navigate(notificacao.rota);
     }
   }
 
@@ -199,21 +219,36 @@ export function Sidebar() {
           <SinoButton type="button" onClick={() => setPainelAberto((v) => !v)} aria-expanded={painelAberto}>
             <Bell size={16} />
             Notificações
-            {naoLidas > 0 && <SinoBadge>{naoLidas}</SinoBadge>}
+            {/* 99+ em vez do número cru: acima disso o badge estoura a largura
+                do botão e empurra o rótulo. */}
+            {naoLidas > 0 && <SinoBadge>{naoLidas > 99 ? "99+" : naoLidas}</SinoBadge>}
           </SinoButton>
           {painelAberto && (
             <NotificacoesPainel role="menu">
               {notificacoes.length === 0 && <NotificacaoVazia>Nenhuma notificação ainda.</NotificacaoVazia>}
-              {notificacoes.map((notificacao) => (
+              {/* O painel mostra as primeiras; filtro por tipo e "marcar todas"
+                  ficam na página, que é onde há espaço para eles. */}
+              {notificacoes.slice(0, 6).map((notificacao) => (
                 <NotificacaoItem
-                  key={notificacao.id}
+                  // `chave` e não `id`: condição derivada não tem linha no
+                  // banco, e portanto não tem id.
+                  key={notificacao.chave}
                   type="button"
                   $lida={notificacao.lida}
                   onClick={() => abrirNotificacao(notificacao)}
                 >
-                  {notificacao.mensagem}
+                  {notificacao.titulo}
                 </NotificacaoItem>
               ))}
+              <VerTodas
+                type="button"
+                onClick={() => {
+                  setPainelAberto(false);
+                  navigate("/notificacoes");
+                }}
+              >
+                Ver todas
+              </VerTodas>
             </NotificacoesPainel>
           )}
         </NotificacoesWrap>

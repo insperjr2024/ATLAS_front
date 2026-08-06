@@ -148,6 +148,27 @@ export const NotificacaoItem = styled.button<{ $lida: boolean }>`
   }
 `;
 
+/** A ponte do painel para a página. O painel mostra as primeiras e não tem
+ *  espaço para filtro por tipo nem "marcar todas" — é lá que essas ações
+ *  moram. */
+export const VerTodas = styled.button`
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.875rem;
+  border: none;
+  border-top: 1px solid var(--sidebar-border);
+  background: none;
+  color: var(--muted-foreground);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--destructive);
+  }
+`;
+
 export const NotificacaoVazia = styled.p`
   margin: 0;
   padding: 0.875rem;
