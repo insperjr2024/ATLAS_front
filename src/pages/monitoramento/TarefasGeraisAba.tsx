@@ -18,6 +18,7 @@ import {
   AvisoSomenteLeitura,
   SwimCell,
   SwimCellVazia,
+  SwimDivisor,
   SwimGrid,
   SwimHeaderCell,
   SwimLabelCell,
@@ -48,10 +49,18 @@ function corDoProjeto(projetoId: number): string {
   return CORES_SUGERIDAS[projetoId % CORES_SUGERIDAS.length];
 }
 
+/** Pra "Voltar" (no header do projeto) devolver pra cá, e não pra listagem
+ *  de projetos — ver `voltarDoLocation` em `ProjetoPage.tsx`. */
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/tarefas", voltarRotulo: "Voltar para Monitoramento" };
+
 export function TarefasGeraisAba() {
   const { token } = useAuth();
   const { frenteId, seletor } = useFiltroFrente();
   const navigate = useNavigate();
+
+  function abrirProjeto(projetoId: number) {
+    navigate(`/projetos/${projetoId}/tarefas`, { state: VOLTAR_PARA_AQUI });
+  }
   const [dados, setDados] = useState<TarefasGerais | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -136,16 +145,17 @@ export function TarefasGeraisAba() {
           );
         })}
 
-        {projetos.map((projeto) => (
+        {projetos.map((projeto, indice) => (
           <Fragment key={projeto.id}>
+            {indice > 0 && <SwimDivisor />}
             <SwimLabelCell
               $cor={corDoProjeto(projeto.id)}
               role="button"
               tabIndex={0}
               title="Abrir projeto"
-              onClick={() => navigate(`/projetos/${projeto.id}/tarefas`)}
+              onClick={() => abrirProjeto(projeto.id)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") navigate(`/projetos/${projeto.id}/tarefas`);
+                if (e.key === "Enter") abrirProjeto(projeto.id);
               }}
             >
               <SwimLabelNome>{projeto.nome}</SwimLabelNome>
@@ -170,9 +180,9 @@ export function TarefasGeraisAba() {
                         role="button"
                         tabIndex={0}
                         title="Abrir no projeto"
-                        onClick={() => navigate(`/projetos/${tarefa.projeto_id}/tarefas`)}
+                        onClick={() => abrirProjeto(tarefa.projeto_id)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") navigate(`/projetos/${tarefa.projeto_id}/tarefas`);
+                          if (e.key === "Enter") abrirProjeto(tarefa.projeto_id);
                         }}
                       >
                         <CardTopo>

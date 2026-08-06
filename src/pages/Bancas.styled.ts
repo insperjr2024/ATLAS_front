@@ -201,21 +201,11 @@ export const CardHeaderRow = styled.div`
   width: 100%;
 `;
 
-export const FieldSelect = styled.select`
-  height: 2.25rem;
-  padding: 0 0.75rem;
-  border-radius: ${theme.borderRadius.lg};
-  border: 1px solid ${theme.colors.input};
-  background: ${theme.colors.background};
-  font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.foreground};
-
-  &:focus {
-    outline: none;
-    border-color: ${theme.colors.ring};
-    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 25%, transparent);
-  }
-`;
+// A implementação real não é mais um `<select>` nativo — é `SelectCustom`,
+// reexportado aqui com o mesmo nome pra ninguém precisar trocar import nos
+// ~20 arquivos que já usam `FieldSelect` (mesma API: value/onChange/filhos
+// `<option>`). Ver `components/SelectCustom.tsx`.
+export { SelectCustom as FieldSelect } from "@/components/SelectCustom";
 
 export const CheckboxGrid = styled.div`
   display: flex;

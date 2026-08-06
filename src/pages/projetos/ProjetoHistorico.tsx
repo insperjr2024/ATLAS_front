@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { formatarDataHora, getHistoricoProjeto, ROTULO_STATUS } from "@/lib/projetos";
+import { CORES_STATUS, formatarDataHora, getHistoricoProjeto, ROTULO_STATUS } from "@/lib/projetos";
+import { tonsDaColuna } from "@/lib/colunas-tarefa";
 import type { StatusHistorico } from "@/types/projeto";
+import type { StatusProjeto } from "@/types/projeto";
 import {
+  PageStack,
   PageCard,
   PageCardHeader,
   PageCardTitle,
@@ -13,8 +16,50 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
-import { Timeline, TimelineItem, TimelineTexto } from "./Projetos.styled";
+import { Ponto, ColunaPilula } from "@/components/kanban/Kanban.styled";
+import { FieldSelect } from "@/pages/Bancas.styled";
+import {
+  FieldInput,
+  HistoricoAutorChip,
+  HistoricoDiaGrupo,
+  HistoricoDiaTitulo,
+  HistoricoFiltroGrupo,
+  HistoricoFiltroLabel,
+  HistoricoFiltroPill,
+  HistoricoFiltroPills,
+  HistoricoFiltrosCard,
+  HistoricoGrid,
+  HistoricoLimparFiltros,
+  HistoricoLinha,
+  HistoricoLinhas,
+  HistoricoLinhaMeta,
+  HistoricoLinhaTransicao,
+  HistoricoResumoBarraFill,
+  HistoricoResumoBarraTrilha,
+  HistoricoResumoCabecalho,
+  HistoricoResumoLinha,
+  HistoricoResumoLista,
+  HistoricoResumoNome,
+} from "./Projetos.styled";
 import { useProjeto } from "./ProjetoPage";
+
+function formatarDuracao(ms: number): string {
+  const dias = Math.floor(ms / 86_400_000);
+  if (dias >= 1) return `${dias} ${dias === 1 ? "dia" : "dias"}`;
+  const horas = Math.floor(ms / 3_600_000);
+  if (horas >= 1) return `${horas}h`;
+  const minutos = Math.max(1, Math.floor(ms / 60_000));
+  return `${minutos}min`;
+}
+
+function rotuloDia(iso: string): string {
+  const data = new Date(iso);
+  return data.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+}
+
+function chaveDia(iso: string): string {
+  return iso.slice(0, 10);
+}
 
 /**
  * Por enquanto só o histórico de status. Reajustes de cronograma e
@@ -26,6 +71,11 @@ export function ProjetoHistorico() {
   const [historico, setHistorico] = useState<StatusHistorico[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+
+  const [statusFiltro, setStatusFiltro] = useState<Set<StatusProjeto>>(new Set());
+  const [autorFiltro, setAutorFiltro] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
 
   async function carregar() {
     if (!token) return;
@@ -47,6 +97,83 @@ export function ProjetoHistorico() {
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
 
+  // Cada linha marca a entrada num status — "quanto tempo ficou" é a
+  // distância até a PRÓXIMA linha (ou até agora, pra quem está vigente).
+  // Soma por status pra dar conta de quem visitou a mesma etapa mais de
+  // uma vez (voltou e avançou de novo).
+  const resumoPorStatus = useMemo(() => {
+    if (historico.length === 0) return [];
+    const ascendente = [...historico].sort((a, b) => a.alterado_em.localeCompare(b.alterado_em));
+    const duracoes = new Map<StatusProjeto, number>();
+    for (let i = 0; i < ascendente.length; i++) {
+      const inicio = new Date(ascendente[i].alterado_em).getTime();
+      const fim =
+        i + 1 < ascendente.length ? new Date(ascendente[i + 1].alterado_em).getTime() : Date.now();
+      const status = ascendente[i].status_novo;
+      duracoes.set(status, (duracoes.get(status) ?? 0) + Math.max(0, fim - inicio));
+    }
+    const total = [...duracoes.values()].reduce((soma, ms) => soma + ms, 0) || 1;
+    return [...duracoes.entries()]
+      .map(([status, ms]) => ({ status, ms, percent: (ms / total) * 100 }))
+      .sort((a, b) => b.ms - a.ms);
+  }, [historico]);
+
+  const statusPresentes = useMemo(
+    () => [...new Set(historico.map((h) => h.status_novo))].sort(
+      (a, b) => (resumoPorStatus.find((r) => r.status === a)?.ms ?? 0) < (resumoPorStatus.find((r) => r.status === b)?.ms ?? 0) ? 1 : -1,
+    ),
+    [historico, resumoPorStatus],
+  );
+
+  const autoresPresentes = useMemo(() => {
+    const ids = [...new Set(historico.map((h) => h.alterado_por).filter((id): id is number => id !== null))];
+    return ids.sort((a, b) => nomeUsuario(a).localeCompare(nomeUsuario(b), "pt-BR"));
+  }, [historico, usuarios]);
+
+  const temAutomatico = historico.some((h) => h.alterado_por === null);
+
+  function alternarStatusFiltro(status: StatusProjeto) {
+    setStatusFiltro((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(status)) proximo.delete(status);
+      else proximo.add(status);
+      return proximo;
+    });
+  }
+
+  function limparFiltros() {
+    setStatusFiltro(new Set());
+    setAutorFiltro("");
+    setDataInicio("");
+    setDataFim("");
+  }
+
+  const filtroAtivo = statusFiltro.size > 0 || autorFiltro !== "" || dataInicio !== "" || dataFim !== "";
+
+  const historicoFiltrado = useMemo(() => {
+    return historico.filter((linha) => {
+      if (statusFiltro.size > 0 && !statusFiltro.has(linha.status_novo)) return false;
+      if (autorFiltro === "automatico" && linha.alterado_por !== null) return false;
+      if (autorFiltro && autorFiltro !== "automatico" && String(linha.alterado_por) !== autorFiltro) return false;
+      const dia = chaveDia(linha.alterado_em);
+      if (dataInicio && dia < dataInicio) return false;
+      if (dataFim && dia > dataFim) return false;
+      return true;
+    });
+  }, [historico, statusFiltro, autorFiltro, dataInicio, dataFim]);
+
+  const gruposPorDia = useMemo(() => {
+    const ordenado = [...historicoFiltrado].sort((a, b) => b.alterado_em.localeCompare(a.alterado_em));
+    const grupos = new Map<string, StatusHistorico[]>();
+    for (const linha of ordenado) {
+      const chave = chaveDia(linha.alterado_em);
+      const lista = grupos.get(chave) ?? [];
+      lista.push(linha);
+      grupos.set(chave, lista);
+    }
+    return [...grupos.entries()];
+  }, [historicoFiltrado]);
+
   if (erro) {
     return (
       <ErrorBlock>
@@ -60,37 +187,158 @@ export function ProjetoHistorico() {
 
   if (carregando) return <PageLoadingBlock />;
 
-  return (
-    <PageCard>
-      <PageCardHeader>
-        <PageCardTitle>Mudanças de status</PageCardTitle>
-      </PageCardHeader>
-      <PageCardContent>
-        {historico.length === 0 ? (
+  if (historico.length === 0) {
+    return (
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Mudanças de status</PageCardTitle>
+        </PageCardHeader>
+        <PageCardContent>
           <EmptyText>Nenhuma mudança registrada.</EmptyText>
-        ) : (
-          <Timeline>
-            {[...historico]
-              .sort((a, b) => b.alterado_em.localeCompare(a.alterado_em))
-              .map((linha) => (
-                <TimelineItem key={linha.id}>
-                  <TimelineTexto>
-                    <span>
-                      {linha.status_anterior
-                        ? `${ROTULO_STATUS[linha.status_anterior]} → ${ROTULO_STATUS[linha.status_novo]}`
-                        : `Projeto criado como ${ROTULO_STATUS[linha.status_novo]}`}
-                    </span>
-                    <small>
-                      {formatarDataHora(linha.alterado_em)} ·{" "}
-                      {/* Sem autor = 🤖 o sistema mudou sozinho (o kickoff, por exemplo). */}
-                      {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "🤖 automático"}
-                    </small>
-                  </TimelineTexto>
-                </TimelineItem>
-              ))}
-          </Timeline>
-        )}
-      </PageCardContent>
-    </PageCard>
+        </PageCardContent>
+      </PageCard>
+    );
+  }
+
+  return (
+    <PageStack>
+      <HistoricoGrid>
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>Tempo por etapa</PageCardTitle>
+          </PageCardHeader>
+          <PageCardContent>
+            <HistoricoResumoLista>
+              {resumoPorStatus.map(({ status, ms, percent }) => {
+                const tons = tonsDaColuna(CORES_STATUS[status]);
+                return (
+                  <HistoricoResumoLinha key={status}>
+                    <HistoricoResumoCabecalho>
+                      <HistoricoResumoNome>
+                        <Ponto $cor={tons.ponto} />
+                        {ROTULO_STATUS[status]}
+                      </HistoricoResumoNome>
+                      <span>{formatarDuracao(ms)}</span>
+                    </HistoricoResumoCabecalho>
+                    <HistoricoResumoBarraTrilha>
+                      <HistoricoResumoBarraFill $percent={percent} $cor={tons.ponto} />
+                    </HistoricoResumoBarraTrilha>
+                  </HistoricoResumoLinha>
+                );
+              })}
+            </HistoricoResumoLista>
+          </PageCardContent>
+        </PageCard>
+
+        <PageStack>
+          <HistoricoFiltrosCard>
+            <HistoricoFiltroGrupo style={{ flex: 1 }}>
+              <HistoricoFiltroLabel>Etapa</HistoricoFiltroLabel>
+              <HistoricoFiltroPills>
+                {statusPresentes.map((status) => {
+                  const tons = tonsDaColuna(CORES_STATUS[status]);
+                  return (
+                    <HistoricoFiltroPill
+                      key={status}
+                      type="button"
+                      $ativo={statusFiltro.has(status)}
+                      $cor={tons.ponto}
+                      onClick={() => alternarStatusFiltro(status)}
+                    >
+                      <Ponto $cor={tons.ponto} />
+                      {ROTULO_STATUS[status]}
+                    </HistoricoFiltroPill>
+                  );
+                })}
+              </HistoricoFiltroPills>
+            </HistoricoFiltroGrupo>
+
+            <HistoricoFiltroGrupo>
+              <HistoricoFiltroLabel htmlFor="historico-autor">Quem alterou</HistoricoFiltroLabel>
+              <FieldSelect id="historico-autor" value={autorFiltro} onChange={(e) => setAutorFiltro(e.target.value)}>
+                <option value="">Todo mundo</option>
+                {autoresPresentes.map((id) => (
+                  <option key={id} value={id}>
+                    {nomeUsuario(id)}
+                  </option>
+                ))}
+                {temAutomatico && <option value="automatico">🤖 Automático</option>}
+              </FieldSelect>
+            </HistoricoFiltroGrupo>
+
+            <HistoricoFiltroGrupo>
+              <HistoricoFiltroLabel htmlFor="historico-data-inicio">De</HistoricoFiltroLabel>
+              <FieldInput
+                id="historico-data-inicio"
+                type="date"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+              />
+            </HistoricoFiltroGrupo>
+
+            <HistoricoFiltroGrupo>
+              <HistoricoFiltroLabel htmlFor="historico-data-fim">Até</HistoricoFiltroLabel>
+              <FieldInput
+                id="historico-data-fim"
+                type="date"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+              />
+            </HistoricoFiltroGrupo>
+
+            {filtroAtivo && (
+              <HistoricoLimparFiltros type="button" onClick={limparFiltros}>
+                Limpar filtros
+              </HistoricoLimparFiltros>
+            )}
+          </HistoricoFiltrosCard>
+
+          {historicoFiltrado.length === 0 ? (
+            <PageCard>
+              <PageCardContent>
+                <EmptyText>Nenhuma mudança bate com esses filtros.</EmptyText>
+              </PageCardContent>
+            </PageCard>
+          ) : (
+            gruposPorDia.map(([dia, linhas]) => (
+              <HistoricoDiaGrupo key={dia}>
+                <HistoricoDiaTitulo>{rotuloDia(linhas[0].alterado_em)}</HistoricoDiaTitulo>
+                <HistoricoLinhas>
+                  {linhas.map((linha) => {
+                    const tonsNovo = tonsDaColuna(CORES_STATUS[linha.status_novo]);
+                    return (
+                      <HistoricoLinha key={linha.id}>
+                        <HistoricoLinhaTransicao>
+                          {linha.status_anterior && (
+                            <>
+                              <ColunaPilula $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior])}>
+                                <Ponto $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior]).ponto} />
+                                {ROTULO_STATUS[linha.status_anterior]}
+                              </ColunaPilula>
+                              <span>→</span>
+                            </>
+                          )}
+                          <ColunaPilula $cor={tonsNovo}>
+                            <Ponto $cor={tonsNovo.ponto} />
+                            {ROTULO_STATUS[linha.status_novo]}
+                          </ColunaPilula>
+                          {!linha.status_anterior && <span>· projeto criado</span>}
+                        </HistoricoLinhaTransicao>
+                        <HistoricoLinhaMeta>
+                          <HistoricoAutorChip>
+                            {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "🤖 automático"}
+                          </HistoricoAutorChip>
+                          <span>{formatarDataHora(linha.alterado_em)}</span>
+                        </HistoricoLinhaMeta>
+                      </HistoricoLinha>
+                    );
+                  })}
+                </HistoricoLinhas>
+              </HistoricoDiaGrupo>
+            ))
+          )}
+        </PageStack>
+      </HistoricoGrid>
+    </PageStack>
   );
 }

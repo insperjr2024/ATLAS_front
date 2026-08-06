@@ -107,7 +107,14 @@ export function updateEquipe(projetoId: number, equipe: MembroEquipePayload[], t
   });
 }
 
-/** 🤖 Marcar o kickoff é o que dispara Vendido → Ambientação (§5.2). */
+/**
+ * Marcar o kickoff só registra a data — quem move Vendido → Ambientação é
+ * uma pessoa, no seletor de etapa (§5.2); o kickoff apenas habilita o destino.
+ *
+ * A resposta traz o `status` porque ele PODE ter mudado mesmo assim: um
+ * projeto já em Ambientação com o kickoff corrigido para trás pode ter a
+ * janela vencida na hora e virar Em andamento sozinho (§5.3).
+ */
 export function marcarKickoff(projetoId: number, dataKickoff: string, token: string) {
   return apiFetch<{ id: number; data_kickoff: string; status: StatusProjeto }>(
     `/projetos/${projetoId}/kickoff`,
@@ -122,11 +129,35 @@ export function marcarEntregaCliente(projetoId: number, data: string, token: str
   );
 }
 
-/** `statusNovo` aceita a próxima etapa da fila, `"pausado"` ou `"retomar"`. */
+/** `statusNovo` aceita qualquer etapa ativa (ver `destinosValidos`), `"pausado"` ou `"retomar"`. */
 export function mudarStatus(projetoId: number, statusNovo: string, token: string) {
   return apiFetch<{ id: number; status_anterior: StatusProjeto; status: StatusProjeto }>(
     `/projetos/${projetoId}/status`,
     { method: "PATCH", token, body: JSON.stringify({ status_novo: statusNovo }) },
+  );
+}
+
+export function updateDescricao(projetoId: number, descricao: string, token: string) {
+  return apiFetch<{ id: number; descricao: string | null }>(`/projetos/${projetoId}/descricao`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ descricao }),
+  });
+}
+
+/** A resposta traz o `status`: encurtar a ambientação pode encerrá-la agora
+ *  e virar o projeto para Em andamento (§5.3). */
+export function updateDiasAmbientacao(projetoId: number, diasAmbientacao: number, token: string) {
+  return apiFetch<{ id: number; dias_ambientacao: number; status: StatusProjeto }>(
+    `/projetos/${projetoId}/dias-ambientacao`,
+    { method: "PATCH", token, body: JSON.stringify({ dias_ambientacao: diasAmbientacao }) },
+  );
+}
+
+export function updateDiaReuniaoPadrao(projetoId: number, diaReuniaoPadrao: number | null, token: string) {
+  return apiFetch<{ id: number; dia_reuniao_padrao: number | null }>(
+    `/projetos/${projetoId}/dia-reuniao-padrao`,
+    { method: "PATCH", token, body: JSON.stringify({ dia_reuniao_padrao: diaReuniaoPadrao }) },
   );
 }
 
@@ -163,13 +194,9 @@ export function deleteEscopoProjeto(escopoId: number, token: string) {
   return apiFetch(`/escopos-projeto/${escopoId}`, { method: "DELETE", token });
 }
 
-/** ⭐ Marcar a reunião inicial — é o que faz a contagem recomeçar (§5.4). */
-export function iniciarEscopo(escopoId: number, dataInicio: string, token: string) {
-  return apiFetch<{ id: number; data_inicio: string; status: string }>(
-    `/escopos-projeto/${escopoId}/inicio`,
-    { method: "PATCH", token, body: JSON.stringify({ data_inicio: dataInicio }) },
-  );
-}
+// ⭐ A contagem do §5.4 começa pela REUNIÃO INICIAL, registrada na aba
+// Reuniões com o escopo escolhido (`createReuniao` em `lib/tarefas.ts`). Não
+// existe mais um "iniciar escopo" digitado à parte.
 
 /** 🔒 O backend recusa com 422 até a banca do escopo sair aprovada (§5.5). */
 export function marcarEntregaEscopo(escopoId: number, data: string, token: string) {
@@ -231,24 +258,6 @@ export const ROTULO_STATUS: Record<StatusProjeto, string> = {
   pausado: "Pausado",
 };
 
-/**
- * ✋ As transições manuais — só a próxima da fila, nunca pula etapa. O backend
- * revalida (`transicao_manual_valida`); aqui é só para o menu não oferecer o
- * que vai voltar 422.
- *
- * Vendido → Ambientação não está aqui: é 🤖 automática, disparada pelo
- * kickoff. Já `ambientacao → em_andamento` está, mesmo o §4 chamando de
- * automática — o disparador não existe, e sem ela um projeto que chega em
- * Ambientação (ou volta para lá) não teria como sair.
- */
-const TRANSICOES_MANUAIS: Partial<Record<StatusProjeto, StatusProjeto>> = {
-  ambientacao: "em_andamento",
-  em_andamento: "validacao_bancas",
-  validacao_bancas: "envio_tep",
-  envio_tep: "periodo_ajustes",
-  periodo_ajustes: "finalizado",
-};
-
 const STATUS_PAUSAVEIS: StatusProjeto[] = [
   "ambientacao",
   "em_andamento",
@@ -268,26 +277,21 @@ const STATUS_ORDEM: StatusProjeto[] = [
   "finalizado",
 ];
 
-export function proximoStatusManual(atual: StatusProjeto): StatusProjeto | null {
-  return TRANSICOES_MANUAIS[atual] ?? null;
-}
-
 /**
- * ↩ A etapa anterior — espelho de `status_projeto.py::status_anterior_manual`.
+ * ✋ Espelho de `status_projeto.py::destinos_validos` — as etapas que o
+ * seletor mostra como opção pra este status. Livre entre as ativas, nos dois
+ * sentidos (inclusive reabrir um projeto finalizado); o backend revalida
+ * (`transicao_manual_valida`), aqui é só pra montar a lista.
  *
- * A volta vale da fila inteira até **Ambientação, que é o piso**: voltar dali
- * para Vendido seria desmarcar o kickoff, e a data já registrada é um fato do
- * projeto — corrige-se editando a data, não regredindo o status.
- *
- * `pausado` também não volta por aqui: sai pelo botão de retomar.
+ * Vendido só oferece Ambientação, e só quando `temKickoff` — sem data de
+ * kickoff marcada não tem o que confirmar. `pausado` não tem destino por
+ * aqui: sai pelo retomar.
  */
-export function statusAnteriorManual(atual: StatusProjeto): StatusProjeto | null {
-  if (atual === STATUS_PISO_VOLTA) return null;
-  const indice = STATUS_ORDEM.indexOf(atual);
-  return indice > 0 ? STATUS_ORDEM[indice - 1] : null;
+export function destinosValidos(atual: StatusProjeto, temKickoff: boolean): StatusProjeto[] {
+  if (atual === "pausado") return [];
+  if (atual === "vendido") return temKickoff ? ["ambientacao"] : [];
+  return STATUS_ORDEM.slice(1).filter((s) => s !== atual);
 }
-
-const STATUS_PISO_VOLTA: StatusProjeto = "ambientacao";
 
 export function podePausar(atual: StatusProjeto): boolean {
   return STATUS_PAUSAVEIS.includes(atual);
@@ -300,6 +304,22 @@ export function tomDoStatus(status: StatusProjeto): "success" | "muted" | "defau
   return "default";
 }
 
+/**
+ * Uma cor fixa por fase — mesma fonte usada no kanban de projetos e no
+ * seletor de etapa da Visão geral, pra nenhum dos dois inventar a própria
+ * paleta e os dois acabarem discordando da cor de uma fase.
+ */
+export const CORES_STATUS: Record<StatusProjeto, string> = {
+  vendido: "#9CA3AF", // cinza — ainda não começou de fato
+  ambientacao: "#6366F1", // índigo
+  em_andamento: "#3B82F6", // azul
+  validacao_bancas: "#8B5CF6", // roxo
+  envio_tep: "#14B8A6", // teal
+  periodo_ajustes: "#F97316", // laranja
+  finalizado: "#10B981", // verde
+  pausado: "#F59E0B", // âmbar — vermelho fica reservado pro alerta de vencida
+};
+
 /* ------------------------------------------------------------------ */
 /* Formatação                                                          */
 /* ------------------------------------------------------------------ */
@@ -310,6 +330,16 @@ export function rotuloDiaSemana(dia: number | null | undefined): string {
   if (!dia || dia < 1 || dia > 7) return "—";
   return DIAS_DA_SEMANA[dia - 1];
 }
+
+/** Só dias úteis — reunião de projeto não cai em fim de semana. Catálogo
+ *  único do cadastro (`ProjetoNovo`) e da edição (`ProjetoVisaoGeral`). */
+export const DIAS_REUNIAO = [
+  { valor: 1, rotulo: "Segunda-feira" },
+  { valor: 2, rotulo: "Terça-feira" },
+  { valor: 3, rotulo: "Quarta-feira" },
+  { valor: 4, rotulo: "Quinta-feira" },
+  { valor: 5, rotulo: "Sexta-feira" },
+];
 
 /**
  * A API manda data pura (`2026-08-10`), sem fuso. `new Date("2026-08-10")`

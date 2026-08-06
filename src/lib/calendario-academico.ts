@@ -16,6 +16,8 @@ export interface DiaNaoLetivo {
   data: string;
   tipo: TipoDiaNaoLetivo;
   descricao: string | null;
+  /** `null` = vale para TODAS as frentes (feriado nacional, por exemplo). */
+  frente_id: number | null;
 }
 
 export interface Semestre {
@@ -65,6 +67,86 @@ export function getDiasNaoLetivos(semestreId: number, token: string) {
   return apiFetch<DiaNaoLetivo[]>(`/semestres/${semestreId}/dias-nao-letivos`, { token });
 }
 
+/**
+ * O calendário base de uma frente.
+ *
+ * `apenasDaFrente` corta os dias globais da resposta — é o que a tela de
+ * edição usa, para a diretoria não apagar um feriado nacional achando que
+ * está mexendo só no calendário de Business.
+ */
+export function getCalendarioDaFrente(
+  semestreId: number,
+  frenteId: number,
+  token: string,
+  apenasDaFrente = false,
+) {
+  const q = `frente_id=${frenteId}${apenasDaFrente ? "&apenas_da_frente=true" : ""}`;
+  return apiFetch<DiaNaoLetivo[]>(`/semestres/${semestreId}/dias-nao-letivos?${q}`, { token });
+}
+
+export interface DiaLidoDoPdf {
+  data: string;
+  tipo: TipoDiaNaoLetivo;
+  /** A linha da legenda do PDF: feriado, avaliacao_final, recesso… */
+  categoria: string;
+  /** O nome legível da categoria, como está na legenda. */
+  rotulo: string;
+  /**
+   * A quem o dia pertence.
+   *
+   * Feriado é do país e vale para todas as frentes — subir o PDF de Business
+   * não pode criar uma cópia dele em cada frente. Todo o resto sai do
+   * calendário de um CURSO: avaliação, recesso e aulas canceladas de
+   * Administração não são os de Engenharia.
+   */
+  escopo: "global" | "frente";
+}
+
+export interface CategoriaDoPdf {
+  chave: string;
+  rotulo: string;
+  tipo: TipoDiaNaoLetivo;
+  escopo: "global" | "frente";
+  /** Quantos dias desta categoria caíram dentro do semestre. */
+  encontrados: number;
+}
+
+export interface LeituraPdf {
+  semestre_id: number;
+  frente_id: number | null;
+  dias: DiaLidoDoPdf[];
+  /** O catálogo vem do backend para o filtro não repetir a lista aqui. */
+  categorias: CategoriaDoPdf[];
+  resumo: {
+    lidos: number;
+    no_semestre: number;
+    fora_do_semestre: number;
+    /** Diferente de zero = o layout do PDF mudou e algo não foi reconhecido. */
+    nao_reconhecidos: number;
+  };
+}
+
+/**
+ * Lê o PDF e devolve o que encontrou — NÃO grava.
+ *
+ * A gravação é uma chamada separada, depois da conferência na tela. A leitura
+ * é posicional e pode errar se o Insper mudar o layout; salvar direto
+ * contaminaria o cálculo de dias úteis de todos os projetos sem ninguém ver.
+ */
+export function lerCalendarioPdf(
+  semestreId: number,
+  frenteId: number,
+  arquivo: File,
+  token: string,
+) {
+  const corpo = new FormData();
+  corpo.append("arquivo", arquivo);
+  return apiFetch<LeituraPdf>(
+    `/semestres/${semestreId}/dias-nao-letivos/ler-pdf?frente_id=${frenteId}`,
+    { method: "POST", token, body: corpo },
+  );
+}
+
 export interface DiaNaoLetivoPayload {
   data: string;
   tipo: TipoDiaNaoLetivo;
@@ -79,16 +161,27 @@ export interface ResultadoCarga {
   dias: DiaNaoLetivo[];
 }
 
-/** Carga em lote — o calendário inteiro do semestre de uma vez. */
+/**
+ * Carga em lote — o calendário inteiro do semestre de uma vez.
+ *
+ * Com `frenteId`, grava o calendário base daquela frente; sem ele, o global.
+ * `substituir` limpa antes, mas só o calendário da MESMA frente: recarregar o
+ * PDF de Business não pode derrubar o que já foi conferido em Tech.
+ */
 export function carregarDiasNaoLetivos(
   semestreId: number,
   dias: DiaNaoLetivoPayload[],
   token: string,
+  opcoes?: { frenteId?: number | null; substituir?: boolean },
 ) {
   return apiFetch<ResultadoCarga>(`/semestres/${semestreId}/dias-nao-letivos`, {
     method: "POST",
     token,
-    body: JSON.stringify({ dias }),
+    body: JSON.stringify({
+      dias,
+      frente_id: opcoes?.frenteId ?? null,
+      substituir: opcoes?.substituir ?? false,
+    }),
   });
 }
 

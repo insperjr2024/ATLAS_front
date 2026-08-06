@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Send, Trash2, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
 import {
   createComentario,
@@ -71,6 +72,7 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
   const [editando, setEditando] = useState(false);
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
   const [titulo, setTitulo] = useState(tarefa.titulo);
   const [responsavel, setResponsavel] = useState(String(tarefa.responsavel_id));
@@ -144,16 +146,14 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
 
   async function excluir() {
     if (!token) return;
-    if (!confirm(`Excluir a tarefa "${tarefa.titulo}"?`)) return;
     setOcupado(true);
-    setErro("");
     try {
       await deleteTarefa(tarefa.id, token);
       await onMudou();
       onClose();
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao excluir");
       setOcupado(false);
+      throw err;
     }
   }
 
@@ -291,7 +291,12 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
 
         <ModalFooter>
           {podeEditar && !editando && (
-            <PageButton type="button" $variant="outline" disabled={ocupado} onClick={excluir}>
+            <PageButton
+              type="button"
+              $variant="outline"
+              disabled={ocupado}
+              onClick={() => setConfirmandoExclusao(true)}
+            >
               Excluir
             </PageButton>
           )}
@@ -318,6 +323,15 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
           )}
         </ModalFooter>
       </WideModalContent>
+
+      {confirmandoExclusao && (
+        <ConfirmarModal
+          titulo="Excluir tarefa"
+          mensagem={`Excluir a tarefa "${tarefa.titulo}"?`}
+          onCancelar={() => setConfirmandoExclusao(false)}
+          onConfirmar={excluir}
+        />
+      )}
     </ModalOverlay>
   );
 }

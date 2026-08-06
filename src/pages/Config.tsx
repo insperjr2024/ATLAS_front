@@ -7,6 +7,8 @@ import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/esco
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
 import { CalendarioAcademicoCard } from "./config/CalendarioAcademicoCard";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
+import { ConfiguracaoBancaCard } from "./config/ConfiguracaoBancaCard";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Escopo, Frente } from "@/types/banca";
 import type { Cargo } from "@/types/auth";
 import {
@@ -140,6 +142,19 @@ export function Config() {
   const [modalEscopo, setModalEscopo] = useState<Escopo | "novo" | null>(null);
   const [modalCargo, setModalCargo] = useState<Cargo | "novo" | null>(null);
 
+  const [paraExcluir, setParaExcluir] = useState<
+    { tipo: "frente"; item: Frente } | { tipo: "escopo"; item: Escopo } | { tipo: "cargo"; item: Cargo } | null
+  >(null);
+
+  async function confirmarExclusao() {
+    if (!token || !paraExcluir) return;
+    if (paraExcluir.tipo === "frente") await deleteFrente(paraExcluir.item.id, token);
+    else if (paraExcluir.tipo === "escopo") await deleteEscopo(paraExcluir.item.id, token);
+    else await deleteCargo(paraExcluir.item.id, token);
+    setParaExcluir(null);
+    buscar();
+  }
+
   async function buscar() {
     if (!token) return;
     setCarregando(true);
@@ -219,22 +234,42 @@ export function Config() {
         <PageCardContent>
           {frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
           {frentes.length > 0 && (
-            <TabelaNomes
-              itens={frentes}
-              onEditar={setModalFrente}
-              onExcluir={async (item) => {
-                if (!confirm(`Excluir a frente "${item.nome}"?`)) return;
-                try {
-                  await deleteFrente(item.id, token);
-                  buscar();
-                } catch (err) {
-                  alert(err instanceof Error ? err.message : "Erro ao excluir");
-                }
-              }}
-            />
+            <TableScrollWrap $scrollable={frentes.length > LIST_MAX_VISIVEIS}>
+              <DataTable>
+                <TableHead>
+                  <TableRow>
+                    <TableHeadCell>Nome</TableHeadCell>
+                    <TableHeadCell>Piso mínimo por banca</TableHeadCell>
+                    <TableHeadCell />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {frentes.map((frente) => (
+                    <TableRow key={frente.id}>
+                      <NameCell>{frente.nome}</NameCell>
+                      <TableCell>{frente.piso_banca}</TableCell>
+                      <ActionsCell>
+                        <PageButtonSm $variant="outline" type="button" onClick={() => setModalFrente(frente)}>
+                          Editar
+                        </PageButtonSm>
+                        <PageButtonSm
+                          $variant="outline"
+                          type="button"
+                          onClick={() => setParaExcluir({ tipo: "frente", item: frente })}
+                        >
+                          Excluir
+                        </PageButtonSm>
+                      </ActionsCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </DataTable>
+            </TableScrollWrap>
           )}
         </PageCardContent>
       </PageCard>
+
+      <ConfiguracaoBancaCard />
 
       <PageCard>
         <PageCardHeader>
@@ -252,15 +287,7 @@ export function Config() {
             <TabelaNomes
               itens={escopos}
               onEditar={setModalEscopo}
-              onExcluir={async (item) => {
-                if (!confirm(`Excluir o escopo "${item.nome}"?`)) return;
-                try {
-                  await deleteEscopo(item.id, token);
-                  buscar();
-                } catch (err) {
-                  alert(err instanceof Error ? err.message : "Erro ao excluir");
-                }
-              }}
+              onExcluir={(item) => setParaExcluir({ tipo: "escopo", item })}
             />
           )}
         </PageCardContent>
@@ -317,15 +344,7 @@ export function Config() {
                           <PageButtonSm
                             $variant="outline"
                             type="button"
-                            onClick={async () => {
-                              if (!confirm(`Excluir o cargo "${cargo.nome}"?`)) return;
-                              try {
-                                await deleteCargo(cargo.id, token);
-                                buscar();
-                              } catch (err) {
-                                alert(err instanceof Error ? err.message : "Erro ao excluir");
-                              }
-                            }}
+                            onClick={() => setParaExcluir({ tipo: "cargo", item: cargo })}
                           >
                             Excluir
                           </PageButtonSm>
@@ -342,13 +361,12 @@ export function Config() {
       </PageCard>
 
       {modalFrente && (
-        <ModalNome
-          titulo={modalFrente === "novo" ? "Nova frente" : "Editar frente"}
-          nomeInicial={modalFrente === "novo" ? "" : modalFrente.nome}
+        <ModalFrente
+          frente={modalFrente === "novo" ? null : modalFrente}
           onClose={() => setModalFrente(null)}
-          onSalvar={async (nome) => {
-            if (modalFrente === "novo") await createFrente(nome, token);
-            else await updateFrente(modalFrente.id, nome, token);
+          onSalvar={async (nome, pisoBanca) => {
+            if (modalFrente === "novo") await createFrente({ nome, piso_banca: pisoBanca }, token);
+            else await updateFrente(modalFrente.id, { nome, piso_banca: pisoBanca }, token);
             setModalFrente(null);
             buscar();
           }}
@@ -380,6 +398,17 @@ export function Config() {
             setModalCargo(null);
             buscar();
           }}
+        />
+      )}
+
+      {paraExcluir && (
+        <ConfirmarModal
+          titulo="Excluir"
+          mensagem={`Excluir ${
+            paraExcluir.tipo === "frente" ? "a frente" : paraExcluir.tipo === "escopo" ? "o escopo" : "o cargo"
+          } "${paraExcluir.item.nome}"?`}
+          onCancelar={() => setParaExcluir(null)}
+          onConfirmar={confirmarExclusao}
         />
       )}
     </PageStack>
@@ -469,6 +498,82 @@ function ModalNome({
             <FieldGroup>
               <FieldLabel htmlFor="nome-item">Nome</FieldLabel>
               <FieldInput id="nome-item" value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
+            </FieldGroup>
+            {erro && <FormErrorText>{erro}</FormErrorText>}
+          </ModalBody>
+          <ModalFooter>
+            <PageButton $variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </PageButton>
+            <PageButton type="submit" disabled={salvando}>
+              {salvando ? "Salvando..." : "Salvar"}
+            </PageButton>
+          </ModalFooter>
+        </FormStack>
+      </WideModalContent>
+    </ModalOverlay>
+  );
+}
+
+function ModalFrente({
+  frente,
+  onClose,
+  onSalvar,
+}: {
+  /** `null` = criando uma frente nova. */
+  frente: Frente | null;
+  onClose: () => void;
+  onSalvar: (nome: string, pisoBanca: number) => Promise<void>;
+}) {
+  const [nome, setNome] = useState(frente?.nome ?? "");
+  const [pisoBanca, setPisoBanca] = useState(String(frente?.piso_banca ?? 1));
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nome.trim()) return;
+    const piso = Number(pisoBanca);
+    if (!Number.isFinite(piso) || piso < 0) {
+      setErro("Informe um piso mínimo válido.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      await onSalvar(nome.trim(), piso);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao salvar");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog">
+        <ModalHeader>
+          <ModalTitle>{frente ? "Editar frente" : "Nova frente"}</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <FormStack onSubmit={handleSubmit}>
+          <ModalBody>
+            <FieldGroup>
+              <FieldLabel htmlFor="nome-frente">Nome</FieldLabel>
+              <FieldInput id="nome-frente" value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
+            </FieldGroup>
+            <FieldGroup>
+              <FieldLabel htmlFor="piso-frente">Piso mínimo por banca</FieldLabel>
+              <FieldInput
+                id="piso-frente"
+                type="number"
+                min={0}
+                value={pisoBanca}
+                onChange={(e) => setPisoBanca(e.target.value)}
+                required
+              />
             </FieldGroup>
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>

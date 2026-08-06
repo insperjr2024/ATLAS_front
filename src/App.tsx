@@ -14,7 +14,9 @@ import { Calendario } from "@/pages/Calendario";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Nucleo } from "@/pages/Nucleo";
 import { Membros } from "@/pages/Membros";
+import { Notificacoes } from "@/pages/Notificacoes";
 import { Avaliacoes } from "@/pages/Avaliacoes";
+import { CalendariosBase } from "@/pages/CalendariosBase";
 import { Config } from "@/pages/Config";
 import { ProjetosList } from "@/pages/projetos/ProjetosList";
 import { ProjetoNovo } from "@/pages/projetos/ProjetoNovo";
@@ -40,6 +42,7 @@ import { PainelLotes } from "@/pages/avaliacao-desempenho/painel/PainelLotes";
 import { PainelMentoria } from "@/pages/avaliacao-desempenho/painel/PainelMentoria";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
+import { CronogramasGeraisAba } from "@/pages/monitoramento/CronogramasGeraisAba";
 
 export default function App() {
   return (
@@ -62,6 +65,10 @@ export default function App() {
                   só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
               <Route path="/calendario" element={<CalendarioGeral />} />
               <Route path="/bancas/calendario" element={<Calendario />} />
+
+              {/* 🔔 §6.6 — sem guard: todo perfil tem notificação. O que muda
+                  é o conteúdo, e quem recorta isso é o backend. */}
+              <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
               {/* Criar projeto é de diretor e gerente — guard por POSIÇÃO,
@@ -89,6 +96,7 @@ export default function App() {
                   <Route path="alocacao" element={<AlocacaoAba />} />
                   <Route path="atrasos" element={<AtrasosAba />} />
                   <Route path="tarefas" element={<TarefasGeraisAba />} />
+                  <Route path="cronogramas" element={<CronogramasGeraisAba />} />
                 </Route>
               </Route>
 
@@ -128,6 +136,7 @@ export default function App() {
               <Route element={<RequirePosicao posicoes={["diretor"]} />}>
                 <Route path="/nucleo" element={<Nucleo />} />
                 <Route path="/config" element={<Config />} />
+                <Route path="/calendarios-base" element={<CalendariosBase />} />
               </Route>
               <Route element={<AdminRoute permissao="pode_gerir_membros" />}>
                 <Route path="/membros" element={<Membros />} />

@@ -30,7 +30,12 @@ export interface EscopoComEtapas extends EscopoVendido {
 }
 
 export interface FaixaDerivadaResposta {
-  tipo: "ambientacao" | "pausa";
+  /**
+   * `escopo` é o período do §5.4: da reunião inicial até a banca daquele
+   * escopo. As outras duas são do projeto inteiro e vêm sem escopo.
+   */
+  tipo: "escopo" | "ambientacao" | "pausa";
+  projeto_escopo_id: number | null;
   inicio: string;
   fim: string;
   rotulo: string;
@@ -40,6 +45,14 @@ export interface DiaNaoUtilResposta {
   data: string;
   tipo: string;
   descricao: string | null;
+  /**
+   * A frente dona do dia; `null` vale para todas.
+   *
+   * O calendário acadêmico deixou de ser um só: cada frente abrange cursos
+   * diferentes, e cada curso tem as suas semanas de avaliação. Feriado é do
+   * país e continua global.
+   */
+  frente_id: number | null;
 }
 
 export interface CronogramaResposta {
@@ -49,6 +62,12 @@ export interface CronogramaResposta {
   marcos: MarcoCronograma[];
   faixas_derivadas: FaixaDerivadaResposta[];
   janela: { inicio: string; fim: string };
+  /**
+   * A gestão corrente. A `janela` é larga de propósito — o ano corrente e o
+   * seguinte, para a navegação ser livre —, mas o semestre é o recorte que
+   * interessa por padrão: é quando o projeto de fato acontece.
+   */
+  semestre: { nome: string; inicio: string; fim: string } | null;
   dias_nao_uteis: DiaNaoUtilResposta[];
   reajuste_pendente: { id: number; solicitado_por: number; criado_em: string } | null;
 }

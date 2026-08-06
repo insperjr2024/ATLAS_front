@@ -61,15 +61,29 @@ export const ColunaTitulo = styled.h3`
   font-weight: ${theme.fontWeight.medium};
 `;
 
-/** A pílula do cabeçalho: ponto colorido + rótulo, no molde do board. */
+/**
+ * A pílula do cabeçalho: ponto colorido + rótulo, no molde do board.
+ * `min-width: 0` é o que permite ela encolher dentro do `ColunaTitulo` (flex
+ * por padrão recusa encolher abaixo do conteúdo) — sem isso, um rótulo longo
+ * ("Período de ajustes") empurrava o `Contador` ao lado quase pra fora.
+ */
 export const ColunaPilula = styled.span<{ $cor: TonsColuna }>`
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
+  min-width: 0;
   padding: 0.15rem 0.5rem;
   border-radius: ${theme.borderRadius.md};
   background: ${({ $cor }) => $cor.fundo};
   color: ${({ $cor }) => $cor.texto};
+`;
+
+/** O texto do rótulo dentro da pílula — é ele que trunca com reticências
+ *  quando não cabe, não a pílula inteira nem o contador ao lado. */
+export const ColunaRotuloTexto = styled.span`
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
@@ -81,7 +95,9 @@ export const Ponto = styled.span<{ $cor: string }>`
   background: ${({ $cor }) => $cor};
 `;
 
+/** `flex-shrink: 0` — o número nunca perde espaço; quem trunca é o rótulo. */
 export const Contador = styled.span`
+  flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   font-weight: ${theme.fontWeight.normal};
   color: ${theme.colors.mutedForeground};
@@ -170,6 +186,14 @@ export const BotaoExcluir = styled.button`
     color: ${theme.colors.destructive};
     background: ${theme.colors.muted};
   }
+`;
+
+/** Kickoff pendente — o mesmo alerta do card em lista, só que aqui cabe só o
+ *  ícone: o card do kanban é compacto demais pro texto "Kickoff pendente". */
+export const AlertaKickoff = styled.span`
+  display: inline-flex;
+  flex-shrink: 0;
+  color: ${theme.colors.destructive};
 `;
 
 export const CardTitulo = styled.span`
@@ -283,4 +307,64 @@ export const SemanaRotulo = styled.span`
   font-size: ${theme.fontSize.sm};
   font-weight: ${theme.fontWeight.medium};
   color: ${theme.colors.foreground};
+`;
+
+/* ------------------------------------------------------------------ */
+/* "Sobre qual escopo foi?" — o que dá a largada na contagem (§5.4)     */
+/* ------------------------------------------------------------------ */
+
+export const EscolhaEscopoPainel = styled.div`
+  margin-top: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.muted};
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+export const EscolhaEscopoTitulo = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+`;
+
+export const EscolhaEscopoLista = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+`;
+
+export const EscolhaEscopoOpcao = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+  text-align: left;
+  cursor: pointer;
+  transition: border-color ${theme.transitions.fast}, background ${theme.transitions.fast};
+
+  &:hover:not(:disabled) {
+    border-color: ${theme.colors.ring};
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+`;
+
+export const EscolhaEscopoDica = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  white-space: nowrap;
 `;

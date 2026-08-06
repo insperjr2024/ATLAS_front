@@ -25,6 +25,10 @@ import type { BlocoCalendario, Visao } from "./visao";
 
 export interface EtapaPintavel {
   id: number;
+  /** A chave do grupo. Linhas com a mesma chave são TRECHOS de uma só etapa. */
+  grupo: string;
+  /** De qual escopo é — a etapa cobre a faixa de período do próprio escopo. */
+  projeto_escopo_id?: number | null;
   nome: string;
   cor: string;
   data_inicio: string;
@@ -43,7 +47,9 @@ export interface MarcoRenderizavel {
 }
 
 export interface FaixaDerivada {
-  tipo: "ambientacao" | "pausa";
+  tipo: "escopo" | "ambientacao" | "pausa";
+  /** Só o período de escopo tem dono — é o que dá uma fatia por escopo. */
+  projeto_escopo_id?: number | null;
   inicio: string;
   fim: string;
   rotulo: string;
@@ -67,18 +73,49 @@ interface PaintedCalendarProps {
    *  definição única, e recalcular fim de semana aqui divergiria no dia em
    *  que a diretoria carregar um recesso. */
   diasNaoUteis: Map<string, DiaNaoUtil>;
-  /** A etapa do "pintando: X". `null` = cursor de leitura. */
-  etapaAtiva: number | null;
+  /**
+   * O que IMPEDE pintar, quando difere do que é mostrado.
+   *
+   * Na visão Geral o calendário exibe a união das frentes, mas a trava é a
+   * frente da etapa no pincel: pintar uma etapa de Business num dia que só é
+   * não útil em Tech é legítimo. Sem esta separação o Geral ficaria mais
+   * restrito que o escopo. Ausente, vale o próprio `diasNaoUteis`.
+   */
+  diasBloqueados?: Map<string, DiaNaoUtil>;
+  /** O grupo do "pintando: X". `null` = cursor de leitura. */
+  grupoAtivo: string | null;
+  /** Nome e cor do grupo ativo. Necessário à parte porque uma etapa recém
+   *  criada ainda não tem linha em `etapas` — e sem isto a PRIMEIRA pincelada
+   *  ficava sem preview nenhum, nem contorno nem cor.
+   *
+   *  Quem passa deve mandar um objeto ESTÁVEL (o próprio grupo memoizado, não
+   *  um literal novo), senão o memo do preview se invalida a cada render. */
+  pincel?: { nome: string; cor: string } | null;
   somenteLeitura?: boolean;
-  onPaintRange: (etapaId: number, inicio: string, fim: string) => void;
+  /**
+   * Escreve o motivo dentro da célula do dia não útil, mesmo na visão de mês.
+   *
+   * No cronograma a hachura basta — quem olha quer ver as etapas, e o motivo
+   * fica no `title`. Na tela de calendários base o dia não útil É o conteúdo,
+   * então dizer "Feriado" ou "Avaliação final" na célula é o ponto.
+   */
+  mostrarMotivo?: boolean;
+  /** Deixa o calendário crescer e quem rola passa a ser a página. Use onde não
+   *  há legenda grudada ao lado — senão sobra scroll dentro de scroll. */
+  semScrollProprio?: boolean;
+  onPaintRange: (grupo: string, inicio: string, fim: string) => void;
+  /** Arrasto iniciado sobre dia que já é da etapa: TIRA o intervalo dela. */
+  onEraseRange?: (grupo: string, inicio: string, fim: string) => void;
   /** Notifica o intervalo em construção, para a barra mostrar a contagem. */
   onArrasteMudou?: (intervalo: { inicio: string; fim: string } | null) => void;
 }
 
 interface Arraste {
-  etapaId: number;
+  grupo: string;
   ancora: string;
   hover: string;
+  /** Decidido na âncora: começou sobre dia da própria etapa, então apaga. */
+  apagando: boolean;
 }
 
 /** Uma fatia da célula: uma etapa (ou a faixa derivada) que reivindica o dia. */
@@ -86,6 +123,8 @@ interface DonoDoDia {
   fundo: string;
   texto: string;
   nome: string;
+  /** Qual etapa (agrupada) é dona — usado para não repetir fatia da mesma. */
+  grupo: string;
 }
 
 /**
@@ -102,9 +141,14 @@ export function PaintedCalendar({
   marcos,
   faixas,
   diasNaoUteis,
-  etapaAtiva,
+  diasBloqueados,
+  grupoAtivo,
+  pincel,
   somenteLeitura,
+  mostrarMotivo,
+  semScrollProprio,
   onPaintRange,
+  onEraseRange,
   onArrasteMudou,
 }: PaintedCalendarProps) {
   const [arraste, setArraste] = useState<Arraste | null>(null);
@@ -123,12 +167,11 @@ export function PaintedCalendar({
   }, [marcos]);
 
   /**
-   * Funde as etapas persistidas com uma etapa **virtual** montada do arraste.
-   * O renderizador da célula não sabe a diferença — só pergunta "quem é dona
-   * desta data?". É isso que faz o preview aparecer sem estado duplicado.
-   */
-  /**
    * Quem são os donos de cada dia — uma LISTA, não um vencedor.
+   *
+   * O arraste entra como etapa virtual: o renderizador da célula não sabe a
+   * diferença entre pintura salva e preview, só pergunta "quem é dona desta
+   * data?". É isso que faz o preview aparecer sem estado duplicado.
    *
    * Duas etapas no mesmo dia dividem a célula em fatias diagonais (ver
    * `fundoDiagonal`). O campo `ordem` deixou de ser desempate de sobreposição
@@ -138,57 +181,77 @@ export function PaintedCalendar({
   const donosDoDia = useMemo(() => {
     const porDia = new Map<string, DonoDoDia[]>();
 
-    const acrescentar = (inicio: string, fim: string, cor: string, nome: string) => {
+    // Dedupe por GRUPO: dois trechos da mesma etapa podem cair no mesmo dia
+    // (o usuário repintou por cima), e sem isto a célula ganharia duas fatias
+    // da cor idêntica — que lê como um bug, não como informação.
+    const acrescentar = (inicio: string, fim: string, cor: string, nome: string, grupo: string) => {
       const tons = tonsDaCor(cor);
       for (const chave of diasDoIntervalo(inicio, fim)) {
         const lista = porDia.get(chave) ?? [];
-        lista.push({ fundo: tons.fundo, texto: tons.texto, nome });
+        if (lista.some((d) => d.grupo === grupo)) continue;
+        lista.push({ fundo: tons.fundo, texto: tons.texto, nome, grupo });
         porDia.set(chave, lista);
       }
     };
 
+    // As faixas derivadas entram PRIMEIRO, e como fatia de verdade: um dia de
+    // ambientação em que já se pintou uma etapa mostra as duas, dividido. Elas
+    // vêm antes para ficarem sempre na mesma posição da divisão, senão a fatia
+    // trocaria de lado conforme a ordem em que as etapas foram criadas.
+    //
+    // A chave do grupo carrega o escopo: dois escopos em PARALELO (§5.4) têm
+    // duas faixas de período no mesmo dia, e sem isso o dedupe engoliria a
+    // segunda como se fosse repetição da primeira.
+    for (const faixa of faixas) {
+      const grupo = `faixa:${faixa.tipo}:${faixa.projeto_escopo_id ?? ""}`;
+      acrescentar(faixa.inicio, faixa.fim, faixa.cor, faixa.rotulo, grupo);
+    }
+
     for (const etapa of [...etapas].sort((a, b) => a.ordem - b.ordem)) {
-      acrescentar(etapa.data_inicio, etapa.data_fim, etapa.cor, etapa.nome);
+      acrescentar(etapa.data_inicio, etapa.data_fim, etapa.cor, etapa.nome, etapa.grupo);
+      // ⭐ A faixa do escopo é FUNDO, não concorrente: onde a etapa dele já
+      // pinta o dia, a faixa sai de cena. Sem isto toda etapa apareceria pela
+      // metade — dividida com a própria faixa que a contém, o tempo inteiro.
+      if (etapa.projeto_escopo_id) {
+        const chaveFaixa = `faixa:escopo:${etapa.projeto_escopo_id}`;
+        for (const chave of diasDoIntervalo(etapa.data_inicio, etapa.data_fim)) {
+          const lista = porDia.get(chave);
+          if (lista?.some((d) => d.grupo === chaveFaixa)) {
+            porDia.set(
+              chave,
+              lista.filter((d) => d.grupo !== chaveFaixa),
+            );
+          }
+        }
+      }
     }
 
     // A etapa em arrasto entra como mais uma fatia nos dias que ainda não são
     // dela — o preview mostra o resultado real do drop, não uma cor por cima.
     const preview = new Set<string>();
     if (arraste) {
-      const etapa = etapas.find((e) => e.id === arraste.etapaId);
-      if (etapa) {
+      // Cai no `pincel` quando a etapa ainda não tem linha gravada.
+      const etapa = etapas.find((e) => e.grupo === arraste.grupo);
+      const nome = etapa?.nome ?? pincel?.nome;
+      const cor = etapa?.cor ?? pincel?.cor;
+      if (nome && cor) {
         const inicio = arraste.ancora <= arraste.hover ? arraste.ancora : arraste.hover;
         const fim = arraste.ancora <= arraste.hover ? arraste.hover : arraste.ancora;
-        const tons = tonsDaCor(etapa.cor);
-        for (const chave of diasDoIntervalo(inicio, fim)) {
-          preview.add(chave);
-          const lista = porDia.get(chave) ?? [];
-          if (!lista.some((d) => d.nome === etapa.nome)) {
-            lista.push({ fundo: tons.fundo, texto: tons.texto, nome: etapa.nome });
-            porDia.set(chave, lista);
-          }
-        }
-      }
-    }
-
-    // Faixas derivadas ficam por BAIXO: só pintam o dia que nenhuma etapa
-    // reivindicou. Ambientação como fatia ao lado de uma etapa seria ruído —
-    // ela é contexto do projeto, não trabalho planejado.
-    for (const faixa of faixas) {
-      const tons = tonsDaCor(faixa.cor);
-      for (const chave of diasDoIntervalo(faixa.inicio, faixa.fim)) {
-        if (!porDia.has(chave)) {
-          porDia.set(chave, [{ fundo: tons.fundo, texto: tons.texto, nome: faixa.rotulo }]);
-        }
+        for (const chave of diasDoIntervalo(inicio, fim)) preview.add(chave);
+        // Apagando, o preview é só o contorno: tingir sugeriria o contrário
+        // do que o gesto faz.
+        if (!arraste.apagando) acrescentar(inicio, fim, cor, nome, arraste.grupo);
       }
     }
 
     return { porDia, preview };
-  }, [etapas, faixas, arraste]);
+  }, [etapas, faixas, arraste, pincel]);
+
+  const travas = diasBloqueados ?? diasNaoUteis;
 
   const pintavel = useCallback(
-    (chave: string) => !somenteLeitura && etapaAtiva !== null && !diasNaoUteis.has(chave),
-    [somenteLeitura, etapaAtiva, diasNaoUteis],
+    (chave: string) => !somenteLeitura && grupoAtivo !== null && !travas.has(chave),
+    [somenteLeitura, grupoAtivo, travas],
   );
 
   function iniciarArraste(e: React.PointerEvent<HTMLDivElement>, chave: string) {
@@ -196,7 +259,12 @@ export function PaintedCalendar({
     // Mata a seleção de texto nativa sobre a grade.
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    setArraste({ etapaId: etapaAtiva!, ancora: chave, hover: chave });
+    // O gesto se decide AQUI, pela âncora, e vale para o arrasto inteiro:
+    // começou sobre um dia que já é da etapa, o arrasto tira; começou sobre
+    // dia livre (ou de outra etapa), pinta. Decidir célula a célula faria o
+    // mesmo arrasto pintar um pedaço e apagar outro.
+    const jaEhDaEtapa = (donosDoDia.porDia.get(chave) ?? []).some((d) => d.grupo === grupoAtivo);
+    setArraste({ grupo: grupoAtivo!, ancora: chave, hover: chave, apagando: jaEhDaEtapa });
   }
 
   // pointermove/up ficam na WINDOW: o ponteiro sai da célula o tempo todo
@@ -240,9 +308,10 @@ export function PaintedCalendar({
         atual.ancora <= fimReal
           ? { inicio: atual.ancora, fim: fimReal }
           : { inicio: fimReal, fim: atual.ancora };
-      const aparado = apararPontas(bruto.inicio, bruto.fim, diasNaoUteis);
+      const aparado = apararPontas(bruto.inicio, bruto.fim, travas);
       if (!aparado) return; // intervalo inteiro em dia não útil: aborta calado
-      onPaintRange(atual.etapaId, aparado.inicio, aparado.fim);
+      if (atual.apagando) onEraseRange?.(atual.grupo, aparado.inicio, aparado.fim);
+      else onPaintRange(atual.grupo, aparado.inicio, aparado.fim);
     }
 
     window.addEventListener("pointermove", aoMover);
@@ -255,7 +324,7 @@ export function PaintedCalendar({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [arraste, diasNaoUteis, onPaintRange, onArrasteMudou]);
+  }, [arraste, travas, onPaintRange, onEraseRange, onArrasteMudou]);
 
   // Avisa a barra do intervalo em construção, para a contagem viva.
   useEffect(() => {
@@ -270,7 +339,7 @@ export function PaintedCalendar({
   const detalhado = visao !== "mes";
 
   return (
-    <CronogramaScroll data-cronograma-export>
+    <CronogramaScroll data-cronograma-export $semScrollProprio={semScrollProprio}>
       {blocos.map((bloco) => {
         const colunas = bloco.rotulos.length || bloco.linhas[0]?.length || 1;
         return (
@@ -352,9 +421,11 @@ export function PaintedCalendar({
                           ))}
                         </DetalheCelula>
                       )}
-                      {detalhado && rotuloDoNaoUtil && (
+                      {(detalhado || mostrarMotivo) && rotuloDoNaoUtil && naoUtil && (
                         <DetalheCelula>
-                          <small>{rotuloDoNaoUtil}</small>
+                          {/* A descrição é mais específica que o tipo: "Aulas
+                              canceladas" e "Recesso" são os dois `recesso`. */}
+                          <small>{naoUtil.descricao ?? rotuloNaoUtil(naoUtil.tipo)}</small>
                         </DetalheCelula>
                       )}
 

@@ -18,6 +18,10 @@ export {
   NameCell,
 } from "../Bancas.styled";
 
+/** O grid de cards do §6.2, reaproveitado pelo board macro de cronogramas
+ *  (§7) — mesma grade responsiva da listagem de projetos. */
+export { CardGrid, ProjetoCard, CardTitle, CardCliente } from "../projetos/Projetos.styled";
+
 /**
  * A tabela das abas, um degrau acima da `DataTable` genérica.
  *
@@ -1105,7 +1109,8 @@ export const AvisoSomenteLeitura = styled.p`
 export const SwimGrid = styled.div<{ $colunas: number }>`
   display: grid;
   grid-template-columns: 10rem repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(11rem, 1fr));
-  gap: ${theme.spacing.sm};
+  row-gap: ${theme.spacing.xl};
+  column-gap: ${theme.spacing.md};
   overflow-x: auto;
   padding-bottom: ${theme.spacing.sm};
   align-items: start;
@@ -1134,6 +1139,16 @@ export const SwimGrid = styled.div<{ $colunas: number }>`
 export const SwimHeaderCell = styled.div`
   display: flex;
   align-items: center;
+`;
+
+/** A linha entre uma faixa de projeto e a próxima — mesmo cinza neutro dos
+ *  outros divisores da tela (Atrasos, Alocação), sem cor de destaque: aqui é
+ *  só separação visual, a cor de alerta fica reservada pra quando algo
+ *  realmente precisa de atenção. */
+export const SwimDivisor = styled.div`
+  grid-column: 1 / -1;
+  height: 1px;
+  background: ${theme.colors.border};
 `;
 
 /**
@@ -1464,3 +1479,20 @@ export const ProjetosDaEtapa = styled.div`
   border-top: 1px solid ${theme.colors.border};
 `;
 
+/* ------------------------------------------------------------------ */
+/* Board macro de cronogramas — mini-calendários por projeto (§7)      */
+/* ------------------------------------------------------------------ */
+
+/** O rodapé do card: o escopo que decide a posição na fila, com a `Pilula`
+ *  de urgência ao lado — texto e cor juntos, para não depender só da cor. */
+export const CronogramaCardRodape = styled.p`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding-top: ${theme.spacing.sm};
+  border-top: 1px solid ${theme.colors.border};
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.foreground};
+`;

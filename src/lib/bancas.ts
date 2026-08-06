@@ -6,9 +6,88 @@ import type {
   Candidatura,
   EquipeProjeto,
   Escopo,
+  EscopoVendidoResumo,
   Frente,
   StatusBanca,
 } from "@/types/banca";
+
+/**
+ * Marca que a banca ACONTECEU — o passo que separa "a data passou" de "foi
+ * feita". Sem ele a banca fica `atrasada` para sempre e o §7.4 conta isso
+ * como atraso do projeto.
+ *
+ * `presentes` é a lista de quem compareceu; o backend confirma essas
+ * candidaturas e desmarca o resto.
+ *
+ * `forcar` registra mesmo abaixo do mínimo de alocados — o backend só aceita
+ * de diretor (§8: a exceção de composição é da diretoria).
+ */
+export function realizarBanca(
+  bancaId: number,
+  dados: { realizado_em?: string | null; presentes?: number[]; forcar?: boolean },
+  token: string,
+) {
+  return apiFetch(`/bancas/${bancaId}/realizar`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+/**
+ * Aprovada ou não aprovada.
+ *
+ * 🔒 É este resultado que libera a entrega ao cliente (§5.5). Enquanto ele não
+ * existe, o escopo não pode ser entregue — a trava vive no backend.
+ */
+export function registrarResultado(
+  bancaId: number,
+  resultado: "aprovada" | "nao_aprovada",
+  token: string,
+) {
+  return apiFetch(`/bancas/${bancaId}/resultado`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ resultado }),
+  });
+}
+
+/** A exceção de choque de horário — só a diretoria, e exige justificativa (§8). */
+export function definirExcecaoChoque(bancaId: number, nota: string, token: string) {
+  return apiFetch(`/bancas/${bancaId}/excecao-choque`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ excecao_choque_nota: nota }),
+  });
+}
+
+/**
+ * A escalação automática do §8: uma semana antes, preenche as bancas que ainda
+ * estão sem gente, por rodízio e priorizando a mesma frente.
+ */
+export interface ResultadoPush {
+  banca_id: number;
+  nome_projeto: string;
+  alocados_antes: number;
+  alocados_depois: number;
+  usuarios_alocados: number[];
+}
+
+export function pushAlocacao(token: string) {
+  return apiFetch<ResultadoPush[]>("/bancas/push-alocacao", { method: "POST", token });
+}
+
+/**
+ * Aloca OUTRA pessoa numa banca. Só a diretoria — escalar alguém mexe na
+ * agenda dele sem que tenha pedido (§8).
+ */
+export function alocarUsuario(bancaId: number, usuarioId: number, token: string) {
+  return apiFetch("/candidaturas", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ banca_id: bancaId, usuario_id: usuarioId }),
+  });
+}
 
 export function getBancas(token: string) {
   return apiFetch<Banca[]>("/bancas", { token });
@@ -38,6 +117,10 @@ export function getEscopos(token: string) {
   return apiFetch<Escopo[]>("/escopos", { token });
 }
 
+export function getEscoposVendidos(token: string) {
+  return apiFetch<EscopoVendidoResumo[]>("/escopos-projeto", { token });
+}
+
 export function getFrentes(token: string) {
   return apiFetch<Frente[]>("/frentes", { token });
 }
@@ -56,12 +139,15 @@ export interface CreateBancaPayload {
   data_hora: string;
   consultor_ids: number[];
   frente_ids: number[];
+  /** Só a diretoria manda isto — ver `require_diretor` no backend. */
+  piso_minimo_override?: number | null;
 }
 
 export interface UpdateBancaPayload {
   nome_projeto?: string;
   escopo_id?: number;
   data_hora?: string;
+  piso_minimo_override?: number | null;
 }
 
 export function createBanca(dados: CreateBancaPayload, token: string) {

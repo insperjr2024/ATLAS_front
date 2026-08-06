@@ -141,25 +141,117 @@ export const LotesStack = styled.div`
 export const AvaliacaoDetalheBlock = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
+  gap: ${theme.spacing.md};
   margin: 0 0 ${theme.spacing.sm};
+  padding: ${theme.spacing.lg};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.sm};
+`;
+
+/** A nota geral (`corDaNota`) puxa a cor da borda inteira — é a primeira
+ *  coisa que quem está lendo precisa saber antes de entrar nos critérios. */
+export const DetalheNotaGeralDestaque = styled.div<{ $cor: string }>`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${({ $cor }) => $cor};
+  background: color-mix(in srgb, ${({ $cor }) => $cor} 10%, ${theme.colors.card});
+`;
+
+export const DetalheNotaGeralRotulo = styled.span`
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
+`;
+
+export const DetalheNotaGeralNumero = styled.span<{ $cor: string }>`
+  font-size: ${theme.fontSize.lg};
+  font-weight: ${theme.fontWeight.bold};
+  color: ${({ $cor }) => $cor};
+`;
+
+export const DetalheCriteriosLista = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+export const DetalheCriterioRow = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6rem 1.5rem;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+export const DetalheCriterioLabel = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.foreground};
+`;
+
+export const DetalheCriterioBarraTrilha = styled.div`
+  height: 0.375rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.secondary};
+  overflow: hidden;
+`;
+
+export const DetalheCriterioBarraFill = styled.div<{ $percent: number; $cor: string }>`
+  height: 100%;
+  width: ${({ $percent }) => $percent}%;
+  background: ${({ $cor }) => $cor};
+  border-radius: ${theme.borderRadius.full};
+`;
+
+export const DetalheCriterioNumero = styled.span<{ $cor: string }>`
+  text-align: right;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${({ $cor }) => $cor};
+`;
+
+export const DetalheCriterioTexto = styled.p`
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.5rem 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.muted};
+  font-size: ${theme.fontSize.xs};
+  line-height: 1.5;
+  color: ${theme.colors.foreground};
+  white-space: pre-wrap;
+`;
+
+export const DetalheComentarioBlock = styled.div`
+  padding: ${theme.spacing.md};
+  border-left: 3px solid ${theme.colors.border};
+  border-radius: 0 ${theme.borderRadius.md} ${theme.borderRadius.md} 0;
   background: ${theme.colors.muted};
 `;
 
-export const CriterioDetalheRow = styled.div`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: ${theme.spacing.md};
+export const DetalheComentarioRotulo = styled.p`
+  margin: 0 0 0.25rem;
   font-size: ${theme.fontSize.xs};
-  color: ${theme.colors.foreground};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: ${theme.colors.mutedForeground};
+`;
 
-  span:last-child {
-    text-align: right;
-    color: ${theme.colors.mutedForeground};
-  }
+export const DetalheComentarioTexto = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.6;
+  color: ${theme.colors.foreground};
+  white-space: pre-wrap;
 `;
 
 export const LoteCard = styled.div`

@@ -39,6 +39,7 @@ export function MonitoramentoLayout() {
   const [frentes, setFrentes] = useState<Frente[]>([]);
 
   const podeVerTarefasGerais = pode(usuario, "ver_tarefas_gerais");
+  const podeVerCronogramasGerais = pode(usuario, "ver_cronogramas_gerais");
 
   useEffect(() => {
     if (!token) return;
@@ -67,6 +68,9 @@ export function MonitoramentoLayout() {
         <TabLink to="/monitoramento/alocacao">Alocação</TabLink>
         <TabLink to="/monitoramento/atrasos">Atrasos</TabLink>
         {podeVerTarefasGerais && <TabLink to="/monitoramento/tarefas">Tarefas</TabLink>}
+        {podeVerCronogramasGerais && (
+          <TabLink to="/monitoramento/cronogramas">Cronogramas</TabLink>
+        )}
       </TabBar>
 
       <Outlet context={contexto} />

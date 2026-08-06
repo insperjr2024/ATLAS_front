@@ -13,6 +13,7 @@ import {
   type Semestre,
 } from "@/lib/calendario-academico";
 import { formatarData } from "@/lib/projetos";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   PageCard,
   PageCardHeader,
@@ -61,6 +62,7 @@ export function CalendarioAcademicoCard() {
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [confirmandoArquivamento, setConfirmandoArquivamento] = useState(false);
 
   async function carregar() {
     if (!token) return;
@@ -112,13 +114,9 @@ export function CalendarioAcademicoCard() {
 
   async function arquivar() {
     if (!token || !ativo) return;
-    if (!confirm(`Arquivar a gestão ${ativo.nome}? Os indicadores reiniciam na próxima.`)) return;
-    try {
-      await updateSemestre(ativo.id, { status: "arquivada" }, token);
-      await carregar();
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao arquivar");
-    }
+    await updateSemestre(ativo.id, { status: "arquivada" }, token);
+    setConfirmandoArquivamento(false);
+    await carregar();
   }
 
   async function remover(dia: DiaNaoLetivo) {
@@ -143,7 +141,11 @@ export function CalendarioAcademicoCard() {
               {ativo.status === "ativa" ? "gestão ativa" : "arquivada"}
             </PageBadge>
             {ativo.status === "ativa" && (
-              <PageButtonSm type="button" $variant="outline" onClick={arquivar}>
+              <PageButtonSm
+                type="button"
+                $variant="outline"
+                onClick={() => setConfirmandoArquivamento(true)}
+              >
                 <Archive size={14} />
                 Arquivar gestão
               </PageButtonSm>
@@ -160,7 +162,7 @@ export function CalendarioAcademicoCard() {
         ) : (
           <>
             <EmptyText style={{ marginBottom: "0.75rem" }}>
-              É esta carga que define o <strong>dia útil</strong> do sistema (§5.4). Sem ela, só o
+              É esta carga que define o <strong>dia útil</strong> do sistema. Sem ela, só o
               fim de semana é excluído — feriados e semanas de prova contariam como dias
               trabalhados em todos os escopos. De {formatarData(ativo.inicio)} a{" "}
               {formatarData(ativo.fim)}.
@@ -234,13 +236,22 @@ export function CalendarioAcademicoCard() {
 
             {semestres.length > 1 && (
               <EmptyText style={{ marginTop: "0.75rem" }}>
-                {semestres.length} gestões cadastradas. As arquivadas ficam acessíveis no histórico
-                (§12).
+                {semestres.length} gestões cadastradas. As arquivadas ficam acessíveis no histórico.
               </EmptyText>
             )}
           </>
         )}
       </PageCardContent>
+
+      {confirmandoArquivamento && ativo && (
+        <ConfirmarModal
+          titulo="Arquivar gestão"
+          mensagem={`Arquivar a gestão ${ativo.nome}? Os indicadores reiniciam na próxima.`}
+          rotuloConfirmar="Arquivar"
+          onCancelar={() => setConfirmandoArquivamento(false)}
+          onConfirmar={arquivar}
+        />
+      )}
     </PageCard>
   );
 }

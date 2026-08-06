@@ -436,17 +436,32 @@ function NovoMembroModal({
   const [erro, setErro] = useState("");
 
   // §3: o recorte de visão do gerente sai de `usuario_frente` — sem nenhuma
-  // frente marcada ele entra na plataforma sem enxergar projeto nenhum.
+  // frente marcada ele entra na plataforma sem enxergar projeto nenhum. E só
+  // UMA: `aplicar_recorte_visao` trava numa frente só, então mais de uma
+  // vira ambiguidade sobre o que ele deveria enxergar (o backend também
+  // recusa a segunda, ver `create_usuario_frente.py`).
   const frenteObrigatoria = posicao === "gerente";
 
+  function trocarPosicao(nova: Posicao) {
+    setPosicao(nova);
+    // Muda o que a frente SIGNIFICA (trava de acesso pro gerente vs. mero
+    // metadado de alocação pros outros) — a seleção anterior não deveria
+    // sobreviver a essa troca sem a pessoa confirmar de novo.
+    setFrenteIds([]);
+  }
+
   function toggleFrente(id: number) {
+    if (frenteObrigatoria) {
+      setFrenteIds([id]);
+      return;
+    }
     setFrenteIds((lista) => (lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]));
   }
 
   async function handleCriar(e: React.FormEvent) {
     e.preventDefault();
     if (frenteObrigatoria && frenteIds.length === 0) {
-      setErro("Selecione ao menos uma frente — é ela que define os projetos que o gerente enxerga.");
+      setErro("Selecione a frente — é ela que define os projetos que o gerente enxerga.");
       return;
     }
     setSalvando(true);
@@ -527,7 +542,7 @@ function NovoMembroModal({
                 <FieldSelect
                   id="novo-membro-posicao"
                   value={posicao}
-                  onChange={(e) => setPosicao(e.target.value as Posicao)}
+                  onChange={(e) => trocarPosicao(e.target.value as Posicao)}
                   required
                 >
                   {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((p) => (
@@ -541,13 +556,14 @@ function NovoMembroModal({
               {/* Logo abaixo da posição: para o gerente, escolher a frente é
                   parte de definir a posição, não um detalhe solto. */}
               <FieldGroup>
-                <FieldLabel>{frenteObrigatoria ? "Frentes que o gerente lidera *" : "Frentes"}</FieldLabel>
+                <FieldLabel>{frenteObrigatoria ? "Frente que o gerente lidera *" : "Frentes"}</FieldLabel>
                 <CheckboxGrid>
                   {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
                   {contexto.frentes.map((frente) => (
                     <CheckboxLabel key={frente.id}>
                       <input
-                        type="checkbox"
+                        type={frenteObrigatoria ? "radio" : "checkbox"}
+                        name={frenteObrigatoria ? "novo-membro-frente-gerente" : undefined}
                         checked={frenteIds.includes(frente.id)}
                         onChange={() => toggleFrente(frente.id)}
                       />
@@ -557,8 +573,8 @@ function NovoMembroModal({
                 </CheckboxGrid>
                 {frenteObrigatoria && (
                   <EmptyText style={{ fontSize: "0.7rem" }}>
-                    O gerente só enxerga os projetos das frentes marcadas aqui (§3) — sem nenhuma
-                    marcada, ele entra na plataforma sem ver projeto algum.
+                    O gerente só enxerga os projetos desta frente (§3) — sem nenhuma marcada, ele
+                    entra na plataforma sem ver projeto algum.
                   </EmptyText>
                 )}
               </FieldGroup>
@@ -617,17 +633,27 @@ function MembroModal({
 
   const frentesMembro = frentesDoUsuario(contexto.usuariosFrentes, contexto.frentes, membro.id);
 
-  // §3: promover a gerente sem vincular frente deixa a conta sem enxergar nada.
+  // §3: promover a gerente sem vincular frente deixa a conta sem enxergar
+  // nada. E só UMA — ver o comentário equivalente em `NovoMembroModal`.
   const frenteObrigatoria = posicao === "gerente";
 
+  function trocarPosicao(nova: Posicao) {
+    setPosicao(nova);
+    setFrenteIds([]);
+  }
+
   function toggleFrente(id: number) {
+    if (frenteObrigatoria) {
+      setFrenteIds([id]);
+      return;
+    }
     setFrenteIds((lista) => (lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]));
   }
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (frenteObrigatoria && frenteIds.length === 0) {
-      setErro("Selecione ao menos uma frente — é ela que define os projetos que o gerente enxerga.");
+      setErro("Selecione a frente — é ela que define os projetos que o gerente enxerga.");
       return;
     }
     setSalvando(true);
@@ -717,7 +743,7 @@ function MembroModal({
                   <FieldSelect
                     id="posicao-membro"
                     value={posicao}
-                    onChange={(e) => setPosicao(e.target.value as Posicao)}
+                    onChange={(e) => trocarPosicao(e.target.value as Posicao)}
                     required
                   >
                     {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((p) => (
@@ -729,13 +755,14 @@ function MembroModal({
                 </FieldGroup>
 
                 <FieldGroup>
-                  <FieldLabel>{frenteObrigatoria ? "Frentes que o gerente lidera *" : "Frentes"}</FieldLabel>
+                  <FieldLabel>{frenteObrigatoria ? "Frente que o gerente lidera *" : "Frentes"}</FieldLabel>
                   <CheckboxGrid>
                     {contexto.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
                     {contexto.frentes.map((frente) => (
                       <CheckboxLabel key={frente.id}>
                         <input
-                          type="checkbox"
+                          type={frenteObrigatoria ? "radio" : "checkbox"}
+                          name={frenteObrigatoria ? "membro-frente-gerente" : undefined}
                           checked={frenteIds.includes(frente.id)}
                           onChange={() => toggleFrente(frente.id)}
                         />
@@ -745,8 +772,8 @@ function MembroModal({
                   </CheckboxGrid>
                   {frenteObrigatoria && (
                     <EmptyText style={{ fontSize: "0.7rem" }}>
-                      O gerente só enxerga os projetos das frentes marcadas aqui (§3) — sem nenhuma
-                      marcada, ele fica sem ver projeto algum.
+                      O gerente só enxerga os projetos desta frente (§3) — sem nenhuma marcada, ele
+                      fica sem ver projeto algum.
                     </EmptyText>
                   )}
                 </FieldGroup>

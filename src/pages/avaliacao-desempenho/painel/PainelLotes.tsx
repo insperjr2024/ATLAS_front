@@ -12,6 +12,7 @@ import {
   updateLote,
 } from "@/lib/desempenho-lotes";
 import { getProjetos } from "@/lib/projetos";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { DesempenhoLote, DesempenhoPendencia, DesempenhoTipo } from "@/types/desempenho";
 import type { ProjetoResumo } from "@/types/projeto";
 import {
@@ -56,6 +57,10 @@ function agoraDatetimeLocal(): string {
   return paraDatetimeLocal(new Date().toISOString());
 }
 
+function formatarData(iso: string): string {
+  return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
 function statusLote(lote: DesempenhoLote): { rotulo: string; tone: "success" | "muted" | "warning" } {
   if (lote.override_manual === "aberto") return { rotulo: "Aberto (manual)", tone: "success" };
   if (lote.override_manual === "fechado") return { rotulo: "Fechado (manual)", tone: "muted" };
@@ -98,6 +103,7 @@ export function PainelLotes() {
 
   const [pendenciasLoteId, setPendenciasLoteId] = useState<number | null>(null);
   const [pendencias, setPendencias] = useState<DesempenhoPendencia[]>([]);
+  const [paraExcluir, setParaExcluir] = useState<DesempenhoLote | null>(null);
 
   const [editandoLoteId, setEditandoLoteId] = useState<number | null>(null);
   const [editNome, setEditNome] = useState("");
@@ -216,6 +222,9 @@ export function PainelLotes() {
     if (!token) return;
     const atualizado = await abrirLote(loteId, token);
     setLotes((atual) => atual.map((l) => (l.id === loteId ? atualizado : l)));
+    // Reabriu: pendências deixam de fazer sentido pra este lote — some o botão,
+    // então fecha o painel se estivesse aberto.
+    setPendenciasLoteId((atual) => (atual === loteId ? null : atual));
   }
 
   async function handleFechar(loteId: number) {
@@ -271,15 +280,11 @@ export function PainelLotes() {
     }
   }
 
-  async function handleExcluir(lote: DesempenhoLote) {
-    if (!token) return;
-    if (!confirm(`Excluir o lote "${lote.nome}"? Esta ação não pode ser desfeita.`)) return;
-    try {
-      await deleteLote(lote.id, token);
-      setLotes((atual) => atual.filter((l) => l.id !== lote.id));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao excluir o lote");
-    }
+  async function confirmarExclusao() {
+    if (!token || !paraExcluir) return;
+    await deleteLote(paraExcluir.id, token);
+    setLotes((atual) => atual.filter((l) => l.id !== paraExcluir.id));
+    setParaExcluir(null);
   }
 
   async function handleVerPendencias(loteId: number) {
@@ -414,10 +419,15 @@ export function PainelLotes() {
                           Voltar ao automático
                         </PageButtonSm>
                       )}
-                      <PageButtonSm type="button" onClick={() => handleVerPendencias(lote.id)}>
-                        Pendências
-                      </PageButtonSm>
-                      <PageButtonSm $variant="ghost" type="button" onClick={() => handleExcluir(lote)}>
+                      {/* Só faz sentido cobrar "quem não preencheu" depois que o
+                          prazo fechou — com o lote aberto, todo mundo que ainda
+                          não respondeu é só gente que ainda tem tempo. */}
+                      {!lote.aberto && (
+                        <PageButtonSm type="button" onClick={() => handleVerPendencias(lote.id)}>
+                          Pendências
+                        </PageButtonSm>
+                      )}
+                      <PageButtonSm $variant="ghost" type="button" onClick={() => setParaExcluir(lote)}>
                         Excluir
                       </PageButtonSm>
                     </LoteCardAcoes>
@@ -486,13 +496,13 @@ export function PainelLotes() {
                     </FormStack>
                   ) : (
                     <LoteCardMeta>
-                      {lote.tipo === "periodico" ? "Periódica" : "Finalização"} · {paraDatetimeLocal(lote.data_inicio)} a{" "}
-                      {paraDatetimeLocal(lote.data_fim)} · {lote.projeto_ids.length} projeto(s):{" "}
+                      {lote.tipo === "periodico" ? "Periódica" : "Finalização"} · {formatarData(lote.data_inicio)} a{" "}
+                      {formatarData(lote.data_fim)} · {lote.projeto_ids.length} projeto(s):{" "}
                       {lote.projeto_ids.map((id) => nomesProjeto.get(id) ?? id).join(", ") || "nenhum"}
                     </LoteCardMeta>
                   )}
 
-                  {pendenciasLoteId === lote.id && (
+                  {pendenciasLoteId === lote.id && !lote.aberto && (
                     <SubLista>
                       {gruposPendencias.length === 0 ? (
                         <EmptyText>Ninguém pendente neste lote.</EmptyText>
@@ -526,6 +536,15 @@ export function PainelLotes() {
           )}
         </PageCardContent>
       </PageCard>
+
+      {paraExcluir && (
+        <ConfirmarModal
+          titulo="Excluir lote"
+          mensagem={`Excluir o lote "${paraExcluir.nome}"? Esta ação não pode ser desfeita.`}
+          onCancelar={() => setParaExcluir(null)}
+          onConfirmar={confirmarExclusao}
+        />
+      )}
     </>
   );
 }

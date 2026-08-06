@@ -61,6 +61,24 @@ export function deleteMarco(marcoId: number, token: string) {
 }
 
 /** §5.3: cravar o cronograma. Depois disso, mudar exige reajuste (§5.6). */
+/**
+ * A entrega PLANEJADA do escopo — a data que o cronograma promete.
+ *
+ * Diferente de `/entrega`, que grava a entrega REAL e fica travada até a banca
+ * sair aprovada (§5.5). Aqui é planejamento, que é do que esta tela trata.
+ */
+export function definirEntregaPlanejada(
+  escopoId: number,
+  data: string | null,
+  token: string,
+) {
+  return apiFetch(`/escopos-projeto/${escopoId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ data_entrega_planejada: data }),
+  });
+}
+
 export function oficializarCronograma(escopoId: number, token: string) {
   return apiFetch(`/escopos-projeto/${escopoId}/oficializar`, { method: "POST", token });
 }

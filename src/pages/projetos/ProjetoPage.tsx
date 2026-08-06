@@ -1,24 +1,28 @@
-import { useCallback, useEffect, useState } from "react";
-import { Outlet, useOutletContext, useParams } from "react-router-dom";
-import { Archive, ArchiveRestore, ArrowLeft, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Outlet, useLocation, useOutletContext, useParams } from "react-router-dom";
+import { Archive, ArchiveRestore, ArrowLeft, ChevronDown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
+import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
 import {
   arquivarProjeto,
+  CORES_STATUS,
   desarquivarProjeto,
+  destinosValidos,
+  formatarData,
   getProjeto,
   mudarStatus,
   podePausar,
-  proximoStatusManual,
   ROTULO_STATUS,
-  statusAnteriorManual,
   tomDoStatus,
 } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import type { UsuarioResumo } from "@/types/auth";
 import type { Frente } from "@/types/banca";
-import type { ProjetoCompleto } from "@/types/projeto";
+import type { ProjetoCompleto, StatusProjeto } from "@/types/projeto";
+import { Ponto } from "@/components/kanban/Kanban.styled";
 import { pode } from "@/utils/permissoes";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   PageBadge,
   PageButtonSm,
@@ -41,6 +45,10 @@ import {
   AvisoBanner,
   TabBar,
   TabLink,
+  EtapaSeletorWrap,
+  EtapaBotaoAtual,
+  EtapaMenu,
+  EtapaOpcaoBotao,
 } from "./Projetos.styled";
 
 /** O que o shell entrega para as abas. */
@@ -60,10 +68,47 @@ export function useProjeto() {
  * local: é isso que deixa uma notificação abrir direto em
  * `/projetos/42/tarefas`.
  */
+/** O que uma tela de origem manda pra dizer pra onde "voltar" aponta —
+ *  ver `voltarDoLocation` logo abaixo. */
+interface VoltarState {
+  voltarPara?: string;
+  voltarRotulo?: string;
+}
+
+/**
+ * De onde "Voltar" deveria levar.
+ *
+ * Sem isto o link era fixo em `/projetos`, então quem chegava aqui a partir
+ * do board macro de Tarefas ou Cronogramas gerais (Monitoramento) e clicava
+ * em Voltar caía na listagem de projetos — perdendo o filtro/aba de onde
+ * tinha vindo, em vez de voltar pra lá. Quem navega passa `state` com o
+ * destino (`TarefasGeraisAba`, `CronogramasGeraisAba`); sem `state`, o
+ * padrão de sempre continua sendo a listagem.
+ */
+function voltarDoLocation(state: unknown): { to: string; rotulo: string } {
+  const voltar = (state ?? {}) as VoltarState;
+  if (voltar.voltarPara) {
+    return { to: voltar.voltarPara, rotulo: voltar.voltarRotulo ?? "Voltar" };
+  }
+  return { to: "/projetos", rotulo: "Voltar para projetos" };
+}
+
 export function ProjetoPage() {
   const { id } = useParams();
+  const location = useLocation();
   const { usuario, token } = useAuth();
   const projetoId = Number(id);
+  /**
+   * Capturado só na ENTRADA no projeto (quando `id` muda), não a cada
+   * navegação. As abas internas (Cronograma, Tarefas...) trocam de rota sem
+   * levar `state` — recalcular a cada `location` perderia o destino assim
+   * que a pessoa clicasse em outra aba dentro do mesmo projeto.
+   */
+  const [voltar, setVoltar] = useState(() => voltarDoLocation(location.state));
+  useEffect(() => {
+    setVoltar(voltarDoLocation(location.state));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const [projeto, setProjeto] = useState<ProjetoCompleto | null>(null);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
@@ -73,6 +118,7 @@ export function ProjetoPage() {
   const [erroStatus, setErroStatus] = useState("");
   const [mudandoStatus, setMudandoStatus] = useState(false);
   const [arquivando, setArquivando] = useState(false);
+  const [confirmandoArquivamento, setConfirmandoArquivamento] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!token || !projetoId) return;
@@ -112,23 +158,18 @@ export function ProjetoPage() {
     }
   }
 
-  async function alternarArquivamento() {
+  async function confirmarArquivamento() {
     if (!token || !projeto) return;
     const arquivado = Boolean(projeto.arquivado_em);
-    const mensagem = arquivado
-      ? "Desarquivar este projeto? Ele volta a aparecer nas listagens normais."
-      : "Arquivar este projeto? Ele some das listagens normais, mas nada é apagado — dá pra desarquivar depois.";
-    if (!confirm(mensagem)) return;
     setArquivando(true);
-    setErroStatus("");
     try {
       if (arquivado) await desarquivarProjeto(projeto.id, token);
       else await arquivarProjeto(projeto.id, token);
+      setConfirmandoArquivamento(false);
       await carregar();
     } catch (err) {
-      setErroStatus(err instanceof Error ? err.message : "Erro ao arquivar o projeto");
-    } finally {
       setArquivando(false);
+      throw err;
     }
   }
 
@@ -150,8 +191,24 @@ export function ProjetoPage() {
 
   const podeMudarStatus = pode(usuario, "mudar_status_projeto");
   const podeArquivar = pode(usuario, "arquivar_projeto");
-  const proximo = proximoStatusManual(projeto.status);
-  const anterior = statusAnteriorManual(projeto.status);
+  const temKickoff = !!projeto.data_kickoff;
+
+  // ✋ Livre entre as etapas ativas, nos dois sentidos — não só a vizinha.
+  // Pausado é um estado à parte: só o retomar aparece. Vendido só oferece
+  // Ambientação, e só quando já existe uma data de kickoff marcada.
+  const opcoesEtapa: EtapaOpcao[] =
+    projeto.status === "pausado"
+      ? [{ chave: "retomar", rotulo: "Retomar", cor: null }]
+      : [
+          ...destinosValidos(projeto.status, temKickoff).map((status) => ({
+            chave: status,
+            rotulo: ROTULO_STATUS[status],
+            cor: CORES_STATUS[status],
+          })),
+          ...(podePausar(projeto.status)
+            ? [{ chave: "pausado", rotulo: "Pausar", cor: CORES_STATUS.pausado }]
+            : []),
+        ];
 
   const contexto: ProjetoContexto = { projeto, usuarios, frentes, recarregar: carregar };
 
@@ -159,9 +216,9 @@ export function ProjetoPage() {
     <ProjetoShell>
       <ShellHeader>
         <PageHeaderText>
-          <VoltarLink to="/projetos">
+          <VoltarLink to={voltar.to}>
             <ArrowLeft size={14} />
-            Voltar para projetos
+            {voltar.rotulo}
           </VoltarLink>
           <PageHeading>{projeto.nome}</PageHeading>
           <PageSubheading>{projeto.cliente}</PageSubheading>
@@ -174,54 +231,23 @@ export function ProjetoPage() {
         </PageHeaderText>
 
         <StatusRow>
-          <PageBadge $tone={tomDoStatus(projeto.status)}>{ROTULO_STATUS[projeto.status]}</PageBadge>
-
-          {/* ✋ As transições manuais: só a próxima da fila, nunca pula etapa.
-              Vendido → Ambientação não aparece aqui de propósito — quem move
-              esse é o kickoff. */}
-          {podeMudarStatus && projeto.status === "pausado" && (
-            <PageButtonSm type="button" disabled={mudandoStatus} onClick={() => aplicarStatus("retomar")}>
-              <Play size={14} />
-              Retomar
-            </PageButtonSm>
-          )}
-          {/* ↩ A volta anda a MESMA fila, um passo por vez — inclusive
-              reabrir um projeto finalizado. Some em Ambientação, que é o
-              piso: voltar dali seria desmarcar o kickoff. */}
-          {podeMudarStatus && anterior && (
-            <PageButtonSm
-              type="button"
-              $variant="outline"
-              disabled={mudandoStatus}
-              onClick={() => aplicarStatus(anterior)}
-            >
-              <SkipBack size={14} />
-              Voltar para {ROTULO_STATUS[anterior]}
-            </PageButtonSm>
-          )}
-          {podeMudarStatus && proximo && (
-            <PageButtonSm type="button" disabled={mudandoStatus} onClick={() => aplicarStatus(proximo)}>
-              <SkipForward size={14} />
-              Avançar para {ROTULO_STATUS[proximo]}
-            </PageButtonSm>
-          )}
-          {podeMudarStatus && podePausar(projeto.status) && (
-            <PageButtonSm
-              type="button"
-              $variant="outline"
-              disabled={mudandoStatus}
-              onClick={() => aplicarStatus("pausado")}
-            >
-              <Pause size={14} />
-              Pausar
-            </PageButtonSm>
+          {podeMudarStatus ? (
+            <EtapaSeletor
+              statusAtual={projeto.status}
+              rotuloAtual={ROTULO_STATUS[projeto.status]}
+              opcoes={opcoesEtapa}
+              ocupado={mudandoStatus}
+              onSelecionar={aplicarStatus}
+            />
+          ) : (
+            <PageBadge $tone={tomDoStatus(projeto.status)}>{ROTULO_STATUS[projeto.status]}</PageBadge>
           )}
           {podeArquivar && (
             <PageButtonSm
               type="button"
               $variant="outline"
               disabled={arquivando}
-              onClick={alternarArquivamento}
+              onClick={() => setConfirmandoArquivamento(true)}
             >
               {projeto.arquivado_em ? <ArchiveRestore size={14} /> : <Archive size={14} />}
               {projeto.arquivado_em ? "Desarquivar" : "Arquivar"}
@@ -242,6 +268,16 @@ export function ProjetoPage() {
         </AvisoBanner>
       )}
 
+      {/* Kickoff já marcado, mas o projeto continua Vendido — cadastrado
+          agora com início planejado pra mais adiante. Não é alerta: é só
+          informação até alguém confirmar Ambientação no seletor de etapa. */}
+      {projeto.status === "vendido" && projeto.data_kickoff && (
+        <AvisoBanner>
+          🗓 Kickoff planejado para {formatarData(projeto.data_kickoff)} — o projeto continua Vendido até alguém
+          confirmar o início escolhendo "Ambientação" ali em cima.
+        </AvisoBanner>
+      )}
+
       <TabBar>
         <TabLink to={`/projetos/${projeto.id}`} end>
           Visão geral
@@ -253,6 +289,102 @@ export function ProjetoPage() {
       </TabBar>
 
       <Outlet context={contexto} />
+
+      {confirmandoArquivamento && (
+        <ConfirmarModal
+          titulo={projeto.arquivado_em ? "Desarquivar projeto" : "Arquivar projeto"}
+          mensagem={
+            projeto.arquivado_em
+              ? "Desarquivar este projeto? Ele volta a aparecer nas listagens normais."
+              : "Arquivar este projeto? Ele some das listagens normais, mas nada é apagado — dá pra desarquivar depois."
+          }
+          rotuloConfirmar={projeto.arquivado_em ? "Desarquivar" : "Arquivar"}
+          onCancelar={() => setConfirmandoArquivamento(false)}
+          onConfirmar={confirmarArquivamento}
+        />
+      )}
     </ProjetoShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+interface EtapaOpcao {
+  /** O valor que `aplicarStatus` espera: a etapa de destino, `"pausado"` ou `"retomar"`. */
+  chave: string;
+  rotulo: string;
+  /** `null` pro Retomar — não dá pra saber a cor de destino sem reconsultar o histórico. */
+  cor: string | null;
+}
+
+/**
+ * Escolher a etapa como lista, não como botõezinhos de avançar/voltar/pausar
+ * espalhados — a pílula usa a MESMA cor do kanban de projetos (`CORES_STATUS`),
+ * pra não parecer um controle diferente do kanban.
+ */
+function EtapaSeletor({
+  statusAtual,
+  rotuloAtual,
+  opcoes,
+  ocupado,
+  onSelecionar,
+}: {
+  statusAtual: StatusProjeto;
+  rotuloAtual: string;
+  opcoes: EtapaOpcao[];
+  ocupado: boolean;
+  onSelecionar: (chave: string) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function aoClicarFora(evento: MouseEvent) {
+      if (ref.current && !ref.current.contains(evento.target as Node)) setAberto(false);
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, []);
+
+  const tonsAtual = tonsDaColuna(CORES_STATUS[statusAtual]);
+  const semOpcoes = opcoes.length === 0;
+
+  return (
+    <EtapaSeletorWrap ref={ref}>
+      <EtapaBotaoAtual
+        type="button"
+        $cor={tonsAtual}
+        disabled={ocupado || semOpcoes}
+        aria-expanded={aberto}
+        aria-haspopup="menu"
+        onClick={() => setAberto((v) => !v)}
+      >
+        <Ponto $cor={tonsAtual.ponto} />
+        {rotuloAtual}
+        {!semOpcoes && <ChevronDown size={14} />}
+      </EtapaBotaoAtual>
+      {aberto && !semOpcoes && (
+        <EtapaMenu role="menu">
+          {opcoes.map((opcao) => {
+            const tons: TonsColuna | null = opcao.cor ? tonsDaColuna(opcao.cor) : null;
+            return (
+              <EtapaOpcaoBotao
+                key={opcao.chave}
+                type="button"
+                role="menuitem"
+                $cor={tons}
+                onClick={() => {
+                  setAberto(false);
+                  onSelecionar(opcao.chave);
+                }}
+              >
+                {tons && <Ponto $cor={tons.ponto} />}
+                {opcao.rotulo}
+              </EtapaOpcaoBotao>
+            );
+          })}
+        </EtapaMenu>
+      )}
+    </EtapaSeletorWrap>
   );
 }

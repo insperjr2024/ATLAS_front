@@ -62,8 +62,11 @@ export function EscopoPicker({
   desabilitado,
 }: EscopoPickerProps) {
   const nomeFrente = (id: number) => frentes.find((f) => f.id === id)?.nome ?? `Frente ${id}`;
+  // Um escopo do catálogo só entra uma vez por projeto — "Outro" fica de
+  // fora dessa checagem porque cada um tem nome próprio, não colide.
+  const idsJaEscolhidos = new Set(valor.map((e) => e.escopo_id).filter((id) => id !== null));
   const disponiveis = catalogo.filter(
-    (e) => e.frente_id !== null && frentesMarcadas.includes(e.frente_id),
+    (e) => e.frente_id !== null && frentesMarcadas.includes(e.frente_id) && !idsJaEscolhidos.has(e.id),
   );
 
   function alterar(indice: number, mudanca: Partial<EscopoEmEdicao>) {
@@ -94,8 +97,6 @@ export function EscopoPicker({
     return <EmptyText>Marque uma frente acima para escolher os escopos vendidos.</EmptyText>;
   }
 
-  // Um mesmo escopo de catálogo pode aparecer duas vezes num projeto grande —
-  // por isso a lista de opções não remove os já escolhidos.
   return (
     <EscopoLista>
       {valor.length === 0 && (
