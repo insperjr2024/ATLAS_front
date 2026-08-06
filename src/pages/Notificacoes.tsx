@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   Flag,
+  GraduationCap,
   ListChecks,
   Megaphone,
   SlidersHorizontal,
@@ -92,6 +93,8 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
     rotulo: "Avaliação de Desempenho",
     alerta: true,
   },
+  pdi_prazo_proximo: { icone: GraduationCap, rotulo: "Prazo de PDI próximo", alerta: true },
+  pdi_prazo_vencido: { icone: GraduationCap, rotulo: "Prazo de PDI vencido", alerta: true },
 };
 
 /** A ordem dos chips: os 5 do briefing (§6.6) primeiro, na ordem em que ele os
@@ -111,6 +114,8 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "troca_banca",
   "avaliacao_pendente",
   "lote_desempenho_aberto",
+  "pdi_prazo_proximo",
+  "pdi_prazo_vencido",
   "banca_aviso",
 ];
 

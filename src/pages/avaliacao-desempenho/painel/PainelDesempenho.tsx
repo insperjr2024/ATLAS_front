@@ -18,9 +18,10 @@ export function PainelDesempenho() {
       <TabBar>
         <TabLink to="/avaliacao-desempenho/painel/avaliadores">Avaliadores</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/avaliados">Avaliados</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/relatorio">Relatório</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/relatorio">Relatórios</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/lotes">Lotes</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/mentoria">Mentoria</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/pdi">PDI</TabLink>
         {/* Formulários fica fora do <Outlet> (rota irmã, com caixa própria de
             permissão), mas sem um link daqui não tinha como chegar nela. */}
         {usuario?.posicao === "diretor" && (

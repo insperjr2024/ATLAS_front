@@ -64,6 +64,9 @@ export interface UsuarioResumo {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
+  /** 1º a 8º semestre da graduação — `null` pra quem não é aluno em curso
+   *  (diretoria, gerência já formada etc). */
+  semestre_graduacao: number | null;
   /**
    * Carga atual da pessoa (§7.3): projetos em que ela está alocada hoje,
    * sem contar os finalizados nem os arquivados.

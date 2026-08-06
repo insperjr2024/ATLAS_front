@@ -5,7 +5,6 @@ import { useAuth } from "@/context/AuthContext";
 import { createCargo, deleteCargo, getCargos, updateCargo, type CargoPayload } from "@/lib/cargos";
 import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/escopos";
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
-import { CalendarioAcademicoCard } from "./config/CalendarioAcademicoCard";
 import { ConfiguracaoBancaCard } from "./config/ConfiguracaoBancaCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Escopo, Frente } from "@/types/banca";
@@ -213,10 +212,6 @@ export function Config() {
           </PageSubheading>
         </PageHeaderText>
       </PageHeaderRow>
-
-      {/* Vem primeiro de propósito: é a carga que define o dia útil (§5.4),
-          e sem ela toda a contagem do sistema fica errada. */}
-      <CalendarioAcademicoCard />
 
       <PageCard>
         <PageCardHeader>
