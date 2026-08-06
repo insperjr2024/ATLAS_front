@@ -932,6 +932,15 @@ function DataEditavelDiasAmbientacao({
           </>
         )}
       </DataItemValor>
+      {/* 🤖 A única etapa do ciclo que sai sozinha (§5.3): ela tem data de
+          fim calculável, as outras dependem de alguém decidir. A data vem
+          pronta do backend — o front não conta dia útil. */}
+      {projeto.status === "ambientacao" && projeto.fim_ambientacao && (
+        <EmptyText>
+          🤖 até {formatarData(projeto.fim_ambientacao)} — depois disso o projeto passa para{" "}
+          <strong>Em andamento</strong> automaticamente.
+        </EmptyText>
+      )}
       {erro && <FormErrorText>{erro}</FormErrorText>}
     </DataItem>
   );

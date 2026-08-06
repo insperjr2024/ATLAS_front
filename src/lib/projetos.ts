@@ -107,7 +107,14 @@ export function updateEquipe(projetoId: number, equipe: MembroEquipePayload[], t
   });
 }
 
-/** 🤖 Marcar o kickoff é o que dispara Vendido → Ambientação (§5.2). */
+/**
+ * Marcar o kickoff só registra a data — quem move Vendido → Ambientação é
+ * uma pessoa, no seletor de etapa (§5.2); o kickoff apenas habilita o destino.
+ *
+ * A resposta traz o `status` porque ele PODE ter mudado mesmo assim: um
+ * projeto já em Ambientação com o kickoff corrigido para trás pode ter a
+ * janela vencida na hora e virar Em andamento sozinho (§5.3).
+ */
 export function marcarKickoff(projetoId: number, dataKickoff: string, token: string) {
   return apiFetch<{ id: number; data_kickoff: string; status: StatusProjeto }>(
     `/projetos/${projetoId}/kickoff`,
@@ -138,8 +145,10 @@ export function updateDescricao(projetoId: number, descricao: string, token: str
   });
 }
 
+/** A resposta traz o `status`: encurtar a ambientação pode encerrá-la agora
+ *  e virar o projeto para Em andamento (§5.3). */
 export function updateDiasAmbientacao(projetoId: number, diasAmbientacao: number, token: string) {
-  return apiFetch<{ id: number; dias_ambientacao: number }>(
+  return apiFetch<{ id: number; dias_ambientacao: number; status: StatusProjeto }>(
     `/projetos/${projetoId}/dias-ambientacao`,
     { method: "PATCH", token, body: JSON.stringify({ dias_ambientacao: diasAmbientacao }) },
   );
