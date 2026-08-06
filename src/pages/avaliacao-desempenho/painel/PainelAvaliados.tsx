@@ -4,6 +4,7 @@ import { deleteAvaliacao, getAvaliacaoDetalhe, getAvaliacoes } from "@/lib/desem
 import { getLotes } from "@/lib/desempenho-lotes";
 import { getUsuarios } from "@/lib/usuarios";
 import { getProjetos } from "@/lib/projetos";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { DesempenhoAvaliacao, DesempenhoAvaliacaoDetalhe, DesempenhoLote, DesempenhoTipo } from "@/types/desempenho";
 import type { UsuarioResumo } from "@/types/auth";
 import type { ProjetoResumo } from "@/types/projeto";
@@ -21,9 +22,22 @@ import {
   PageLoadingBlock,
 } from "@/styles/page.styled";
 import { FieldSelect } from "@/pages/Bancas.styled";
+import { theme } from "@/styles/theme";
 import {
   AvaliacaoDetalheBlock,
-  CriterioDetalheRow,
+  DetalheComentarioBlock,
+  DetalheComentarioRotulo,
+  DetalheComentarioTexto,
+  DetalheCriterioBarraFill,
+  DetalheCriterioBarraTrilha,
+  DetalheCriterioLabel,
+  DetalheCriterioNumero,
+  DetalheCriterioRow,
+  DetalheCriterioTexto,
+  DetalheCriteriosLista,
+  DetalheNotaGeralDestaque,
+  DetalheNotaGeralNumero,
+  DetalheNotaGeralRotulo,
   FiltrosRow,
   ListaExpansivel,
   PessoaHeader,
@@ -35,6 +49,12 @@ import {
 
 function corPorNota(nota: number): "danger" | "default" {
   return nota < 3 ? "danger" : "default";
+}
+
+function corDaNota(nota: number): string {
+  if (nota < 3) return theme.colors.destructive;
+  if (nota === 3) return theme.colors.warning;
+  return theme.colors.success;
 }
 
 function formatarData(iso?: string): string {
@@ -55,6 +75,7 @@ export function PainelAvaliados() {
 
   const [avaliacaoExpandidaId, setAvaliacaoExpandidaId] = useState<number | null>(null);
   const [detalhes, setDetalhes] = useState<Map<number, DesempenhoAvaliacaoDetalhe>>(new Map());
+  const [paraRemover, setParaRemover] = useState<DesempenhoAvaliacao | null>(null);
 
   async function buscar() {
     if (!token) return;
@@ -121,17 +142,12 @@ export function PainelAvaliados() {
     }
   }
 
-  async function handleRemover(avaliacao: DesempenhoAvaliacao) {
-    if (!token) return;
-    const nomeAvaliador = nomes.get(avaliacao.avaliador_id) ?? `Usuário ${avaliacao.avaliador_id}`;
-    if (!confirm(`Remover a avaliação enviada por ${nomeAvaliador}? Esta ação não pode ser desfeita.`)) return;
-    try {
-      await deleteAvaliacao(avaliacao.id, token);
-      setAvaliacoes((atual) => atual.filter((a) => a.id !== avaliacao.id));
-      setAvaliacaoExpandidaId(null);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao remover a avaliação");
-    }
+  async function confirmarRemocao() {
+    if (!token || !paraRemover) return;
+    await deleteAvaliacao(paraRemover.id, token);
+    setAvaliacoes((atual) => atual.filter((a) => a.id !== paraRemover.id));
+    setAvaliacaoExpandidaId(null);
+    setParaRemover(null);
   }
 
   if (erro) {
@@ -199,7 +215,7 @@ export function PainelAvaliados() {
                                 <PageButtonSm $variant="outline" type="button" onClick={() => toggleDetalhe(a.id)}>
                                   {expandidaAqui ? "Ocultar" : "Detalhes"}
                                 </PageButtonSm>
-                                <PageButtonSm $variant="ghost" type="button" onClick={() => handleRemover(a)}>
+                                <PageButtonSm $variant="ghost" type="button" onClick={() => setParaRemover(a)}>
                                   Remover
                                 </PageButtonSm>
                               </SubItemMeta>
@@ -210,24 +226,47 @@ export function PainelAvaliados() {
                                   <EmptyText>Carregando...</EmptyText>
                                 ) : (
                                   <>
-                                    <CriterioDetalheRow>
-                                      <strong>Nota geral</strong>
-                                      <span>{detalhe.nota_geral.toFixed(1)}</span>
-                                    </CriterioDetalheRow>
-                                    {detalhe.notas.map((n) => (
-                                      <CriterioDetalheRow key={n.criterio_id}>
-                                        <span>{n.label ?? `Critério ${n.criterio_id}`}</span>
-                                        <span>
-                                          {n.tipo_resposta === "nota"
-                                            ? (n.nota != null ? n.nota.toFixed(1) : "—")
-                                            : (n.resposta_texto || "—")}
-                                        </span>
-                                      </CriterioDetalheRow>
-                                    ))}
-                                    <CriterioDetalheRow>
-                                      <strong>Comentário</strong>
-                                      <span>{detalhe.comentarios || "—"}</span>
-                                    </CriterioDetalheRow>
+                                    <DetalheNotaGeralDestaque $cor={corDaNota(detalhe.nota_geral)}>
+                                      <DetalheNotaGeralRotulo>Nota geral</DetalheNotaGeralRotulo>
+                                      <DetalheNotaGeralNumero $cor={corDaNota(detalhe.nota_geral)}>
+                                        {detalhe.nota_geral.toFixed(1)}
+                                      </DetalheNotaGeralNumero>
+                                    </DetalheNotaGeralDestaque>
+
+                                    <DetalheCriteriosLista>
+                                      {detalhe.notas.map((n) =>
+                                        n.tipo_resposta === "nota" && n.nota != null ? (
+                                          <DetalheCriterioRow key={n.criterio_id}>
+                                            <DetalheCriterioLabel>
+                                              {n.label ?? `Critério ${n.criterio_id}`}
+                                            </DetalheCriterioLabel>
+                                            <DetalheCriterioBarraTrilha>
+                                              <DetalheCriterioBarraFill
+                                                $percent={(n.nota / 5) * 100}
+                                                $cor={corDaNota(n.nota)}
+                                              />
+                                            </DetalheCriterioBarraTrilha>
+                                            <DetalheCriterioNumero $cor={corDaNota(n.nota)}>
+                                              {n.nota.toFixed(1)}
+                                            </DetalheCriterioNumero>
+                                          </DetalheCriterioRow>
+                                        ) : (
+                                          <DetalheCriterioRow key={n.criterio_id}>
+                                            <DetalheCriterioLabel>
+                                              {n.label ?? `Critério ${n.criterio_id}`}
+                                            </DetalheCriterioLabel>
+                                            <div />
+                                            <div />
+                                            <DetalheCriterioTexto>{n.resposta_texto || "—"}</DetalheCriterioTexto>
+                                          </DetalheCriterioRow>
+                                        ),
+                                      )}
+                                    </DetalheCriteriosLista>
+
+                                    <DetalheComentarioBlock>
+                                      <DetalheComentarioRotulo>Comentário</DetalheComentarioRotulo>
+                                      <DetalheComentarioTexto>{detalhe.comentarios || "—"}</DetalheComentarioTexto>
+                                    </DetalheComentarioBlock>
                                   </>
                                 )}
                               </AvaliacaoDetalheBlock>
@@ -243,6 +282,18 @@ export function PainelAvaliados() {
           </ListaExpansivel>
         )}
       </PageCardContent>
+
+      {paraRemover && (
+        <ConfirmarModal
+          titulo="Remover avaliação"
+          mensagem={`Remover a avaliação enviada por ${
+            nomes.get(paraRemover.avaliador_id) ?? `Usuário ${paraRemover.avaliador_id}`
+          }? Esta ação não pode ser desfeita.`}
+          rotuloConfirmar="Remover"
+          onCancelar={() => setParaRemover(null)}
+          onConfirmar={confirmarRemocao}
+        />
+      )}
     </PageCard>
   );
 }

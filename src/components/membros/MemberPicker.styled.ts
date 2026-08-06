@@ -58,11 +58,136 @@ export const AddRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: ${theme.spacing.sm};
+`;
 
-  select {
-    flex: 1;
-    min-width: 12rem;
+/* ------------------------------------------------------------------ */
+/* Dropdown customizado — nem select nativo, nem checkboxes soltas: o    */
+/* filtro de frente mora dentro do próprio painel, junto da lista.       */
+/* ------------------------------------------------------------------ */
+
+export const DropdownWrap = styled.div`
+  position: relative;
+  flex: 1;
+  min-width: 12rem;
+`;
+
+export const DropdownTrigger = styled.button<{ $vazio?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.input};
+  background: ${theme.colors.background};
+  color: ${({ $vazio }) => ($vazio ? theme.colors.mutedForeground : theme.colors.foreground)};
+  font-size: ${theme.fontSize.sm};
+  text-align: left;
+  cursor: pointer;
+  transition: border-color ${theme.transitions.fast};
+
+  &:hover:not(:disabled) {
+    border-color: ${theme.colors.primary};
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  svg {
+    flex-shrink: 0;
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+export const DropdownPanel = styled.div`
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm};
+  max-height: 20rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.popover};
+  box-shadow: ${theme.shadows.lg};
+`;
+
+export const DropdownFiltroFrentes = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding-bottom: ${theme.spacing.sm};
+  border-bottom: 1px solid ${theme.colors.border};
+`;
+
+export const FrentePill = styled.button<{ $ativo: boolean }>`
+  padding: 0.25rem 0.625rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px solid ${({ $ativo }) => ($ativo ? theme.colors.primary : theme.colors.border)};
+  background: ${({ $ativo }) =>
+    $ativo ? "color-mix(in srgb, " + theme.colors.primary + " 12%, white)" : theme.colors.background};
+  color: ${({ $ativo }) => ($ativo ? theme.colors.primary : theme.colors.mutedForeground)};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+  transition: border-color ${theme.transitions.fast}, background ${theme.transitions.fast};
+
+  &:hover {
+    border-color: ${theme.colors.primary};
+  }
+`;
+
+export const DropdownLista = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  overflow-y: auto;
+`;
+
+export const DropdownItem = styled.button`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  padding: 0.5rem 0.625rem;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  background: transparent;
+  color: ${theme.colors.foreground};
+  font-size: ${theme.fontSize.sm};
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: ${theme.colors.secondary};
+  }
+`;
+
+export const DropdownItemMeta = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const DropdownLimpar = styled(DropdownItem)`
+  color: ${theme.colors.destructive};
+  border-bottom: 1px solid ${theme.colors.border};
+  border-radius: 0;
+  padding-bottom: 0.625rem;
+  margin-bottom: 0.125rem;
+`;
+
+export const DropdownVazio = styled.p`
+  margin: 0;
+  padding: ${theme.spacing.sm} 0.625rem;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
 `;
 
 /** A contagem de consultores selecionados — vira vermelha em caso de erro. */

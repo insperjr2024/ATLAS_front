@@ -604,33 +604,187 @@ export const EmBrevePanel = styled.div`
 /* Aba Histórico                                                       */
 /* ------------------------------------------------------------------ */
 
-export const Timeline = styled.ol`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.md};
-  margin: 0;
-  padding: 0;
-  list-style: none;
-`;
+export const HistoricoGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: ${theme.spacing.lg};
 
-export const TimelineItem = styled.li`
-  display: flex;
-  gap: ${theme.spacing.md};
-  padding-left: ${theme.spacing.md};
-  border-left: 2px solid ${theme.colors.border};
-`;
-
-export const TimelineTexto = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.foreground};
-
-  small {
-    font-size: ${theme.fontSize.xs};
-    color: ${theme.colors.mutedForeground};
+  @media (min-width: ${theme.breakpoints.lg}px) {
+    grid-template-columns: minmax(260px, 320px) 1fr;
+    align-items: start;
   }
+`;
+
+export const HistoricoResumoLista = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+export const HistoricoResumoLinha = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+export const HistoricoResumoCabecalho = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const HistoricoResumoNome = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+`;
+
+export const HistoricoResumoBarraTrilha = styled.div`
+  height: 0.4rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.secondary};
+  overflow: hidden;
+`;
+
+export const HistoricoResumoBarraFill = styled.div<{ $percent: number; $cor: string }>`
+  height: 100%;
+  width: ${({ $percent }) => $percent}%;
+  background: ${({ $cor }) => $cor};
+  border-radius: ${theme.borderRadius.full};
+  transition: width ${theme.transitions.normal};
+`;
+
+export const HistoricoFiltrosCard = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  border-radius: ${theme.borderRadius.xl};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+`;
+
+export const HistoricoFiltroGrupo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 10rem;
+`;
+
+export const HistoricoFiltroLabel = styled.label`
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const HistoricoFiltroPills = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+`;
+
+export const HistoricoFiltroPill = styled.button<{ $ativo: boolean; $cor: string }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px solid ${({ $ativo, $cor }) => ($ativo ? $cor : theme.colors.border)};
+  background: ${({ $ativo, $cor }) =>
+    $ativo ? "color-mix(in srgb, " + $cor + " 16%, white)" : theme.colors.background};
+  color: ${({ $ativo }) => ($ativo ? theme.colors.foreground : theme.colors.mutedForeground)};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+  transition: border-color ${theme.transitions.fast}, background ${theme.transitions.fast};
+
+  &:hover {
+    border-color: ${({ $cor }) => $cor};
+  }
+`;
+
+export const HistoricoLimparFiltros = styled.button`
+  align-self: flex-end;
+  padding: 0.5rem 0;
+  border: none;
+  background: none;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.primary};
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+export const HistoricoDiaGrupo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+export const HistoricoDiaTitulo = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const HistoricoLinhas = styled.div`
+  display: flex;
+  flex-direction: column;
+  border-radius: ${theme.borderRadius.xl};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  overflow: hidden;
+`;
+
+export const HistoricoLinha = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+
+  & + & {
+    border-top: 1px solid ${theme.colors.border};
+  }
+`;
+
+export const HistoricoLinhaTransicao = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+`;
+
+export const HistoricoLinhaMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const HistoricoAutorChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.secondary};
+  color: ${theme.colors.foreground};
+  font-weight: ${theme.fontWeight.medium};
 `;
 
 /** Os botões do cabeçalho da aba de tarefas, lado a lado. */

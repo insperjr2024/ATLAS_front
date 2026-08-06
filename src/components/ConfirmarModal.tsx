@@ -23,13 +23,14 @@ interface Props {
 /**
  * A confirmação de uma ação destrutiva.
  *
- * Existe para o app parar de depender de `window.confirm()`, que é do
+ * Existe para o app não depender de `window.confirm()`, que é do
  * navegador: não segue o estilo de nada, trava a página inteira e não tem onde
  * mostrar o erro quando a ação falha no backend. Aqui o erro aparece no próprio
  * modal, e quem chamou decide se fecha.
  *
- * Genérico de propósito: os outros `confirm()` espalhados pelo app (Bancas,
- * Config, Membros, Tarefas) têm aqui o lugar para onde migrar.
+ * Genérico de propósito: é o componente usado em toda ação destrutiva do
+ * app (Bancas, Config, Membros, Tarefas, painéis de desempenho). Ver também
+ * `AlertModal`, o equivalente pra avisos sem decisão nenhuma pra tomar.
  */
 export function ConfirmarModal({
   titulo,

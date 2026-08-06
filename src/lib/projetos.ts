@@ -138,6 +138,20 @@ export function updateDescricao(projetoId: number, descricao: string, token: str
   });
 }
 
+export function updateDiasAmbientacao(projetoId: number, diasAmbientacao: number, token: string) {
+  return apiFetch<{ id: number; dias_ambientacao: number }>(
+    `/projetos/${projetoId}/dias-ambientacao`,
+    { method: "PATCH", token, body: JSON.stringify({ dias_ambientacao: diasAmbientacao }) },
+  );
+}
+
+export function updateDiaReuniaoPadrao(projetoId: number, diaReuniaoPadrao: number | null, token: string) {
+  return apiFetch<{ id: number; dia_reuniao_padrao: number | null }>(
+    `/projetos/${projetoId}/dia-reuniao-padrao`,
+    { method: "PATCH", token, body: JSON.stringify({ dia_reuniao_padrao: diaReuniaoPadrao }) },
+  );
+}
+
 export function getHistoricoProjeto(projetoId: number, token: string) {
   return apiFetch<StatusHistorico[]>(`/projetos/${projetoId}/historico`, { token });
 }
@@ -311,6 +325,16 @@ export function rotuloDiaSemana(dia: number | null | undefined): string {
   if (!dia || dia < 1 || dia > 7) return "—";
   return DIAS_DA_SEMANA[dia - 1];
 }
+
+/** Só dias úteis — reunião de projeto não cai em fim de semana. Catálogo
+ *  único do cadastro (`ProjetoNovo`) e da edição (`ProjetoVisaoGeral`). */
+export const DIAS_REUNIAO = [
+  { valor: 1, rotulo: "Segunda-feira" },
+  { valor: 2, rotulo: "Terça-feira" },
+  { valor: 3, rotulo: "Quarta-feira" },
+  { valor: 4, rotulo: "Quinta-feira" },
+  { valor: 5, rotulo: "Sexta-feira" },
+];
 
 /**
  * A API manda data pura (`2026-08-10`), sem fuso. `new Date("2026-08-10")`

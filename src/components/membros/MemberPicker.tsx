@@ -1,18 +1,26 @@
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, X } from "lucide-react";
 import type { Posicao, UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { MembroEquipePayload } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
-import { PageButtonSm } from "@/styles/page.styled";
-import { CheckboxLabel, FieldGroup, FieldLabel, Required, FieldSelect } from "@/pages/Bancas.styled";
+import { FieldGroup, FieldLabel, Required } from "@/pages/Bancas.styled";
 import {
   AddRow,
   Chip,
   ChipRemove,
   ChipRow,
   CountHint,
-  FiltroFrentesRow,
+  DropdownFiltroFrentes,
+  DropdownItem,
+  DropdownItemMeta,
+  DropdownLimpar,
+  DropdownLista,
+  DropdownPanel,
+  DropdownTrigger,
+  DropdownVazio,
+  DropdownWrap,
+  FrentePill,
   PickerStack,
 } from "./MemberPicker.styled";
 
@@ -80,9 +88,8 @@ export function MemberPicker({
   frentes = [],
   frenteIdsProjeto = [],
 }: MemberPickerProps) {
-  const [consultorPendente, setConsultorPendente] = useState("");
   // `null` = segue as frentes do projeto automaticamente (o normal). No
-  // instante em que a pessoa mexe num checkbox, vira um conjunto próprio —
+  // instante em que a pessoa mexe num pill, vira um conjunto próprio —
   // paralisa de seguir o formulário e passa a valer só o que foi marcado.
   const [filtroManual, setFiltroManual] = useState<Set<number> | null>(null);
   const frentesFiltro = filtroManual ?? new Set(frenteIdsProjeto);
@@ -118,11 +125,11 @@ export function MemberPicker({
 
   // A carga atual entra no rótulo para a alocação ser decidida sem sair da
   // tela — 3+ projetos é o limiar de gargalo do §7.3.
-  const rotulo = (usuario: UsuarioResumo) => {
+  const metaTexto = (usuario: UsuarioResumo) => {
     const total = usuario.projetos_alocados;
     const carga =
       total === 0 ? "livre" : `${total} projeto${total > 1 ? "s" : ""}${total >= 3 ? " ⚠" : ""}`;
-    return `${usuario.nome} · ${ROTULO_POSICAO[usuario.posicao]} · ${carga}`;
+    return `${ROTULO_POSICAO[usuario.posicao]} · ${carga}`;
   };
 
   // O backend recusa quem não tem a posição do papel, então nem oferecemos:
@@ -147,11 +154,9 @@ export function MemberPicker({
     )
     .sort(porCargaCrescente);
 
-  function adicionarConsultor() {
-    const id = Number(consultorPendente);
-    if (!id || consultorIds.includes(id)) return;
+  function adicionarConsultor(id: number) {
+    if (consultorIds.includes(id)) return;
     onChange({ coordenadorId, consultorIds: [...consultorIds, id] });
-    setConsultorPendente("");
   }
 
   function removerConsultor(id: number) {
@@ -169,52 +174,28 @@ export function MemberPicker({
 
   return (
     <PickerStack>
-      {frentes.length > 0 && (
-        <FieldGroup>
-          <FieldLabel>Filtrar por frente</FieldLabel>
-          <FiltroFrentesRow>
-            {frentes.map((f) => (
-              <CheckboxLabel key={f.id}>
-                <input
-                  type="checkbox"
-                  checked={frentesFiltro.has(f.id)}
-                  disabled={desabilitado}
-                  onChange={() => alternarFrenteFiltro(f.id)}
-                />
-                {f.nome}
-              </CheckboxLabel>
-            ))}
-          </FiltroFrentesRow>
-          <CountHint $ok>
-            Já vem marcada a frente deste projeto — marque outras se quiser gente de fora dela
-            também, ou desmarque tudo pra ver todo mundo.
-          </CountHint>
-        </FieldGroup>
-      )}
-
       <FieldGroup>
         <FieldLabel htmlFor="equipe-coordenador">
           Coordenador<Required>*</Required>
         </FieldLabel>
-        <FieldSelect
+        <PessoaDropdown
           id="equipe-coordenador"
-          value={coordenadorId ? String(coordenadorId) : ""}
-          disabled={desabilitado}
-          onChange={(e) => trocarCoordenador(e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">
-            {elegiveisCoordenador.length === 0 ? "Nenhum coordenador cadastrado" : "Selecione…"}
-          </option>
-          {elegiveisCoordenador.map((usuario) => (
-            <option key={usuario.id} value={usuario.id}>
-              {rotulo(usuario)}
-            </option>
-          ))}
-        </FieldSelect>
+          opcoes={elegiveisCoordenador}
+          meta={metaTexto}
+          desabilitado={desabilitado}
+          gatilho={coordenadorId ? (nomePorId.get(coordenadorId) ?? `Usuário ${coordenadorId}`) : "Selecione…"}
+          gatilhoVazio={!coordenadorId}
+          vazio={elegiveisCoordenador.length === 0 ? "Nenhum coordenador cadastrado" : "Nenhum coordenador com essa frente"}
+          onSelecionar={(id) => trocarCoordenador(id)}
+          onLimpar={coordenadorId ? () => trocarCoordenador(null) : undefined}
+          frentes={frentes}
+          frentesFiltro={frentesFiltro}
+          onToggleFrente={alternarFrenteFiltro}
+        />
         <CountHint $ok>
           Só quem tem a posição Coordenador(a) aparece aqui, com os projetos em que já está
           alocado(a). A mesma pessoa pode coordenar vários.
-          {filtroPorFrenteAtivo && " Filtrado pelas frentes deste projeto."}
+          {filtroPorFrenteAtivo && " Filtrado pelas frentes marcadas."}
         </CountHint>
       </FieldGroup>
 
@@ -240,31 +221,19 @@ export function MemberPicker({
         </ChipRow>
 
         <AddRow>
-          <FieldSelect
+          <PessoaDropdown
             id="equipe-consultor"
-            value={consultorPendente}
-            disabled={desabilitado || disponiveisParaConsultor.length === 0}
-            onChange={(e) => setConsultorPendente(e.target.value)}
-          >
-            <option value="">
-              {disponiveisParaConsultor.length === 0
-                ? "Nenhum consultor disponível"
-                : "Adicionar consultor…"}
-            </option>
-            {disponiveisParaConsultor.map((usuario) => (
-              <option key={usuario.id} value={usuario.id}>
-                {rotulo(usuario)}
-              </option>
-            ))}
-          </FieldSelect>
-          <PageButtonSm
-            type="button"
-            $variant="outline"
-            disabled={desabilitado || !consultorPendente}
-            onClick={adicionarConsultor}
-          >
-            Adicionar
-          </PageButtonSm>
+            opcoes={disponiveisParaConsultor}
+            meta={metaTexto}
+            desabilitado={desabilitado}
+            gatilho="Adicionar consultor…"
+            gatilhoVazio
+            vazio={disponiveisParaConsultor.length === 0 ? "Ninguém disponível" : "Nenhum consultor com essa frente"}
+            onSelecionar={adicionarConsultor}
+            frentes={frentes}
+            frentesFiltro={frentesFiltro}
+            onToggleFrente={alternarFrenteFiltro}
+          />
         </AddRow>
 
         <CountHint $ok>
@@ -276,9 +245,115 @@ export function MemberPicker({
           )}
           Só quem tem a posição Consultor(a) aparece aqui, do menos alocado para o mais alocado.
           A mesma pessoa pode atuar em vários.
-          {filtroPorFrenteAtivo && " Filtrado pelas frentes deste projeto."}
+          {filtroPorFrenteAtivo && " Filtrado pelas frentes marcadas."}
         </CountHint>
       </FieldGroup>
     </PickerStack>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Dropdown único pra coordenador (troca) e consultor (adiciona) — nem select
+ * nativo do navegador, nem checkboxes soltas: o filtro de frente mora dentro
+ * do próprio painel, bem ao lado de quem está sendo escolhido.
+ */
+function PessoaDropdown({
+  id,
+  opcoes,
+  meta,
+  desabilitado,
+  gatilho,
+  gatilhoVazio,
+  vazio,
+  onSelecionar,
+  onLimpar,
+  frentes,
+  frentesFiltro,
+  onToggleFrente,
+}: {
+  id: string;
+  opcoes: UsuarioResumo[];
+  meta: (usuario: UsuarioResumo) => string;
+  desabilitado?: boolean;
+  gatilho: string;
+  gatilhoVazio: boolean;
+  vazio: string;
+  onSelecionar: (usuarioId: number) => void;
+  onLimpar?: () => void;
+  frentes: Frente[];
+  frentesFiltro: Set<number>;
+  onToggleFrente: (frenteId: number) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function aoClicarFora(evento: MouseEvent) {
+      if (ref.current && !ref.current.contains(evento.target as Node)) setAberto(false);
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, []);
+
+  return (
+    <DropdownWrap ref={ref}>
+      <DropdownTrigger
+        id={id}
+        type="button"
+        $vazio={gatilhoVazio}
+        disabled={desabilitado}
+        aria-expanded={aberto}
+        aria-haspopup="listbox"
+        onClick={() => setAberto((v) => !v)}
+      >
+        <span>{gatilho}</span>
+        <ChevronDown size={16} />
+      </DropdownTrigger>
+      {aberto && (
+        <DropdownPanel role="listbox">
+          {frentes.length > 0 && (
+            <DropdownFiltroFrentes>
+              {frentes.map((f) => (
+                <FrentePill
+                  key={f.id}
+                  type="button"
+                  $ativo={frentesFiltro.has(f.id)}
+                  onClick={() => onToggleFrente(f.id)}
+                >
+                  {f.nome}
+                </FrentePill>
+              ))}
+            </DropdownFiltroFrentes>
+          )}
+          <DropdownLista>
+            {onLimpar && (
+              <DropdownLimpar type="button" onClick={() => { onLimpar(); setAberto(false); }}>
+                Remover coordenador
+              </DropdownLimpar>
+            )}
+            {opcoes.length === 0 ? (
+              <DropdownVazio>{vazio}</DropdownVazio>
+            ) : (
+              opcoes.map((usuario) => (
+                <DropdownItem
+                  key={usuario.id}
+                  type="button"
+                  role="option"
+                  onClick={() => {
+                    onSelecionar(usuario.id);
+                    setAberto(false);
+                  }}
+                >
+                  {usuario.nome}
+                  <DropdownItemMeta>{meta(usuario)}</DropdownItemMeta>
+                </DropdownItem>
+              ))
+            )}
+          </DropdownLista>
+        </DropdownPanel>
+      )}
+    </DropdownWrap>
   );
 }
