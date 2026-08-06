@@ -8,8 +8,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { MostrarTodos, useLimite } from "./ListaLimitada";
 import { ROTULO_STATUS } from "@/lib/projetos";
 import type { LinhaCarga } from "@/lib/monitoramento";
+
+/** Mais barras que isso e a comparação entre alturas já não cabe numa tela.
+ *  Maior que o limite das listas (8) porque barra ocupa menos altura que um
+ *  item de lista com duas linhas de texto. */
+const LIMITE_BARRAS = 15;
 import type { StatusProjeto } from "@/types/projeto";
 import { EmptyText } from "@/styles/page.styled";
 import {
@@ -62,7 +68,7 @@ export function BarrasCarga({
   const linhas = papel === "consultor" ? consultores : coordenadores;
   const etapas = useMemo(() => etapasPresentes(linhas), [linhas]);
 
-  const dados = useMemo(() => {
+  const todos = useMemo(() => {
     return linhas
       .map((l) => ({
         nome: l.nome,
@@ -78,6 +84,15 @@ export function BarrasCarga({
       // outra ("quem pega o próximo projeto?").
       .sort((a, b) => b.valor - a.valor || a.nome.localeCompare(b.nome));
   }, [linhas, etapa]);
+
+  // ⭐ Corta em 15, e NÃO rola. Rolagem funciona para lista; para gráfico de
+  // barras ela destrói o próprio recurso — comparar alturas exige ver as barras
+  // ao mesmo tempo, e o que está fora da tela não se compara com nada. Além
+  // disso o gráfico já vem ordenado do mais carregado, então as 15 primeiras
+  // são exatamente a resposta de "quem está sobrecarregado"; a cauda é a lista
+  // de quem está tranquilo, que a tabela abaixo mostra inteira.
+  const grafico = useLimite(todos, LIMITE_BARRAS);
+  const dados = grafico.visiveis;
 
   // Uma barra ocupa ~1.75rem; o container precisa de altura fixa porque o
   // ResponsiveContainer mede o pai e em altura `auto` calcula zero.
@@ -163,6 +178,10 @@ export function BarrasCarga({
           </ResponsiveContainer>
         </CaixaGrafico>
       )}
+
+      {/* Fora da CaixaGrafico: o botão não pode entrar na altura calculada
+          para as barras, senão a última fica cortada. */}
+      <MostrarTodos estado={grafico} total={todos.length} />
     </div>
   );
 }

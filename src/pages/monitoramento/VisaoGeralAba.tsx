@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { LIMITE_LISTA, MostrarTodos, useLimite } from "./ListaLimitada";
 import { useAuth } from "@/context/AuthContext";
 import { getVisaoGeral, type VisaoGeral } from "@/lib/monitoramento";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
@@ -87,7 +88,23 @@ export function VisaoGeralAba() {
 
   if (carregando || !dados) return <PageLoadingBlock />;
 
+  return <ConteudoVisaoGeral dados={dados} />;
+}
+
+/**
+ * O corpo da aba, montado só quando `dados` já chegou.
+ *
+ * Separado do componente de cima por causa dos `useLimite`: lá em cima há dois
+ * `return` cedo (erro e carregando), e hook depois deles seria hook
+ * condicional — a contagem muda entre renders e o React desalinha o estado.
+ */
+function ConteudoVisaoGeral({ dados }: { dados: VisaoGeral }) {
   const maxTendencia = Math.max(1, ...dados.entregas.tendencia.map((t) => t.total));
+
+  // Estes três crescem com o tamanho do núcleo e não têm teto no backend.
+  const atencao = useLimite(dados.atencao_agora, LIMITE_LISTA);
+  const bancas = useLimite(dados.bancas_proximas, LIMITE_LISTA);
+  const parados = useLimite(dados.tempo_parado, LIMITE_LISTA);
 
   return (
     <PageStack>
@@ -206,16 +223,21 @@ export function VisaoGeralAba() {
             {dados.bancas_proximas.length === 0 ? (
               <EmptyText>Nenhuma banca agendada para a próxima semana.</EmptyText>
             ) : (
-              <ListaSimples>
-                {dados.bancas_proximas.map((b, i) => (
-                  <ItemLista key={i}>
-                    <span>
-                      {b.projeto_nome} · {b.escopo}
-                    </span>
-                    <small>{formatarDataHora(b.data_hora)}</small>
-                  </ItemLista>
-                ))}
-              </ListaSimples>
+              <>
+                <ListaSimples>
+                  {bancas.visiveis.map((b, i) => (
+                    <ItemLista key={i}>
+                      <span>
+                        {b.projeto_nome} · {b.escopo}
+                      </span>
+                      <small>{formatarDataHora(b.data_hora)}</small>
+                    </ItemLista>
+                  ))}
+                </ListaSimples>
+                {/* A janela de 7 dias limita o período, não a quantidade: um
+                    núcleo grande pode ter 25 bancas numa semana de validação. */}
+                <MostrarTodos estado={bancas} total={dados.bancas_proximas.length} genero="f" />
+              </>
             )}
           </PageCardContent>
         </PageCard>
@@ -228,16 +250,19 @@ export function VisaoGeralAba() {
             {dados.tempo_parado.length === 0 ? (
               <EmptyText>Nenhum projeto parado entre escopos.</EmptyText>
             ) : (
-              <ListaSimples>
-                {dados.tempo_parado.map((p) => (
-                  <ItemLista key={p.projeto_id}>
-                    <LinkProjeto to={`/projetos/${p.projeto_id}`}>
-                      {p.projeto_nome} — entregou {p.escopo_entregue}
-                    </LinkProjeto>
-                    <small>há {p.dias_parado} dias</small>
-                  </ItemLista>
-                ))}
-              </ListaSimples>
+              <>
+                <ListaSimples>
+                  {parados.visiveis.map((p) => (
+                    <ItemLista key={p.projeto_id}>
+                      <LinkProjeto to={`/projetos/${p.projeto_id}`}>
+                        {p.projeto_nome} — entregou {p.escopo_entregue}
+                      </LinkProjeto>
+                      <small>há {p.dias_parado} dias</small>
+                    </ItemLista>
+                  ))}
+                </ListaSimples>
+                <MostrarTodos estado={parados} total={dados.tempo_parado.length} />
+              </>
             )}
           </PageCardContent>
         </PageCard>
@@ -251,23 +276,31 @@ export function VisaoGeralAba() {
           {dados.atencao_agora.length === 0 ? (
             <EmptyText>Nada pedindo ação no momento.</EmptyText>
           ) : (
-            <ListaSimples>
-              {dados.atencao_agora.map((item, i) => (
-                /* A cor do marcador carrega a gravidade: sem ela uma lista de
-                   15 itens grita igual e a diretoria não sabe por onde começar. */
-                <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
-                  <strong>
-                    <LinkProjeto to={`/projetos/${item.projeto_id}`}>{item.projeto_nome}</LinkProjeto>
-                  </strong>
-                  {/* O motivo vem pronto e específico do backend — §7.1 é
-                      explícito que não pode ser rótulo genérico. */}
-                  <span>
-                    {item.motivo}
-                    {item.dias != null && ` · há ${item.dias} dias`}
-                  </span>
-                </ItemAtencao>
-              ))}
-            </ListaSimples>
+            <>
+              <ListaSimples>
+                {atencao.visiveis.map((item, i) => (
+                  /* A cor do marcador carrega a gravidade: sem ela uma lista de
+                     15 itens grita igual e a diretoria não sabe por onde começar. */
+                  <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
+                    <strong>
+                      <LinkProjeto to={`/projetos/${item.projeto_id}`}>
+                        {item.projeto_nome}
+                      </LinkProjeto>
+                    </strong>
+                    {/* O motivo vem pronto e específico do backend — §7.1 é
+                        explícito que não pode ser rótulo genérico. */}
+                    <span>
+                      {item.motivo}
+                      {item.dias != null && ` · há ${item.dias} dias`}
+                    </span>
+                  </ItemAtencao>
+                ))}
+              </ListaSimples>
+              {/* Este é o card que mais cresce da tela: 34 itens já hoje, e ele
+                  sobe junto com o número de projetos. A lista vem ordenada por
+                  gravidade, então o corte esconde a cauda, não o que importa. */}
+              <MostrarTodos estado={atencao} total={dados.atencao_agora.length} />
+            </>
           )}
         </PageCardContent>
       </PageCard>

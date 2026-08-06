@@ -17,6 +17,7 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
+import { MostrarTodos, useLimite } from "./ListaLimitada";
 import {
   BarraCarga,
   BarraCargaPreenchida,
@@ -146,30 +147,42 @@ export function AlocacaoAba() {
  *  edita à vontade. Se a tela procurasse por "Carga alta" ou por vermelho, uma
  *  renomeada esvaziaria o card sem ninguém perceber. */
 function ColunaDemandaAlta({ papel, linhas }: { papel: string; linhas: LinhaCarga[] }) {
+  const lista = useLimite(linhas);
+
   return (
     <div>
       <DemandaAltaTitulo>{papel}</DemandaAltaTitulo>
       {linhas.length === 0 ? (
         <EmptyText>Ninguém com demanda alta.</EmptyText>
       ) : (
-        <DemandaAltaLista>
-          {linhas.map((linha) => (
-            <DemandaAltaPessoa key={linha.usuario_id}>
-              <strong>
-                {linha.nome}
-                {linha.projetos.length > 0 && (
-                  <DemandaAltaProjetos>{linha.projetos.join(", ")}</DemandaAltaProjetos>
-                )}
-              </strong>
-              {/* A pílula usa a cor que a diretoria deu à faixa. Se ela pintou
-                  de verde, fica verde: quem manda na cor é a configuração, e
-                  não a tela decidir que estar no topo é ruim. */}
-              <Pilula $tom={linha.situacao?.tom ?? "neutro"}>
-                {linha.total} {linha.total === 1 ? "projeto" : "projetos"}
-              </Pilula>
-            </DemandaAltaPessoa>
-          ))}
-        </DemandaAltaLista>
+        <>
+          <DemandaAltaLista>
+            {lista.visiveis.map((linha) => (
+              <DemandaAltaPessoa key={linha.usuario_id}>
+                <strong>
+                  {linha.nome}
+                  {linha.projetos.length > 0 && (
+                    <DemandaAltaProjetos>
+                      {/* `.map(p => p.nome)` e não `.join` direto: `projetos`
+                          virou lista de objetos quando o gráfico passou a
+                          precisar do status, e juntar objetos imprime
+                          "[object Object]". O TypeScript não pega — `join`
+                          aceita array de qualquer coisa. */}
+                      {linha.projetos.map((p) => p.nome).join(", ")}
+                    </DemandaAltaProjetos>
+                  )}
+                </strong>
+                {/* A pílula usa a cor que a diretoria deu à faixa. Se ela pintou
+                    de verde, fica verde: quem manda na cor é a configuração, e
+                    não a tela decidir que estar no topo é ruim. */}
+                <Pilula $tom={linha.situacao?.tom ?? "neutro"}>
+                  {linha.total} {linha.total === 1 ? "projeto" : "projetos"}
+                </Pilula>
+              </DemandaAltaPessoa>
+            ))}
+          </DemandaAltaLista>
+          <MostrarTodos estado={lista} total={linhas.length} />
+        </>
       )}
     </div>
   );
@@ -198,8 +211,12 @@ function TabelaCarga({
         {linhas.length === 0 ? (
           <EmptyText>{vazio}</EmptyText>
         ) : (
-          <TabelaRolagem $min="40rem">
-            <DataTable>
+          /* Rolagem, e não corte com "mostrar todos" como nos cards de alerta:
+             aqui a pessoa está procurando ALGUÉM ESPECÍFICO. Num núcleo de 70
+             consultores, cortar em 8 esconderia justamente quem ela quer e
+             obrigaria a expandir toda vez. O cabeçalho gruda no topo. */
+          <TabelaRolagem $min="40rem" $max="28rem">
+              <DataTable>
               <TableHead>
                 <TableRow>
                   <TableHeadCell>Nome</TableHeadCell>

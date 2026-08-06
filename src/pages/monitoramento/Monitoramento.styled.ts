@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { Link as RouterLink, NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import { PALETA } from "@/components/cronograma-pintado/cores";
@@ -56,12 +56,70 @@ export const DataTable = styled(DataTableBase)`
  * ponto em que a tabela ainda é legível; abaixo dele, rolar é melhor do que
  * encolher.
  */
-export const TabelaRolagem = styled.div<{ $min?: string }>`
+/**
+ * ⚠ **As duas rolagens moram no MESMO elemento, de propósito.**
+ *
+ * A tentação é aninhar: um container para a horizontal, outro por fora para a
+ * vertical. Não funciona. `overflow-x: auto` faz o `overflow-y` computar para
+ * `auto` também (o CSS não deixa um eixo recortar e o outro transbordar), então
+ * o container de dentro já é um contexto de rolagem vertical. O `position:
+ * sticky` do cabeçalho se ancora nele — que nunca rola, porque não tem altura
+ * limitada — e o cabeçalho simplesmente não gruda em nada.
+ *
+ * Com `$max`, a tabela ganha rolagem vertical e o cabeçalho gruda no topo. Sem
+ * ele, o comportamento é o de antes: só horizontal, altura livre.
+ *
+ * ⭐ Rolagem aqui, e corte com "mostrar todos" nos cards de alerta (ver
+ * `useLimite`): nestas tabelas a pessoa procura ALGUÉM ESPECÍFICO, e cortar em
+ * 8 esconderia justamente quem ela quer.
+ */
+export const TabelaRolagem = styled.div<{ $min?: string; $max?: string }>`
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 
+  ${({ $max }) =>
+    $max &&
+    css`
+      max-height: ${$max};
+      overflow-y: auto;
+
+      /* Sem isto, três telas de rolagem adentro ninguém lembra qual coluna é
+         qual. O fundo é obrigatório: sticky não recorta o que passa por baixo. */
+      thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: ${theme.colors.card};
+      }
+    `}
+
   table {
     min-width: ${({ $min = "38rem" }) => $min};
+  }
+`;
+
+/** O botão que revela o resto de uma lista cortada. Discreto e em largura
+ *  cheia: é rodapé de card, não ação principal. */
+export const BotaoMais = styled.button`
+  display: block;
+  width: 100%;
+  margin-top: ${theme.spacing.sm};
+  padding: 0.35rem;
+  border: 1px dashed ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: transparent;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  cursor: pointer;
+
+  &:hover {
+    border-style: solid;
+    color: ${theme.colors.foreground};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
   }
 `;
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { LIMITE_LISTA, MostrarTodos, useLimite } from "./ListaLimitada";
 import { ROTULO_STATUS } from "@/lib/projetos";
 import type { EtapaDoPortfolio } from "@/lib/monitoramento";
 import { EmptyText } from "@/styles/page.styled";
@@ -81,6 +82,9 @@ export function PizzaEtapas({ etapas }: { etapas: EtapaDoPortfolio[] }) {
   // criando um alvo invisível.
   const comProjeto = etapas.filter((e) => e.total > 0);
   const aberta = etapas.find((e) => e.status === selecionada) ?? null;
+  // `?? []` mantém a chamada do hook estável quando não há etapa aberta — o
+  // hook não pode entrar depois do `return` de portfólio vazio, logo abaixo.
+  const lista = useLimite(aberta?.projetos ?? [], LIMITE_LISTA);
 
   function alternar(status: string) {
     setSelecionada((atual) => (atual === status ? null : status));
@@ -164,7 +168,7 @@ export function PizzaEtapas({ etapas }: { etapas: EtapaDoPortfolio[] }) {
             {aberta.total} em {(ROTULO_STATUS[aberta.status] ?? aberta.status).toLowerCase()}
           </EmptyText>
           <ListaSimples>
-            {aberta.projetos.map((p) => (
+            {lista.visiveis.map((p) => (
               <ItemLista key={p.id}>
                 {/* Sem o link o clique vira beco sem saída: mostra os nomes e
                     não deixa chegar a nenhum deles. */}
@@ -172,6 +176,7 @@ export function PizzaEtapas({ etapas }: { etapas: EtapaDoPortfolio[] }) {
               </ItemLista>
             ))}
           </ListaSimples>
+          <MostrarTodos estado={lista} total={aberta.total} />
         </ProjetosDaEtapa>
       )}
     </div>

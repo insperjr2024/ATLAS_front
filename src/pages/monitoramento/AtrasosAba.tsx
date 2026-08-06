@@ -6,6 +6,7 @@ import type { StatusProjeto } from "@/types/projeto";
 
 type LinhaProjeto = Atrasos["por_projeto"][number];
 type Motivo = LinhaProjeto["motivos"][number];
+import { MostrarTodos, useLimite } from "./ListaLimitada";
 import {
   PageStack,
   PageCard,
@@ -136,6 +137,10 @@ export function AtrasosAba() {
     [projetos],
   );
 
+  // Ordenada por gravidade, então o corte esconde a cauda. Antes dos `return`
+  // cedo de erro e carregando — hook depois deles seria condicional.
+  const listaProjetos = useLimite(projetos);
+
   if (erro) {
     return (
       <ErrorBlock>
@@ -212,8 +217,9 @@ export function AtrasosAba() {
               </span>
             </EstadoLimpo>
           ) : (
+            <>
             <ListaSimples>
-              {projetos.map((p) => {
+              {listaProjetos.visiveis.map((p) => {
                 const externo = apenasExterno(p);
                 /* A cor vem do pior motivo isolado — os cortes do `nivel()`
                    foram escritos sobre o cronograma de UM escopo (§5.6), não
@@ -267,6 +273,8 @@ export function AtrasosAba() {
                 );
               })}
             </ListaSimples>
+            <MostrarTodos estado={listaProjetos} total={projetos.length} />
+            </>
           )}
         </PageCardContent>
       </PageCard>
@@ -279,7 +287,7 @@ export function AtrasosAba() {
           {coordenadores.length === 0 ? (
             <EmptyText>Nenhum coordenador na sua visão.</EmptyText>
           ) : (
-            <TabelaRolagem $min="34rem">
+            <TabelaRolagem $min="34rem" $max="26rem">
               <DataTable>
                 <TableHead>
                   <TableRow>

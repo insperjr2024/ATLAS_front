@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getExecucao, type Execucao, type LinhaTarefas } from "@/lib/monitoramento";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
+import { MostrarTodos, useLimite } from "./ListaLimitada";
 import {
   PageStack,
   PageCard,
@@ -103,6 +104,10 @@ export function ExecucaoAba() {
     () => tarefasOrdenadas.filter((t) => t.sem_tarefas || t.sem_tarefas_ativas),
     [tarefasOrdenadas],
   );
+  // Ordenada por severidade logo acima, então cortar esconde a cauda e não o
+  // que pede ação. Fica antes dos `return` de erro e carregando — hook depois
+  // deles seria condicional.
+  const listaSemTarefa = useLimite(semTarefa);
 
   if (erro) {
     return (
@@ -166,7 +171,7 @@ export function ExecucaoAba() {
           </PageCardHeader>
           <PageCardContent>
             <ListaSimples>
-              {semTarefa.map((linha) => (
+              {listaSemTarefa.visiveis.map((linha) => (
                 <ItemAtencao key={linha.projeto_id} $nivel={nivelSemTarefa(linha)}>
                   <strong>
                     <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`}>{linha.projeto_nome}</LinkProjeto>{" "}
@@ -182,6 +187,7 @@ export function ExecucaoAba() {
                 </ItemAtencao>
               ))}
             </ListaSimples>
+            <MostrarTodos estado={listaSemTarefa} total={semTarefa.length} />
           </PageCardContent>
         </PageCard>
       )}
@@ -224,7 +230,7 @@ export function ExecucaoAba() {
             <>
               {/* 7 colunas não cabem num celular. Rolar na horizontal preserva
                   a leitura da linha; espremer quebraria cada célula em três. */}
-              <TabelaRolagem $min="52rem">
+              <TabelaRolagem $min="52rem" $max="30rem">
                 <DataTable>
                   <TableHead>
                     <TableRow>
@@ -333,7 +339,7 @@ export function ExecucaoAba() {
           {dados.reunioes.length === 0 ? (
             <EmptyText>Nenhum projeto na sua visão.</EmptyText>
           ) : (
-            <TabelaRolagem $min="30rem">
+            <TabelaRolagem $min="30rem" $max="26rem">
               <DataTable>
                 <TableHead>
                   <TableRow>
