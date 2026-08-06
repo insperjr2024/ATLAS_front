@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   Bell,
   CalendarClock,
+  CalendarSync,
   CalendarX,
   Check,
   CheckCheck,
@@ -12,9 +13,11 @@ import {
   ChevronDown,
   ClipboardCheck,
   Flag,
+  ListChecks,
   Megaphone,
   SlidersHorizontal,
   Star,
+  Truck,
   UserPlus,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -80,6 +83,15 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   troca_banca: { icone: ArrowLeftRight, rotulo: "Troca de banca", alerta: false },
   avaliacao_pendente: { icone: ClipboardCheck, rotulo: "Avaliação pendente", alerta: true },
   banca_aviso: { icone: Megaphone, rotulo: "Aviso de banca", alerta: false },
+  // O plano mudou depois de combinado — pintados como alerta porque exigem
+  // replanejamento de quem já tinha a data antiga na agenda.
+  banca_remarcada: { icone: CalendarSync, rotulo: "Banca remarcada", alerta: true },
+  entrega_alterada: { icone: Truck, rotulo: "Entrega alterada", alerta: true },
+  lote_desempenho_aberto: {
+    icone: ListChecks,
+    rotulo: "Avaliação de Desempenho",
+    alerta: true,
+  },
 };
 
 /** A ordem dos chips: os 5 do briefing (§6.6) primeiro, na ordem em que ele os
@@ -92,10 +104,13 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "projeto_sem_reuniao",
   "escalacao_banca",
   "banca_hoje",
+  "banca_remarcada",
+  "entrega_alterada",
   "alocado_em_projeto",
   "entrega_registrada",
   "troca_banca",
   "avaliacao_pendente",
+  "lote_desempenho_aberto",
   "banca_aviso",
 ];
 
