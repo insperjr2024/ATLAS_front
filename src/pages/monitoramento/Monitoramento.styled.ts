@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { Link as RouterLink, NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
+import { PALETA } from "@/components/cronograma-pintado/cores";
 import { DataTable as DataTableBase } from "../Bancas.styled";
 
 export {
@@ -928,7 +929,9 @@ export const ChipsProjetos = styled.div`
   min-width: 12rem;
 `;
 
-export const ChipProjeto = styled.span`
+/** O chip virou link quando o projeto passou a chegar com id — a tabela dizia
+ *  em quais projetos a pessoa está e não deixava abrir nenhum deles. */
+export const ChipProjeto = styled(RouterLink)`
   padding: 0.05rem 0.45rem;
   border-radius: ${theme.borderRadius.sm};
   border: 1px solid ${theme.colors.border};
@@ -936,6 +939,17 @@ export const ChipProjeto = styled.span`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.foreground};
   white-space: nowrap;
+  text-decoration: none;
+
+  &:hover {
+    border-color: ${theme.colors.primary};
+    color: ${theme.colors.primary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+  }
 `;
 
 export const BarraCarga = styled.div`
@@ -1091,3 +1105,259 @@ export const SwimCellVazia = styled.p`
   color: ${theme.colors.mutedForeground};
   text-align: center;
 `;
+
+/* ─── Gráficos (§7.1 e §7.3) ──────────────────────────────────────────────── */
+
+/**
+ * A cor de cada etapa do ciclo, na pizza da Visão geral.
+ *
+ * ⭐ **Sai da `PALETA` do cronograma, não de uma rampa própria.** Aquela paleta
+ * já resolve o mesmo problema — dar cor a etapa — e já foi calibrada: 8 matizes
+ * com a MESMA saturação e a MESMA luminosidade, só a matiz girando. É isso que
+ * mantém as fatias com o mesmo peso visual; numa paleta ingênua o amarelo pula
+ * à frente do azul e a fatia mais chamativa passa a ser a de cor mais clara, e
+ * não a maior — que é a leitura que a pizza precisa entregar.
+ *
+ * Herda de graça a regra que o docstring de `cores.ts` defende: cor de etapa
+ * não encosta na semântica de status do design system, então nenhuma fatia
+ * pode ser lida como "tudo bem" ou "atrasado" por causa do tom.
+ *
+ * Uso `amostra`, o tom saturado — é o mesmo papel que ele tem lá: identificar a
+ * etapa numa legenda. `fundo` é pálido demais para fatia.
+ *
+ * O índice é fixo por status, e não pela ordem de chegada: "Em andamento" tem
+ * que ser a mesma cor toda vez que a tela abre.
+ *
+ * ⚠ Cor sozinha não é informação: a legenda escreve nome e número de cada
+ * etapa, então quem não distingue os matizes continua lendo o gráfico inteiro.
+ */
+export const COR_ETAPA: Record<string, string> = Object.fromEntries(
+  [
+    "vendido",
+    "ambientacao",
+    "em_andamento",
+    "validacao_bancas",
+    "envio_tep",
+    "periodo_ajustes",
+  ].map((status, i) => [status, PALETA[i].amostra]),
+);
+
+/** O container do gráfico. Altura fixa porque o `ResponsiveContainer` do
+ *  recharts mede o pai — em altura `auto` ele calcula 0 e o gráfico some. */
+export const CaixaGrafico = styled.div<{ $altura?: string }>`
+  width: 100%;
+  height: ${({ $altura }) => $altura ?? "16rem"};
+
+  /* O recharts injeta um <svg> com foco próprio; sem isto o anel de foco fica
+     cortado pela borda do card ao navegar por teclado. */
+  svg:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
+  }
+`;
+
+/** O miolo do donut. Vive fora do SVG, sobreposto, porque texto em `<text>`
+ *  do recharts não herda a tipografia do tema nem quebra em duas linhas. */
+export const MioloDonut = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+
+  strong {
+    font-size: ${theme.fontSize["2xl"]};
+    font-weight: ${theme.fontWeight.semibold};
+    line-height: 1.1;
+    color: ${theme.colors.foreground};
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+export const EnvolveDonut = styled.div`
+  position: relative;
+`;
+
+/** A legenda da pizza. Cada item é um botão: clicar seleciona a etapa, igual a
+ *  clicar na fatia. A fatia é alvo pequeno e difícil de acertar no celular —
+ *  sem a legenda clicável, o recurso não existe em tela estreita. */
+export const LegendaEtapas = styled.ul`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.15rem;
+  margin: ${theme.spacing.md} 0 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: ${theme.breakpoints.sm}px) {
+    grid-template-columns: 1fr 1fr;
+  }
+`;
+
+export const ItemLegendaEtapa = styled.li<{ $ativo: boolean; $vazio: boolean }>`
+  button {
+    display: flex;
+    align-items: center;
+    gap: ${theme.spacing.sm};
+    width: 100%;
+    padding: 0.25rem 0.4rem;
+    border: none;
+    border-radius: ${theme.borderRadius.sm};
+    background: ${({ $ativo }) => ($ativo ? theme.colors.muted : "transparent")};
+    font-size: ${theme.fontSize.sm};
+    text-align: left;
+    cursor: pointer;
+
+    /* Etapa vazia continua na lista — some faria parecer que ela não existe —
+       mas recuada, para não competir com as que têm projeto. */
+    color: ${({ $vazio }) =>
+      $vazio ? theme.colors.mutedForeground : theme.colors.foreground};
+
+    &:hover {
+      background: ${theme.colors.muted};
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${theme.colors.primary};
+      outline-offset: -2px;
+    }
+  }
+
+  /* O número encosta na direita para a coluna ser lida na vertical. */
+  b {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    font-weight: ${theme.fontWeight.medium};
+  }
+`;
+
+export const PontoEtapa = styled.span<{ $cor: string }>`
+  flex-shrink: 0;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $cor }) => $cor};
+`;
+
+/** A barra de controles acima de um gráfico: toggle de papel, filtro de etapa
+ *  e o rótulo de filtro ativo. Quebra em coluna no celular. */
+export const ControlesGrafico = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.md};
+`;
+
+export const GrupoBotoes = styled.div`
+  display: inline-flex;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  overflow: hidden;
+`;
+
+export const BotaoAlternativa = styled.button<{ $ativo: boolean }>`
+  padding: 0.3rem 0.75rem;
+  border: none;
+  background: ${({ $ativo }) => ($ativo ? theme.colors.primary : "transparent")};
+  color: ${({ $ativo }) =>
+    $ativo ? theme.colors.primaryForeground : theme.colors.foreground};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${({ $ativo }) =>
+    $ativo ? theme.fontWeight.medium : theme.fontWeight.normal};
+  cursor: pointer;
+
+  & + & {
+    border-left: 1px solid ${theme.colors.border};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: -2px;
+  }
+`;
+
+/** ⚠ O aviso de filtro ativo. Sem ele o gráfico mostra números menores que a
+ *  tabela logo abaixo e parece bug — o filtro fica escondido num `select` que
+ *  ninguém relê depois de escolher. */
+export const FiltroAtivo = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.muted};
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** O balão que aparece ao passar o mouse numa fatia: a etapa no topo, os
+ *  projetos dela embaixo.
+ *
+ *  Tem sombra e fundo opaco porque flutua sobre o próprio gráfico — com fundo
+ *  translúcido as fatias atravessariam o texto. */
+export const BalaoEtapa = styled.div`
+  max-width: 18rem;
+  padding: ${theme.spacing.sm} 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.md};
+`;
+
+export const BalaoTitulo = styled.p`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin: 0 0 0.35rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid ${theme.colors.border};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
+
+  /* A contagem encosta na direita, separada do nome da etapa. */
+  b {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    font-weight: ${theme.fontWeight.normal};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+export const BalaoLista = styled.ul`
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    font-size: ${theme.fontSize.xs};
+    line-height: 1.6;
+    color: ${theme.colors.foreground};
+    /* Nome longo de projeto não pode esticar o balão até fora da tela. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* O "e mais N" fecha a lista quando ela foi cortada. */
+  li[data-resto="true"] {
+    margin-top: 0.15rem;
+    color: ${theme.colors.mutedForeground};
+    font-style: italic;
+  }
+`;
+
+/** Os projetos da etapa clicada na pizza. */
+export const ProjetosDaEtapa = styled.div`
+  margin-top: ${theme.spacing.md};
+  padding-top: ${theme.spacing.md};
+  border-top: 1px solid ${theme.colors.border};
+`;
+

@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getVisaoGeral, type VisaoGeral } from "@/lib/monitoramento";
-import { formatarData, formatarDataHora, ROTULO_STATUS } from "@/lib/projetos";
-import type { StatusProjeto } from "@/types/projeto";
+import { formatarData, formatarDataHora } from "@/lib/projetos";
+
+// Sob demanda: o recharts pesa ~450KB num bundle que já está acima do limite
+// de aviso do Vite, e os gráficos só existem dentro do monitoramento.
+const PizzaEtapas = lazy(() => import("./PizzaEtapas"));
 import {
   PageStack,
   PageCard,
@@ -132,23 +135,14 @@ export function VisaoGeralAba() {
       <PainelGrid>
         <PageCard>
           <PageCardHeader>
-            <PageCardTitle>Distribuição por status</PageCardTitle>
+            <PageCardTitle>Projetos por etapa</PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
-            {Object.keys(dados.por_status).length === 0 ? (
-              <EmptyText>Nenhum projeto.</EmptyText>
-            ) : (
-              <ListaSimples>
-                {Object.entries(dados.por_status)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([status, total]) => (
-                    <ItemLista key={status}>
-                      <span>{ROTULO_STATUS[status as StatusProjeto] ?? status}</span>
-                      <small>{total}</small>
-                    </ItemLista>
-                  ))}
-              </ListaSimples>
-            )}
+            {/* Sob demanda: o recharts pesa ~450KB e só é usado aqui e na
+                Alocação — quem abre o login não tem por que pagar por ele. */}
+            <Suspense fallback={<PageLoadingBlock />}>
+              <PizzaEtapas etapas={dados.por_etapa} />
+            </Suspense>
           </PageCardContent>
         </PageCard>
 

@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAlocacao, type Alocacao, type LinhaCarga } from "@/lib/monitoramento";
+
+// Sob demanda pelo mesmo motivo da Visão geral: o recharts não pode entrar no
+// bundle que a tela de login carrega.
+const BarrasCarga = lazy(() => import("./BarrasCarga"));
 import {
   PageStack,
   PageCard,
@@ -81,6 +85,21 @@ export function AlocacaoAba() {
 
   return (
     <PageStack>
+      {/* Abre a aba: leitura de relance, e é o único lugar que responde "quem
+          está cheio DE PROJETO EM TAL ETAPA" — as tabelas mostram só a carga
+          inteira. Depois vêm elas, com o detalhe, e o card de demanda alta
+          fecha. */}
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Carga por pessoa</PageCardTitle>
+        </PageCardHeader>
+        <PageCardContent>
+          <Suspense fallback={<PageLoadingBlock />}>
+            <BarrasCarga coordenadores={dados.coordenadores} consultores={dados.consultores} />
+          </Suspense>
+        </PageCardContent>
+      </PageCard>
+
       <TabelaCarga
         titulo="Coordenadores"
         linhas={dados.coordenadores}
@@ -210,8 +229,12 @@ function TabelaCarga({
                     <TableCell>
                       {linha.projetos.length > 0 ? (
                         <ChipsProjetos>
-                          {linha.projetos.map((nome, i) => (
-                            <ChipProjeto key={`${nome}-${i}`}>{nome}</ChipProjeto>
+                          {/* O chip agora leva ao projeto: o id veio junto
+                              quando o gráfico passou a precisar do status. */}
+                          {linha.projetos.map((p) => (
+                            <ChipProjeto key={p.id} to={`/projetos/${p.id}`}>
+                              {p.nome}
+                            </ChipProjeto>
                           ))}
                         </ChipsProjetos>
                       ) : (

@@ -1,7 +1,21 @@
 import { apiFetch } from "@/lib/api";
 import type { TomSituacao } from "@/lib/situacoes-carga";
+import type { StatusProjeto } from "@/types/projeto";
 
 /* Os tipos espelham `use_cases/monitoramento/monitoramento.py`. */
+
+/** Uma etapa do ciclo de vida e os projetos parados nela.
+ *
+ *  Vem em LISTA, não em objeto indexado por status: a ordem é o dado. A pizza
+ *  desenha as fatias nesta sequência para se ler como funil, e um objeto não
+ *  garante ordem de forma confiável. */
+export interface EtapaDoPortfolio {
+  status: StatusProjeto;
+  total: number;
+  /** Os projetos da fatia, já ordenados por nome. A fatia é clicável, e só a
+   *  contagem não responde "quais são esses?". */
+  projetos: { id: number; nome: string }[];
+}
 
 export interface VisaoGeral {
   kpis: {
@@ -12,7 +26,10 @@ export interface VisaoGeral {
     pausados: number;
     finalizados: number;
   };
-  por_status: Record<string, number>;
+  /** As 6 etapas em curso, sempre todas — inclusive as vazias, com `total: 0`.
+   *  A soma dos totais é igual a `placar_gestao.total_ativos`, e é isso que faz
+   *  o número no meio da pizza fechar com as fatias. */
+  por_etapa: EtapaDoPortfolio[];
   /** % dos projetos ativos sem banca atrasada. A entrega ao cliente fica de
    *  fora de propósito: depende da agenda dele (§7.1). */
   placar_gestao: { percentual: number; no_prazo: number; total_ativos: number };
@@ -113,12 +130,25 @@ export interface Execucao {
   }[];
 }
 
+/** Um projeto na carga de alguém. Carrega a etapa porque o gráfico de barras
+ *  filtra a carga por ela — com só o nome, cada troca de filtro exigiria uma
+ *  requisição nova. O id deixa o chip da tabela virar link. */
+export interface ProjetoDaCarga {
+  id: number;
+  nome: string;
+  status: StatusProjeto;
+}
+
 export interface LinhaCarga {
   usuario_id: number;
   nome: string;
   posicao: string;
+  /** A carga INTEIRA da pessoa, sem filtro. O gráfico de barras filtra por
+   *  etapa no cliente, mas nunca reescreve este número nem a `situacao`:
+   *  a mesma pessoa apareceria "Disponível" no gráfico filtrado e "Carga alta"
+   *  na tabela logo abaixo. */
   total: number;
-  projetos: string[];
+  projetos: ProjetoDaCarga[];
   /** A situação resolvida pela escala do papel (§7.3), definida pela diretoria
    *  em Configurações. Vem pronta do backend porque a regra é dele — a tela
    *  reimplementá-la seria convite para divergirem.
