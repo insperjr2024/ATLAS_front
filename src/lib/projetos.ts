@@ -185,13 +185,9 @@ export function deleteEscopoProjeto(escopoId: number, token: string) {
   return apiFetch(`/escopos-projeto/${escopoId}`, { method: "DELETE", token });
 }
 
-/** ⭐ Marcar a reunião inicial — é o que faz a contagem recomeçar (§5.4). */
-export function iniciarEscopo(escopoId: number, dataInicio: string, token: string) {
-  return apiFetch<{ id: number; data_inicio: string; status: string }>(
-    `/escopos-projeto/${escopoId}/inicio`,
-    { method: "PATCH", token, body: JSON.stringify({ data_inicio: dataInicio }) },
-  );
-}
+// ⭐ A contagem do §5.4 começa pela REUNIÃO INICIAL, registrada na aba
+// Reuniões com o escopo escolhido (`createReuniao` em `lib/tarefas.ts`). Não
+// existe mais um "iniciar escopo" digitado à parte.
 
 /** 🔒 O backend recusa com 422 até a banca do escopo sair aprovada (§5.5). */
 export function marcarEntregaEscopo(escopoId: number, data: string, token: string) {

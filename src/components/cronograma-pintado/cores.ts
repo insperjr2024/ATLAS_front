@@ -92,6 +92,33 @@ export const COR_AMBIENTACAO = "#DCE0E5";
 export const COR_PAUSA = "#E9EAED";
 export const COR_NAO_UTIL = "#F0F0F0";
 
+/**
+ * O período de cada escopo — da reunião inicial até a banca (§5.4).
+ *
+ * Mesmas 8 matizes da paleta, na MESMA ordem, mas a 92% de luminosidade
+ * (contra os 80% do fundo de etapa). A faixa é o pano de fundo do escopo e as
+ * etapas são pintadas dentro dela: mesma família de cor amarra as duas, e a
+ * diferença de luminosidade deixa claro quem é fundo e quem é conteúdo.
+ *
+ * A escolha é pelo ÍNDICE DO ESCOPO na lista do projeto, não pela cor das
+ * etapas dele: as etapas de um mesmo escopo têm cores diferentes entre si, e
+ * o período é do escopo inteiro.
+ */
+export const CORES_PERIODO_ESCOPO = [
+  "#DEE9F7", // azul
+  "#E9DEF7", // roxo
+  "#DEF3F7", // ciano
+  "#F7DEEB", // magenta
+  "#F7E8DE", // laranja
+  "#DEF7EF", // verde-água
+  "#F1DEF7", // violeta
+  "#F7F1DE", // mostarda
+];
+
+export function corPeriodoEscopo(indice: number): string {
+  return CORES_PERIODO_ESCOPO[indice % CORES_PERIODO_ESCOPO.length];
+}
+
 /* ------------------------------------------------------------------ */
 /* Marcos (§6.4)                                                       */
 /* ------------------------------------------------------------------ */

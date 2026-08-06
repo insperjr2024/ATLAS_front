@@ -35,8 +35,19 @@ export interface ComentarioTarefa {
 export interface ReuniaoSemanal {
   id: number;
   projeto_id: number;
+  /**
+   * ⭐ Sobre qual escopo foi a reunião. Vazio = reunião geral do projeto.
+   * A PRIMEIRA reunião de um escopo é a "reunião inicial" do §5.4 — é ela que
+   * preenche a `data_inicio` dele e faz a contagem de dias começar a correr.
+   */
+  projeto_escopo_id: number | null;
   data_reuniao: string;
   registrado_por: number;
+}
+
+/** A resposta do POST: `escopo_iniciado` avisa que a contagem começou agora. */
+export interface ReuniaoRegistrada extends ReuniaoSemanal {
+  escopo_iniciado: boolean;
 }
 
 export interface ReunioesResposta {
