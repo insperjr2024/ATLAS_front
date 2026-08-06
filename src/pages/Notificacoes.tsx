@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
+  ArrowLeftRight,
   Bell,
   CalendarClock,
   CalendarX,
@@ -9,7 +10,9 @@ import {
   CheckCheck,
   CheckCircle2,
   ChevronDown,
+  ClipboardCheck,
   Flag,
+  Megaphone,
   SlidersHorizontal,
   Star,
   UserPlus,
@@ -73,6 +76,10 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   banca_hoje: { icone: CalendarClock, rotulo: "Banca hoje", alerta: false },
   alocado_em_projeto: { icone: UserPlus, rotulo: "Alocado em projeto", alerta: false },
   entrega_registrada: { icone: CheckCircle2, rotulo: "Entrega registrada", alerta: false },
+  // Vindos do módulo de bancas (§8), que passou a escrever nesta mesma central.
+  troca_banca: { icone: ArrowLeftRight, rotulo: "Troca de banca", alerta: false },
+  avaliacao_pendente: { icone: ClipboardCheck, rotulo: "Avaliação pendente", alerta: true },
+  banca_aviso: { icone: Megaphone, rotulo: "Aviso de banca", alerta: false },
 };
 
 /** A ordem dos chips: os 5 do briefing (§6.6) primeiro, na ordem em que ele os
@@ -87,6 +94,9 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "banca_hoje",
   "alocado_em_projeto",
   "entrega_registrada",
+  "troca_banca",
+  "avaliacao_pendente",
+  "banca_aviso",
 ];
 
 export function Notificacoes() {

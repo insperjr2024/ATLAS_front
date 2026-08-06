@@ -1,11 +1,20 @@
 import { useState } from "react";
 import { X } from "lucide-react";
-import type { Posicao, UsuarioResumo } from "@/types/auth";
+import type { Posicao, UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { MembroEquipePayload } from "@/types/projeto";
+import type { Frente } from "@/types/banca";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
 import { PageButtonSm } from "@/styles/page.styled";
-import { FieldGroup, FieldLabel, Required, FieldSelect } from "@/pages/Bancas.styled";
-import { AddRow, Chip, ChipRemove, ChipRow, CountHint, PickerStack } from "./MemberPicker.styled";
+import { CheckboxLabel, FieldGroup, FieldLabel, Required, FieldSelect } from "@/pages/Bancas.styled";
+import {
+  AddRow,
+  Chip,
+  ChipRemove,
+  ChipRow,
+  CountHint,
+  FiltroFrentesRow,
+  PickerStack,
+} from "./MemberPicker.styled";
 
 export interface EquipeSelecionada {
   coordenadorId: number | null;
@@ -53,13 +62,59 @@ interface MemberPickerProps {
   valor: EquipeSelecionada;
   onChange: (valor: EquipeSelecionada) => void;
   desabilitado?: boolean;
+  /** Vínculos usuário↔frente — junto com `frentes`/`frenteIdsProjeto`, é o
+   *  que filtra as duas listas pra só quem já atua nas frentes marcadas. */
+  usuariosFrentes?: UsuarioFrente[];
+  /** Catálogo completo — as opções do filtro (nem toda frente do catálogo
+   *  precisa ser a do projeto: dá pra somar outras manualmente). */
+  frentes?: Frente[];
+  frenteIdsProjeto?: number[];
 }
 
-export function MemberPicker({ usuarios, valor, onChange, desabilitado }: MemberPickerProps) {
+export function MemberPicker({
+  usuarios,
+  valor,
+  onChange,
+  desabilitado,
+  usuariosFrentes = [],
+  frentes = [],
+  frenteIdsProjeto = [],
+}: MemberPickerProps) {
   const [consultorPendente, setConsultorPendente] = useState("");
+  // `null` = segue as frentes do projeto automaticamente (o normal). No
+  // instante em que a pessoa mexe num checkbox, vira um conjunto próprio —
+  // paralisa de seguir o formulário e passa a valer só o que foi marcado.
+  const [filtroManual, setFiltroManual] = useState<Set<number> | null>(null);
+  const frentesFiltro = filtroManual ?? new Set(frenteIdsProjeto);
+
+  function alternarFrenteFiltro(frenteId: number) {
+    const proximo = new Set(frentesFiltro);
+    if (proximo.has(frenteId)) proximo.delete(frenteId);
+    else proximo.add(frenteId);
+    setFiltroManual(proximo);
+  }
 
   const nomePorId = new Map(usuarios.map((u) => [u.id, u.nome]));
   const { coordenadorId, consultorIds } = valor;
+
+  const frenteIdsPorUsuario = new Map<number, Set<number>>();
+  for (const uf of usuariosFrentes) {
+    const atual = frenteIdsPorUsuario.get(uf.usuario_id) ?? new Set<number>();
+    atual.add(uf.frente_id);
+    frenteIdsPorUsuario.set(uf.usuario_id, atual);
+  }
+
+  const filtroPorFrenteAtivo = frentesFiltro.size > 0;
+
+  // Quem não tem frente cadastrada nenhuma passa direto — o filtro só barra
+  // quem TEM frente e nenhuma delas está marcada no filtro, nunca por falta
+  // de dado.
+  function atendeFiltroFrente(usuario: UsuarioResumo): boolean {
+    if (!filtroPorFrenteAtivo) return true;
+    const frentesDoUsuario = frenteIdsPorUsuario.get(usuario.id);
+    if (!frentesDoUsuario || frentesDoUsuario.size === 0) return true;
+    return [...frentesFiltro].some((id) => frentesDoUsuario.has(id));
+  }
 
   // A carga atual entra no rótulo para a alocação ser decidida sem sair da
   // tela — 3+ projetos é o limiar de gargalo do §7.3.
@@ -72,7 +127,9 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
 
   // O backend recusa quem não tem a posição do papel, então nem oferecemos:
   // diretoria e gerência não aparecem em nenhuma das duas listas.
-  const elegiveisCoordenador = usuarios.filter((u) => u.posicao === POSICAO_COORDENADOR);
+  const elegiveisCoordenador = usuarios.filter(
+    (u) => u.posicao === POSICAO_COORDENADOR && atendeFiltroFrente(u),
+  );
 
   // Menos carregado primeiro: quem tem menos projetos abre a lista, para a
   // alocação distribuir a carga em vez de cair sempre em quem já está no
@@ -85,7 +142,9 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
   // lista de opções. O `.filter` já devolve array novo, então o `.sort` não
   // mexe na prop `usuarios`.
   const disponiveisParaConsultor = usuarios
-    .filter((u) => u.posicao === POSICAO_CONSULTOR && !consultorIds.includes(u.id))
+    .filter(
+      (u) => u.posicao === POSICAO_CONSULTOR && !consultorIds.includes(u.id) && atendeFiltroFrente(u),
+    )
     .sort(porCargaCrescente);
 
   function adicionarConsultor() {
@@ -110,6 +169,29 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
 
   return (
     <PickerStack>
+      {frentes.length > 0 && (
+        <FieldGroup>
+          <FieldLabel>Filtrar por frente</FieldLabel>
+          <FiltroFrentesRow>
+            {frentes.map((f) => (
+              <CheckboxLabel key={f.id}>
+                <input
+                  type="checkbox"
+                  checked={frentesFiltro.has(f.id)}
+                  disabled={desabilitado}
+                  onChange={() => alternarFrenteFiltro(f.id)}
+                />
+                {f.nome}
+              </CheckboxLabel>
+            ))}
+          </FiltroFrentesRow>
+          <CountHint $ok>
+            Já vem marcada a frente deste projeto — marque outras se quiser gente de fora dela
+            também, ou desmarque tudo pra ver todo mundo.
+          </CountHint>
+        </FieldGroup>
+      )}
+
       <FieldGroup>
         <FieldLabel htmlFor="equipe-coordenador">
           Coordenador<Required>*</Required>
@@ -132,6 +214,7 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
         <CountHint $ok>
           Só quem tem a posição Coordenador(a) aparece aqui, com os projetos em que já está
           alocado(a). A mesma pessoa pode coordenar vários.
+          {filtroPorFrenteAtivo && " Filtrado pelas frentes deste projeto."}
         </CountHint>
       </FieldGroup>
 
@@ -193,6 +276,7 @@ export function MemberPicker({ usuarios, valor, onChange, desabilitado }: Member
           )}
           Só quem tem a posição Consultor(a) aparece aqui, do menos alocado para o mais alocado.
           A mesma pessoa pode atuar em vários.
+          {filtroPorFrenteAtivo && " Filtrado pelas frentes deste projeto."}
         </CountHint>
       </FieldGroup>
     </PickerStack>

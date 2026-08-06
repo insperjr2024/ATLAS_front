@@ -80,6 +80,30 @@ export function intervaloDaVisao(visao: Visao, referencia: Date): { inicio: stri
   return { inicio: chaveData(primeira[0]), fim: chaveData(ultima[6]) };
 }
 
+/**
+ * Os 1ºs-de-mês cobertos pela janela do projeto.
+ *
+ * Usado pelo export: o PDF sai dos meses que a pessoa escolheu, e não do
+ * recorte que estava na tela — um PDF de um dia só não é "pronto para
+ * apresentações" (§6.4).
+ */
+export function mesesDaJanela(inicio: string, fim: string): Date[] {
+  const meses: Date[] = [];
+  const atual = new Date(`${inicio}T12:00:00`);
+  atual.setDate(1);
+  const limite = new Date(`${fim}T12:00:00`);
+  while (atual <= limite) {
+    meses.push(new Date(atual));
+    atual.setMonth(atual.getMonth() + 1);
+  }
+  return meses;
+}
+
+/** Vários meses empilhados — o formato canônico do §6.4, usado no export. */
+export function blocosDosMeses(meses: Date[]): BlocoCalendario[] {
+  return meses.map((mes) => blocoDoMes(mes));
+}
+
 export function blocosDaVisao(visao: Visao, referencia: Date): BlocoCalendario[] {
   if (visao === "dia") return [blocoDoDia(referencia)];
   if (visao === "semana") return [blocoDaSemana(referencia)];

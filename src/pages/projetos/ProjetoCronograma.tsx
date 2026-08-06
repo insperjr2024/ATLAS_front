@@ -1,23 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { format } from "date-fns";
 import { ChevronLeft, ChevronRight, Download, Lock, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   createEtapa,
+  definirEntregaPlanejada,
   deleteEtapa,
   getCronograma,
   moverEtapa,
   oficializarCronograma,
 } from "@/lib/cronograma";
 import { formatarData } from "@/lib/projetos";
+import { chaveData } from "@/components/calendario/semanas";
 import {
   corSugerida,
   COR_AMBIENTACAO,
   COR_PAUSA,
   ROTULOS_MARCO,
 } from "@/components/cronograma-pintado/cores";
-import { exportarPDF, exportarPNG } from "@/components/cronograma-pintado/exportar";
+import { exportarPDF } from "@/components/cronograma-pintado/exportar";
 import {
   diasDoIntervalo,
   PaintedCalendar,
@@ -27,13 +28,17 @@ import {
 import {
   Amostra,
   AmostraHachurada,
+  AreaExportOculta,
   Barra,
+  BotaoBarra,
   BotaoExcluir,
   BotaoNav,
   BotaoVisao,
   ContadorDias,
   CronogramaLayout,
+  FieldEntrega,
   GrupoVisao,
+  MolduraExport,
   LegendaBox,
   LegendaGrupo,
   LegendaItem,
@@ -48,7 +53,9 @@ import {
   ancorar,
   avancar,
   blocosDaVisao,
+  blocosDosMeses,
   intervaloDaVisao,
+  mesesDaJanela,
   normalizar,
   VISOES,
   type Visao,
@@ -57,7 +64,6 @@ import type { CronogramaResposta } from "@/types/cronograma";
 import {
   PageStack,
   PageButton,
-  PageButtonSm,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
@@ -65,9 +71,20 @@ import {
 } from "@/styles/page.styled";
 import { AvisoBanner, FieldSelect, FormErrorText } from "./Projetos.styled";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
+import {
+  planejarEscrita,
+  subtrairTrecho,
+  unirTrechos,
+} from "@/components/cronograma-pintado/trechos";
+import { ExportarPdfModal } from "./ExportarPdfModal";
 import { NovaEtapaModal } from "./NovaEtapaModal";
 import { useProjeto } from "./ProjetoPage";
 
+
+/** "2026-07-14" -> "14/07". O ano é ruído numa legenda de um semestre só. */
+function semAno(iso: string): string {
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+}
 
 export function ProjetoCronograma() {
   const { projeto } = useProjeto();
@@ -78,8 +95,16 @@ export function ProjetoCronograma() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
-  const [escopoSelecionado, setEscopoSelecionado] = useState<number | null>(null);
-  const [etapaAtiva, setEtapaAtiva] = useState<number | null>(null);
+  /**
+   * O escopo em foco, ou "geral" para o projeto inteiro.
+   *
+   * Geral não é só um filtro solto: ele é a visão consolidada — junta etapas,
+   * marcos, entregas e os dias não úteis de TODAS as frentes. Abre nele porque
+   * "como está o cronograma?" é a pergunta de quem chega; editar é ação
+   * deliberada de quem escolhe um escopo.
+   */
+  const [escopoSelecionado, setEscopoSelecionado] = useState<number | "geral">("geral");
+  const [grupoAtivo, setGrupoAtivo] = useState<string | null>(null);
   const [previewIntervalo, setPreviewIntervalo] = useState<{ inicio: string; fim: string } | null>(
     null,
   );
@@ -88,9 +113,18 @@ export function ProjetoCronograma() {
   const [visao, setVisao] = useState<Visao>("mes");
   const [referencia, setReferencia] = useState<Date | null>(null);
   const [criandoEtapa, setCriandoEtapa] = useState(false);
-  const [etapaParaExcluir, setEtapaParaExcluir] = useState<{ id: number; nome: string } | null>(
-    null,
-  );
+  /** Etapas criadas na tela e ainda sem trecho — não existem no banco. */
+  const [rascunhos, setRascunhos] = useState<{ escopoId: number; nome: string; cor: string }[]>([]);
+  const [exportandoPdf, setExportandoPdf] = useState(false);
+  /** Enquanto não é `null`, a cópia fora da tela está montada com estes meses. */
+  const [mesesExport, setMesesExport] = useState<Date[] | null>(null);
+  /** O escopo escolhido no modal de export — independente do que está na tela. */
+  const [escopoExport, setEscopoExport] = useState<number | "geral">("geral");
+  const [etapaParaExcluir, setEtapaParaExcluir] = useState<{
+    chave: string;
+    nome: string;
+    trechos: number;
+  } | null>(null);
 
   const podeEditar = !!usuario?.cargo.pode_definir_cronograma;
 
@@ -100,7 +134,6 @@ export function ProjetoCronograma() {
     try {
       const resposta = await getCronograma(projeto.id, token);
       setDados(resposta);
-      setEscopoSelecionado((atual) => atual ?? resposta.escopos[0]?.id ?? null);
       // Ancora aqui, e não num efeito: o efeito seria um setState em cascata
       // logo após o render (react-hooks/set-state-in-effect). Abrimos no
       // período de hoje trazido para dentro da janela — um cronograma já
@@ -121,16 +154,62 @@ export function ProjetoCronograma() {
     carregar();
   }, [carregar]);
 
-  const escopo = dados?.escopos.find((e) => e.id === escopoSelecionado) ?? null;
+  const modoGeral = escopoSelecionado === "geral";
+  const escopo = modoGeral
+    ? null
+    : (dados?.escopos.find((e) => e.id === escopoSelecionado) ?? null);
   const oficializado = !!escopo?.cronograma_oficializado_em;
 
-  const diasNaoUteis = useMemo(() => {
+  /** As frentes cujo calendário deve aparecer: a do escopo, ou todas no Geral. */
+  const frentesVisiveis = useMemo(() => {
+    if (!dados) return new Set<number>();
+    return modoGeral
+      ? new Set(dados.escopos.map((e) => e.frente_id))
+      : new Set(escopo ? [escopo.frente_id] : []);
+  }, [dados, modoGeral, escopo]);
+
+  /**
+   * O calendário acadêmico da frente do escopo SELECIONADO.
+   *
+   * Cada frente tem o seu — as semanas de avaliação de Administração não são
+   * as de Engenharia. Trocar o escopo no seletor troca o calendário junto, que
+   * é o que faz um projeto sinérgico mostrar a realidade de cada lado.
+   *
+   * Os dias sem frente (`null`) entram sempre: feriado é do país.
+   */
+  /** Sábado e domingo da janela — a base dos dois mapas abaixo. */
+  const fimDeSemana = useMemo(() => {
     const mapa = new Map<string, { tipo: string; descricao: string | null }>();
-    for (const dia of dados?.dias_nao_uteis ?? []) {
-      mapa.set(dia.data.slice(0, 10), { tipo: dia.tipo, descricao: dia.descricao });
+    if (!dados) return mapa;
+    // Não vem do backend de propósito: `dia_nao_letivo` guarda o que a
+    // diretoria carrega do PDF, e fim de semana não é carregado — o cálculo de
+    // dias úteis já o exclui por definição.
+    const fim = new Date(`${dados.janela.fim.slice(0, 10)}T12:00:00`);
+    const cursor = new Date(`${dados.janela.inicio.slice(0, 10)}T12:00:00`);
+    while (cursor <= fim) {
+      if (cursor.getDay() === 0 || cursor.getDay() === 6) {
+        mapa.set(chaveData(cursor), { tipo: "fim_de_semana", descricao: null });
+      }
+      cursor.setDate(cursor.getDate() + 1);
     }
     return mapa;
   }, [dados]);
+
+  /**
+   * O que aparece hachurado: fim de semana + o calendário das frentes visíveis.
+   *
+   * No Geral são todas as frentes do projeto, para nenhum bloqueio ficar
+   * escondido na visão que serve para apresentar.
+   */
+  const diasNaoUteis = useMemo(() => {
+    const mapa = new Map(fimDeSemana);
+    for (const dia of dados?.dias_nao_uteis ?? []) {
+      if (dia.frente_id !== null && !frentesVisiveis.has(dia.frente_id)) continue;
+      mapa.set(dia.data.slice(0, 10), { tipo: dia.tipo, descricao: dia.descricao });
+    }
+    return mapa;
+  }, [dados, frentesVisiveis, fimDeSemana]);
+
 
   /** Banca, entrega e kickoff são LIDOS de onde já vivem (`banca.data_hora`,
    *  `data_entrega_*`, `data_kickoff`) — não há linha de marco para eles. */
@@ -146,6 +225,9 @@ export function ProjetoCronograma() {
       });
     }
     for (const e of dados.escopos) {
+      // Num escopo específico só entram os marcos DELE. O kickoff fica de fora
+      // deste filtro logo acima: ele é do projeto, não de um escopo.
+      if (!modoGeral && e.id !== escopoSelecionado) continue;
       if (e.banca?.data_hora) {
         lista.push({
           data: e.banca.data_hora.slice(0, 10),
@@ -165,6 +247,7 @@ export function ProjetoCronograma() {
       }
     }
     for (const m of dados.marcos) {
+      if (!modoGeral && m.projeto_escopo_id && m.projeto_escopo_id !== escopoSelecionado) continue;
       lista.push({
         data: m.data.slice(0, 10),
         tipo: m.tipo,
@@ -174,7 +257,7 @@ export function ProjetoCronograma() {
       });
     }
     return lista;
-  }, [dados]);
+  }, [dados, modoGeral, escopoSelecionado]);
 
   const faixas = useMemo<FaixaDerivada[]>(
     () =>
@@ -234,57 +317,301 @@ export function ProjetoCronograma() {
    */
   const etapas = useMemo(
     () =>
-      (dados?.escopos ?? []).flatMap((e) =>
+      (dados?.escopos ?? [])
+        .filter((e) => modoGeral || e.id === escopoSelecionado)
+        .flatMap((e) =>
         (e.etapas ?? []).map((etapa) => ({
           ...etapa,
+          // Linhas com a mesma chave são TRECHOS de uma etapa só. Nome e cor
+          // definem a identidade porque é isso que o usuário enxerga — o id é
+          // detalhe de como o banco guarda.
+          grupo: `${e.id}|${etapa.nome}|${etapa.cor}`,
           escopoId: e.id,
           escopoNome: e.nome,
           escopoOficializado: !!e.cronograma_oficializado_em,
         })),
       ),
-    [dados],
+    [dados, modoGeral, escopoSelecionado],
   );
+
+  /** As etapas como o usuário as vê: uma entrada por grupo, com seus trechos. */
+  const grupos = useMemo(() => {
+    const mapa = new Map<string, { chave: string; nome: string; cor: string; escopoId: number; oficializado: boolean; trechos: typeof etapas }>();
+
+    // Rascunhos primeiro, para uma etapa recém-criada já aparecer na legenda
+    // mesmo sem nenhum trecho. Se ela ganhar trechos, o laço abaixo preenche
+    // esta mesma entrada — a chave é a mesma.
+    for (const r of rascunhos) {
+      const chave = `${r.escopoId}|${r.nome}|${r.cor}`;
+      const esc = dados?.escopos.find((e) => e.id === r.escopoId);
+      mapa.set(chave, {
+        chave,
+        nome: r.nome,
+        cor: r.cor,
+        escopoId: r.escopoId,
+        oficializado: !!esc?.cronograma_oficializado_em,
+        trechos: [],
+      });
+    }
+
+    for (const etapa of etapas) {
+      const atual = mapa.get(etapa.grupo);
+      if (atual) {
+        atual.trechos.push(etapa);
+      } else {
+        mapa.set(etapa.grupo, {
+          chave: etapa.grupo,
+          nome: etapa.nome,
+          cor: etapa.cor,
+          escopoId: etapa.escopoId,
+          oficializado: etapa.escopoOficializado,
+          trechos: [etapa],
+        });
+      }
+    }
+    for (const g of mapa.values()) {
+      g.trechos.sort((a, b) => a.data_inicio.localeCompare(b.data_inicio));
+    }
+    return [...mapa.values()];
+  }, [etapas, rascunhos, dados]);
+
+  /**
+   * Os dias em que uma etapa pisa no calendário de uma frente que NÃO está
+   * sendo mostrada.
+   *
+   * Num projeto sinérgico a etapa vale para as duas frentes, mas o calendário
+   * na tela é o de uma só. Sem este aviso, o coordenador pintaria por cima da
+   * semana de provas de Tech enquanto olha o calendário de Business e nunca
+   * saberia — que é exatamente o caso que o aviso existe para pegar.
+   */
+  const conflitosDeFrente = useMemo(() => {
+    if (!dados || !escopo) return [];
+    const outras = dados.dias_nao_uteis.filter(
+      (d) => d.frente_id !== null && d.frente_id !== escopo.frente_id,
+    );
+    if (outras.length === 0) return [];
+
+    const nomeDaFrente = new Map(
+      dados.escopos.map((e) => [e.frente_id, e.nome] as const),
+    );
+    const porDia = new Map<string, (typeof outras)[number]>();
+    for (const d of outras) porDia.set(d.data.slice(0, 10), d);
+
+    const achados: { data: string; etapa: string; frente: number; motivo: string }[] = [];
+    for (const etapa of etapas) {
+      for (const chave of diasDoIntervalo(etapa.data_inicio, etapa.data_fim)) {
+        const conflito = porDia.get(chave);
+        if (!conflito) continue;
+        achados.push({
+          data: chave,
+          etapa: etapa.nome,
+          frente: conflito.frente_id!,
+          motivo: conflito.descricao ?? conflito.tipo,
+        });
+      }
+    }
+    return achados.map((c) => ({
+      ...c,
+      // O escopo daquela frente é o nome que o coordenador reconhece; a frente
+      // em si não aparece em lugar nenhum desta tela.
+      escopoDaOutraFrente: nomeDaFrente.get(c.frente) ?? "outra frente",
+    }));
+  }, [dados, escopo, etapas]);
+
 
   /** O pincel manda: pintar é editar a etapa ativa, então quem trava é o
    *  escopo DELA — não o que está escolhido no seletor. */
-  const etapaDoPincel = etapas.find((e) => e.id === etapaAtiva);
-  const pincelTravado = !!etapaDoPincel?.escopoOficializado;
+  const grupoDoPincel = grupos.find((g) => g.chave === grupoAtivo);
+  const pincelTravado = !!grupoDoPincel?.oficializado;
 
+  /** A frente do escopo dono da etapa no pincel — quem manda no que trava. */
+  const frenteDoPincel = useMemo(
+    () => dados?.escopos.find((e) => e.id === grupoDoPincel?.escopoId)?.frente_id ?? null,
+    [dados, grupoDoPincel],
+  );
+
+  /**
+   * O que IMPEDE pintar — e que não é a mesma coisa que o que aparece.
+   *
+   * Quem manda aqui é a frente da etapa no pincel, não a visão. No Geral o
+   * calendário mostra a união das frentes, mas pintar uma etapa de Business
+   * num dia que só é não útil em Tech continua legítimo: é exatamente o caso
+   * que o aviso de conflito existe para sinalizar, não para proibir. Usar a
+   * união como trava deixaria o Geral MAIS restrito que o escopo.
+   */
+  const diasBloqueados = useMemo(() => {
+    const mapa = new Map(fimDeSemana);
+    for (const dia of dados?.dias_nao_uteis ?? []) {
+      if (dia.frente_id !== null && dia.frente_id !== frenteDoPincel) continue;
+      mapa.set(dia.data.slice(0, 10), { tipo: dia.tipo, descricao: dia.descricao });
+    }
+    return mapa;
+  }, [dados, frenteDoPincel, fimDeSemana]);
+
+
+  /**
+   * Pintar ACRESCENTA um trecho ao grupo, em vez de mover a etapa inteira.
+   *
+   * O novo intervalo entra na lista, os que se encostam são fundidos, e o
+   * resultado é reconciliado contra as linhas que já existem — reaproveitando
+   * ids para o `criado_em`/`criado_por` de cada trecho não se perder a cada
+   * pincelada.
+   */
   const aoPintar = useCallback(
-    async (etapaId: number, inicio: string, fim: string) => {
+    async (grupoChave: string, inicio: string, fim: string) => {
       if (!token) return;
+      const grupo = grupos.find((g) => g.chave === grupoChave);
+      if (!grupo) return;
       setAviso("");
       try {
-        await moverEtapa(etapaId, inicio, fim, token);
+        const existentes = grupo.trechos.map((t) => ({
+          id: t.id,
+          inicio: t.data_inicio,
+          fim: t.data_fim,
+        }));
+        const desejados = unirTrechos([...existentes, { inicio, fim }]);
+        const plano = planejarEscrita(existentes, desejados);
+
+        for (const t of plano.atualizar) await moverEtapa(t.id, t.inicio, t.fim, token);
+        for (const t of plano.criar) {
+          await createEtapa(
+            grupo.escopoId,
+            { nome: grupo.nome, cor: grupo.cor, data_inicio: t.inicio, data_fim: t.fim },
+            token,
+          );
+        }
+        for (const id of plano.remover) await deleteEtapa(id, token);
+
+        // Ganhou trecho: deixa de ser rascunho e passa a viver no banco.
+        setRascunhos((atual) =>
+          atual.filter((r) => `${r.escopoId}|${r.nome}|${r.cor}` !== grupoChave),
+        );
         await carregar();
       } catch (err) {
         setAviso(err instanceof Error ? err.message : "Erro ao pintar a etapa");
       }
     },
-    [token, carregar],
+    [token, carregar, grupos],
   );
 
-  /** O modal propaga o erro para exibir dentro dele, junto do formulário. */
-  async function criarEtapa(nome: string, cor: string) {
-    if (!token || !escopo) return;
-    // `toISOString()` é UTC — à noite no Brasil já virou o dia seguinte lá.
-    // A etapa nova nasceria com a data errada.
-    const hoje = format(new Date(), "yyyy-MM-dd");
+  /**
+   * Desmarcar: tira o intervalo da etapa em que o gesto começou.
+   *
+   * Não há botão de borracha. O arrasto que nasce sobre um dia já pintado pela
+   * etapa selecionada apaga; o que nasce sobre dia livre pinta. Quem decide é
+   * o calendário, na âncora, e avisa aqui qual dos dois foi.
+   */
+  const aoApagar = useCallback(
+    async (grupoChave: string, inicio: string, fim: string) => {
+      if (!token) return;
+      const grupo = grupos.find((g) => g.chave === grupoChave);
+      if (!grupo) return;
+      setAviso("");
+      try {
+        const existentes = grupo.trechos.map((t) => ({
+          id: t.id,
+          inicio: t.data_inicio,
+          fim: t.data_fim,
+        }));
+        const plano = planejarEscrita(existentes, subtrairTrecho(existentes, { inicio, fim }));
+
+        for (const t of plano.atualizar) await moverEtapa(t.id, t.inicio, t.fim, token);
+        for (const t of plano.criar) {
+          await createEtapa(
+            grupo.escopoId,
+            { nome: grupo.nome, cor: grupo.cor, data_inicio: t.inicio, data_fim: t.fim },
+            token,
+          );
+        }
+        for (const id of plano.remover) await deleteEtapa(id, token);
+        await carregar();
+      } catch (err) {
+        setAviso(err instanceof Error ? err.message : "Erro ao desmarcar");
+      }
+    },
+    [token, carregar, grupos],
+  );
+
+  /**
+   * A etapa nova nasce SEM dia nenhum marcado.
+   *
+   * Ela não vai para o backend ainda: `cronograma_etapa` exige data_inicio e
+   * data_fim, e semear com a data de hoje pintava um dia que ninguém pediu —
+   * e que, pior, não dava para desmarcar. Enquanto não tem trecho, ela vive só
+   * aqui como rascunho; a primeira pincelada é que cria a linha.
+   */
+  function criarEtapa(nome: string, cor: string, escopoId: number) {
     setAviso("");
-    await createEtapa(escopo.id, { nome, cor, data_inicio: hoje, data_fim: hoje }, token);
+    setRascunhos((atual) => [...atual, { escopoId, nome, cor }]);
+    setGrupoAtivo(`${escopoId}|${nome}|${cor}`);
     setCriandoEtapa(false);
+  }
+
+  /**
+   * Apaga a etapa INTEIRA, com todos os seus trechos.
+   *
+   * O erro sobe para o modal mostrar; ele só fecha se deu certo.
+   */
+  /**
+   * O que entra no PDF, segundo o escopo escolhido NO MODAL — não o da tela.
+   *
+   * Exportar "somente Análise Mercadológica" enquanto se olha o Geral tem que
+   * produzir o PDF daquele escopo, e não uma foto do que está na tela.
+   */
+  const exportGeral = escopoExport === "geral";
+  const etapasExport = useMemo(
+    () => (exportGeral ? etapas : etapas.filter((e) => e.escopoId === escopoExport)),
+    [etapas, exportGeral, escopoExport],
+  );
+  const marcosExport = useMemo(() => {
+    if (exportGeral || !dados) return marcos;
+    const doEscopo = dados.escopos.find((e) => e.id === escopoExport);
+    const nome = doEscopo?.nome;
+    // Kickoff é do projeto e fica em qualquer recorte; banca e entrega levam o
+    // nome do escopo no título, que é como dá para separá-los aqui.
+    return marcos.filter((m) => m.tipo === "kickoff" || (nome && m.titulo.includes(nome)));
+  }, [marcos, exportGeral, escopoExport, dados]);
+  const diasNaoUteisExport = useMemo(() => {
+    if (exportGeral || !dados) return diasNaoUteis;
+    const frente = dados.escopos.find((e) => e.id === escopoExport)?.frente_id;
+    const mapa = new Map(fimDeSemana);
+    for (const dia of dados.dias_nao_uteis) {
+      if (dia.frente_id !== null && dia.frente_id !== frente) continue;
+      mapa.set(dia.data.slice(0, 10), { tipo: dia.tipo, descricao: dia.descricao });
+    }
+    return mapa;
+  }, [dados, exportGeral, escopoExport, diasNaoUteis, fimDeSemana]);
+
+  async function excluirGrupo(chave: string) {
+    if (!token) return;
+    const grupo = grupos.find((g) => g.chave === chave);
+    if (!grupo) return;
+    setAviso("");
+    for (const trecho of grupo.trechos) await deleteEtapa(trecho.id, token);
+    setRascunhos((atual) => atual.filter((r) => `${r.escopoId}|${r.nome}|${r.cor}` !== chave));
+    // Se o pincel era esta etapa, ele fica órfão — apagar tem que desarmá-lo.
+    setGrupoAtivo((atual) => (atual === chave ? null : atual));
+    setEtapaParaExcluir(null);
     await carregar();
   }
 
-  /** O erro sobe para o modal mostrar; ele só fecha se deu certo. */
-  async function excluirEtapa(etapaId: number) {
-    if (!token) return;
+  /**
+   * A entrega PLANEJADA do escopo selecionado.
+   *
+   * Fica aqui porque é decisão de cronograma: a §5.3 diz que ao fim da
+   * ambientação o coordenador crava o cronograma do escopo, e a data de
+   * entrega faz parte disso. Não confundir com a entrega REAL, que é registro
+   * de execução e fica travada até a banca aprovar (§5.5).
+   */
+  async function salvarEntrega(valor: string) {
+    if (!token || !escopo) return;
     setAviso("");
-    await deleteEtapa(etapaId, token);
-    // Se o pincel era esta etapa, ele fica órfão — apagar tem que desarmá-lo.
-    setEtapaAtiva((atual) => (atual === etapaId ? null : atual));
-    setEtapaParaExcluir(null);
-    await carregar();
+    try {
+      await definirEntregaPlanejada(escopo.id, valor || null, token);
+      await carregar();
+    } catch (err) {
+      setAviso(err instanceof Error ? err.message : "Erro ao definir a entrega");
+    }
   }
 
   async function oficializar() {
@@ -299,14 +626,27 @@ export function ProjetoCronograma() {
     }
   }
 
-  async function exportar(formato: "png" | "pdf") {
-    if (!areaExport.current) return;
-    setAviso("");
+  /**
+   * Gera o PDF a partir de uma cópia FORA DA TELA com os meses escolhidos.
+   *
+   * Não dá para rasterizar o calendário visível: ele mostra o recorte da visão
+   * atual (um dia, se for o caso), e o §6.4 quer o cronograma de apresentação.
+   * O erro sobe para o modal mostrar.
+   */
+  async function gerarPdf(mesesEscolhidos: Date[], escopoEscolhido: number | "geral") {
+    setEscopoExport(escopoEscolhido);
+    setMesesExport(mesesEscolhidos);
+    // Dois frames: um para o React montar a área, outro para o navegador
+    // aplicar o layout. Sem isso o html-to-image fotografa a folha em branco.
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
     try {
-      const acao = formato === "png" ? exportarPNG : exportarPDF;
-      await acao(areaExport.current, projeto.nome);
-    } catch (err) {
-      setAviso(err instanceof Error ? err.message : "Erro ao exportar");
+      if (!areaExport.current) throw new Error("A área de exportação não montou");
+      await exportarPDF(areaExport.current, projeto.nome);
+      setExportandoPdf(false);
+    } finally {
+      setMesesExport(null);
     }
   }
 
@@ -388,35 +728,60 @@ export function ProjetoCronograma() {
           <RotuloPeriodo>{blocos[0]?.titulo}</RotuloPeriodo>
         </NavPeriodo>
 
-        {dados.escopos.length > 1 && (
-          <FieldSelect
-            value={String(escopoSelecionado ?? "")}
-            onChange={(e) => {
-              setEscopoSelecionado(Number(e.target.value));
-              setEtapaAtiva(null);
-            }}
-            aria-label="Escopo"
-          >
-            {dados.escopos.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.nome}
-              </option>
-            ))}
-          </FieldSelect>
+        <FieldSelect
+          value={String(escopoSelecionado)}
+          onChange={(e) => {
+            setEscopoSelecionado(e.target.value === "geral" ? "geral" : Number(e.target.value));
+            setGrupoAtivo(null);
+          }}
+          aria-label="Escopo"
+        >
+          {/* Geral junta tudo: etapas, marcos e os dias não úteis de todas as
+              frentes. Escolher um escopo estreita a tela para o que é dele. */}
+          <option value="geral">Geral — o projeto inteiro</option>
+          {dados.escopos.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.nome}
+            </option>
+          ))}
+        </FieldSelect>
+
+        {podeEditar && escopo && (
+          <FieldEntrega>
+            <span>Entrega</span>
+            <input
+              type="date"
+              value={escopo.data_entrega_planejada?.slice(0, 10) ?? ""}
+              disabled={oficializado}
+              title={
+                oficializado
+                  ? "Cronograma oficializado: mudar exige reajuste aprovado pela diretoria"
+                  : `Entrega planejada de ${escopo.nome}`
+              }
+              onChange={(e) => salvarEntrega(e.target.value)}
+            />
+          </FieldEntrega>
         )}
 
-        {podeEditar && !oficializado && (
-          <PageButtonSm type="button" $variant="outline" onClick={() => setCriandoEtapa(true)}>
+        {podeEditar &&
+          !oficializado &&
+          dados.escopos.some((e) => !e.cronograma_oficializado_em) && (
+          <BotaoBarra type="button" $variant="outline" onClick={() => setCriandoEtapa(true)}>
             <Plus size={14} />
             Nova etapa
-          </PageButtonSm>
+          </BotaoBarra>
         )}
 
-        {etapaDoPincel ? (
-          <PincelAtivo $cor={etapaDoPincel.cor}>
-            Pintando: {etapaDoPincel.nome}
-            {diasPreview !== null && <ContadorDias>· {diasPreview} dias úteis</ContadorDias>}
-          </PincelAtivo>
+        {grupoDoPincel ? (
+          <>
+            <PincelAtivo $cor={grupoDoPincel.cor}>
+              Pintando: {grupoDoPincel.nome}
+              {diasPreview !== null && <ContadorDias>· {diasPreview} dias úteis</ContadorDias>}
+            </PincelAtivo>
+            {/* Sem botão de borracha, o gesto precisa estar escrito em algum
+                lugar — senão ninguém descobre que dá para desmarcar. */}
+            <ContadorDias>Arraste a partir de um dia já pintado para desmarcar.</ContadorDias>
+          </>
         ) : (
           podeEditar &&
           !oficializado &&
@@ -425,28 +790,44 @@ export function ProjetoCronograma() {
           )
         )}
 
-        {podeEditar && !oficializado && etapas.length > 0 && escopo?.banca && (
-          <PageButtonSm type="button" $variant="outline" onClick={oficializar}>
+        {podeEditar && escopo && !oficializado && etapas.length > 0 && escopo.banca && (
+          <BotaoBarra type="button" $variant="outline" onClick={oficializar}>
             <Lock size={14} />
             Oficializar
-          </PageButtonSm>
+          </BotaoBarra>
         )}
 
         {/* Exportar é a única ação da matriz liberada ao consultor — o
             botão não fica atrás de `pode()`. */}
-        <PageButtonSm type="button" $variant="ghost" onClick={() => exportar("png")}>
-          <Download size={14} />
-          PNG
-        </PageButtonSm>
-        <PageButtonSm type="button" $variant="ghost" onClick={() => exportar("pdf")}>
+        <BotaoBarra type="button" $variant="ghost" onClick={() => setExportandoPdf(true)}>
           <Download size={14} />
           PDF
-        </PageButtonSm>
+        </BotaoBarra>
       </Barra>
 
       {aviso && <FormErrorText>{aviso}</FormErrorText>}
 
-      <CronogramaLayout ref={areaExport}>
+      {/* O calendário na tela é o de uma frente só, mas a etapa vale para as
+          duas. Este banner é o único lugar em que o conflito com a frente
+          escondida aparece. */}
+      {conflitosDeFrente.length > 0 && (
+        <AvisoBanner>
+          <Lock size={14} />
+          <span>
+            {conflitosDeFrente.length} {conflitosDeFrente.length === 1 ? "dia pintado cai" : "dias pintados caem"}{" "}
+            em calendário de outra frente do projeto, que não aparece nesta visão:{" "}
+            {[
+              ...new Set(
+                conflitosDeFrente.map(
+                  (c) => `${formatarData(c.data)} (${c.motivo}, ${c.escopoDaOutraFrente})`,
+                ),
+              ),
+            ].join(" · ")}
+          </span>
+        </AvisoBanner>
+      )}
+
+      <CronogramaLayout>
         <PaintedCalendar
           blocos={blocos}
           visao={visao}
@@ -454,9 +835,12 @@ export function ProjetoCronograma() {
           marcos={marcos}
           faixas={faixas}
           diasNaoUteis={diasNaoUteis}
-          etapaAtiva={etapaAtiva}
+          diasBloqueados={diasBloqueados}
+          grupoAtivo={grupoAtivo}
+          pincel={grupoDoPincel ?? null}
           somenteLeitura={!podeEditar || pincelTravado}
           onPaintRange={aoPintar}
+          onEraseRange={aoApagar}
           onArrasteMudou={setPreviewIntervalo}
         />
 
@@ -465,36 +849,57 @@ export function ProjetoCronograma() {
               numa lista só não diria de qual escopo é cada faixa. Com um
               escopo só, o título continua sendo o nome dele — sem seção órfã. */}
           {dados.escopos.map((esc) => {
-            const doEscopo = etapas.filter((e) => e.escopoId === esc.id);
+            const doEscopo = grupos.filter((g) => g.escopoId === esc.id);
             return (
               <LegendaGrupo key={esc.id}>
                 <LegendaTitulo>{esc.nome}</LegendaTitulo>
                 {doEscopo.length === 0 && <EmptyText>Nenhuma etapa ainda.</EmptyText>}
-                {doEscopo.map((etapa) => (
-                  <LegendaLinha key={etapa.id}>
+                {doEscopo.map((grupo) => (
+                  <LegendaLinha key={grupo.chave}>
                     <LegendaItem
                       type="button"
-                      $ativa={etapa.id === etapaAtiva}
-                      onClick={() => setEtapaAtiva(etapa.id === etapaAtiva ? null : etapa.id)}
+                      $ativa={grupo.chave === grupoAtivo}
+                      onClick={() =>
+                        setGrupoAtivo(grupo.chave === grupoAtivo ? null : grupo.chave)
+                      }
                     >
-                      <Amostra $cor={etapa.cor} />
+                      <Amostra $cor={grupo.cor} />
                       <LegendaTexto>
-                        <strong>{etapa.nome}</strong>
-                        <small>
-                          {formatarData(etapa.data_inicio)} – {formatarData(etapa.data_fim)}
-                        </small>
+                        <strong>{grupo.nome}</strong>
+                        {/* Um trecho por linha: a etapa pode ocupar pedaços
+                            separados do calendário, e "14/07 – 28/07" esconderia
+                            justamente o vão que o cronograma quer mostrar. */}
+                        {grupo.trechos.map((t) => {
+                          // Dias ÚTEIS, não corridos: é a unidade em que o
+                          // escopo é vendido e em que o atraso é medido (§5.4).
+                          const uteis = diasDoIntervalo(t.data_inicio, t.data_fim).filter(
+                            (d) => !diasNaoUteis.has(d),
+                          ).length;
+                          return (
+                            <small key={t.id}>
+                              {semAno(t.data_inicio)} – {semAno(t.data_fim)} · {uteis}{" "}
+                              {uteis === 1 ? "dia útil" : "dias úteis"}
+                            </small>
+                          );
+                        })}
                       </LegendaTexto>
                     </LegendaItem>
 
                     {/* Excluir segue a mesma trava do pincel: o que manda é o
                         escopo DESTA etapa, não o do seletor. */}
-                    {podeEditar && !etapa.escopoOficializado && (
+                    {podeEditar && !grupo.oficializado && (
                       <BotaoExcluir
                         type="button"
                         data-excluir
-                        aria-label={`Excluir a etapa ${etapa.nome}`}
+                        aria-label={`Excluir a etapa ${grupo.nome}`}
                         title="Excluir etapa"
-                        onClick={() => setEtapaParaExcluir(etapa)}
+                        onClick={() =>
+                          setEtapaParaExcluir({
+                            chave: grupo.chave,
+                            nome: grupo.nome,
+                            trechos: grupo.trechos.length,
+                          })
+                        }
                       >
                         <Trash2 size={14} />
                       </BotaoExcluir>
@@ -524,9 +929,92 @@ export function ProjetoCronograma() {
         </LegendaBox>
       </CronogramaLayout>
 
+      {/* A cópia que o PDF rasteriza: os meses escolhidos empilhados, a
+          legenda do lado e nada de interação. Só existe durante o export. */}
+      {mesesExport && (
+        <AreaExportOculta aria-hidden>
+          <MolduraExport ref={areaExport}>
+          <CronogramaLayout>
+            <PaintedCalendar
+              blocos={blocosDosMeses(mesesExport)}
+              visao="mes"
+              etapas={etapasExport}
+              marcos={marcosExport}
+              faixas={faixas}
+              diasNaoUteis={diasNaoUteisExport}
+              grupoAtivo={null}
+              somenteLeitura
+              onPaintRange={() => {}}
+            />
+            <LegendaBox>
+              {dados.escopos.map((esc) => {
+                const doEscopo = grupos.filter((g) => g.escopoId === esc.id);
+                if (doEscopo.length === 0) return null;
+                return (
+                  <LegendaGrupo key={esc.id}>
+                    <LegendaTitulo>{esc.nome}</LegendaTitulo>
+                    {doEscopo.map((grupo) => (
+                      <LegendaItem as="div" key={grupo.chave}>
+                        <Amostra $cor={grupo.cor} />
+                        <LegendaTexto>
+                          <strong>{grupo.nome}</strong>
+                          {grupo.trechos.map((t) => (
+                            <small key={t.id}>
+                              {formatarData(t.data_inicio)} – {formatarData(t.data_fim)}
+                            </small>
+                          ))}
+                        </LegendaTexto>
+                      </LegendaItem>
+                    ))}
+                  </LegendaGrupo>
+                );
+              })}
+              <LegendaGrupo>
+                <LegendaTitulo>Outros</LegendaTitulo>
+                {faixas.some((f) => f.tipo === "ambientacao") && (
+                  <LegendaItem as="div">
+                    <Amostra $cor={COR_AMBIENTACAO} />
+                    <LegendaTexto>ambientação</LegendaTexto>
+                  </LegendaItem>
+                )}
+                <LegendaItem as="div">
+                  <AmostraHachurada />
+                  <LegendaTexto>
+                    <strong>não útil</strong>
+                    <small>fim de semana, feriado, prova ou recesso</small>
+                  </LegendaTexto>
+                </LegendaItem>
+              </LegendaGrupo>
+            </LegendaBox>
+          </CronogramaLayout>
+          </MolduraExport>
+        </AreaExportOculta>
+      )}
+
+      {exportandoPdf && janela && (
+        <ExportarPdfModal
+          meses={
+            // Sem semestre cadastrado, o recorte padrão é a janela inteira —
+            // melhor oferecer demais que não oferecer nada.
+            dados.semestre
+              ? mesesDaJanela(dados.semestre.inicio, dados.semestre.fim)
+              : mesesDaJanela(janela.inicio, janela.fim)
+          }
+          mesesExtras={mesesDaJanela(janela.inicio, janela.fim)}
+          escopos={dados.escopos.map((e) => ({ id: e.id, nome: e.nome }))}
+          escopoAtual={escopoSelecionado}
+          onCancelar={() => setExportandoPdf(false)}
+          onExportar={gerarPdf}
+        />
+      )}
+
       {criandoEtapa && (
         <NovaEtapaModal
           corInicial={corSugerida(etapas.length)}
+          escopos={dados.escopos
+            .filter((e) => !e.cronograma_oficializado_em)
+            .map((e) => ({ id: e.id, nome: e.nome }))}
+          escopoFixo={escopo?.id ?? null}
           onCancelar={() => setCriandoEtapa(false)}
           onCriar={criarEtapa}
         />
@@ -537,13 +1025,14 @@ export function ProjetoCronograma() {
           titulo="Excluir etapa"
           mensagem={
             <>
-              A etapa <strong>{etapaParaExcluir.nome}</strong> será apagada, e os dias que estavam
-              pintados com ela voltam a ficar em branco. As tarefas e a banca do escopo não são
-              afetadas.
+              A etapa <strong>{etapaParaExcluir.nome}</strong> será apagada
+              {etapaParaExcluir.trechos > 1 && ` — os ${etapaParaExcluir.trechos} trechos dela`}, e
+              os dias que estavam pintados voltam a ficar em branco. As tarefas e a banca do escopo
+              não são afetadas.
             </>
           }
           onCancelar={() => setEtapaParaExcluir(null)}
-          onConfirmar={() => excluirEtapa(etapaParaExcluir.id)}
+          onConfirmar={() => excluirGrupo(etapaParaExcluir.chave)}
         />
       )}
     </PageStack>

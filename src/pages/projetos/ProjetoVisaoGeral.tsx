@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, ExternalLink, Lock, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
+import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import {
   baixarAnexoProposta,
   formatarData,
@@ -21,8 +22,9 @@ import {
   validarEquipe,
   type EquipeSelecionada,
 } from "@/components/membros/MemberPicker";
-import type { UsuarioResumo } from "@/types/auth";
+import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { EscopoVendido, ProjetoCompleto } from "@/types/projeto";
+import type { Frente } from "@/types/banca";
 import {
   PageStack,
   PageCard,
@@ -82,7 +84,7 @@ import {
 import { useProjeto } from "./ProjetoPage";
 
 export function ProjetoVisaoGeral() {
-  const { projeto, usuarios, recarregar } = useProjeto();
+  const { projeto, usuarios, frentes, recarregar } = useProjeto();
   const { usuario, token } = useAuth();
   const [editandoEquipe, setEditandoEquipe] = useState(false);
   const [baixandoAnexo, setBaixandoAnexo] = useState(false);
@@ -270,6 +272,7 @@ export function ProjetoVisaoGeral() {
         <EditarEquipeModal
           projeto={projeto}
           usuarios={usuarios}
+          frentes={frentes}
           token={token}
           onClose={() => setEditandoEquipe(false)}
           onSalvo={async () => {
@@ -848,12 +851,14 @@ function DataEditavel({
 function EditarEquipeModal({
   projeto,
   usuarios,
+  frentes,
   token,
   onClose,
   onSalvo,
 }: {
   projeto: ProjetoCompleto;
   usuarios: UsuarioResumo[];
+  frentes: Frente[];
   token: string;
   onClose: () => void;
   onSalvo: () => Promise<void>;
@@ -864,6 +869,11 @@ function EditarEquipeModal({
   });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  const [usuariosFrentes, setUsuariosFrentes] = useState<UsuarioFrente[]>([]);
+
+  useEffect(() => {
+    getUsuariosFrentes(token).then(setUsuariosFrentes);
+  }, [token]);
 
   const ativos = usuarios
     .filter((u) => u.ativo)
@@ -904,6 +914,9 @@ function EditarEquipeModal({
               valor={equipe}
               onChange={setEquipe}
               desabilitado={salvando}
+              usuariosFrentes={usuariosFrentes}
+              frentes={frentes}
+              frenteIdsProjeto={projeto.frente_ids}
             />
             <EmptyText>
               Trocar alguém não apaga o passado: a linha antiga é fechada e uma nova é aberta, para o

@@ -24,6 +24,7 @@ import {
   CardTopo,
   Coluna,
   ColunaPilula,
+  ColunaRotuloTexto,
   ColunaTitulo,
   ColunaVazia,
   Contador,
@@ -153,8 +154,10 @@ function ColunaDrop({
           }
         >
           <Ponto $cor={tons.ponto} />
-          {coluna.nome}
-          {coluna.encerra_tarefa && " ✓"}
+          <ColunaRotuloTexto>
+            {coluna.nome}
+            {coluna.encerra_tarefa && " ✓"}
+          </ColunaRotuloTexto>
         </ColunaPilula>
         <Contador>{tarefas.length}</Contador>
         {vencidas > 0 && (

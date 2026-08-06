@@ -1,10 +1,14 @@
 /** Espelha `src/use_cases/notificacao/listar_notificacoes.py`. */
 
 export type TipoNotificacao =
-  // 📌 eventos — gravados no backend no momento em que aconteceram
+  // 📌 eventos da plataforma (§6.6)
   | "alocado_em_projeto"
-  | "escalacao_banca"
   | "entrega_registrada"
+  // 📌 eventos de bancas (§8) — entram por `utils/notificar.py` no backend
+  | "escalacao_banca"
+  | "troca_banca"
+  | "avaliacao_pendente"
+  | "banca_aviso"
   // 🔄 condições — recalculadas a cada GET; somem sozinhas quando resolvidas
   | "kickoff_pendente"
   | "tarefa_vencida"
@@ -34,4 +38,17 @@ export interface Notificacao {
 export interface ListaNotificacoes {
   nao_lidas: number;
   itens: Notificacao[];
+}
+
+export type StatusSolicitacaoTroca = "pendente" | "confirmada" | "cancelada";
+
+export interface SolicitacaoTroca {
+  id: number;
+  banca_id: number;
+  usuario_original_id: number;
+  candidatura_id: number | null;
+  status: StatusSolicitacaoTroca;
+  criado_em: string;
+  confirmada_por: number | null;
+  confirmada_em: string | null;
 }
