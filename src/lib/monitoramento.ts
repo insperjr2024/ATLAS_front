@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { CronogramaResposta } from "@/types/cronograma";
 
 /* Os tipos espelham `use_cases/monitoramento/monitoramento.py`. */
 
@@ -172,6 +173,32 @@ export interface TarefasGerais {
   tarefas: TarefaAgregada[];
 }
 
+/** O escopo que decide a posição do projeto na fila (§7) — o que está mais
+ *  perto de estourar o prazo, entre os que ainda estão em contagem. */
+export interface EscopoCritico {
+  id: number;
+  nome: string;
+  restantes: number;
+  estourou: boolean;
+  data_entrega_planejada: string | null;
+}
+
+export interface CronogramaProjetoResumo {
+  projeto_id: number;
+  projeto_nome: string;
+  cliente: string;
+  cronograma: CronogramaResposta;
+  /** `null` = nenhum escopo em contagem (todos entregues/cancelados, ou
+   *  nenhum começou ainda) — o card vai para o fim da fila. */
+  escopo_critico: EscopoCritico | null;
+}
+
+export interface CronogramasGerais {
+  /** Já vem ordenado do backend, do mais perto de estourar pro mais
+   *  folgado — o front só renderiza na ordem recebida. */
+  projetos: CronogramaProjetoResumo[];
+}
+
 function query(frenteId?: number | null): string {
   return frenteId ? `?frente_id=${frenteId}` : "";
 }
@@ -194,4 +221,8 @@ export function getAtrasos(token: string, frenteId?: number | null) {
 
 export function getTarefasGerais(token: string, frenteId?: number | null) {
   return apiFetch<TarefasGerais>(`/monitoramento/tarefas${query(frenteId)}`, { token });
+}
+
+export function getCronogramasGerais(token: string, frenteId?: number | null) {
+  return apiFetch<CronogramasGerais>(`/monitoramento/cronogramas${query(frenteId)}`, { token });
 }
