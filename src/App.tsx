@@ -8,11 +8,11 @@ import { Layout } from "@/components/Layout";
 import { Login } from "@/pages/Login";
 import { EsqueciSenha } from "@/pages/EsqueciSenha";
 import { RedefinirSenha } from "@/pages/RedefinirSenha";
+import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { Calendario } from "@/pages/Calendario";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
-import { Nucleo } from "@/pages/Nucleo";
 import { Membros } from "@/pages/Membros";
 import { Notificacoes } from "@/pages/Notificacoes";
 import { Avaliacoes } from "@/pages/Avaliacoes";
@@ -59,6 +59,10 @@ export default function App() {
               logar. Caindo no `*` iria para /projetos e de lá para /login. */}
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route element={<PrivateRoute />}>
+            {/* ⭐ Primeiro acesso: dentro do PrivateRoute (exige sessão) e
+                FORA do Layout — quem ainda não definiu a senha não deve ver o
+                menu de uma plataforma que o backend recusa a servir. */}
+            <Route path="/definir-senha" element={<DefinirSenha />} />
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />
@@ -140,9 +144,6 @@ export default function App() {
                   guards, digitar /membros na barra de endereço abre a tela. */}
               <Route element={<FormularioRoute />}>
                 <Route path="/avaliacoes" element={<Avaliacoes />} />
-              </Route>
-              <Route element={<AdminRoute permissao="pode_ver_nucleo" />}>
-                <Route path="/nucleo" element={<Nucleo />} />
               </Route>
               {/* Config edita cargos — inclusive quem tem esta mesma caixa —
                   então é a mais sensível das 4 estendidas. Calendários base

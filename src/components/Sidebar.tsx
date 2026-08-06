@@ -6,7 +6,7 @@ import { rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, Gauge, ClipboardList, Calendar, CalendarCog, LayoutDashboard, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, Gauge, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarContainer,
@@ -84,13 +84,6 @@ const navItems: NavItemConfig[] = [
     visible: (c) => c.pode_ver_monitoramento,
   },
   {
-    icon: LayoutDashboard,
-    label: "Núcleo",
-    path: "/nucleo",
-    section: "admin",
-    visible: (c) => c.pode_ver_nucleo,
-  },
-  {
     icon: Users,
     label: "Membros",
     path: "/membros",
@@ -99,7 +92,7 @@ const navItems: NavItemConfig[] = [
   },
   {
     icon: ClipboardCheck,
-    label: "Avaliação de Banca",
+    label: "Dashboard Bancas",
     path: "/avaliacoes",
     section: "admin",
     visiblePorPosicao: (u) => u.posicao === "diretor",

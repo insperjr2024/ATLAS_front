@@ -1,7 +1,9 @@
 /**
  * As permissões da tabela do §3 (9 das 10 — "aprovar reajuste" saiu em
- * 2026-08-06 junto com a feature de reajuste, removida) + as 4 que a
- * estenderam depois, editáveis na tela de Cargos.
+ * 2026-08-06 junto com a feature de reajuste, removida) + as 3 que a
+ * estenderam depois, editáveis na tela de Cargos. ("Ver o Núcleo" existiu
+ * brevemente como a 4ª extensão, mas a página em si foi substituída pelo
+ * Dashboard Bancas no `main` antes de a permissão chegar a ser usada.)
  *
  * A `posicao` da pessoa define só o PADRÃO com que o cargo dela nasce; daí em
  * diante quem decide é a caixa.
@@ -32,8 +34,6 @@ export interface Cargo {
   /** Editar os formulários de Avaliação de Desempenho — mais sensível que
    *  administrar, porque muda o que todo mundo é avaliado. */
   pode_editar_formularios_desempenho: boolean;
-  /** Ver o Núcleo (visão executiva de bancas por gestão). */
-  pode_ver_nucleo: boolean;
   /** Administrar Configurações e Calendários base — inclusive editar cargos,
    *  a mais sensível: quem tem essa caixa pode conceder (ou tirar) qualquer
    *  permissão de qualquer cargo, inclusive o próprio. */
@@ -54,6 +54,12 @@ export interface Usuario {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
+  /**
+   * ⭐ A senha atual é a provisória que veio no e-mail de cadastro, e a pessoa
+   * ainda não escolheu a dela. Enquanto for `true`, o `PrivateRoute` manda
+   * para `/definir-senha` — e o backend recusa qualquer outra rota com 403.
+   */
+  senha_provisoria: boolean;
 }
 
 // Forma "crua" devolvida por GET /usuarios e GET /usuarios/{id}: cargo_id
@@ -76,6 +82,8 @@ export interface UsuarioResumo {
   /** 1º a 8º semestre da graduação — `null` pra quem não é aluno em curso
    *  (diretoria, gerência já formada etc). */
   semestre_graduacao: number | null;
+  /** Ainda não fez o primeiro acesso — a tela de Membros marca essas linhas. */
+  senha_provisoria: boolean;
   /**
    * Carga atual da pessoa (§7.3): projetos em que ela está alocada hoje,
    * sem contar os finalizados nem os arquivados.

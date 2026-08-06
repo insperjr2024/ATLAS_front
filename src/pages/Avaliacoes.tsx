@@ -13,12 +13,17 @@ import {
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
 import { getEscopos, getFrentes } from "@/lib/bancas";
 import { getHistoricoBancas } from "@/lib/historico";
+import { getBancas, getBancasFrentes, getCandidaturas } from "@/lib/bancas";
+import { DashboardBancas } from "./DashboardBancas";
 import { nomeEscopo, nomeUsuario } from "@/lib/nucleo";
 import { getSemestres } from "@/lib/semestres";
 import { getUsuarios } from "@/lib/usuarios";
 import type {
   Avaliacao,
   AvaliacaoNota,
+  Banca,
+  BancaFrente,
+  Candidatura,
   Escopo,
   Frente,
   FormularioAtivo,
@@ -121,6 +126,10 @@ export function Avaliacoes() {
   const [escopos, setEscopos] = useState<Escopo[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [semestres, setSemestres] = useState<Semestre[]>([]);
+  // Só o dashboard usa estes três: os cards de baixo vivem do histórico.
+  const [bancas, setBancas] = useState<Banca[]>([]);
+  const [candidaturas, setCandidaturas] = useState<Candidatura[]>([]);
+  const [bancasFrentes, setBancasFrentes] = useState<BancaFrente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
@@ -140,7 +149,7 @@ export function Avaliacoes() {
     setCarregando(true);
     setErro("");
     try {
-      const [historicoResp, formularioResp, avaliacoesResp, notasResp, usuariosResp, escoposResp, frentesResp, semestresResp] =
+      const [historicoResp, formularioResp, avaliacoesResp, notasResp, usuariosResp, escoposResp, frentesResp, semestresResp, bancasResp, candidaturasResp, bancasFrentesResp] =
         await Promise.all([
           getHistoricoBancas(token),
           getFormularioAtivo(token).catch(() => null),
@@ -150,6 +159,9 @@ export function Avaliacoes() {
           getEscopos(token),
           getFrentes(token),
           getSemestres(token),
+          getBancas(token),
+          getCandidaturas(token),
+          getBancasFrentes(token),
         ]);
       setHistorico(historicoResp);
       setFormulario(formularioResp);
@@ -159,6 +171,9 @@ export function Avaliacoes() {
       setEscopos(escoposResp);
       setFrentes(frentesResp);
       setSemestres(semestresResp);
+      setBancas(bancasResp);
+      setCandidaturas(candidaturasResp);
+      setBancasFrentes(bancasFrentesResp);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar avaliações");
     } finally {
@@ -209,10 +224,24 @@ export function Avaliacoes() {
     <PageStack>
       <PageHeaderRow>
         <PageHeaderText>
-          <PageHeading>Avaliações</PageHeading>
-          <PageSubheading>Consulte notas de bancas realizadas e gerencie o formulário padrão de avaliação.</PageSubheading>
+          <PageHeading>Dashboard Bancas</PageHeading>
+          <PageSubheading>
+            Os números da área, a presença de cada membro e as notas das bancas realizadas.
+          </PageSubheading>
         </PageHeaderText>
       </PageHeaderRow>
+
+      <DashboardBancas
+        bancas={bancas}
+        candidaturas={candidaturas}
+        avaliacoes={avaliacoes}
+        usuarios={usuarios}
+        escopos={escopos}
+        frentes={frentes}
+        bancasFrentes={bancasFrentes}
+        historico={historico}
+        semestres={semestres}
+      />
 
       <PageCard>
         <PageCardHeader>

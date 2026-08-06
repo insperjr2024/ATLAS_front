@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { apiFetch } from "@/lib/api";
 import type { Usuario, Cargo, Posicao, StatusUsuario } from "@/types/auth";
 
@@ -13,6 +13,8 @@ interface UsuarioResponse {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
+  /** Primeiro acesso pendente — ver `Usuario.senha_provisoria`. */
+  senha_provisoria: boolean;
 }
 
 interface AuthContextType {
@@ -20,6 +22,12 @@ interface AuthContextType {
   token: string | null;
   carregando: boolean;
   login: (email: string, senha: string) => Promise<void>;
+  /**
+   * Relê `/auth/me` sem relogar. Existe para um caso só: acabei de definir a
+   * minha senha e preciso que `senha_provisoria` caia AQUI, senão o
+   * `PrivateRoute` me devolve para a tela que eu acabei de concluir.
+   */
+  recarregarUsuario: () => Promise<void>;
   logout: () => void;
 }
 
@@ -48,26 +56,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
   const [carregando, setCarregando] = useState(true);
 
-  useEffect(() => {
-    async function carregarUsuario() {
-      if (!token) {
-        setCarregando(false);
-        return;
-      }
-      try {
-        const dados = await apiFetch<UsuarioResponse>("/auth/me", { token });
-        const cargo = await apiFetch<Cargo>(`/cargos/${dados.cargo_id}`, { token });
-        setUsuario({ ...dados, cargo });
-        renovarSessao(token);
-      } catch {
-        setToken(null);
-        localStorage.removeItem("token");
-      } finally {
-        setCarregando(false);
-      }
+  const carregarUsuario = useCallback(async () => {
+    if (!token) {
+      setCarregando(false);
+      return;
     }
-    carregarUsuario();
+    try {
+      const dados = await apiFetch<UsuarioResponse>("/auth/me", { token });
+      const cargo = await apiFetch<Cargo>(`/cargos/${dados.cargo_id}`, { token });
+      setUsuario({ ...dados, cargo });
+      renovarSessao(token);
+    } catch {
+      setToken(null);
+      localStorage.removeItem("token");
+    } finally {
+      setCarregando(false);
+    }
   }, [token]);
+
+  useEffect(() => {
+    // Embrulhada numa função local, e não chamada direta: `carregarUsuario`
+    // mexe em estado antes do primeiro await (o caso "sem token"), e chamá-la
+    // no corpo do efeito é uma cascata de render aos olhos do lint.
+    async function carregarAoAbrir() {
+      await carregarUsuario();
+    }
+    carregarAoAbrir();
+  }, [carregarUsuario]);
 
   async function login(email: string, senha: string) {
     const resposta = await apiFetch<{ access_token: string }>("/auth/login", {
@@ -85,7 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ usuario, token, carregando, login, logout }}>
+    <AuthContext.Provider
+      value={{ usuario, token, carregando, login, recarregarUsuario: carregarUsuario, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

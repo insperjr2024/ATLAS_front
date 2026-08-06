@@ -115,7 +115,7 @@ const PERMISSOES = [
     descricao:
       "Abrir o Monitoramento: visão geral, execução, alocação de pessoas e atrasos.",
   },
-  // As 4 abaixo não estão na tabela do §3 — nasceram travadas só por posição
+  // As 3 abaixo não estão na tabela do §3 — nasceram travadas só por posição
   // (diretor, ou diretor+gerente) e viraram caixa configurável a pedido
   // explícito do usuário, pro mesmo motivo das 10: dar pra delegar sem
   // precisar tornar alguém "diretor" inteiro.
@@ -130,11 +130,6 @@ const PERMISSOES = [
     titulo: "Editar formulários de Avaliação de Desempenho",
     descricao:
       "Mudar as seções e critérios dos formulários — afeta o que todo mundo é avaliado, não só a rotina de administrar.",
-  },
-  {
-    campo: "pode_ver_nucleo" as const,
-    titulo: "Ver o Núcleo",
-    descricao: "Abrir a visão executiva de bancas por gestão — distribuição, resultados e últimas realizadas.",
   },
   {
     campo: "pode_administrar_configuracoes" as const,

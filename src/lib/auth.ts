@@ -2,9 +2,10 @@ import { apiFetch } from "@/lib/api";
 
 /* Os tipos espelham `use_cases/auth/` do backend.
  *
- * As duas chamadas daqui são PÚBLICAS — sem `token`, porque quem esqueceu a
+ * As duas de recuperação são PÚBLICAS — sem `token`, porque quem esqueceu a
  * senha não tem como se autenticar para pedir a troca. O `apiFetch` só manda
- * o header `Authorization` quando recebe token, então basta omitir. */
+ * o header `Authorization` quando recebe token, então basta omitir. A
+ * `definirSenha` é a exceção: ela acontece com a pessoa já logada. */
 
 export interface RespostaMensagem {
   mensagem: string;
@@ -21,6 +22,21 @@ export function solicitarRecuperacao(emailInsper: string) {
   return apiFetch<RespostaMensagem>("/auth/esqueci-senha", {
     method: "POST",
     body: JSON.stringify({ email_insper: emailInsper }),
+  });
+}
+
+/**
+ * ⭐ O primeiro acesso: troca a senha provisória do e-mail pela própria.
+ *
+ * Esta é a ÚNICA daqui que manda token — a pessoa já está logada (entrou com a
+ * provisória). Enquanto ela não for chamada, o backend responde 403 em
+ * qualquer outra rota.
+ */
+export function definirSenha(novaSenha: string, token: string) {
+  return apiFetch<RespostaMensagem>("/auth/definir-senha", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ nova_senha: novaSenha }),
   });
 }
 

@@ -5,7 +5,14 @@ import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { getCargos } from "@/lib/cargos";
 import { frentesDoUsuario, nomeCargo, normalizarTexto } from "@/lib/nucleo";
-import { getUsuarios, registrarUsuario, transferirDiretoria, updateUsuario } from "@/lib/usuarios";
+import {
+  getUsuarios,
+  reenviarSenhaProvisoria,
+  registrarUsuario,
+  transferirDiretoria,
+  updateUsuario,
+  type SenhaProvisoriaEmitida,
+} from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import type { Frente } from "@/types/banca";
 import type { Cargo, Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
@@ -63,6 +70,8 @@ import {
   SearchField,
   FilterSelect,
   HeaderActions,
+  SenhaProvisoriaCaixa,
+  SenhaProvisoriaValor,
 } from "./Membros.styled";
 import { TableScrollWrap } from "@/styles/shared.styled";
 
@@ -83,6 +92,8 @@ export function Membros() {
   const [erro, setErro] = useState("");
   const [membroDetalhe, setMembroDetalhe] = useState<UsuarioResumo | null>(null);
   const [criandoMembro, setCriandoMembro] = useState(false);
+  /** O membro que está tendo a senha de primeiro acesso reemitida. */
+  const [reenviandoPara, setReenviandoPara] = useState<UsuarioResumo | null>(null);
   const [transferindo, setTransferindo] = useState(false);
   const [termoPesquisa, setTermoPesquisa] = useState("");
   const [filtroCargo, setFiltroCargo] = useState("");
@@ -243,8 +254,26 @@ export function Membros() {
                         <StatusBadge $ativo={membro.status === "ativo"}>
                           {ROTULO_STATUS_USUARIO[membro.status] ?? membro.status}
                         </StatusBadge>
+                        {/* Estado ORTOGONAL ao status: a pessoa está ativa e
+                            ainda não trocou a senha que recebeu por e-mail. */}
+                        {membro.senha_provisoria && (
+                          <EmptyText style={{ fontSize: "0.7rem", marginTop: "0.25rem" }}>
+                            aguardando 1º acesso
+                          </EmptyText>
+                        )}
                       </TableCell>
                       <ActionsCell>
+                        {/* 🔒 Reemitir derruba a senha da pessoa — por isso é
+                            da diretoria, a mesma régua do cadastro. */}
+                        {usuario?.posicao === "diretor" && membro.ativo && (
+                          <PageButtonSm
+                            $variant="outline"
+                            type="button"
+                            onClick={() => setReenviandoPara(membro)}
+                          >
+                            {membro.senha_provisoria ? "Reenviar senha" : "Resetar senha"}
+                          </PageButtonSm>
+                        )}
                         <PageButtonSm $variant="outline" type="button" onClick={() => setMembroDetalhe(membro)}>
                           Ver mais
                         </PageButtonSm>
@@ -282,10 +311,18 @@ export function Membros() {
           contexto={contexto}
           token={token}
           onClose={() => setCriandoMembro(false)}
-          onCriado={() => {
-            setCriandoMembro(false);
-            carregarMembros();
-          }}
+          // Não fecha o modal: quem cadastrou precisa VER a senha provisória
+          // antes de sair da tela — ela não existe em mais lugar nenhum.
+          onCriado={carregarMembros}
+        />
+      )}
+
+      {reenviandoPara && token && (
+        <ReenviarSenhaModal
+          membro={reenviandoPara}
+          token={token}
+          onClose={() => setReenviandoPara(null)}
+          onReenviado={carregarMembros}
         />
       )}
 
@@ -418,6 +455,147 @@ function TransferirDiretoriaModal({
   );
 }
 
+/* ------------------------------------------------------------------ */
+
+/**
+ * ⭐ A senha de primeiro acesso, na tela de quem acabou de emiti-la.
+ *
+ * Ela aparece aqui porque **esta é a única vez que ela existe fora do
+ * e-mail** — o banco só guarda o hash. Fechar esta tela sem anotá-la não é um
+ * problema quando o e-mail saiu; quando não saiu, é a diferença entre o membro
+ * ter acesso ou não, e por isso o aviso muda de tom nos dois casos.
+ */
+function PainelSenhaProvisoria({
+  email,
+  resultado,
+}: {
+  email: string;
+  resultado: SenhaProvisoriaEmitida;
+}) {
+  const [copiado, setCopiado] = useState(false);
+
+  async function copiar() {
+    await navigator.clipboard.writeText(resultado.senha_provisoria_gerada);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
+  }
+
+  return (
+    <EditSection>
+      <EditSectionTitle>Senha de primeiro acesso</EditSectionTitle>
+      <SenhaProvisoriaCaixa>
+        <SenhaProvisoriaValor>{resultado.senha_provisoria_gerada}</SenhaProvisoriaValor>
+        <PageButtonSm $variant="outline" type="button" onClick={copiar}>
+          {copiado ? "Copiada!" : "Copiar"}
+        </PageButtonSm>
+      </SenhaProvisoriaCaixa>
+
+      {resultado.email_enviado ? (
+        <EmptyText>
+          ✉ Enviada para <strong>{email}</strong>. No primeiro login o ATLAS obriga a pessoa a
+          escolher a senha dela — até lá, o resto da plataforma fica bloqueado para ela.
+        </EmptyText>
+      ) : (
+        <FormErrorText>
+          Não foi possível enviar o e-mail (SMTP fora do ar ou não configurado). O membro está
+          cadastrado — repasse a senha acima por outro canal, porque ela não aparece de novo.
+          Depois é só usar "Reenviar senha" nesta tela.
+        </FormErrorText>
+      )}
+    </EditSection>
+  );
+}
+
+/**
+ * Reemitir a senha de primeiro acesso.
+ *
+ * 🔒 O aviso antes de confirmar não é decoração: reenviar **derruba a senha
+ * atual da pessoa**. Para quem ainda não fez o primeiro acesso isso não custa
+ * nada; para quem já usa o ATLAS, é tirar o acesso até ela ler o e-mail.
+ */
+function ReenviarSenhaModal({
+  membro,
+  token,
+  onClose,
+  onReenviado,
+}: {
+  membro: UsuarioResumo;
+  token: string;
+  onClose: () => void;
+  onReenviado: () => void;
+}) {
+  const [resultado, setResultado] = useState<SenhaProvisoriaEmitida | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function confirmar() {
+    setEnviando(true);
+    setErro("");
+    try {
+      setResultado(await reenviarSenhaProvisoria(membro.id, token));
+      onReenviado();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao reenviar a senha");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="reenviar-titulo">
+        <ModalHeader>
+          <ModalTitle id="reenviar-titulo">
+            {resultado ? "Senha reenviada" : `Reenviar senha para ${membro.nome}`}
+          </ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+
+        <ModalBody>
+          {resultado ? (
+            <PainelSenhaProvisoria email={membro.email_insper} resultado={resultado} />
+          ) : (
+            <EditSection>
+              <EmptyText>
+                Uma senha provisória nova vai para <strong>{membro.email_insper}</strong>, e{" "}
+                {membro.senha_provisoria ? (
+                  <>a anterior deixa de valer.</>
+                ) : (
+                  <>
+                    <strong>a senha atual de {membro.nome} deixa de valer</strong> — ele(a) só
+                    volta a entrar com a senha nova, e vai ter que escolher outra no primeiro
+                    acesso.
+                  </>
+                )}
+              </EmptyText>
+              {erro && <FormErrorText>{erro}</FormErrorText>}
+            </EditSection>
+          )}
+        </ModalBody>
+
+        <ModalFooter>
+          {resultado ? (
+            <PageButton type="button" onClick={onClose}>
+              Concluir
+            </PageButton>
+          ) : (
+            <>
+              <PageButton $variant="outline" type="button" onClick={onClose}>
+                Cancelar
+              </PageButton>
+              <PageButton type="button" disabled={enviando} onClick={confirmar}>
+                {enviando ? "Enviando…" : "Reenviar senha"}
+              </PageButton>
+            </>
+          )}
+        </ModalFooter>
+      </WideModalContent>
+    </ModalOverlay>
+  );
+}
+
 function NovoMembroModal({
   contexto,
   token,
@@ -431,13 +609,14 @@ function NovoMembroModal({
 }) {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
   const [posicao, setPosicao] = useState<Posicao>("consultor");
   const [cargoId, setCargoId] = useState("");
   const [frenteIds, setFrenteIds] = useState<number[]>([]);
   const [semestreGraduacao, setSemestreGraduacao] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+  /** Preenchido depois do cadastro: a senha de primeiro acesso e se o e-mail saiu. */
+  const [emitida, setEmitida] = useState<SenhaProvisoriaEmitida | null>(null);
 
   // §3: o recorte de visão do gerente sai de `usuario_frente` — sem nenhuma
   // frente marcada ele entra na plataforma sem enxergar projeto nenhum. E só
@@ -475,7 +654,6 @@ function NovoMembroModal({
         {
           nome: nome.trim(),
           email_insper: email.trim(),
-          senha,
           posicao,
           cargo_id: cargoId ? Number(cargoId) : null,
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
@@ -485,12 +663,38 @@ function NovoMembroModal({
       if (frenteIds.length > 0) {
         await syncFrentesUsuario(criado.id, frenteIds, [], token);
       }
+      // A tela troca para o painel da senha em vez de fechar: é a ÚNICA vez
+      // que a senha em claro existe fora do e-mail.
+      setEmitida(criado);
       onCriado();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao cadastrar o membro");
     } finally {
       setSalvando(false);
     }
+  }
+
+  if (emitida) {
+    return (
+      <ModalOverlay onClick={onClose} role="presentation">
+        <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="novo-membro-titulo">
+          <ModalHeader>
+            <ModalTitle id="novo-membro-titulo">Membro cadastrado</ModalTitle>
+            <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+              <X size={18} />
+            </ModalClose>
+          </ModalHeader>
+          <ModalBody>
+            <PainelSenhaProvisoria email={email.trim()} resultado={emitida} />
+          </ModalBody>
+          <ModalFooter>
+            <PageButton type="button" onClick={onClose}>
+              Concluir
+            </PageButton>
+          </ModalFooter>
+        </WideModalContent>
+      </ModalOverlay>
+    );
   }
 
   return (
@@ -525,19 +729,6 @@ function NovoMembroModal({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nome@al.insper.edu.br"
-                  required
-                />
-              </FieldGroup>
-
-              <FieldGroup>
-                <FieldLabel htmlFor="novo-membro-senha">Senha</FieldLabel>
-                <FieldInput
-                  id="novo-membro-senha"
-                  type="password"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="Senha provisória"
-                  minLength={6}
                   required
                 />
               </FieldGroup>
