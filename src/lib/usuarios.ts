@@ -31,10 +31,23 @@ export function updateUsuario(usuarioId: number, dados: UpdateUsuarioPayload, to
 export interface RegistrarUsuarioPayload {
   nome: string;
   email_insper: string;
-  senha: string;
   posicao: Posicao;
   /** Sem cargo escolhido, o backend usa o cargo padrão configurado. */
   cargo_id?: number | null;
+}
+
+/**
+ * ⭐ O que volta ao cadastrar (e ao reenviar): a senha de primeiro acesso EM
+ * CLARO e se o e-mail saiu.
+ *
+ * Esta é a única vez que essa senha existe fora do e-mail — o banco só guarda
+ * o hash. Se `email_enviado` for `false` (SMTP fora do ar ou não configurado),
+ * a tela precisa mostrá-la para quem cadastrou repassar; e quem fechar a tela
+ * sem anotar não a recupera, só reemite.
+ */
+export interface SenhaProvisoriaEmitida {
+  senha_provisoria_gerada: string;
+  email_enviado: boolean;
 }
 
 export interface TransferirDiretoriaPayload {
@@ -54,11 +67,30 @@ export function transferirDiretoria(dados: TransferirDiretoriaPayload, token: st
   );
 }
 
-/** §10: ninguém se auto-registra — só a diretoria pré-cadastra um membro. */
+/**
+ * §10: ninguém se auto-registra — só a diretoria pré-cadastra um membro.
+ *
+ * Sem campo de senha: quem cadastra não escolhe a senha de ninguém. O backend
+ * sorteia uma provisória, manda por e-mail e devolve aqui.
+ */
 export function registrarUsuario(dados: RegistrarUsuarioPayload, token: string) {
-  return apiFetch<UsuarioResumo>("/auth/registrar", {
+  return apiFetch<UsuarioResumo & SenhaProvisoriaEmitida>("/auth/registrar", {
     method: "POST",
     token,
     body: JSON.stringify(dados),
   });
+}
+
+/**
+ * Reemite a senha de primeiro acesso — e-mail perdido, caixa cheia, ou membro
+ * trancado para fora.
+ *
+ * 🔒 Só diretoria, e **derruba a senha atual da pessoa**: é o caminho de
+ * devolver acesso, não um "reenviar e-mail" inofensivo.
+ */
+export function reenviarSenhaProvisoria(usuarioId: number, token: string) {
+  return apiFetch<{ id: number; email_insper: string } & SenhaProvisoriaEmitida>(
+    `/usuarios/${usuarioId}/senha-provisoria`,
+    { method: "POST", token },
+  );
 }

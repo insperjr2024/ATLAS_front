@@ -8,6 +8,7 @@ import { Layout } from "@/components/Layout";
 import { Login } from "@/pages/Login";
 import { EsqueciSenha } from "@/pages/EsqueciSenha";
 import { RedefinirSenha } from "@/pages/RedefinirSenha";
+import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { Calendario } from "@/pages/Calendario";
@@ -58,6 +59,10 @@ export default function App() {
               logar. Caindo no `*` iria para /projetos e de lá para /login. */}
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route element={<PrivateRoute />}>
+            {/* ⭐ Primeiro acesso: dentro do PrivateRoute (exige sessão) e
+                FORA do Layout — quem ainda não definiu a senha não deve ver o
+                menu de uma plataforma que o backend recusa a servir. */}
+            <Route path="/definir-senha" element={<DefinirSenha />} />
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />

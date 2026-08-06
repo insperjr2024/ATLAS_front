@@ -45,6 +45,12 @@ export interface Usuario {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
+  /**
+   * ⭐ A senha atual é a provisória que veio no e-mail de cadastro, e a pessoa
+   * ainda não escolheu a dela. Enquanto for `true`, o `PrivateRoute` manda
+   * para `/definir-senha` — e o backend recusa qualquer outra rota com 403.
+   */
+  senha_provisoria: boolean;
 }
 
 // Forma "crua" devolvida por GET /usuarios e GET /usuarios/{id}: cargo_id
@@ -64,6 +70,8 @@ export interface UsuarioResumo {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
+  /** Ainda não fez o primeiro acesso — a tela de Membros marca essas linhas. */
+  senha_provisoria: boolean;
   /**
    * Carga atual da pessoa (§7.3): projetos em que ela está alocada hoje,
    * sem contar os finalizados nem os arquivados.
