@@ -52,14 +52,6 @@ export function registrarResultado(
   });
 }
 
-/** A exceção de choque de horário — só a diretoria, e exige justificativa (§8). */
-export function definirExcecaoChoque(bancaId: number, nota: string, token: string) {
-  return apiFetch(`/bancas/${bancaId}/excecao-choque`, {
-    method: "PATCH",
-    token,
-    body: JSON.stringify({ excecao_choque_nota: nota }),
-  });
-}
 
 /**
  * A escalação automática do §8: uma semana antes, preenche as bancas que ainda

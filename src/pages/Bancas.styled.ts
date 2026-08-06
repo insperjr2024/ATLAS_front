@@ -370,3 +370,78 @@ export const TabButton = styled.button<{ $ativa: boolean }>`
     color: ${theme.colors.foreground};
   }
 `;
+
+/* ------------------------------------------------------------------ */
+/* Busca de projeto no "Criar banca"                                    */
+/* ------------------------------------------------------------------ */
+
+/** Resultados da busca: rolagem própria para a lista não empurrar o rodapé
+ *  do modal para fora da tela quando o núcleo tiver muito projeto. */
+export const BuscaLista = styled.div`
+  display: flex;
+  flex-direction: column;
+  max-height: 12rem;
+  overflow-y: auto;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+`;
+
+export const BuscaItem = styled.button`
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+
+  & + & {
+    border-top: 1px solid ${theme.colors.border};
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: ${theme.colors.muted};
+  }
+`;
+
+export const BuscaNome = styled.span`
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.cardForeground};
+`;
+
+export const BuscaMeta = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** Nome + cliente empilhados, tanto no resultado da busca quanto no escolhido. */
+export const BuscaTexto = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+`;
+
+/** O projeto já escolhido, com a saída para trocar. */
+export const EscolhidoBox = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.muted};
+`;
+
+/** Escopo que já tem banca: continua visível, mas fora de alcance — some da
+ *  lista seria pior, o usuário procuraria por ele. */
+export const EscopoIndisponivel = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  font-style: italic;
+`;
