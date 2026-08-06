@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { RealizarBancaModal } from "./RealizarBancaModal";
+import { AlocarPessoasModal } from "./AlocarPessoasModal";
 import { Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -16,6 +18,7 @@ import {
   getEscoposVendidos,
   getFrentes,
   podeGerenciarBanca,
+  realizarBanca,
   ROTULO_STATUS_BANCA,
   syncBancaFrentes,
   syncEquipeProjeto,
@@ -158,9 +161,12 @@ export function Bancas() {
   const [bancaAvaliar, setBancaAvaliar] = useState<Banca | null>(null);
   const [bancaEditar, setBancaEditar] = useState<Banca | null>(null);
   const [criarAberto, setCriarAberto] = useState(false);
+  const [bancaRealizar, setBancaRealizar] = useState<Banca | null>(null);
+  const [bancaAlocar, setBancaAlocar] = useState<Banca | null>(null);
   const [aba, setAba] = useState<AbaBancas>("alocacao");
 
   const podeAgendar = !!usuario?.cargo.pode_definir_cronograma;
+  const ehDiretor = usuario?.posicao === "diretor";
 
   async function recarregar() {
     if (!token || !usuario) return;
@@ -347,6 +353,18 @@ export function Bancas() {
     }
   }
 
+  async function handleRealizar(dados: {
+    realizado_em: string;
+    presentes: number[];
+    forcar: boolean;
+  }) {
+    if (!token || !bancaRealizar) return;
+    // O erro sobe para o modal mostrar; ele só fecha se deu certo.
+    await realizarBanca(bancaRealizar.id, dados, token);
+    setBancaRealizar(null);
+    await recarregar();
+  }
+
   return (
     <PageStack>
       <PageHeaderRow>
@@ -357,6 +375,13 @@ export function Bancas() {
               ? "Aloque-se para assistir bancas, avalie as que participou e crie bancas dos seus projetos."
               : "Aloque-se para assistir bancas disponíveis e avalie as que participou."}
           </PageSubheading>
+          {ehDiretor && (
+            <PageSubheading>
+              Bancas dos próximos 7 dias que ainda estiverem sem gente são preenchidas
+              automaticamente todo dia às 6h, por rodízio e priorizando a mesma frente. Use
+              “Alocar pessoas” num card para escalar alguém antes disso.
+            </PageSubheading>
+          )}
         </PageHeaderText>
         {podeAgendar && (
           <PageButton type="button" onClick={() => setCriarAberto(true)}>
@@ -394,6 +419,9 @@ export function Bancas() {
           onVerMais={setBancaDetalhe}
           onEditar={setBancaEditar}
           onExcluir={handleExcluir}
+          onRealizar={setBancaRealizar}
+          onAlocarPessoas={setBancaAlocar}
+          ehDiretorLista={ehDiretor}
         />
       )}
 
@@ -405,6 +433,10 @@ export function Bancas() {
             contexto={contexto}
             acao="deslocar"
             usuarioId={usuario.id}
+            gerenciar={podeAgendar}
+            onRealizar={setBancaRealizar}
+            onAlocarPessoas={setBancaAlocar}
+            ehDiretorLista={ehDiretor}
             onAcao={handleDesalocar}
             onPedirTroca={handlePedirTroca}
             onCancelarTroca={handleCancelarTroca}
@@ -415,7 +447,12 @@ export function Bancas() {
             bancas={disponiveisParaAlocacao}
             contexto={contexto}
             acao="alocar"
+            usuarioId={usuario.id}
+            gerenciar={podeAgendar}
             onAcao={handleAlocar}
+            onRealizar={setBancaRealizar}
+            onAlocarPessoas={setBancaAlocar}
+            ehDiretorLista={ehDiretor}
             onVerMais={setBancaDetalhe}
           />
           <SecaoBancas
@@ -423,6 +460,11 @@ export function Bancas() {
             bancas={lotadas}
             contexto={contexto}
             acao="nenhuma"
+            usuarioId={usuario.id}
+            gerenciar={podeAgendar}
+            onRealizar={setBancaRealizar}
+            onAlocarPessoas={setBancaAlocar}
+            ehDiretorLista={ehDiretor}
             onVerMais={setBancaDetalhe}
           />
           <SecaoTrocas
@@ -442,6 +484,10 @@ export function Bancas() {
             bancas={paraAvaliar}
             contexto={contexto}
             acao="avaliar"
+            gerenciar={podeAgendar}
+            onRealizar={setBancaRealizar}
+            onAlocarPessoas={setBancaAlocar}
+            ehDiretorLista={ehDiretor}
             onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
             onVerMais={setBancaDetalhe}
           />
@@ -450,6 +496,8 @@ export function Bancas() {
             bancas={jaAvaliadas}
             contexto={contexto}
             acao="nenhuma"
+            usuarioId={usuario.id}
+            gerenciar={podeAgendar}
             onVerMais={setBancaDetalhe}
           />
         </SectionGroup>
@@ -463,6 +511,29 @@ export function Bancas() {
         onEditar={setBancaEditar}
         onExcluir={handleExcluir}
       />
+
+      {bancaRealizar && usuario && (
+        <RealizarBancaModal
+          banca={bancaRealizar}
+          candidaturas={candidaturas.filter((c) => c.banca_id === bancaRealizar.id)}
+          usuarios={contexto?.usuarios ?? []}
+          ehDiretor={!!ehDiretor}
+          onCancelar={() => setBancaRealizar(null)}
+          onConfirmar={handleRealizar}
+        />
+      )}
+
+      {bancaAlocar && token && contexto && (
+        <AlocarPessoasModal
+          banca={bancaAlocar}
+          usuarios={contexto.usuarios}
+          candidaturas={candidaturas}
+          equipes={contexto.equipesProjeto}
+          token={token}
+          onFechar={() => setBancaAlocar(null)}
+          onAlocou={recarregar}
+        />
+      )}
 
       {criarAberto && token && (
         <BancaFormModal
@@ -520,6 +591,9 @@ function SecaoBancas({
   gerenciar,
   onEditar,
   onExcluir,
+  onRealizar,
+  onAlocarPessoas,
+  ehDiretorLista,
   onPedirTroca,
   onCancelarTroca,
 }: {
@@ -533,6 +607,12 @@ function SecaoBancas({
   gerenciar?: boolean;
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
+  /** Abre o registro de realização — só faz sentido em banca já com data. */
+  onRealizar?: (banca: Banca) => void;
+  /** Abre a alocação manual — só faz sentido enquanto a banca não aconteceu. */
+  onAlocarPessoas?: (banca: Banca) => void;
+  /** Alocar OUTRA pessoa é ação de diretoria (§8), diferente de gerenciar. */
+  ehDiretorLista?: boolean;
   onPedirTroca?: (bancaId: number) => void;
   onCancelarTroca?: (solicitacaoId: number) => void;
 }) {
@@ -630,6 +710,31 @@ function SecaoBancas({
                     {podeGerenciar && onExcluir && (
                       <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(banca)}>
                         Excluir
+                      </PageButtonSm>
+                    )}
+
+                    {/* Escalar à mão: a diretoria não precisa esperar a janela
+                        de uma semana do push para preencher uma banca vazia. */}
+                    {ehDiretorLista && onAlocarPessoas && !banca.realizado_em && (
+                      <PageButtonSm
+                        $variant="outline"
+                        type="button"
+                        onClick={() => onAlocarPessoas(banca)}
+                      >
+                        Alocar pessoas
+                      </PageButtonSm>
+                    )}
+
+                    {/* Ainda não aconteceu: o passo que tira a banca de
+                        "atrasada" e alimenta o cálculo do §7.4.
+                        ⚠ Trava por CARGO (`gerenciar`), não por ser o
+                        coordenador daquela banca: o backend usa
+                        `require_pode_definir_cronograma`, e usar
+                        `podeGerenciarBanca` aqui escondia o botão da própria
+                        diretoria — que é justamente quem precisa dele. */}
+                    {gerenciar && onRealizar && !banca.realizado_em && banca.data_hora && (
+                      <PageButtonSm $variant="outline" type="button" onClick={() => onRealizar(banca)}>
+                        Registrar realização
                       </PageButtonSm>
                     )}
                     {acao === "deslocar" && minhaCandidatura && (
