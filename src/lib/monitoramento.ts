@@ -15,6 +15,12 @@ export interface VisaoGeral {
   /** % dos projetos ativos sem banca atrasada. A entrega ao cliente fica de
    *  fora de propósito: depende da agenda dele (§7.1). */
   placar_gestao: { percentual: number; no_prazo: number; total_ativos: number };
+  /** % dos projetos em curso atrasados por QUALQUER motivo, banca ou entrega.
+   *
+   *  ⚠ Não é o complemento do `placar_gestao`: aquele ignora atraso de entrega.
+   *  `100 - placar` não dá este número, e os dois ficam lado a lado na tela —
+   *  os rótulos precisam dizer o que cada um mede. */
+  atrasados_gestao: { percentual: number; atrasados: number; total_ativos: number };
   entregas: {
     total_escopos: number;
     projetos_finalizados: number;

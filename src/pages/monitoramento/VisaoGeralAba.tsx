@@ -102,10 +102,19 @@ export function VisaoGeralAba() {
           <KpiRotulo>Perto de finalizar</KpiRotulo>
         </KpiCard>
         <KpiCard $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined}>
+          {/* Percentual como valor grande, contagem na nota — mesmo formato do
+              placar ao lado. Os dois medem a MESMA população (`em_curso`), mas
+              coisas diferentes: o placar só olha banca, este olha qualquer
+              motivo. `100 - placar` não dá este número, e é por isso que os
+              rótulos precisam ser explícitos. */}
           <KpiValor $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined}>
-            {dados.kpis.atrasados}
+            {dados.atrasados_gestao.percentual}%
           </KpiValor>
           <KpiRotulo>Atrasados</KpiRotulo>
+          <KpiNota>
+            {dados.atrasados_gestao.atrasados}/{dados.atrasados_gestao.total_ativos} com algum
+            atraso
+          </KpiNota>
         </KpiCard>
         <KpiCard>
           {/* O placar da gestão: só as bancas contam — a entrega ao cliente

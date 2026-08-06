@@ -168,14 +168,14 @@ export function AtrasosAba() {
               {diasAcumulados}
               <small>dias</small>
             </ResumoValor>
-            <ResumoRotulo>dias úteis somados (todos os motivos)</ResumoRotulo>
+            <ResumoRotulo>dias úteis somados</ResumoRotulo>
           </ResumoItem>
           <ResumoItem>
             <ResumoValor $nivel={nivel(piorMotivo)}>
               {piorMotivo}
               <small>dias</small>
             </ResumoValor>
-            <ResumoRotulo>pior atraso isolado, em dias úteis</ResumoRotulo>
+            <ResumoRotulo>pior atraso isolado</ResumoRotulo>
           </ResumoItem>
         </FaixaResumo>
       )}

@@ -84,10 +84,7 @@ export function AlocacaoAba() {
         vazio="Nenhum consultor na sua visão."
       />
       {!dados.grade_horaria_disponivel && (
-        <EmptyText>
-          A checagem de disponibilidade por grade horária (§7.3) depende do módulo de perfil, que
-          não faz parte desta entrega — aqui a carga é medida em projetos ativos.
-        </EmptyText>
+        <EmptyText>Carga medida em projetos ativos — grade horária ainda não disponível.</EmptyText>
       )}
     </PageStack>
   );

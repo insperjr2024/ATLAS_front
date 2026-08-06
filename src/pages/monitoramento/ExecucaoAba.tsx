@@ -24,7 +24,6 @@ import {
   LinkProjeto,
   ListaSimples,
   NavegacaoSemana,
-  NotaRodape,
   ValorDeHoje,
   ResumoItem,
   ResumoRotulo,
@@ -260,7 +259,12 @@ export function ExecucaoAba() {
                           ) : linha.sem_tarefas_ativas ? (
                             <Pilula $tom="atencao">quadro zerado</Pilula>
                           ) : dados.semana.eh_passada ? (
-                            <ValorDeHoje>{linha.ativas}</ValorDeHoje>
+                            /* A explicação vai no tooltip, não em parágrafo:
+                               interessa a quem estranhar o selo, e é a minoria
+                               das visitas à tela. */
+                            <ValorDeHoje title="Depende de onde a tarefa está no quadro agora — o sistema não guarda o histórico de movimentação entre colunas.">
+                              {linha.ativas}
+                            </ValorDeHoje>
                           ) : (
                             linha.ativas
                           )}
@@ -316,21 +320,6 @@ export function ExecucaoAba() {
                   </TableBody>
                 </DataTable>
               </TabelaRolagem>
-              <NotaRodape>
-                Os dias são <strong>úteis</strong>, pelo calendário do Insper: fim de semana,
-                feriado e semana de provas não contam. Vale para todo o monitoramento, inclusive
-                a aba de Atrasos.
-                {dados.semana.eh_passada && (
-                  <>
-                    {" "}
-                    <strong>Ativas</strong> vem marcada com <strong>hoje</strong> porque não volta
-                    no tempo: depende de onde a tarefa está no quadro agora, e o sistema não guarda
-                    o histórico de movimentação entre colunas. Pelo mesmo motivo, a última
-                    movimentação de uma semana antiga pode aparecer mais cedo do que foi — quando a
-                    tarefa se moveu de novo depois, o registro anterior se perdeu.
-                  </>
-                )}
-              </NotaRodape>
             </>
           )}
         </PageCardContent>
