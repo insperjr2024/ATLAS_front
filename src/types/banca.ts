@@ -144,6 +144,10 @@ export interface BancaParaAvaliar {
   banca_id: number;
   nome_projeto: string;
   data_hora: string;
+  /** 2 dias corridos a partir de `banca.realizado_em` (§8) — depois disso o
+   *  envio da avaliação é bloqueado, não só destacado. */
+  prazo_avaliacao: string;
+  prazo_expirado: boolean;
 }
 
 export interface Avaliacao {

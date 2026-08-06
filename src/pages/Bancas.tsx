@@ -138,6 +138,10 @@ interface Contexto {
   equipesProjeto: EquipeProjeto[];
   candidaturas: Candidatura[];
   solicitacoesTroca: SolicitacaoTroca[];
+  /** banca_id → prazo de avaliação — separado de `Banca` porque
+   *  `paraAvaliar` funde `BancaParaAvaliar` com a `Banca` cheia e descarta os
+   *  campos extras (ver `recarregar`). */
+  prazosAvaliacao: Record<number, { prazoAvaliacao: string; prazoExpirado: boolean }>;
 }
 
 export function Bancas() {
@@ -213,6 +217,12 @@ export function Bancas() {
         equipesProjeto,
         candidaturas: candidaturasResp,
         solicitacoesTroca,
+        prazosAvaliacao: Object.fromEntries(
+          avaliarResp.map((item) => [
+            item.banca_id,
+            { prazoAvaliacao: item.prazo_avaliacao, prazoExpirado: item.prazo_expirado },
+          ]),
+        ),
       });
       setFormulario(formularioAtivo);
     } catch (err) {
@@ -562,6 +572,8 @@ function SecaoBancas({
                     (s) => s.candidatura_id === minhaCandidatura.id && s.status === "pendente",
                   )
                 : undefined;
+              const prazo = acao === "avaliar" ? contexto.prazosAvaliacao[banca.id] : undefined;
+              const prazoExpirado = !!prazo?.prazoExpirado;
 
               return (
                 <BancaLinha key={banca.id}>
@@ -578,7 +590,15 @@ function SecaoBancas({
                           {nome}
                         </PageBadge>
                       ))}
-                      {acao === "avaliar" && <PageBadge $tone="warning">Pendente</PageBadge>}
+                      {acao === "avaliar" && (
+                        <PageBadge $tone={prazoExpirado ? "danger" : "warning"}>
+                          {prazoExpirado
+                            ? "Prazo esgotado"
+                            : prazo
+                              ? `Prazo: ${new Date(prazo.prazoAvaliacao).toLocaleDateString("pt-BR")}`
+                              : "Pendente"}
+                        </PageBadge>
+                      )}
                       {acao === "deslocar" && <PageBadge $tone="default">Inscrito</PageBadge>}
                       {acao === "alocar" &&
                         (lotada ? (
@@ -635,10 +655,18 @@ function SecaoBancas({
                       <PageButtonSm
                         $variant={acao === "deslocar" ? "outline" : "primary"}
                         type="button"
-                        disabled={lotada}
+                        disabled={lotada || prazoExpirado}
                         onClick={() => onAcao(banca.id)}
                       >
-                        {lotada ? "Lotada" : acao === "alocar" ? "Alocar-se" : acao === "deslocar" ? "Deslocar-se" : "Avaliar"}
+                        {lotada
+                          ? "Lotada"
+                          : prazoExpirado
+                            ? "Prazo esgotado"
+                            : acao === "alocar"
+                              ? "Alocar-se"
+                              : acao === "deslocar"
+                                ? "Deslocar-se"
+                                : "Avaliar"}
                       </PageButtonSm>
                     )}
                   </BancaAcoes>
