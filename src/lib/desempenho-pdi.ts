@@ -1,0 +1,114 @@
+import { apiFetch } from "@/lib/api";
+import { API_URL } from "@/config/config";
+import type {
+  DesempenhoPdiItem,
+  DesempenhoPdiItemTipoArquivo,
+  DesempenhoPdiPasta,
+  DesempenhoPdiPastaComItens,
+  DesempenhoPdiPastaTipo,
+  DesempenhoPdiPendencia,
+} from "@/types/desempenho";
+
+export function getPastasPdi(token: string) {
+  return apiFetch<DesempenhoPdiPasta[]>("/desempenho/pdi/pastas", { token });
+}
+
+export function createPastaPdi(
+  payload: { nome: string; tipo: DesempenhoPdiPastaTipo; prazo: string },
+  token: string,
+) {
+  return apiFetch<DesempenhoPdiPasta>("/desempenho/pdi/pastas", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updatePastaPdi(
+  pastaId: number,
+  payload: { nome?: string; prazo?: string },
+  token: string,
+) {
+  return apiFetch<DesempenhoPdiPasta>(`/desempenho/pdi/pastas/${pastaId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deletePastaPdi(pastaId: number, token: string) {
+  return apiFetch(`/desempenho/pdi/pastas/${pastaId}`, { method: "DELETE", token });
+}
+
+export function getItensPdi(pastaId: number, token: string) {
+  return apiFetch<DesempenhoPdiItem[]>(`/desempenho/pdi/pastas/${pastaId}/itens`, { token });
+}
+
+export function createItemPdi(
+  pastaId: number,
+  payload: { nome: string; tipo_arquivo: DesempenhoPdiItemTipoArquivo },
+  token: string,
+) {
+  return apiFetch<DesempenhoPdiItem>(`/desempenho/pdi/pastas/${pastaId}/itens`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateItemPdi(
+  itemId: number,
+  payload: { nome?: string; tipo_arquivo?: DesempenhoPdiItemTipoArquivo },
+  token: string,
+) {
+  return apiFetch<DesempenhoPdiItem>(`/desempenho/pdi/itens/${itemId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteItemPdi(itemId: number, token: string) {
+  return apiFetch(`/desempenho/pdi/itens/${itemId}`, { method: "DELETE", token });
+}
+
+export function getPendenciasPdi(itemId: number, token: string) {
+  return apiFetch<DesempenhoPdiPendencia[]>(`/desempenho/pdi/itens/${itemId}/pendencias`, { token });
+}
+
+export function getEnviosPdi(usuarioId: number, token: string) {
+  return apiFetch<DesempenhoPdiPastaComItens[]>(`/usuarios/${usuarioId}/desempenho/pdi/envios`, { token });
+}
+
+export function uploadEnvioPdi(usuarioId: number, itemId: number, arquivo: File, token: string) {
+  const formData = new FormData();
+  formData.append("arquivo", arquivo);
+  return apiFetch<{ item_id: number; mentorado_id: number; arquivo_nome: string; enviado_em: string }>(
+    `/usuarios/${usuarioId}/desempenho/pdi/itens/${itemId}/envio`,
+    { method: "POST", token, body: formData },
+  );
+}
+
+export function deleteEnvioPdi(usuarioId: number, itemId: number, token: string) {
+  return apiFetch(`/usuarios/${usuarioId}/desempenho/pdi/itens/${itemId}/envio`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+/** A rota exige Bearer token, então um `<a href>` direto não funciona —
+ *  baixa como blob e dispara o download via um link temporário (mesmo
+ *  padrão de `baixarAnexoProposta`). */
+export async function baixarEnvioPdi(usuarioId: number, itemId: number, nomeArquivo: string, token: string) {
+  const response = await fetch(`${API_URL}/usuarios/${usuarioId}/desempenho/pdi/itens/${itemId}/envio`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error("Erro ao baixar o arquivo");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nomeArquivo;
+  link.click();
+  URL.revokeObjectURL(url);
+}

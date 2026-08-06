@@ -304,6 +304,14 @@ export function ProjetoNovo() {
                     ? "🔗 Duas frentes marcadas: o projeto é sinérgico e aparece para os dois gerentes."
                     : "Até 2 frentes. Duas marcadas = projeto sinérgico."}
                 </PageSubheading>
+                {frenteIds.length > 0 && (
+                  <PageSubheading>
+                    📅 O cronograma já nasce marcando de cinza os dias não úteis do calendário base{" "}
+                    {frenteIds.length > 1 ? "dessas frentes" : "dessa frente"} (
+                    {frenteIds.map((id) => frentes.find((f) => f.id === id)?.nome ?? id).join(", ")}) —
+                    configurável em Calendários base.
+                  </PageSubheading>
+                )}
               </FieldGroup>
 
               <FieldGroup>

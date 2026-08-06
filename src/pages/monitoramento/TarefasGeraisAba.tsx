@@ -25,7 +25,7 @@ import {
   SwimLabelCliente,
   SwimLabelNome,
 } from "./Monitoramento.styled";
-import { useMonitoramento } from "./MonitoramentoLayout";
+import { useFiltroFrente } from "./FiltroFrente";
 
 /**
  * Board macro (§7): todas as tarefas de todos os projetos visíveis, num
@@ -55,7 +55,7 @@ const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/tarefas", voltarRotulo: "
 
 export function TarefasGeraisAba() {
   const { token } = useAuth();
-  const { frenteId } = useMonitoramento();
+  const { frenteId, seletor } = useFiltroFrente();
   const navigate = useNavigate();
 
   function abrirProjeto(projetoId: number) {
@@ -85,19 +85,34 @@ export function TarefasGeraisAba() {
 
   if (erro) {
     return (
-      <ErrorBlock>
-        <ErrorText>{erro}</ErrorText>
-        <PageButton $variant="outline" onClick={carregar}>
-          Tentar novamente
-        </PageButton>
-      </ErrorBlock>
+      <PageStack>
+        {seletor}
+        <ErrorBlock>
+          <ErrorText>{erro}</ErrorText>
+          <PageButton $variant="outline" onClick={carregar}>
+            Tentar novamente
+          </PageButton>
+        </ErrorBlock>
+      </PageStack>
     );
   }
 
-  if (carregando || !dados) return <PageLoadingBlock />;
+  if (carregando || !dados) {
+    return (
+      <PageStack>
+        {seletor}
+        <PageLoadingBlock />
+      </PageStack>
+    );
+  }
 
   if (dados.tarefas.length === 0 || dados.colunas.length === 0) {
-    return <EmptyText>Nenhuma tarefa na sua visão.</EmptyText>;
+    return (
+      <PageStack>
+        {seletor}
+        <EmptyText>Nenhuma tarefa na sua visão.</EmptyText>
+      </PageStack>
+    );
   }
 
   // Uma linha por projeto — só quem tem alguma tarefa na visão atual entra.
@@ -110,6 +125,7 @@ export function TarefasGeraisAba() {
 
   return (
     <PageStack>
+      {seletor}
       <AvisoSomenteLeitura>
         Este quadro é só para consulta. Para mover ou editar uma tarefa, clique nela e abra o
         projeto correspondente.

@@ -122,6 +122,66 @@ export interface DesempenhoRelatorioCriterio {
   respostas_texto: string[];
 }
 
+export type DesempenhoPdiPastaTipo = "inicial" | "encontro";
+
+export interface DesempenhoPdiPasta {
+  id: number;
+  nome: string;
+  tipo: DesempenhoPdiPastaTipo;
+  prazo: string;
+  ordem: number;
+  /** Gestão vigente na data do prazo (ex: "2026.2") — derivado no backend,
+   *  não é um campo próprio da pasta. `null` se o prazo cair fora de
+   *  qualquer semestre cadastrado. */
+  semestre: string | null;
+}
+
+export type DesempenhoPdiItemTipoArquivo = "documento" | "foto" | "qualquer";
+
+/** Um documento exigido dentro de uma pasta — a pasta é uma checklist de
+ *  itens (ex: "Encontro 1" pode exigir Foto + Relatório, cada um com seu
+ *  próprio envio). `tipo_arquivo` restringe o formato aceito no upload. */
+export interface DesempenhoPdiItem {
+  id: number;
+  pasta_id: number;
+  nome: string;
+  tipo_arquivo: DesempenhoPdiItemTipoArquivo;
+  ordem: number;
+}
+
+export interface DesempenhoPdiPendencia {
+  mentorado_id: number;
+  mentorado_nome: string | null;
+  mentor_id: number;
+  mentor_nome: string | null;
+}
+
+export interface DesempenhoPdiEnvio {
+  arquivo_nome: string;
+  enviado_por: number;
+  enviado_por_nome: string | null;
+  enviado_em: string;
+}
+
+/** Um item da checklist de uma pasta, com ou sem envio. */
+export interface DesempenhoPdiItemComEnvio {
+  item_id: number;
+  item_nome: string;
+  tipo_arquivo: DesempenhoPdiItemTipoArquivo;
+  envio: DesempenhoPdiEnvio | null;
+}
+
+/** Uma linha por PASTA, com a checklist de itens dentro — é o shape que
+ *  `RelatorioPdi` desenha direto, sem precisar cruzar listas. */
+export interface DesempenhoPdiPastaComItens {
+  pasta_id: number;
+  pasta_nome: string;
+  pasta_tipo: DesempenhoPdiPastaTipo;
+  pasta_semestre: string | null;
+  prazo: string;
+  itens: DesempenhoPdiItemComEnvio[];
+}
+
 export interface DesempenhoRelatorioLote {
   lote_id: number;
   lote_nome: string | null;

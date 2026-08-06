@@ -9,6 +9,9 @@ export type TipoNotificacao =
   | "entrega_alterada"
   // 📌 Avaliação de Desempenho (Prioridade 2) — não é de projeto
   | "lote_desempenho_aberto"
+  // 📌 PDI (relatório de mentoria) — mesmo motivo
+  | "pdi_prazo_proximo"
+  | "pdi_prazo_vencido"
   // 📌 eventos de bancas (§8) — entram por `utils/notificar.py` no backend
   | "escalacao_banca"
   | "troca_banca"

@@ -76,6 +76,7 @@ import {
 import { TableScrollWrap } from "@/styles/shared.styled";
 
 const MEMBROS_MAX_VISIVEIS = 9;
+const SEMESTRES_GRADUACAO = [1, 2, 3, 4, 5, 6, 7, 8];
 
 interface Contexto {
   cargos: Cargo[];
@@ -231,6 +232,7 @@ export function Membros() {
                   <TableHeadCell>Posição</TableHeadCell>
                   <TableHeadCell>Cargo</TableHeadCell>
                   <TableHeadCell>Frentes</TableHeadCell>
+                  <TableHeadCell>Semestre</TableHeadCell>
                   <TableHeadCell>Status</TableHeadCell>
                   <TableHeadCell />
                 </TableRow>
@@ -245,6 +247,7 @@ export function Membros() {
                       <TableCell>{ROTULO_POSICAO[membro.posicao] ?? membro.posicao}</TableCell>
                       <TableCell>{nomeCargo(contexto.cargos, membro.cargo_id)}</TableCell>
                       <TableCell>{frentes.length > 0 ? frentes.join(", ") : "—"}</TableCell>
+                      <TableCell>{membro.semestre_graduacao ? `${membro.semestre_graduacao}º` : "—"}</TableCell>
                       <TableCell>
                         {/* Os 3 estados do §10, não um booleano: ex-membro e
                             desligado são situações diferentes. */}
@@ -609,6 +612,7 @@ function NovoMembroModal({
   const [posicao, setPosicao] = useState<Posicao>("consultor");
   const [cargoId, setCargoId] = useState("");
   const [frenteIds, setFrenteIds] = useState<number[]>([]);
+  const [semestreGraduacao, setSemestreGraduacao] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   /** Preenchido depois do cadastro: a senha de primeiro acesso e se o e-mail saiu. */
@@ -652,6 +656,7 @@ function NovoMembroModal({
           email_insper: email.trim(),
           posicao,
           cargo_id: cargoId ? Number(cargoId) : null,
+          semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
       );
@@ -744,6 +749,22 @@ function NovoMembroModal({
                 </FieldSelect>
               </FieldGroup>
 
+              <FieldGroup>
+                <FieldLabel htmlFor="novo-membro-semestre">Semestre da graduação</FieldLabel>
+                <FieldSelect
+                  id="novo-membro-semestre"
+                  value={semestreGraduacao}
+                  onChange={(e) => setSemestreGraduacao(e.target.value)}
+                >
+                  <option value="">Não informado</option>
+                  {SEMESTRES_GRADUACAO.map((n) => (
+                    <option key={n} value={n}>
+                      {n}º semestre
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FieldGroup>
+
               {/* Logo abaixo da posição: para o gerente, escolher a frente é
                   parte de definir a posição, não um detalhe solto. */}
               <FieldGroup>
@@ -819,6 +840,9 @@ function MembroModal({
   const [frenteIds, setFrenteIds] = useState<number[]>(() =>
     contexto.usuariosFrentes.filter((uf) => uf.usuario_id === membro.id).map((uf) => uf.frente_id),
   );
+  const [semestreGraduacao, setSemestreGraduacao] = useState(
+    membro.semestre_graduacao ? String(membro.semestre_graduacao) : "",
+  );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -859,6 +883,7 @@ function MembroModal({
           // `ativo` é espelho de `status` (F2) — mandado junto para o front
           // legado que ainda lê o booleano não divergir.
           ativo: status === "ativo",
+          semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
       );
@@ -902,6 +927,12 @@ function MembroModal({
                   <DetailValue>{frentesMembro.length > 0 ? frentesMembro.join(", ") : "—"}</DetailValue>
                 </DetailRow>
                 <DetailRow>
+                  <DetailTerm>Semestre da graduação</DetailTerm>
+                  <DetailValue>
+                    {membro.semestre_graduacao ? `${membro.semestre_graduacao}º semestre` : "—"}
+                  </DetailValue>
+                </DetailRow>
+                <DetailRow>
                   <DetailTerm>Status</DetailTerm>
                   <DetailValue>
                     <StatusBadge $ativo={membro.status === "ativo"}>
@@ -940,6 +971,22 @@ function MembroModal({
                     {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((p) => (
                       <option key={p} value={p}>
                         {ROTULO_POSICAO[p]}
+                      </option>
+                    ))}
+                  </FieldSelect>
+                </FieldGroup>
+
+                <FieldGroup>
+                  <FieldLabel htmlFor="semestre-membro">Semestre da graduação</FieldLabel>
+                  <FieldSelect
+                    id="semestre-membro"
+                    value={semestreGraduacao}
+                    onChange={(e) => setSemestreGraduacao(e.target.value)}
+                  >
+                    <option value="">Não informado</option>
+                    {SEMESTRES_GRADUACAO.map((n) => (
+                      <option key={n} value={n}>
+                        {n}º semestre
                       </option>
                     ))}
                   </FieldSelect>

@@ -70,6 +70,9 @@ export interface UsuarioResumo {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
+  /** 1º a 8º semestre da graduação — `null` pra quem não é aluno em curso
+   *  (diretoria, gerência já formada etc). */
+  semestre_graduacao: number | null;
   /** Ainda não fez o primeiro acesso — a tela de Membros marca essas linhas. */
   senha_provisoria: boolean;
   /**

@@ -1,6 +1,7 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { Link as RouterLink, NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
+import { PALETA } from "@/components/cronograma-pintado/cores";
 import { DataTable as DataTableBase } from "../Bancas.styled";
 
 export {
@@ -58,14 +59,105 @@ export const DataTable = styled(DataTableBase)`
  * espremer as colunas até o texto quebrar em cada célula. O `min-width` é o
  * ponto em que a tabela ainda é legível; abaixo dele, rolar é melhor do que
  * encolher.
+ *
+ * ⚠ **As duas rolagens moram no MESMO elemento, de propósito.**
+ *
+ * A tentação é aninhar: um container para a horizontal, outro por fora para a
+ * vertical. Não funciona. `overflow-x: auto` faz o `overflow-y` computar para
+ * `auto` também (o CSS não deixa um eixo recortar e o outro transbordar), então
+ * o container de dentro já é um contexto de rolagem vertical. O `position:
+ * sticky` do cabeçalho se ancora nele — que nunca rola, porque não tem altura
+ * limitada — e o cabeçalho simplesmente não gruda em nada.
+ *
+ * Com `$max`, a tabela ganha rolagem vertical e o cabeçalho gruda no topo. Sem
+ * ele, o comportamento é o de antes: só horizontal, altura livre.
+ *
+ * ⭐ Rolagem aqui, e páginas nos cards de alerta (ver `usePaginacao`): nestas
+ * tabelas a pessoa procura ALGUÉM ESPECÍFICO, e mandá-la adivinhar em qual
+ * página está o colega seria pior do que rolar.
  */
-export const TabelaRolagem = styled.div<{ $min?: string }>`
+export const TabelaRolagem = styled.div<{ $min?: string; $max?: string }>`
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+
+  ${({ $max }) =>
+    $max &&
+    css`
+      max-height: ${$max};
+      overflow-y: auto;
+
+      /* Sem isto, três telas de rolagem adentro ninguém lembra qual coluna é
+         qual. O fundo é obrigatório: sticky não recorta o que passa por baixo. */
+      thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: ${theme.colors.card};
+      }
+    `}
 
   table {
     min-width: ${({ $min = "38rem" }) => $min};
   }
+`;
+
+/** A linha do filtro de frente, no topo de cada aba.
+ *
+ *  Alinhado à direita para não competir com o primeiro card: é um controle de
+ *  recorte, e o assunto da aba é o conteúdo abaixo dele. */
+export const BarraFiltro = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+`;
+
+/** O rodapé de navegação entre páginas de um card. Discreto e centrado: é
+ *  rodapé, não ação principal da tela. */
+export const BarraPaginacao = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.md};
+  padding-top: ${theme.spacing.sm};
+  border-top: 1px solid ${theme.colors.border};
+`;
+
+export const BotaoPagina = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: transparent;
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: ${theme.colors.muted};
+  }
+
+  /* Desabilitado continua ocupando o lugar em vez de sumir: o contador entre
+     as duas setas saltaria de posição a cada troca de página. */
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+  }
+`;
+
+export const ContadorPagina = styled.span`
+  min-width: 7rem;
+  font-size: ${theme.fontSize.xs};
+  font-variant-numeric: tabular-nums;
+  color: ${theme.colors.mutedForeground};
+  text-align: center;
 `;
 
 /**
@@ -215,6 +307,56 @@ export const KpiRotulo = styled.span`
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: ${theme.colors.mutedForeground};
+`;
+
+/**
+ * Esmaece o conteúdo enquanto a semana nova carrega.
+ *
+ * Os dados anteriores continuam na tela de propósito — trocar tudo por um
+ * esqueleto desmonta a tabela e o navegador perde a posição do scroll, jogando
+ * a pessoa de volta ao topo a cada clique. Mas sem NENHUM sinal o clique
+ * parece não ter funcionado até os números trocarem; o esmaecido preenche esse
+ * intervalo.
+ */
+export const ConteudoCarregando = styled.div<{ $carregando: boolean }>`
+  opacity: ${({ $carregando }) => ($carregando ? 0.55 : 1)};
+  transition: opacity ${theme.transitions.fast};
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/** Os botões de semana anterior / hoje / próxima, no cabeçalho do card. */
+export const NavegacaoSemana = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+`;
+
+/**
+ * Marca a coluna cujo valor é de HOJE, mesmo olhando uma semana passada.
+ *
+ * `total`, `ativas` e `ultima_movimentacao` dependem da coluna em que a tarefa
+ * está agora — reconstruir o passado exigiria histórico de movimentação entre
+ * colunas, que o sistema não guarda (`tarefa.movida_em` é só o carimbo da
+ * última mudança). Sem a marcação, a linha mistura passado e presente em
+ * silêncio: alguém lê "não distribuiu naquela semana, mas tem 5 ativas" e tira
+ * a conclusão errada.
+ */
+export const ValorDeHoje = styled.span`
+  color: ${theme.colors.mutedForeground};
+
+  &::after {
+    content: "hoje";
+    margin-left: 0.3rem;
+    padding: 0.05rem 0.3rem;
+    border-radius: ${theme.borderRadius.sm};
+    border: 1px dashed ${theme.colors.border};
+    font-size: ${theme.fontSize.xs};
+    white-space: nowrap;
+  }
 `;
 
 /** A linha fina embaixo de um KPI, quando o número sozinho não se explica
@@ -793,6 +935,100 @@ export const NotaRodape = styled.p`
    projetos é muito ou pouco depende de quantos os colegas carregam. Por isso
    a coluna vira barra, medida contra o maior da tabela. */
 
+/* ─── Card "com demanda alta" (§7.3) ──────────────────────────────────────
+   Duas colunas lado a lado — coordenadores e consultores — porque as escalas
+   são diferentes por papel e comparar um com o outro não faz sentido. Em tela
+   estreita empilha. */
+
+export const DemandaAltaGrupo = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: ${theme.spacing.lg};
+
+  @media (min-width: ${theme.breakpoints.md}px) {
+    grid-template-columns: 1fr 1fr;
+  }
+`;
+
+export const DemandaAltaTitulo = styled.h3`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: ${theme.colors.mutedForeground};
+
+  /* Uma linha fina puxando o título até a borda da coluna: separa os dois
+     papéis sem precisar de moldura, que engordaria o card. */
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: ${theme.colors.border};
+  }
+`;
+
+export const DemandaAltaLista = styled.ul`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+  margin: 0;
+  padding: 0;
+  list-style: none;
+`;
+
+export const DemandaAltaPessoa = styled.li`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
+  padding: 0.4rem 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.muted};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+
+  /* O nome pode ser longo e não pode empurrar a contagem para fora: ele
+     encolhe e trunca, a contagem nunca. */
+  strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: ${theme.fontWeight.medium};
+  }
+`;
+
+/** Os projetos da pessoa, listados abaixo do nome dela no card.
+ *
+ *  Saber QUAIS projetos é o que torna o card acionável: "Ana está com 4"
+ *  sozinho não diz de onde tirar carga. */
+export const DemandaAltaProjetos = styled.span`
+  display: block;
+  margin-top: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.normal};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** O número de vagas livres de uma frente.
+ *
+ *  Zero fica apagado em vez de vermelho: "não cabe mais ninguém aqui" é um
+ *  fato de planejamento, não um problema a resolver — a frente pode estar
+ *  cheia justamente porque vendeu bem. */
+export const VagaLivre = styled.span<{ $vazio: boolean }>`
+  font-variant-numeric: tabular-nums;
+  font-weight: ${({ $vazio }) =>
+    $vazio ? theme.fontWeight.normal : theme.fontWeight.semibold};
+  color: ${({ $vazio }) => ($vazio ? theme.colors.mutedForeground : theme.colors.foreground)};
+`;
+
 export const ChipsProjetos = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -800,7 +1036,9 @@ export const ChipsProjetos = styled.div`
   min-width: 12rem;
 `;
 
-export const ChipProjeto = styled.span`
+/** O chip virou link quando o projeto passou a chegar com id — a tabela dizia
+ *  em quais projetos a pessoa está e não deixava abrir nenhum deles. */
+export const ChipProjeto = styled(RouterLink)`
   padding: 0.05rem 0.45rem;
   border-radius: ${theme.borderRadius.sm};
   border: 1px solid ${theme.colors.border};
@@ -808,6 +1046,17 @@ export const ChipProjeto = styled.span`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.foreground};
   white-space: nowrap;
+  text-decoration: none;
+
+  &:hover {
+    border-color: ${theme.colors.primary};
+    color: ${theme.colors.primary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+  }
 `;
 
 export const BarraCarga = styled.div`
@@ -973,6 +1222,261 @@ export const SwimCellVazia = styled.p`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
   text-align: center;
+`;
+
+/* ─── Gráficos (§7.1 e §7.3) ──────────────────────────────────────────────── */
+
+/**
+ * A cor de cada etapa do ciclo, na pizza da Visão geral.
+ *
+ * ⭐ **Sai da `PALETA` do cronograma, não de uma rampa própria.** Aquela paleta
+ * já resolve o mesmo problema — dar cor a etapa — e já foi calibrada: 8 matizes
+ * com a MESMA saturação e a MESMA luminosidade, só a matiz girando. É isso que
+ * mantém as fatias com o mesmo peso visual; numa paleta ingênua o amarelo pula
+ * à frente do azul e a fatia mais chamativa passa a ser a de cor mais clara, e
+ * não a maior — que é a leitura que a pizza precisa entregar.
+ *
+ * Herda de graça a regra que o docstring de `cores.ts` defende: cor de etapa
+ * não encosta na semântica de status do design system, então nenhuma fatia
+ * pode ser lida como "tudo bem" ou "atrasado" por causa do tom.
+ *
+ * Uso `amostra`, o tom saturado — é o mesmo papel que ele tem lá: identificar a
+ * etapa numa legenda. `fundo` é pálido demais para fatia.
+ *
+ * O índice é fixo por status, e não pela ordem de chegada: "Em andamento" tem
+ * que ser a mesma cor toda vez que a tela abre.
+ *
+ * ⚠ Cor sozinha não é informação: a legenda escreve nome e número de cada
+ * etapa, então quem não distingue os matizes continua lendo o gráfico inteiro.
+ */
+export const COR_ETAPA: Record<string, string> = Object.fromEntries(
+  [
+    "vendido",
+    "ambientacao",
+    "em_andamento",
+    "validacao_bancas",
+    "envio_tep",
+    "periodo_ajustes",
+  ].map((status, i) => [status, PALETA[i].amostra]),
+);
+
+/** O container do gráfico. Altura fixa porque o `ResponsiveContainer` do
+ *  recharts mede o pai — em altura `auto` ele calcula 0 e o gráfico some. */
+export const CaixaGrafico = styled.div<{ $altura?: string }>`
+  width: 100%;
+  height: ${({ $altura }) => $altura ?? "16rem"};
+
+  /* O recharts injeta um <svg> com foco próprio; sem isto o anel de foco fica
+     cortado pela borda do card ao navegar por teclado. */
+  svg:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
+  }
+`;
+
+/** O miolo do donut. Vive fora do SVG, sobreposto, porque texto em `<text>`
+ *  do recharts não herda a tipografia do tema nem quebra em duas linhas. */
+export const MioloDonut = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+
+  strong {
+    font-size: ${theme.fontSize["2xl"]};
+    font-weight: ${theme.fontWeight.semibold};
+    line-height: 1.1;
+    color: ${theme.colors.foreground};
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+export const EnvolveDonut = styled.div`
+  position: relative;
+`;
+
+/** A legenda da pizza. Cada item é um botão: clicar seleciona a etapa, igual a
+ *  clicar na fatia. A fatia é alvo pequeno e difícil de acertar no celular —
+ *  sem a legenda clicável, o recurso não existe em tela estreita. */
+export const LegendaEtapas = styled.ul`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.15rem;
+  margin: ${theme.spacing.md} 0 0;
+  padding: 0;
+  list-style: none;
+
+  @media (min-width: ${theme.breakpoints.sm}px) {
+    grid-template-columns: 1fr 1fr;
+  }
+`;
+
+export const ItemLegendaEtapa = styled.li<{ $ativo: boolean; $vazio: boolean }>`
+  button {
+    display: flex;
+    align-items: center;
+    gap: ${theme.spacing.sm};
+    width: 100%;
+    padding: 0.25rem 0.4rem;
+    border: none;
+    border-radius: ${theme.borderRadius.sm};
+    background: ${({ $ativo }) => ($ativo ? theme.colors.muted : "transparent")};
+    font-size: ${theme.fontSize.sm};
+    text-align: left;
+    cursor: pointer;
+
+    /* Etapa vazia continua na lista — some faria parecer que ela não existe —
+       mas recuada, para não competir com as que têm projeto. */
+    color: ${({ $vazio }) =>
+      $vazio ? theme.colors.mutedForeground : theme.colors.foreground};
+
+    &:hover {
+      background: ${theme.colors.muted};
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${theme.colors.primary};
+      outline-offset: -2px;
+    }
+  }
+
+  /* O número encosta na direita para a coluna ser lida na vertical. */
+  b {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    font-weight: ${theme.fontWeight.medium};
+  }
+`;
+
+export const PontoEtapa = styled.span<{ $cor: string }>`
+  flex-shrink: 0;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $cor }) => $cor};
+`;
+
+/** A barra de controles acima de um gráfico: toggle de papel, filtro de etapa
+ *  e o rótulo de filtro ativo. Quebra em coluna no celular. */
+export const ControlesGrafico = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.md};
+`;
+
+export const GrupoBotoes = styled.div`
+  display: inline-flex;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  overflow: hidden;
+`;
+
+export const BotaoAlternativa = styled.button<{ $ativo: boolean }>`
+  padding: 0.3rem 0.75rem;
+  border: none;
+  background: ${({ $ativo }) => ($ativo ? theme.colors.primary : "transparent")};
+  color: ${({ $ativo }) =>
+    $ativo ? theme.colors.primaryForeground : theme.colors.foreground};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${({ $ativo }) =>
+    $ativo ? theme.fontWeight.medium : theme.fontWeight.normal};
+  cursor: pointer;
+
+  & + & {
+    border-left: 1px solid ${theme.colors.border};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: -2px;
+  }
+`;
+
+/** ⚠ O aviso de filtro ativo. Sem ele o gráfico mostra números menores que a
+ *  tabela logo abaixo e parece bug — o filtro fica escondido num `select` que
+ *  ninguém relê depois de escolher. */
+export const FiltroAtivo = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.muted};
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** O balão que aparece ao passar o mouse numa fatia: a etapa no topo, os
+ *  projetos dela embaixo.
+ *
+ *  Tem sombra e fundo opaco porque flutua sobre o próprio gráfico — com fundo
+ *  translúcido as fatias atravessariam o texto. */
+export const BalaoEtapa = styled.div`
+  max-width: 18rem;
+  padding: ${theme.spacing.sm} 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.md};
+`;
+
+export const BalaoTitulo = styled.p`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin: 0 0 0.35rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid ${theme.colors.border};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
+
+  /* A contagem encosta na direita, separada do nome da etapa. */
+  b {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    font-weight: ${theme.fontWeight.normal};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+export const BalaoLista = styled.ul`
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    font-size: ${theme.fontSize.xs};
+    line-height: 1.6;
+    color: ${theme.colors.foreground};
+    /* Nome longo de projeto não pode esticar o balão até fora da tela. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* O "e mais N" fecha a lista quando ela foi cortada. */
+  li[data-resto="true"] {
+    margin-top: 0.15rem;
+    color: ${theme.colors.mutedForeground};
+    font-style: italic;
+  }
+`;
+
+/** Os projetos da etapa clicada na pizza. */
+export const ProjetosDaEtapa = styled.div`
+  margin-top: ${theme.spacing.md};
+  padding-top: ${theme.spacing.md};
+  border-top: 1px solid ${theme.colors.border};
 `;
 
 /* ------------------------------------------------------------------ */

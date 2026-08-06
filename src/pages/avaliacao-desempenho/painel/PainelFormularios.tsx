@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFormulario, updateFormulario } from "@/lib/desempenho-formularios";
@@ -21,7 +20,18 @@ import {
   PageTitle,
 } from "@/styles/page.styled";
 import { FieldGroup, FieldInput, FieldLabel, FieldSelect, FieldTextarea, FormStack } from "@/pages/Bancas.styled";
-import { AbaButton, CriterioEditorBlock, CriterioEditorRow, FormularioAbasRow, SecaoEditorBlock } from "./Painel.styled";
+import {
+  AbaButton,
+  CriteriosLista,
+  CriterioEditorBlock,
+  CriterioEditorRow,
+  CriterioLabelInput,
+  FormularioAbasRow,
+  SecaoCamposProprios,
+  SecaoEditorBlock,
+  TabBar,
+  TabLink,
+} from "./Painel.styled";
 
 interface CriterioEditavel {
   id?: number;
@@ -46,8 +56,7 @@ const ABAS: { tipo: DesempenhoTipo; papel: DesempenhoPapel; rotulo: string }[] =
 ];
 
 export function PainelFormularios() {
-  const { token } = useAuth();
-  const navigate = useNavigate();
+  const { token, usuario } = useAuth();
   const [aba, setAba] = useState(ABAS[0]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -175,15 +184,25 @@ export function PainelFormularios() {
     <PageStack>
       <PageHeader>
         <PageHeaderText>
-          <PageTitle>Formulários de Avaliação de Desempenho</PageTitle>
-          <PageSubtitle>Editar seções, critérios e textos por tipo e papel.</PageSubtitle>
+          <PageTitle>Painel de Avaliação de Desempenho</PageTitle>
+          <PageSubtitle>Administração de lotes, formulários, mentorias e resultados.</PageSubtitle>
         </PageHeaderText>
-        {/* Esta página fica fora do shell de abas do painel (rota irmã, só
-            diretor — §4.2), então sem isso não tinha como voltar. */}
-        <PageButton $variant="outline" type="button" onClick={() => navigate("/avaliacao-desempenho/painel")}>
-          ← Voltar
-        </PageButton>
       </PageHeader>
+
+      {/* Esta página fica fora do shell de abas do painel (rota irmã, só
+          diretor — §4.2), então sem isso as outras abas do painel de AVD
+          somem ao entrar aqui. Repete a mesma TabBar de `PainelDesempenho`. */}
+      <TabBar>
+        <TabLink to="/avaliacao-desempenho/painel/avaliadores">Avaliadores</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/avaliados">Avaliados</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/relatorio">Relatórios</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/lotes">Lotes</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/mentoria">Mentoria</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/pdi">PDI</TabLink>
+        {usuario?.posicao === "diretor" && (
+          <TabLink to="/avaliacao-desempenho/painel/formularios">Formulários</TabLink>
+        )}
+      </TabBar>
 
       <FormularioAbasRow>
         {ABAS.map((a) => (
@@ -222,60 +241,64 @@ export function PainelFormularios() {
               <FormStack onSubmit={(e) => e.preventDefault()}>
                 {secoes.map((secao, secaoIndex) => (
                   <SecaoEditorBlock key={secao.id ?? `nova-${secaoIndex}`}>
-                    <CriterioEditorRow>
-                      <FieldInput
-                        placeholder="Título da seção"
-                        value={secao.titulo}
-                        onChange={(e) => atualizarSecao(secaoIndex, "titulo", e.target.value)}
-                      />
-                      <PageButtonSm $variant="ghost" type="button" onClick={() => removerSecao(secaoIndex)}>
-                        <X size={14} /> Remover seção
-                      </PageButtonSm>
-                    </CriterioEditorRow>
-                    <FieldTextarea
-                      placeholder="Descrição da seção (opcional)"
-                      value={secao.descricao}
-                      onChange={(e) => atualizarSecao(secaoIndex, "descricao", e.target.value)}
-                    />
-
-                    {secao.criterios.map((criterio, criterioIndex) => (
-                      <CriterioEditorBlock key={criterio.id ?? `novo-${criterioIndex}`}>
+                    <SecaoCamposProprios>
                       <CriterioEditorRow>
-                        <FieldInput
-                          placeholder="Rótulo do critério"
-                          value={criterio.label}
-                          onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "label", e.target.value)}
+                        <CriterioLabelInput
+                          placeholder="Título da seção"
+                          value={secao.titulo}
+                          onChange={(e) => atualizarSecao(secaoIndex, "titulo", e.target.value)}
                         />
-                        <FieldSelect
-                          value={criterio.tipo_resposta}
-                          onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "tipo_resposta", e.target.value)}
-                        >
-                          <option value="nota">Nota (1-5)</option>
-                          <option value="texto">Texto</option>
-                        </FieldSelect>
-                        {criterio.tipo_resposta === "texto" && (
-                          <FieldInput
-                            type="number"
-                            placeholder="Limite de caracteres"
-                            value={criterio.limite_caracteres}
-                            onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "limite_caracteres", e.target.value)}
-                          />
-                        )}
-                        <PageButtonSm
-                          $variant="ghost"
-                          type="button"
-                          onClick={() => removerCriterio(secaoIndex, criterioIndex)}
-                        >
-                          <X size={14} />
+                        <PageButtonSm $variant="ghost" type="button" onClick={() => removerSecao(secaoIndex)}>
+                          <X size={14} /> Remover seção
                         </PageButtonSm>
                       </CriterioEditorRow>
                       <FieldTextarea
-                        placeholder="Descrição do critério — o texto que a pessoa vê ao responder (opcional)"
-                        value={criterio.descricao}
-                        onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "descricao", e.target.value)}
+                        placeholder="Descrição da seção (opcional)"
+                        value={secao.descricao}
+                        onChange={(e) => atualizarSecao(secaoIndex, "descricao", e.target.value)}
                       />
-                      </CriterioEditorBlock>
-                    ))}
+                    </SecaoCamposProprios>
+
+                    <CriteriosLista>
+                      {secao.criterios.map((criterio, criterioIndex) => (
+                        <CriterioEditorBlock key={criterio.id ?? `novo-${criterioIndex}`}>
+                          <CriterioEditorRow>
+                            <CriterioLabelInput
+                              placeholder="Rótulo do critério"
+                              value={criterio.label}
+                              onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "label", e.target.value)}
+                            />
+                            <FieldSelect
+                              value={criterio.tipo_resposta}
+                              onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "tipo_resposta", e.target.value)}
+                            >
+                              <option value="nota">Nota (1-5)</option>
+                              <option value="texto">Texto</option>
+                            </FieldSelect>
+                            {criterio.tipo_resposta === "texto" && (
+                              <FieldInput
+                                type="number"
+                                placeholder="Limite de caracteres"
+                                value={criterio.limite_caracteres}
+                                onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "limite_caracteres", e.target.value)}
+                              />
+                            )}
+                            <PageButtonSm
+                              $variant="ghost"
+                              type="button"
+                              onClick={() => removerCriterio(secaoIndex, criterioIndex)}
+                            >
+                              <X size={14} />
+                            </PageButtonSm>
+                          </CriterioEditorRow>
+                          <FieldTextarea
+                            placeholder="Descrição do critério — o texto que a pessoa vê ao responder (opcional)"
+                            value={criterio.descricao}
+                            onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "descricao", e.target.value)}
+                          />
+                        </CriterioEditorBlock>
+                      ))}
+                    </CriteriosLista>
                     <PageButtonSm $variant="outline" type="button" onClick={() => adicionarCriterio(secaoIndex)}>
                       <Plus size={14} /> Novo critério
                     </PageButtonSm>
