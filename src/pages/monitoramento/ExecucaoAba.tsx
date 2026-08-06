@@ -9,6 +9,7 @@ import {
   PageCardTitle,
   PageCardContent,
   PageButton,
+  PageButtonSm,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
@@ -16,12 +17,15 @@ import {
 } from "@/styles/page.styled";
 import {
   CelulaDias,
+  ConteudoCarregando,
   DataTable,
   FaixaResumo,
   ItemAtencao,
   LinkProjeto,
   ListaSimples,
+  NavegacaoSemana,
   NotaRodape,
+  ValorDeHoje,
   ResumoItem,
   ResumoRotulo,
   ResumoValor,
@@ -53,13 +57,17 @@ export function ExecucaoAba() {
   const [dados, setDados] = useState<Execucao | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  /* `null` = semana de hoje. Guardamos um DIA, não a semana: o servidor
+     normaliza para a segunda, então o front não precisa saber onde a semana
+     começa — e não corre o risco de discordar dele. */
+  const [referencia, setReferencia] = useState<string | null>(null);
 
   async function carregar() {
     if (!token) return;
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getExecucao(token, frenteId));
+      setDados(await getExecucao(token, frenteId, referencia ?? undefined));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar a execução");
     } finally {
@@ -70,7 +78,15 @@ export function ExecucaoAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId]);
+  }, [token, frenteId, referencia]);
+
+  /** Anda `dias` a partir do início da semana exibida. */
+  function navegar(dias: number) {
+    if (!dados) return;
+    const base = new Date(`${dados.semana.inicio}T12:00:00`);
+    base.setDate(base.getDate() + dias);
+    setReferencia(base.toISOString().slice(0, 10));
+  }
 
   /* Quem precisa de ação sobe. Sem isso a diretoria varre uma tabela de 30
      linhas para achar as 3 que importam. */
@@ -100,11 +116,16 @@ export function ExecucaoAba() {
     );
   }
 
-  if (carregando || !dados) return <PageLoadingBlock />;
+  /* Esqueleto SÓ na primeira carga. Ao trocar de semana os dados anteriores
+     ficam na tela até os novos chegarem — trocar tudo por um bloco vazio
+     desmonta a tabela, e o navegador perde a posição do scroll: a pessoa
+     clica em "anterior" e é jogada de volta pro topo da página. */
+  if (!dados) return <PageLoadingBlock />;
 
   const resumo = dados.resumo_tarefas;
 
   return (
+    <ConteudoCarregando $carregando={carregando}>
     <PageStack>
       {/* Faixa, e não grade de cards: são cinco recortes da MESMA população de
           projetos, então precisam ser lidos lado a lado. Cinco cartões
@@ -171,7 +192,31 @@ export function ExecucaoAba() {
           <PageCardTitle>
             Tarefas · semana de {formatarData(dados.semana.inicio)} a{" "}
             {formatarData(dados.semana.fim)}
+            {dados.semana.eh_passada && (
+              <Pilula $tom="neutro">{rotuloSemana(dados.semana.semanas_atras)}</Pilula>
+            )}
           </PageCardTitle>
+          <NavegacaoSemana>
+            <PageButtonSm $variant="outline" onClick={() => navegar(-7)} disabled={carregando}>
+              ← Anterior
+            </PageButtonSm>
+            {/* "Hoje" some na semana atual: botão que não faz nada só ocupa
+                espaço e faz a pessoa clicar para descobrir isso. */}
+            {dados.semana.eh_passada && (
+              <PageButtonSm $variant="outline" onClick={() => setReferencia(null)} disabled={carregando}>
+                Hoje
+              </PageButtonSm>
+            )}
+            <PageButtonSm
+              $variant="outline"
+              onClick={() => navegar(7)}
+              /* O backend recusa data futura com 422 — travar aqui evita o
+                 erro em vez de deixar a pessoa provocá-lo. */
+              disabled={carregando || dados.semana.eh_atual}
+            >
+              Próxima →
+            </PageButtonSm>
+          </NavegacaoSemana>
         </PageCardHeader>
         <PageCardContent>
           {dados.tarefas.length === 0 ? (
@@ -214,6 +259,8 @@ export function ExecucaoAba() {
                             <Pilula $tom="alerta">nenhuma tarefa</Pilula>
                           ) : linha.sem_tarefas_ativas ? (
                             <Pilula $tom="atencao">quadro zerado</Pilula>
+                          ) : dados.semana.eh_passada ? (
+                            <ValorDeHoje>{linha.ativas}</ValorDeHoje>
                           ) : (
                             linha.ativas
                           )}
@@ -255,6 +302,9 @@ export function ExecucaoAba() {
                           )}
                         </TableCell>
                         <TableCell>
+                          {/* Sem selo "hoje": o backend corta em `<= fim da
+                              semana`, então a data sempre cai dentro da janela
+                              do cabeçalho. */}
                           {linha.ultima_movimentacao ? (
                             formatarDataHora(linha.ultima_movimentacao)
                           ) : (
@@ -270,6 +320,16 @@ export function ExecucaoAba() {
                 Os dias são <strong>úteis</strong>, pelo calendário do Insper: fim de semana,
                 feriado e semana de provas não contam. Vale para todo o monitoramento, inclusive
                 a aba de Atrasos.
+                {dados.semana.eh_passada && (
+                  <>
+                    {" "}
+                    <strong>Ativas</strong> vem marcada com <strong>hoje</strong> porque não volta
+                    no tempo: depende de onde a tarefa está no quadro agora, e o sistema não guarda
+                    o histórico de movimentação entre colunas. Pelo mesmo motivo, a última
+                    movimentação de uma semana antiga pode aparecer mais cedo do que foi — quando a
+                    tarefa se moveu de novo depois, o registro anterior se perdeu.
+                  </>
+                )}
               </NotaRodape>
             </>
           )}
@@ -322,7 +382,13 @@ export function ExecucaoAba() {
         </PageCardContent>
       </PageCard>
     </PageStack>
+    </ConteudoCarregando>
   );
+}
+
+/** "semana passada", "2 semanas atrás", "3 semanas atrás"... */
+function rotuloSemana(semanasAtras: number): string {
+  return semanasAtras === 1 ? "semana passada" : `${semanasAtras} semanas atrás`;
 }
 
 function plural(dias: number): string {

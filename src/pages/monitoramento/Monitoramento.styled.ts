@@ -213,6 +213,56 @@ export const KpiRotulo = styled.span`
   color: ${theme.colors.mutedForeground};
 `;
 
+/**
+ * Esmaece o conteúdo enquanto a semana nova carrega.
+ *
+ * Os dados anteriores continuam na tela de propósito — trocar tudo por um
+ * esqueleto desmonta a tabela e o navegador perde a posição do scroll, jogando
+ * a pessoa de volta ao topo a cada clique. Mas sem NENHUM sinal o clique
+ * parece não ter funcionado até os números trocarem; o esmaecido preenche esse
+ * intervalo.
+ */
+export const ConteudoCarregando = styled.div<{ $carregando: boolean }>`
+  opacity: ${({ $carregando }) => ($carregando ? 0.55 : 1)};
+  transition: opacity ${theme.transitions.fast};
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/** Os botões de semana anterior / hoje / próxima, no cabeçalho do card. */
+export const NavegacaoSemana = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+`;
+
+/**
+ * Marca a coluna cujo valor é de HOJE, mesmo olhando uma semana passada.
+ *
+ * `total`, `ativas` e `ultima_movimentacao` dependem da coluna em que a tarefa
+ * está agora — reconstruir o passado exigiria histórico de movimentação entre
+ * colunas, que o sistema não guarda (`tarefa.movida_em` é só o carimbo da
+ * última mudança). Sem a marcação, a linha mistura passado e presente em
+ * silêncio: alguém lê "não distribuiu naquela semana, mas tem 5 ativas" e tira
+ * a conclusão errada.
+ */
+export const ValorDeHoje = styled.span`
+  color: ${theme.colors.mutedForeground};
+
+  &::after {
+    content: "hoje";
+    margin-left: 0.3rem;
+    padding: 0.05rem 0.3rem;
+    border-radius: ${theme.borderRadius.sm};
+    border: 1px dashed ${theme.colors.border};
+    font-size: ${theme.fontSize.xs};
+    white-space: nowrap;
+  }
+`;
+
 /** A linha fina embaixo de um KPI, quando o número sozinho não se explica
  *  (ex.: "12/15 com bancas em dia" sob o placar da gestão). */
 export const KpiNota = styled.span`

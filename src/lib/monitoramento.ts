@@ -79,7 +79,16 @@ export interface LinhaTarefas {
 }
 
 export interface Execucao {
-  semana: { inicio: string; fim: string };
+  semana: {
+    inicio: string;
+    fim: string;
+    /** Quem decide é o servidor, não o relógio do navegador — máquina com data
+     *  ou fuso errado mostraria a semana errada como se fosse a de hoje. */
+    eh_atual: boolean;
+    eh_passada: boolean;
+    /** 0 = semana atual, 1 = semana passada, 2 = duas atrás... */
+    semanas_atras: number;
+  };
   resumo_tarefas: {
     projetos: number;
     sem_tarefas: number;
@@ -180,8 +189,19 @@ export function getVisaoGeral(token: string, frenteId?: number | null) {
   return apiFetch<VisaoGeral>(`/monitoramento/visao-geral${query(frenteId)}`, { token });
 }
 
-export function getExecucao(token: string, frenteId?: number | null) {
-  return apiFetch<Execucao>(`/monitoramento/execucao${query(frenteId)}`, { token });
+/**
+ * `referencia` = qualquer dia da semana desejada, em `YYYY-MM-DD`; o servidor
+ * normaliza para a segunda. Sem ela, a semana de hoje.
+ *
+ * Só o passado é aceito — o backend recusa data futura com 422. Semana futura
+ * devolveria "não distribuiu" e "não fez reunião" para todo mundo, porque as
+ * duas medem ausência de registro; a tela acusaria o time por algo que ainda
+ * nem teve chance de acontecer.
+ */
+export function getExecucao(token: string, frenteId?: number | null, referencia?: string) {
+  const partes = [frenteId ? `frente_id=${frenteId}` : "", referencia ? `referencia=${referencia}` : ""];
+  const qs = partes.filter(Boolean).join("&");
+  return apiFetch<Execucao>(`/monitoramento/execucao${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function getAlocacao(token: string, frenteId?: number | null) {
