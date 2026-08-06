@@ -4,6 +4,11 @@ export type TipoNotificacao =
   // 📌 eventos da plataforma (§6.6)
   | "alocado_em_projeto"
   | "entrega_registrada"
+  // 📌 o plano mudou depois de combinado — §5.6 e a data prometida ao cliente
+  | "banca_remarcada"
+  | "entrega_alterada"
+  // 📌 Avaliação de Desempenho (Prioridade 2) — não é de projeto
+  | "lote_desempenho_aberto"
   // 📌 eventos de bancas (§8) — entram por `utils/notificar.py` no backend
   | "escalacao_banca"
   | "troca_banca"
