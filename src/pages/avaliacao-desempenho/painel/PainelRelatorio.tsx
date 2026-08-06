@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getUsuarios } from "@/lib/usuarios";
 import { getRelatorio } from "@/lib/desempenho-relatorio";
 import { RelatorioDesempenho } from "@/components/desempenho/RelatorioDesempenho";
+import { RelatorioPdi } from "@/components/desempenho/RelatorioPdi";
 import type { UsuarioResumo, Posicao } from "@/types/auth";
 import type { DesempenhoRelatorio } from "@/types/desempenho";
 import {
@@ -19,6 +20,15 @@ import {
 import { FieldInput, FieldSelect } from "@/pages/Bancas.styled";
 import { MentoradoButton, MentoradosList } from "../MeusMentorados.styled";
 import { FiltrosRow } from "./Painel.styled";
+import {
+  TipoCard,
+  TipoCardDescricao,
+  TipoCardHeader,
+  TipoCardTitulo,
+  TipoOpcoesGrid,
+} from "../AvaliacaoDesempenho.styled";
+
+type ModoRelatorio = "avaliacoes" | "pdi";
 
 export function PainelRelatorio() {
   const { token } = useAuth();
@@ -29,6 +39,7 @@ export function PainelRelatorio() {
   const [filtroPosicao, setFiltroPosicao] = useState<Posicao | "">("");
 
   const [selecionado, setSelecionado] = useState<UsuarioResumo | null>(null);
+  const [modo, setModo] = useState<ModoRelatorio | null>(null);
   const [relatorio, setRelatorio] = useState<DesempenhoRelatorio | null>(null);
   const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
 
@@ -57,12 +68,17 @@ export function PainelRelatorio() {
       .sort((a, b) => a.nome.localeCompare(b.nome));
   }, [usuarios, busca, filtroPosicao]);
 
-  async function abrirUsuario(usuarioAlvo: UsuarioResumo) {
-    if (!token) return;
+  function abrirUsuario(usuarioAlvo: UsuarioResumo) {
     setSelecionado(usuarioAlvo);
+    setModo(null);
+  }
+
+  async function abrirModo(modoEscolhido: ModoRelatorio) {
+    setModo(modoEscolhido);
+    if (modoEscolhido !== "avaliacoes" || !selecionado || !token) return;
     setCarregandoRelatorio(true);
     try {
-      setRelatorio(await getRelatorio(usuarioAlvo.id, token));
+      setRelatorio(await getRelatorio(selecionado.id, token));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar o relatório");
     } finally {
@@ -83,31 +99,59 @@ export function PainelRelatorio() {
 
   if (carregando) return <PageLoadingBlock />;
 
-  if (selecionado) {
+  if (selecionado && modo) {
     return (
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Relatório individual</PageCardTitle>
-          <PageButton
-            $variant="outline"
-            type="button"
-            onClick={() => {
-              setSelecionado(null);
-              setRelatorio(null);
-            }}
-          >
+          <PageCardTitle>
+            {modo === "avaliacoes" ? "Relatório das avaliações" : "Relatórios de PDI"} — {selecionado.nome}
+          </PageCardTitle>
+          <PageButton $variant="outline" type="button" onClick={() => setModo(null)}>
             Voltar
           </PageButton>
         </PageCardHeader>
         <PageCardContent>
-          {carregandoRelatorio || !relatorio ? (
-            <PageLoadingBlock />
+          {modo === "avaliacoes" ? (
+            carregandoRelatorio || !relatorio ? (
+              <PageLoadingBlock />
+            ) : (
+              <RelatorioDesempenho
+                relatorio={relatorio}
+                pessoa={{ nome: selecionado.nome, posicao: selecionado.posicao }}
+              />
+            )
           ) : (
-            <RelatorioDesempenho
-              relatorio={relatorio}
-              pessoa={{ nome: selecionado.nome, posicao: selecionado.posicao }}
-            />
+            <RelatorioPdi usuarioId={selecionado.id} podeEnviarInicial podeEnviarEncontro />
           )}
+        </PageCardContent>
+      </PageCard>
+    );
+  }
+
+  if (selecionado) {
+    return (
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>{selecionado.nome}</PageCardTitle>
+          <PageButton $variant="outline" type="button" onClick={() => setSelecionado(null)}>
+            Voltar
+          </PageButton>
+        </PageCardHeader>
+        <PageCardContent>
+          <TipoOpcoesGrid>
+            <TipoCard type="button" $disabled={false} onClick={() => abrirModo("avaliacoes")}>
+              <TipoCardHeader>
+                <TipoCardTitulo>Relatório das avaliações</TipoCardTitulo>
+              </TipoCardHeader>
+              <TipoCardDescricao>Periódica e finalização — notas e comentários recebidos.</TipoCardDescricao>
+            </TipoCard>
+            <TipoCard type="button" $disabled={false} onClick={() => abrirModo("pdi")}>
+              <TipoCardHeader>
+                <TipoCardTitulo>Relatórios de PDI</TipoCardTitulo>
+              </TipoCardHeader>
+              <TipoCardDescricao>PDI inicial e encontros de mentoria, com prazo e arquivo.</TipoCardDescricao>
+            </TipoCard>
+          </TipoOpcoesGrid>
         </PageCardContent>
       </PageCard>
     );
@@ -127,8 +171,6 @@ export function PainelRelatorio() {
           />
           <FieldSelect value={filtroPosicao} onChange={(e) => setFiltroPosicao(e.target.value as Posicao | "")}>
             <option value="">Todas as posições</option>
-            <option value="diretor">Diretor</option>
-            <option value="gerente">Gerente</option>
             <option value="coordenador">Coordenador</option>
             <option value="consultor">Consultor</option>
           </FieldSelect>

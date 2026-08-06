@@ -18,6 +18,8 @@ export interface UpdateUsuarioPayload {
    */
   status?: StatusUsuario;
   ativo?: boolean;
+  /** 1º a 8º semestre da graduação, ou `null` pra limpar. */
+  semestre_graduacao?: number | null;
 }
 
 export function updateUsuario(usuarioId: number, dados: UpdateUsuarioPayload, token: string) {
@@ -35,6 +37,7 @@ export interface RegistrarUsuarioPayload {
   posicao: Posicao;
   /** Sem cargo escolhido, o backend usa o cargo padrão configurado. */
   cargo_id?: number | null;
+  semestre_graduacao?: number | null;
 }
 
 export interface TransferirDiretoriaPayload {

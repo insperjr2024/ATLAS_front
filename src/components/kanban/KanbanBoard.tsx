@@ -154,10 +154,7 @@ function ColunaDrop({
           }
         >
           <Ponto $cor={tons.ponto} />
-          <ColunaRotuloTexto>
-            {coluna.nome}
-            {coluna.encerra_tarefa && " ✓"}
-          </ColunaRotuloTexto>
+          <ColunaRotuloTexto>{coluna.nome}</ColunaRotuloTexto>
         </ColunaPilula>
         <Contador>{tarefas.length}</Contador>
         {vencidas > 0 && (

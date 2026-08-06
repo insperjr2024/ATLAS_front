@@ -4,10 +4,16 @@ import { deleteAvaliacao, getAvaliacaoDetalhe, getAvaliacoes } from "@/lib/desem
 import { getLotes } from "@/lib/desempenho-lotes";
 import { getUsuarios } from "@/lib/usuarios";
 import { getProjetos } from "@/lib/projetos";
+import { getFrentes } from "@/lib/frentes";
+import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
+import { frentesDoUsuario } from "@/lib/nucleo";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { DesempenhoAvaliacao, DesempenhoAvaliacaoDetalhe, DesempenhoLote, DesempenhoTipo } from "@/types/desempenho";
-import type { UsuarioResumo } from "@/types/auth";
+import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { ProjetoResumo } from "@/types/projeto";
+import type { Frente } from "@/types/banca";
+
+const SEMESTRES_GRADUACAO = [1, 2, 3, 4, 5, 6, 7, 8];
 import {
   EmptyText,
   ErrorBlock,
@@ -40,6 +46,7 @@ import {
   DetalheNotaGeralRotulo,
   FiltrosRow,
   ListaExpansivel,
+  PessoaContexto,
   PessoaHeader,
   PessoaResumo,
   SubItem,
@@ -70,10 +77,14 @@ export function PainelAvaliadores() {
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [lotes, setLotes] = useState<DesempenhoLote[]>([]);
   const [projetos, setProjetos] = useState<ProjetoResumo[]>([]);
+  const [frentes, setFrentes] = useState<Frente[]>([]);
+  const [usuariosFrentes, setUsuariosFrentes] = useState<UsuarioFrente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [expandido, setExpandido] = useState<number | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<DesempenhoTipo | "todos">("todos");
+  const [filtroFrente, setFiltroFrente] = useState<string>("todas");
+  const [filtroSemestre, setFiltroSemestre] = useState<string>("todos");
 
   const [avaliacaoExpandidaId, setAvaliacaoExpandidaId] = useState<number | null>(null);
   const [detalhes, setDetalhes] = useState<Map<number, DesempenhoAvaliacaoDetalhe>>(new Map());
@@ -84,16 +95,20 @@ export function PainelAvaliadores() {
     setCarregando(true);
     setErro("");
     try {
-      const [a, u, l, p] = await Promise.all([
+      const [a, u, l, p, f, uf] = await Promise.all([
         getAvaliacoes(token),
         getUsuarios(token),
         getLotes(token, false),
         getProjetos(token),
+        getFrentes(token),
+        getUsuariosFrentes(token),
       ]);
       setAvaliacoes(a);
       setUsuarios(u);
       setLotes(l);
       setProjetos(p);
+      setFrentes(f);
+      setUsuariosFrentes(uf);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar avaliações");
     } finally {
@@ -110,10 +125,38 @@ export function PainelAvaliadores() {
   const tipoPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.tipo])), [lotes]);
   const projetoIdsPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.projeto_ids])), [lotes]);
   const nomeProjetoPorId = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
+  const semestrePorUsuario = useMemo(
+    () => new Map(usuarios.map((u) => [u.id, u.semestre_graduacao])),
+    [usuarios],
+  );
+
+  // Só a(s) frente(s) que a PESSOA integra hoje (`usuario_frente`) — nunca a
+  // união das frentes dos projetos que ela avaliou/foi avaliada, que pode
+  // juntar frentes de rodadas diferentes e não bate com "a pessoa está em
+  // 1 ou 2 frentes, nunca mais".
+  const frenteIdsPorUsuario = useMemo(() => {
+    const mapa = new Map<number, Set<number>>();
+    for (const uf of usuariosFrentes) {
+      const atual = mapa.get(uf.usuario_id) ?? new Set<number>();
+      atual.add(uf.frente_id);
+      mapa.set(uf.usuario_id, atual);
+    }
+    return mapa;
+  }, [usuariosFrentes]);
 
   function projetosDoLote(loteId: number): string {
     const ids = projetoIdsPorLote.get(loteId) ?? [];
     return ids.map((id) => nomeProjetoPorId.get(id)).filter(Boolean).join(", ") || "—";
+  }
+
+  // O resumo de contexto que aparece do lado do nome: a frente que a pessoa
+  // integra hoje e o semestre da graduação dela — atributos DA PESSOA, não
+  // da rodada de avaliação.
+  function resumoContexto(pessoaId: number): string {
+    const frentesPessoa = frentesDoUsuario(usuariosFrentes, frentes, pessoaId);
+    const semestre = semestrePorUsuario.get(pessoaId);
+    const partes = [frentesPessoa.join("/") || "sem frente", semestre ? `${semestre}º semestre` : "sem semestre"];
+    return partes.join(" · ");
   }
 
   const avaliacoesFiltradas = useMemo(() => {
@@ -128,8 +171,21 @@ export function PainelAvaliadores() {
       lista.push(a);
       grupos.set(a.avaliador_id, lista);
     }
-    return Array.from(grupos.entries()).sort(([, a], [, b]) => b.length - a.length);
-  }, [avaliacoesFiltradas]);
+    // O filtro de frente/semestre é sobre QUEM avaliou, não sobre a
+    // avaliação em si — aplicado depois de agrupar, senão um filtro
+    // removeria linhas individuais e deixaria o grupo com contagem errada.
+    return Array.from(grupos.entries())
+      .filter(([avaliadorId]) => {
+        if (filtroFrente !== "todas" && !frenteIdsPorUsuario.get(avaliadorId)?.has(Number(filtroFrente))) {
+          return false;
+        }
+        if (filtroSemestre !== "todos" && String(semestrePorUsuario.get(avaliadorId) ?? "") !== filtroSemestre) {
+          return false;
+        }
+        return true;
+      })
+      .sort(([, a], [, b]) => b.length - a.length);
+  }, [avaliacoesFiltradas, filtroFrente, filtroSemestre, frenteIdsPorUsuario, semestrePorUsuario]);
 
   async function toggleDetalhe(avaliacaoId: number) {
     if (!token) return;
@@ -177,6 +233,22 @@ export function PainelAvaliadores() {
             <option value="periodico">Periódica</option>
             <option value="finalizacao">Finalização</option>
           </FieldSelect>
+          <FieldSelect value={filtroFrente} onChange={(e) => setFiltroFrente(e.target.value)}>
+            <option value="todas">Todas as frentes</option>
+            {frentes.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.nome}
+              </option>
+            ))}
+          </FieldSelect>
+          <FieldSelect value={filtroSemestre} onChange={(e) => setFiltroSemestre(e.target.value)}>
+            <option value="todos">Todos os semestres</option>
+            {SEMESTRES_GRADUACAO.map((n) => (
+              <option key={n} value={n}>
+                {n}º semestre
+              </option>
+            ))}
+          </FieldSelect>
         </FiltrosRow>
 
         {porAvaliador.length === 0 ? (
@@ -189,8 +261,11 @@ export function PainelAvaliadores() {
                   type="button"
                   onClick={() => setExpandido((atual) => (atual === avaliadorId ? null : avaliadorId))}
                 >
-                  <span>{nomes.get(avaliadorId) ?? `Usuário ${avaliadorId}`}</span>
-                  <PessoaResumo>{lista.length} avaliação(ões) enviada(s)</PessoaResumo>
+                  <span>
+                    {nomes.get(avaliadorId) ?? `Usuário ${avaliadorId}`}{" "}
+                    <PessoaContexto>({resumoContexto(avaliadorId)})</PessoaContexto>
+                  </span>
+                  <PessoaResumo>{lista.length} avaliações enviadas</PessoaResumo>
                 </PessoaHeader>
                 {expandido === avaliadorId && (
                   <SubLista>

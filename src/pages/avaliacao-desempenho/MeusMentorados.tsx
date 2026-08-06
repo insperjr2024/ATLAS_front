@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getMeusMentorados } from "@/lib/desempenho-mentorias";
 import { getRelatorio } from "@/lib/desempenho-relatorio";
 import { RelatorioDesempenho } from "@/components/desempenho/RelatorioDesempenho";
+import { RelatorioPdi } from "@/components/desempenho/RelatorioPdi";
 import type { DesempenhoMentoria, DesempenhoRelatorio } from "@/types/desempenho";
 import {
   EmptyText,
@@ -21,6 +22,15 @@ import {
   PageTitle,
 } from "@/styles/page.styled";
 import { MentoradoButton, MentoradosList } from "./MeusMentorados.styled";
+import {
+  TipoCard,
+  TipoCardDescricao,
+  TipoCardHeader,
+  TipoCardTitulo,
+  TipoOpcoesGrid,
+} from "./AvaliacaoDesempenho.styled";
+
+type ModoRelatorio = "avaliacoes" | "pdi";
 
 export function MeusMentorados() {
   const { usuario, token } = useAuth();
@@ -29,6 +39,7 @@ export function MeusMentorados() {
   const [erro, setErro] = useState("");
 
   const [selecionado, setSelecionado] = useState<DesempenhoMentoria | null>(null);
+  const [modo, setModo] = useState<ModoRelatorio | null>(null);
   const [relatorio, setRelatorio] = useState<DesempenhoRelatorio | null>(null);
   const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
 
@@ -50,12 +61,17 @@ export function MeusMentorados() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.id, token]);
 
-  async function abrirMentorado(mentoria: DesempenhoMentoria) {
-    if (!token) return;
+  function abrirMentorado(mentoria: DesempenhoMentoria) {
     setSelecionado(mentoria);
+    setModo(null);
+  }
+
+  async function abrirModo(modoEscolhido: ModoRelatorio) {
+    setModo(modoEscolhido);
+    if (modoEscolhido !== "avaliacoes" || !selecionado || !token) return;
     setCarregandoRelatorio(true);
     try {
-      setRelatorio(await getRelatorio(mentoria.mentorado_id, token));
+      setRelatorio(await getRelatorio(selecionado.mentorado_id, token));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar o relatório do mentorado");
     } finally {
@@ -85,31 +101,56 @@ export function MeusMentorados() {
         </PageHeaderText>
       </PageHeader>
 
-      {selecionado ? (
+      {selecionado && modo ? (
         <PageCard>
           <PageCardHeader>
-            <PageCardTitle>Relatório do mentorado</PageCardTitle>
-            <PageButton
-              $variant="outline"
-              type="button"
-              onClick={() => {
-                setSelecionado(null);
-                setRelatorio(null);
-              }}
-            >
+            <PageCardTitle>
+              {modo === "avaliacoes" ? "Relatório das avaliações" : "Relatórios de PDI"} —{" "}
+              {selecionado.mentorado_nome}
+            </PageCardTitle>
+            <PageButton $variant="outline" type="button" onClick={() => setModo(null)}>
               Voltar
             </PageButton>
           </PageCardHeader>
           <PageCardContent>
-            {carregandoRelatorio || !relatorio ? (
-              <PageLoadingBlock />
+            {modo === "avaliacoes" ? (
+              carregandoRelatorio || !relatorio ? (
+                <PageLoadingBlock />
+              ) : (
+                // Mentorado é sempre consultor (regra 2.5 — mentor=coordenador).
+                <RelatorioDesempenho
+                  relatorio={relatorio}
+                  pessoa={{ nome: selecionado.mentorado_nome ?? "", posicao: "consultor" }}
+                />
+              )
             ) : (
-              // Mentorado é sempre consultor (regra 2.5 — mentor=coordenador).
-              <RelatorioDesempenho
-                relatorio={relatorio}
-                pessoa={{ nome: selecionado.mentorado_nome ?? "", posicao: "consultor" }}
-              />
+              <RelatorioPdi usuarioId={selecionado.mentorado_id} podeEnviarInicial={false} podeEnviarEncontro />
             )}
+          </PageCardContent>
+        </PageCard>
+      ) : selecionado ? (
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>{selecionado.mentorado_nome}</PageCardTitle>
+            <PageButton $variant="outline" type="button" onClick={() => setSelecionado(null)}>
+              Voltar
+            </PageButton>
+          </PageCardHeader>
+          <PageCardContent>
+            <TipoOpcoesGrid>
+              <TipoCard type="button" $disabled={false} onClick={() => abrirModo("avaliacoes")}>
+                <TipoCardHeader>
+                  <TipoCardTitulo>Relatório das avaliações</TipoCardTitulo>
+                </TipoCardHeader>
+                <TipoCardDescricao>Periódica e finalização — notas e comentários recebidos.</TipoCardDescricao>
+              </TipoCard>
+              <TipoCard type="button" $disabled={false} onClick={() => abrirModo("pdi")}>
+                <TipoCardHeader>
+                  <TipoCardTitulo>Relatórios de PDI</TipoCardTitulo>
+                </TipoCardHeader>
+                <TipoCardDescricao>PDI inicial e encontros de mentoria, com prazo e arquivo.</TipoCardDescricao>
+              </TipoCard>
+            </TipoOpcoesGrid>
           </PageCardContent>
         </PageCard>
       ) : (
