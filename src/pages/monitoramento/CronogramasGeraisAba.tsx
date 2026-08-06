@@ -20,7 +20,7 @@ import {
   ProjetoCard,
   type TomPilula,
 } from "./Monitoramento.styled";
-import { useMonitoramento } from "./MonitoramentoLayout";
+import { useFiltroFrente } from "./FiltroFrente";
 
 /** Um limiar curto o bastante para chamar atenção antes de estourar — não
  *  é a mesma régua do backend (que só distingue em_contagem/estourou), é
@@ -59,7 +59,7 @@ const VOLTAR_PARA_AQUI = {
  */
 export function CronogramasGeraisAba() {
   const { token } = useAuth();
-  const { frenteId } = useMonitoramento();
+  const { frenteId, seletor } = useFiltroFrente();
   const [dados, setDados] = useState<CronogramasGerais | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -84,23 +84,39 @@ export function CronogramasGeraisAba() {
 
   if (erro) {
     return (
-      <ErrorBlock>
-        <ErrorText>{erro}</ErrorText>
-        <PageButton $variant="outline" onClick={carregar}>
-          Tentar novamente
-        </PageButton>
-      </ErrorBlock>
+      <PageStack>
+        {seletor}
+        <ErrorBlock>
+          <ErrorText>{erro}</ErrorText>
+          <PageButton $variant="outline" onClick={carregar}>
+            Tentar novamente
+          </PageButton>
+        </ErrorBlock>
+      </PageStack>
     );
   }
 
-  if (carregando || !dados) return <PageLoadingBlock />;
+  if (carregando || !dados) {
+    return (
+      <PageStack>
+        {seletor}
+        <PageLoadingBlock />
+      </PageStack>
+    );
+  }
 
   if (dados.projetos.length === 0) {
-    return <EmptyText>Nenhum projeto na sua visão.</EmptyText>;
+    return (
+      <PageStack>
+        {seletor}
+        <EmptyText>Nenhum projeto na sua visão.</EmptyText>
+      </PageStack>
+    );
   }
 
   return (
     <PageStack>
+      {seletor}
       <AvisoSomenteLeitura>
         Este painel é só para consulta. Para editar um cronograma, clique no card e abra o
         projeto correspondente.
