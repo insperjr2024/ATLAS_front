@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getExecucao, type Execucao, type LinhaTarefas } from "@/lib/monitoramento";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
-import { MostrarTodos, useLimite } from "./ListaLimitada";
+import { ConteudoPaginado, POR_PAGINA_TABELA, Paginacao, usePaginacao } from "./Paginacao";
 import {
   PageStack,
   PageCard,
@@ -40,7 +40,7 @@ import {
   type NivelSeveridade,
   type TomPilula,
 } from "./Monitoramento.styled";
-import { useMonitoramento } from "./MonitoramentoLayout";
+import { useFiltroFrente } from "./FiltroFrente";
 
 /**
  * §7.2 — ver quem não está distribuindo tarefa nem fazendo reunião, sem
@@ -53,7 +53,7 @@ import { useMonitoramento } from "./MonitoramentoLayout";
  */
 export function ExecucaoAba() {
   const { token } = useAuth();
-  const { frenteId } = useMonitoramento();
+  const { frenteId, seletor } = useFiltroFrente();
   const [dados, setDados] = useState<Execucao | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -107,16 +107,24 @@ export function ExecucaoAba() {
   // Ordenada por severidade logo acima, então cortar esconde a cauda e não o
   // que pede ação. Fica antes dos `return` de erro e carregando — hook depois
   // deles seria condicional.
-  const listaSemTarefa = useLimite(semTarefa);
+  const listaSemTarefa = usePaginacao(semTarefa);
+  // As duas tabelas da aba passam de 50 linhas com o núcleo cheio. Rolagem
+  // interna dava ~5 telas dentro do card, capturando a roda do mouse; página
+  // resolve sem aninhar rolagem.
+  const paginaTarefas = usePaginacao(tarefasOrdenadas, POR_PAGINA_TABELA);
+  const paginaReunioes = usePaginacao(dados?.reunioes ?? [], POR_PAGINA_TABELA);
 
   if (erro) {
     return (
-      <ErrorBlock>
-        <ErrorText>{erro}</ErrorText>
-        <PageButton $variant="outline" onClick={carregar}>
-          Tentar novamente
-        </PageButton>
-      </ErrorBlock>
+      <PageStack>
+        {seletor}
+        <ErrorBlock>
+          <ErrorText>{erro}</ErrorText>
+          <PageButton $variant="outline" onClick={carregar}>
+            Tentar novamente
+          </PageButton>
+        </ErrorBlock>
+      </PageStack>
     );
   }
 
@@ -124,13 +132,21 @@ export function ExecucaoAba() {
      ficam na tela até os novos chegarem — trocar tudo por um bloco vazio
      desmonta a tabela, e o navegador perde a posição do scroll: a pessoa
      clica em "anterior" e é jogada de volta pro topo da página. */
-  if (!dados) return <PageLoadingBlock />;
+  if (!dados) {
+    return (
+      <PageStack>
+        {seletor}
+        <PageLoadingBlock />
+      </PageStack>
+    );
+  }
 
   const resumo = dados.resumo_tarefas;
 
   return (
     <ConteudoCarregando $carregando={carregando}>
     <PageStack>
+      {seletor}
       {/* Faixa, e não grade de cards: são cinco recortes da MESMA população de
           projetos, então precisam ser lidos lado a lado. Cinco cartões
           idênticos sugeririam cinco assuntos independentes. É o mesmo padrão
@@ -170,24 +186,26 @@ export function ExecucaoAba() {
             <PageCardTitle>Projetos sem tarefa atribuída ({semTarefa.length})</PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
-            <ListaSimples>
-              {listaSemTarefa.visiveis.map((linha) => (
-                <ItemAtencao key={linha.projeto_id} $nivel={nivelSemTarefa(linha)}>
-                  <strong>
-                    <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`}>{linha.projeto_nome}</LinkProjeto>{" "}
-                    {/* Mesmos tons da coluna "Ativas" da tabela abaixo, para as
-                        duas leituras da mesma situação não se contradizerem. */}
-                    {linha.sem_tarefas ? (
-                      <Pilula $tom="alerta">nunca recebeu tarefa</Pilula>
-                    ) : (
-                      <Pilula $tom="atencao">quadro zerado</Pilula>
-                    )}
-                  </strong>
-                  <span>{motivoSemTarefa(linha)}</span>
-                </ItemAtencao>
-              ))}
-            </ListaSimples>
-            <MostrarTodos estado={listaSemTarefa} total={semTarefa.length} />
+            <ConteudoPaginado estado={listaSemTarefa}>
+              <ListaSimples>
+                {listaSemTarefa.visiveis.map((linha) => (
+                  <ItemAtencao key={linha.projeto_id} $nivel={nivelSemTarefa(linha)}>
+                    <strong>
+                      <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`}>{linha.projeto_nome}</LinkProjeto>{" "}
+                      {/* Mesmos tons da coluna "Ativas" da tabela abaixo, para as
+                          duas leituras da mesma situação não se contradizerem. */}
+                      {linha.sem_tarefas ? (
+                        <Pilula $tom="alerta">nunca recebeu tarefa</Pilula>
+                      ) : (
+                        <Pilula $tom="atencao">quadro zerado</Pilula>
+                      )}
+                    </strong>
+                    <span>{motivoSemTarefa(linha)}</span>
+                  </ItemAtencao>
+                ))}
+              </ListaSimples>
+            </ConteudoPaginado>
+            <Paginacao estado={listaSemTarefa} />
           </PageCardContent>
         </PageCard>
       )}
@@ -230,7 +248,8 @@ export function ExecucaoAba() {
             <>
               {/* 7 colunas não cabem num celular. Rolar na horizontal preserva
                   a leitura da linha; espremer quebraria cada célula em três. */}
-              <TabelaRolagem $min="52rem" $max="30rem">
+              <ConteudoPaginado estado={paginaTarefas}>
+                <TabelaRolagem $min="52rem">
                 <DataTable>
                   <TableHead>
                     <TableRow>
@@ -244,7 +263,7 @@ export function ExecucaoAba() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {tarefasOrdenadas.map((linha) => (
+                    {paginaTarefas.visiveis.map((linha) => (
                       <TableRow key={linha.projeto_id}>
                         <TableCell>
                           <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`}>
@@ -326,6 +345,8 @@ export function ExecucaoAba() {
                   </TableBody>
                 </DataTable>
               </TabelaRolagem>
+            </ConteudoPaginado>
+            <Paginacao estado={paginaTarefas} />
             </>
           )}
         </PageCardContent>
@@ -339,7 +360,9 @@ export function ExecucaoAba() {
           {dados.reunioes.length === 0 ? (
             <EmptyText>Nenhum projeto na sua visão.</EmptyText>
           ) : (
-            <TabelaRolagem $min="30rem" $max="26rem">
+            <>
+              <ConteudoPaginado estado={paginaReunioes}>
+                <TabelaRolagem $min="30rem">
               <DataTable>
                 <TableHead>
                   <TableRow>
@@ -349,7 +372,7 @@ export function ExecucaoAba() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {dados.reunioes.map((linha) => (
+                  {paginaReunioes.visiveis.map((linha) => (
                     <TableRow key={linha.projeto_id}>
                       <TableCell>
                         <LinkProjeto to={`/projetos/${linha.projeto_id}/reunioes`}>{linha.projeto_nome}</LinkProjeto>
@@ -372,7 +395,10 @@ export function ExecucaoAba() {
                   ))}
                 </TableBody>
               </DataTable>
-            </TabelaRolagem>
+                </TabelaRolagem>
+              </ConteudoPaginado>
+              <Paginacao estado={paginaReunioes} />
+            </>
           )}
         </PageCardContent>
       </PageCard>

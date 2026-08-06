@@ -6,8 +6,6 @@ import type { Frente } from "@/types/banca";
 import { pode } from "@/utils/permissoes";
 import { PageStack } from "@/styles/page.styled";
 import {
-  FieldSelect,
-  FrenteTravadaAviso,
   PageHeaderRow,
   PageHeaderText,
   PageHeading,
@@ -17,7 +15,10 @@ import {
 } from "./Monitoramento.styled";
 
 export interface MonitoramentoContexto {
-  frenteId: number | null;
+  /** As frentes disponíveis para o seletor. O layout carrega UMA vez e
+   *  compartilha — cinco abas buscando a mesma lista seriam cinco requisições
+   *  iguais a cada troca de aba. Quem guarda a escolha é cada aba, via
+   *  `useFiltroFrente`. */
   frentes: Frente[];
 }
 
@@ -36,9 +37,7 @@ export function useMonitoramento() {
 export function MonitoramentoLayout() {
   const { usuario, token } = useAuth();
   const [frentes, setFrentes] = useState<Frente[]>([]);
-  const [frenteId, setFrenteId] = useState<number | null>(null);
 
-  const podeFiltrar = pode(usuario, "filtrar_por_frente");
   const podeVerTarefasGerais = pode(usuario, "ver_tarefas_gerais");
 
   useEffect(() => {
@@ -46,7 +45,7 @@ export function MonitoramentoLayout() {
     getFrentes(token).then(setFrentes).catch(() => setFrentes([]));
   }, [token]);
 
-  const contexto: MonitoramentoContexto = { frenteId, frentes };
+  const contexto: MonitoramentoContexto = { frentes };
 
   return (
     <PageStack>
@@ -58,22 +57,6 @@ export function MonitoramentoLayout() {
           </PageSubheading>
         </PageHeaderText>
 
-        {podeFiltrar ? (
-          <FieldSelect
-            value={frenteId ? String(frenteId) : ""}
-            onChange={(e) => setFrenteId(e.target.value ? Number(e.target.value) : null)}
-            aria-label="Filtrar por frente"
-          >
-            <option value="">Todas as frentes</option>
-            {frentes.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nome}
-              </option>
-            ))}
-          </FieldSelect>
-        ) : (
-          <FrenteTravadaAviso>Visão restrita à sua frente</FrenteTravadaAviso>
-        )}
       </PageHeaderRow>
 
       <TabBar>

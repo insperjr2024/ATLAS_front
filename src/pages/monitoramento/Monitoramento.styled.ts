@@ -55,8 +55,7 @@ export const DataTable = styled(DataTableBase)`
  * espremer as colunas até o texto quebrar em cada célula. O `min-width` é o
  * ponto em que a tabela ainda é legível; abaixo dele, rolar é melhor do que
  * encolher.
- */
-/**
+ *
  * ⚠ **As duas rolagens moram no MESMO elemento, de propósito.**
  *
  * A tentação é aninhar: um container para a horizontal, outro por fora para a
@@ -69,9 +68,9 @@ export const DataTable = styled(DataTableBase)`
  * Com `$max`, a tabela ganha rolagem vertical e o cabeçalho gruda no topo. Sem
  * ele, o comportamento é o de antes: só horizontal, altura livre.
  *
- * ⭐ Rolagem aqui, e corte com "mostrar todos" nos cards de alerta (ver
- * `useLimite`): nestas tabelas a pessoa procura ALGUÉM ESPECÍFICO, e cortar em
- * 8 esconderia justamente quem ela quer.
+ * ⭐ Rolagem aqui, e páginas nos cards de alerta (ver `usePaginacao`): nestas
+ * tabelas a pessoa procura ALGUÉM ESPECÍFICO, e mandá-la adivinhar em qual
+ * página está o colega seria pior do que rolar.
  */
 export const TabelaRolagem = styled.div<{ $min?: string; $max?: string }>`
   overflow-x: auto;
@@ -98,29 +97,63 @@ export const TabelaRolagem = styled.div<{ $min?: string; $max?: string }>`
   }
 `;
 
-/** O botão que revela o resto de uma lista cortada. Discreto e em largura
- *  cheia: é rodapé de card, não ação principal. */
-export const BotaoMais = styled.button`
-  display: block;
-  width: 100%;
-  margin-top: ${theme.spacing.sm};
-  padding: 0.35rem;
-  border: 1px dashed ${theme.colors.border};
+/** A linha do filtro de frente, no topo de cada aba.
+ *
+ *  Alinhado à direita para não competir com o primeiro card: é um controle de
+ *  recorte, e o assunto da aba é o conteúdo abaixo dele. */
+export const BarraFiltro = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+`;
+
+/** O rodapé de navegação entre páginas de um card. Discreto e centrado: é
+ *  rodapé, não ação principal da tela. */
+export const BarraPaginacao = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.md};
+  padding-top: ${theme.spacing.sm};
+  border-top: 1px solid ${theme.colors.border};
+`;
+
+export const BotaoPagina = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.md};
   background: transparent;
-  font-size: ${theme.fontSize.xs};
-  color: ${theme.colors.mutedForeground};
+  color: ${theme.colors.foreground};
   cursor: pointer;
 
-  &:hover {
-    border-style: solid;
-    color: ${theme.colors.foreground};
+  &:hover:not(:disabled) {
+    background: ${theme.colors.muted};
+  }
+
+  /* Desabilitado continua ocupando o lugar em vez de sumir: o contador entre
+     as duas setas saltaria de posição a cada troca de página. */
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
   }
 
   &:focus-visible {
     outline: 2px solid ${theme.colors.ring};
     outline-offset: 2px;
   }
+`;
+
+export const ContadorPagina = styled.span`
+  min-width: 7rem;
+  font-size: ${theme.fontSize.xs};
+  font-variant-numeric: tabular-nums;
+  color: ${theme.colors.mutedForeground};
+  text-align: center;
 `;
 
 /**
@@ -978,6 +1011,18 @@ export const DemandaAltaProjetos = styled.span`
   font-size: ${theme.fontSize.xs};
   font-weight: ${theme.fontWeight.normal};
   color: ${theme.colors.mutedForeground};
+`;
+
+/** O número de vagas livres de uma frente.
+ *
+ *  Zero fica apagado em vez de vermelho: "não cabe mais ninguém aqui" é um
+ *  fato de planejamento, não um problema a resolver — a frente pode estar
+ *  cheia justamente porque vendeu bem. */
+export const VagaLivre = styled.span<{ $vazio: boolean }>`
+  font-variant-numeric: tabular-nums;
+  font-weight: ${({ $vazio }) =>
+    $vazio ? theme.fontWeight.normal : theme.fontWeight.semibold};
+  color: ${({ $vazio }) => ($vazio ? theme.colors.mutedForeground : theme.colors.foreground)};
 `;
 
 export const ChipsProjetos = styled.div`

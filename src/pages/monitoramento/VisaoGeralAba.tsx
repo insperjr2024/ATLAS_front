@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import { LIMITE_LISTA, MostrarTodos, useLimite } from "./ListaLimitada";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { ConteudoPaginado, POR_PAGINA, Paginacao, usePaginacao } from "./Paginacao";
 import { useAuth } from "@/context/AuthContext";
 import { getVisaoGeral, type VisaoGeral } from "@/lib/monitoramento";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
@@ -38,7 +38,7 @@ import {
   Sparkline,
   type NivelSeveridade,
 } from "./Monitoramento.styled";
-import { useMonitoramento } from "./MonitoramentoLayout";
+import { useFiltroFrente } from "./FiltroFrente";
 
 /** Itens sem contagem de dias (kickoff não marcado, sem reunião na semana) não
  *  são menos importantes — só não têm magnitude. Ficam no degrau do meio em
@@ -52,7 +52,7 @@ function nivelAtencao(dias: number | null): NivelSeveridade {
 
 export function VisaoGeralAba() {
   const { token } = useAuth();
-  const { frenteId } = useMonitoramento();
+  const { frenteId, seletor } = useFiltroFrente();
   const [dados, setDados] = useState<VisaoGeral | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -77,37 +77,48 @@ export function VisaoGeralAba() {
 
   if (erro) {
     return (
-      <ErrorBlock>
-        <ErrorText>{erro}</ErrorText>
-        <PageButton $variant="outline" onClick={carregar}>
-          Tentar novamente
-        </PageButton>
-      </ErrorBlock>
+      <PageStack>
+        {seletor}
+        <ErrorBlock>
+          <ErrorText>{erro}</ErrorText>
+          <PageButton $variant="outline" onClick={carregar}>
+            Tentar novamente
+          </PageButton>
+        </ErrorBlock>
+      </PageStack>
     );
   }
 
-  if (carregando || !dados) return <PageLoadingBlock />;
+  if (carregando || !dados) {
+    return (
+      <PageStack>
+        {seletor}
+        <PageLoadingBlock />
+      </PageStack>
+    );
+  }
 
-  return <ConteudoVisaoGeral dados={dados} />;
+  return <ConteudoVisaoGeral dados={dados} seletor={seletor} />;
 }
 
 /**
  * O corpo da aba, montado só quando `dados` já chegou.
  *
- * Separado do componente de cima por causa dos `useLimite`: lá em cima há dois
+ * Separado do componente de cima por causa dos `usePaginacao`: lá em cima há dois
  * `return` cedo (erro e carregando), e hook depois deles seria hook
  * condicional — a contagem muda entre renders e o React desalinha o estado.
  */
-function ConteudoVisaoGeral({ dados }: { dados: VisaoGeral }) {
+function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: ReactNode }) {
   const maxTendencia = Math.max(1, ...dados.entregas.tendencia.map((t) => t.total));
 
   // Estes três crescem com o tamanho do núcleo e não têm teto no backend.
-  const atencao = useLimite(dados.atencao_agora, LIMITE_LISTA);
-  const bancas = useLimite(dados.bancas_proximas, LIMITE_LISTA);
-  const parados = useLimite(dados.tempo_parado, LIMITE_LISTA);
+  const atencao = usePaginacao(dados.atencao_agora, POR_PAGINA);
+  const bancas = usePaginacao(dados.bancas_proximas, POR_PAGINA);
+  const parados = usePaginacao(dados.tempo_parado, POR_PAGINA);
 
   return (
     <PageStack>
+      {seletor}
       <KpiGrid>
         <KpiCard>
           <KpiValor>{dados.kpis.total}</KpiValor>
@@ -224,19 +235,21 @@ function ConteudoVisaoGeral({ dados }: { dados: VisaoGeral }) {
               <EmptyText>Nenhuma banca agendada para a próxima semana.</EmptyText>
             ) : (
               <>
-                <ListaSimples>
-                  {bancas.visiveis.map((b, i) => (
-                    <ItemLista key={i}>
-                      <span>
-                        {b.projeto_nome} · {b.escopo}
-                      </span>
-                      <small>{formatarDataHora(b.data_hora)}</small>
-                    </ItemLista>
-                  ))}
-                </ListaSimples>
+                <ConteudoPaginado estado={bancas}>
+                  <ListaSimples>
+                    {bancas.visiveis.map((b, i) => (
+                      <ItemLista key={i}>
+                        <span>
+                          {b.projeto_nome} · {b.escopo}
+                        </span>
+                        <small>{formatarDataHora(b.data_hora)}</small>
+                      </ItemLista>
+                    ))}
+                  </ListaSimples>
+                </ConteudoPaginado>
                 {/* A janela de 7 dias limita o período, não a quantidade: um
                     núcleo grande pode ter 25 bancas numa semana de validação. */}
-                <MostrarTodos estado={bancas} total={dados.bancas_proximas.length} genero="f" />
+                <Paginacao estado={bancas} />
               </>
             )}
           </PageCardContent>
@@ -251,17 +264,19 @@ function ConteudoVisaoGeral({ dados }: { dados: VisaoGeral }) {
               <EmptyText>Nenhum projeto parado entre escopos.</EmptyText>
             ) : (
               <>
-                <ListaSimples>
-                  {parados.visiveis.map((p) => (
-                    <ItemLista key={p.projeto_id}>
-                      <LinkProjeto to={`/projetos/${p.projeto_id}`}>
-                        {p.projeto_nome} — entregou {p.escopo_entregue}
-                      </LinkProjeto>
-                      <small>há {p.dias_parado} dias</small>
-                    </ItemLista>
-                  ))}
-                </ListaSimples>
-                <MostrarTodos estado={parados} total={dados.tempo_parado.length} />
+                <ConteudoPaginado estado={parados}>
+                  <ListaSimples>
+                    {parados.visiveis.map((p) => (
+                      <ItemLista key={p.projeto_id}>
+                        <LinkProjeto to={`/projetos/${p.projeto_id}`}>
+                          {p.projeto_nome} — entregou {p.escopo_entregue}
+                        </LinkProjeto>
+                        <small>há {p.dias_parado} dias</small>
+                      </ItemLista>
+                    ))}
+                  </ListaSimples>
+                </ConteudoPaginado>
+                <Paginacao estado={parados} />
               </>
             )}
           </PageCardContent>
@@ -277,29 +292,32 @@ function ConteudoVisaoGeral({ dados }: { dados: VisaoGeral }) {
             <EmptyText>Nada pedindo ação no momento.</EmptyText>
           ) : (
             <>
-              <ListaSimples>
-                {atencao.visiveis.map((item, i) => (
-                  /* A cor do marcador carrega a gravidade: sem ela uma lista de
-                     15 itens grita igual e a diretoria não sabe por onde começar. */
-                  <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
-                    <strong>
-                      <LinkProjeto to={`/projetos/${item.projeto_id}`}>
-                        {item.projeto_nome}
-                      </LinkProjeto>
-                    </strong>
-                    {/* O motivo vem pronto e específico do backend — §7.1 é
-                        explícito que não pode ser rótulo genérico. */}
-                    <span>
-                      {item.motivo}
-                      {item.dias != null && ` · há ${item.dias} dias`}
-                    </span>
-                  </ItemAtencao>
-                ))}
-              </ListaSimples>
-              {/* Este é o card que mais cresce da tela: 34 itens já hoje, e ele
-                  sobe junto com o número de projetos. A lista vem ordenada por
-                  gravidade, então o corte esconde a cauda, não o que importa. */}
-              <MostrarTodos estado={atencao} total={dados.atencao_agora.length} />
+              <ConteudoPaginado estado={atencao}>
+                <ListaSimples>
+                  {atencao.visiveis.map((item, i) => (
+                    /* A cor do marcador carrega a gravidade: sem ela uma lista
+                       de 15 itens grita igual e a diretoria não sabe por onde
+                       começar. */
+                    <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
+                      <strong>
+                        <LinkProjeto to={`/projetos/${item.projeto_id}`}>
+                          {item.projeto_nome}
+                        </LinkProjeto>
+                      </strong>
+                      {/* O motivo vem pronto e específico do backend — §7.1 é
+                          explícito que não pode ser rótulo genérico. */}
+                      <span>
+                        {item.motivo}
+                        {item.dias != null && ` · há ${item.dias} dias`}
+                      </span>
+                    </ItemAtencao>
+                  ))}
+                </ListaSimples>
+              </ConteudoPaginado>
+              {/* Este é o card que mais cresce da tela: 77 itens com o núcleo
+                  cheio. A lista vem ordenada por gravidade, então a página 1 é
+                  o que pede ação e as seguintes são a cauda. */}
+              <Paginacao estado={atencao} />
             </>
           )}
         </PageCardContent>

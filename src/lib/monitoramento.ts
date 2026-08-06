@@ -166,9 +166,33 @@ export interface LinhaCarga {
   demanda_alta: boolean;
 }
 
+/** Quantos projetos ainda cabem numa frente, por papel.
+ *
+ *  Os dois papéis vêm SEPARADOS de propósito. Virar um número só de "projetos
+ *  vendáveis" exigiria assumir o tamanho da equipe, e a suposição sumiria
+ *  dentro do resultado: quem lesse "8" não saberia que os consultores já estão
+ *  no limite e que o 8 veio inteiro dos coordenadores. */
+export interface CapacidadeFrente {
+  /** `null` para quem não tem frente cadastrada. */
+  frente_id: number | null;
+  frente_nome: string;
+  consultor: number;
+  coordenador: number;
+  pessoas: number;
+}
+
 export interface Alocacao {
   coordenadores: LinhaCarga[];
   consultores: LinhaCarga[];
+  capacidade: {
+    por_frente: CapacidadeFrente[];
+    /** ⚠ NÃO é a soma das linhas: quem está em duas frentes aparece nas duas,
+     *  e somar contaria a vaga dela duas vezes. O backend conta por pessoa. */
+    total: { consultor: number; coordenador: number };
+    /** Até quantos projetos cada papel carrega sem sobrecarregar. Vem do
+     *  backend para a tela não reescrever os números por conta própria. */
+    teto: { consultor: number; coordenador: number };
+  };
   /** Quem caiu na faixa mais alta do seu papel, já filtrado pelo backend.
    *  É o que devolve a leitura de "quem é o gargalo" (§7.3), perdida quando as
    *  duas tabelas passaram a ordenar do menos carregado para o mais. */
@@ -176,7 +200,6 @@ export interface Alocacao {
     coordenadores: LinhaCarga[];
     consultores: LinhaCarga[];
   };
-  grade_horaria_disponivel: boolean;
 }
 
 export interface Atrasos {

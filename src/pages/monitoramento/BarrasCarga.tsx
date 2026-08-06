@@ -8,14 +8,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { MostrarTodos, useLimite } from "./ListaLimitada";
+import { Paginacao, usePaginacao } from "./Paginacao";
 import { ROTULO_STATUS } from "@/lib/projetos";
 import type { LinhaCarga } from "@/lib/monitoramento";
 
 /** Mais barras que isso e a comparação entre alturas já não cabe numa tela.
  *  Maior que o limite das listas (8) porque barra ocupa menos altura que um
  *  item de lista com duas linhas de texto. */
-const LIMITE_BARRAS = 15;
+const BARRAS_POR_PAGINA = 15;
 import type { StatusProjeto } from "@/types/projeto";
 import { EmptyText } from "@/styles/page.styled";
 import {
@@ -85,18 +85,29 @@ export function BarrasCarga({
       .sort((a, b) => b.valor - a.valor || a.nome.localeCompare(b.nome));
   }, [linhas, etapa]);
 
-  // ⭐ Corta em 15, e NÃO rola. Rolagem funciona para lista; para gráfico de
+  // ⭐ Páginas de 15, e NÃO rolagem. Rolagem funciona para lista; num gráfico de
   // barras ela destrói o próprio recurso — comparar alturas exige ver as barras
-  // ao mesmo tempo, e o que está fora da tela não se compara com nada. Além
-  // disso o gráfico já vem ordenado do mais carregado, então as 15 primeiras
-  // são exatamente a resposta de "quem está sobrecarregado"; a cauda é a lista
-  // de quem está tranquilo, que a tabela abaixo mostra inteira.
-  const grafico = useLimite(todos, LIMITE_BARRAS);
+  // ao mesmo tempo, e o que está fora da tela não se compara com nada. Cada
+  // página é um conjunto inteiro na tela, comparável entre si.
+  //
+  // Como o gráfico já vem ordenado do mais carregado, a página 1 é a resposta de
+  // "quem está sobrecarregado" e as seguintes são a cauda tranquila.
+  const grafico = usePaginacao(todos, BARRAS_POR_PAGINA);
   const dados = grafico.visiveis;
+
+  // A régua do eixo X: o maior valor do conjunto INTEIRO, para as páginas serem
+  // comparáveis. `todos` já vem ordenado, então é o primeiro.
+  const escalaMaxima = Math.max(1, todos[0]?.valor ?? 1);
 
   // Uma barra ocupa ~1.75rem; o container precisa de altura fixa porque o
   // ResponsiveContainer mede o pai e em altura `auto` calcula zero.
-  const altura = `${Math.max(8, dados.length * 1.75 + 2)}rem`;
+  //
+  // ⭐ Com mais de uma página, a altura é a da PÁGINA CHEIA, não a da página
+  // atual. A última costuma ter menos barras, e dimensioná-la pelo conteúdo
+  // encolhia o card ao virar a página — a tela inteira saltava, e o botão de
+  // voltar fugia de debaixo do cursor.
+  const barrasNaAltura = grafico.totalPaginas > 1 ? BARRAS_POR_PAGINA : dados.length;
+  const altura = `${Math.max(8, barrasNaAltura * 1.75 + 2)}rem`;
 
   return (
     <div>
@@ -152,8 +163,15 @@ export function BarrasCarga({
                 e texto girado é ilegível numa lista longa. */}
             <BarChart data={dados} layout="vertical" margin={{ left: 8, right: 24 }}>
               <CartesianGrid horizontal={false} stroke={theme.colors.border} />
+              {/* ⭐ Escala FIXA no maior valor de todas as páginas, não no da
+                  página atual. O recharts reescala sozinho por padrão, e aí a
+                  página 4 — onde o topo tem 1 projeto — desenharia essa barra do
+                  mesmo comprimento da de 6 da página 1. As páginas deixariam de
+                  ser comparáveis entre si, que é justamente o que um gráfico de
+                  carga precisa entregar. */}
               <XAxis
                 type="number"
+                domain={[0, escalaMaxima]}
                 allowDecimals={false}
                 stroke={theme.colors.mutedForeground}
                 fontSize={12}
@@ -181,7 +199,7 @@ export function BarrasCarga({
 
       {/* Fora da CaixaGrafico: o botão não pode entrar na altura calculada
           para as barras, senão a última fica cortada. */}
-      <MostrarTodos estado={grafico} total={todos.length} />
+      <Paginacao estado={grafico} />
     </div>
   );
 }
