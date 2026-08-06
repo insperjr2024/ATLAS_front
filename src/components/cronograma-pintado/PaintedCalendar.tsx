@@ -69,6 +69,15 @@ interface PaintedCalendarProps {
    *  definição única, e recalcular fim de semana aqui divergiria no dia em
    *  que a diretoria carregar um recesso. */
   diasNaoUteis: Map<string, DiaNaoUtil>;
+  /**
+   * O que IMPEDE pintar, quando difere do que é mostrado.
+   *
+   * Na visão Geral o calendário exibe a união das frentes, mas a trava é a
+   * frente da etapa no pincel: pintar uma etapa de Business num dia que só é
+   * não útil em Tech é legítimo. Sem esta separação o Geral ficaria mais
+   * restrito que o escopo. Ausente, vale o próprio `diasNaoUteis`.
+   */
+  diasBloqueados?: Map<string, DiaNaoUtil>;
   /** O grupo do "pintando: X". `null` = cursor de leitura. */
   grupoAtivo: string | null;
   /** Nome e cor do grupo ativo. Necessário à parte porque uma etapa recém
@@ -79,6 +88,17 @@ interface PaintedCalendarProps {
    *  um literal novo), senão o memo do preview se invalida a cada render. */
   pincel?: { nome: string; cor: string } | null;
   somenteLeitura?: boolean;
+  /**
+   * Escreve o motivo dentro da célula do dia não útil, mesmo na visão de mês.
+   *
+   * No cronograma a hachura basta — quem olha quer ver as etapas, e o motivo
+   * fica no `title`. Na tela de calendários base o dia não útil É o conteúdo,
+   * então dizer "Feriado" ou "Avaliação final" na célula é o ponto.
+   */
+  mostrarMotivo?: boolean;
+  /** Deixa o calendário crescer e quem rola passa a ser a página. Use onde não
+   *  há legenda grudada ao lado — senão sobra scroll dentro de scroll. */
+  semScrollProprio?: boolean;
   onPaintRange: (grupo: string, inicio: string, fim: string) => void;
   /** Arrasto iniciado sobre dia que já é da etapa: TIRA o intervalo dela. */
   onEraseRange?: (grupo: string, inicio: string, fim: string) => void;
@@ -117,9 +137,12 @@ export function PaintedCalendar({
   marcos,
   faixas,
   diasNaoUteis,
+  diasBloqueados,
   grupoAtivo,
   pincel,
   somenteLeitura,
+  mostrarMotivo,
+  semScrollProprio,
   onPaintRange,
   onEraseRange,
   onArrasteMudou,
@@ -200,9 +223,11 @@ export function PaintedCalendar({
     return { porDia, preview };
   }, [etapas, faixas, arraste, pincel]);
 
+  const travas = diasBloqueados ?? diasNaoUteis;
+
   const pintavel = useCallback(
-    (chave: string) => !somenteLeitura && grupoAtivo !== null && !diasNaoUteis.has(chave),
-    [somenteLeitura, grupoAtivo, diasNaoUteis],
+    (chave: string) => !somenteLeitura && grupoAtivo !== null && !travas.has(chave),
+    [somenteLeitura, grupoAtivo, travas],
   );
 
   function iniciarArraste(e: React.PointerEvent<HTMLDivElement>, chave: string) {
@@ -259,7 +284,7 @@ export function PaintedCalendar({
         atual.ancora <= fimReal
           ? { inicio: atual.ancora, fim: fimReal }
           : { inicio: fimReal, fim: atual.ancora };
-      const aparado = apararPontas(bruto.inicio, bruto.fim, diasNaoUteis);
+      const aparado = apararPontas(bruto.inicio, bruto.fim, travas);
       if (!aparado) return; // intervalo inteiro em dia não útil: aborta calado
       if (atual.apagando) onEraseRange?.(atual.grupo, aparado.inicio, aparado.fim);
       else onPaintRange(atual.grupo, aparado.inicio, aparado.fim);
@@ -275,7 +300,7 @@ export function PaintedCalendar({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [arraste, diasNaoUteis, onPaintRange, onEraseRange, onArrasteMudou]);
+  }, [arraste, travas, onPaintRange, onEraseRange, onArrasteMudou]);
 
   // Avisa a barra do intervalo em construção, para a contagem viva.
   useEffect(() => {
@@ -290,7 +315,7 @@ export function PaintedCalendar({
   const detalhado = visao !== "mes";
 
   return (
-    <CronogramaScroll data-cronograma-export>
+    <CronogramaScroll data-cronograma-export $semScrollProprio={semScrollProprio}>
       {blocos.map((bloco) => {
         const colunas = bloco.rotulos.length || bloco.linhas[0]?.length || 1;
         return (
@@ -372,9 +397,11 @@ export function PaintedCalendar({
                           ))}
                         </DetalheCelula>
                       )}
-                      {detalhado && rotuloDoNaoUtil && (
+                      {(detalhado || mostrarMotivo) && rotuloDoNaoUtil && naoUtil && (
                         <DetalheCelula>
-                          <small>{rotuloDoNaoUtil}</small>
+                          {/* A descrição é mais específica que o tipo: "Aulas
+                              canceladas" e "Recesso" são os dois `recesso`. */}
+                          <small>{naoUtil.descricao ?? rotuloNaoUtil(naoUtil.tipo)}</small>
                         </DetalheCelula>
                       )}
 

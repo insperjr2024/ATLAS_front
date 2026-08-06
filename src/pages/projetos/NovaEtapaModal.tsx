@@ -15,14 +15,30 @@ import {
   ModalTitle,
 } from "@/styles/modal.styled";
 import { PageButton } from "@/styles/page.styled";
-import { FieldGroup, FieldInput, FieldLabel, FormErrorText } from "./Projetos.styled";
+import {
+  FieldGroup,
+  FieldInput,
+  FieldLabel,
+  FieldSelect,
+  FormErrorText,
+} from "./Projetos.styled";
 
 interface Props {
   /** A cor pré-selecionada — a próxima da rampa, pela ordem da etapa. */
   corInicial: string;
+  /**
+   * Os escopos em que a etapa pode nascer — já sem os oficializados, que não
+   * aceitam etapa nova (§5.6).
+   *
+   * Na visão Geral não há escopo escolhido na barra, então a pergunta vem para
+   * cá: toda etapa pertence a um escopo, e o banco exige isso.
+   */
+  escopos: { id: number; nome: string }[];
+  /** Quando a barra já está num escopo, ele vem travado e o campo some. */
+  escopoFixo?: number | null;
   onCancelar: () => void;
   /** Cria a etapa. Se rejeitar, a mensagem aparece no próprio formulário. */
-  onCriar: (nome: string, cor: string) => Promise<void> | void;
+  onCriar: (nome: string, cor: string, escopoId: number) => Promise<void> | void;
 }
 
 /**
@@ -33,9 +49,16 @@ interface Props {
  * texto: a cor era decidida sozinha pelo código, e escolher a cor é requisito
  * do case, não enfeite.
  */
-export function NovaEtapaModal({ corInicial, onCancelar, onCriar }: Props) {
+export function NovaEtapaModal({
+  corInicial,
+  escopos,
+  escopoFixo,
+  onCancelar,
+  onCriar,
+}: Props) {
   const [nome, setNome] = useState("");
   const [cor, setCor] = useState(corInicial);
+  const [escopoId, setEscopoId] = useState<number | null>(escopoFixo ?? escopos[0]?.id ?? null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -56,10 +79,14 @@ export function NovaEtapaModal({ corInicial, onCancelar, onCriar }: Props) {
       setErro("Dê um nome à etapa.");
       return;
     }
+    if (!escopoId) {
+      setErro("Escolha o escopo a que esta etapa pertence.");
+      return;
+    }
     setErro("");
     setSalvando(true);
     try {
-      await onCriar(limpo, cor);
+      await onCriar(limpo, cor, escopoId);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao criar a etapa");
       setSalvando(false);
@@ -91,6 +118,23 @@ export function NovaEtapaModal({ corInicial, onCancelar, onCriar }: Props) {
                 onChange={(e) => setNome(e.target.value)}
               />
             </FieldGroup>
+
+            {!escopoFixo && escopos.length > 0 && (
+              <FieldGroup>
+                <FieldLabel htmlFor="etapa-escopo">Escopo</FieldLabel>
+                <FieldSelect
+                  id="etapa-escopo"
+                  value={String(escopoId ?? "")}
+                  onChange={(e) => setEscopoId(Number(e.target.value))}
+                >
+                  {escopos.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.nome}
+                    </option>
+                  ))}
+                </FieldSelect>
+              </FieldGroup>
+            )}
 
             <FieldGroup>
               <FieldLabel as="span">Cor</FieldLabel>

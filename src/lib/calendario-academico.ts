@@ -87,30 +87,40 @@ export function getCalendarioDaFrente(
 export interface DiaLidoDoPdf {
   data: string;
   tipo: TipoDiaNaoLetivo;
-  /** O código como está no PDF: F, FE, AI, AF, AS. */
-  codigo: string;
-  descricao: string;
+  /** A linha da legenda do PDF: feriado, avaliacao_final, recesso… */
+  categoria: string;
+  /** O nome legível da categoria, como está na legenda. */
+  rotulo: string;
   /**
    * A quem o dia pertence.
    *
    * Feriado é do país e vale para todas as frentes — subir o PDF de Business
-   * não pode criar uma cópia dele em cada frente. Semana de avaliação é do
-   * CURSO: as datas de AI/AF/AS de Administração não são as de Engenharia.
+   * não pode criar uma cópia dele em cada frente. Todo o resto sai do
+   * calendário de um CURSO: avaliação, recesso e aulas canceladas de
+   * Administração não são os de Engenharia.
    */
   escopo: "global" | "frente";
+}
+
+export interface CategoriaDoPdf {
+  chave: string;
+  rotulo: string;
+  tipo: TipoDiaNaoLetivo;
+  escopo: "global" | "frente";
+  /** Quantos dias desta categoria caíram dentro do semestre. */
+  encontrados: number;
 }
 
 export interface LeituraPdf {
   semestre_id: number;
   frente_id: number | null;
   dias: DiaLidoDoPdf[];
+  /** O catálogo vem do backend para o filtro não repetir a lista aqui. */
+  categorias: CategoriaDoPdf[];
   resumo: {
     lidos: number;
     no_semestre: number;
     fora_do_semestre: number;
-    globais: number;
-    da_frente: number;
-    recessos_ignorados: number;
     /** Diferente de zero = o layout do PDF mudou e algo não foi reconhecido. */
     nao_reconhecidos: number;
   };

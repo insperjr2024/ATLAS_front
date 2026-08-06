@@ -3,13 +3,22 @@ import { theme } from "@/styles/theme";
 import { DayCell, MonthGrid } from "@/components/calendario/CalendarGrid.styled";
 import { COR_NAO_UTIL } from "./cores";
 
-export const CronogramaScroll = styled.div`
+export const CronogramaScroll = styled.div<{ $semScrollProprio?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.lg};
-  max-height: 60vh;
-  overflow-y: auto;
   padding-right: ${theme.spacing.sm};
+
+  /* O teto de altura existe para o cronograma, onde a legenda fica grudada ao
+     lado e precisa continuar visível enquanto se rola o calendário.
+     Onde não há legenda ao lado, ele só produz scroll dentro de scroll — e aí
+     quem rola é a página. */
+  ${({ $semScrollProprio }) =>
+    !$semScrollProprio &&
+    css`
+      max-height: 60vh;
+      overflow-y: auto;
+    `}
 
   /* Enquanto arrasta, a seleção de texto nativa sobre a grade é o item nº 1
      que faz um drag caseiro parecer quebrado. O touch-action impede o
@@ -299,6 +308,43 @@ export const BotaoVisao = styled.button<{ $ativo?: boolean }>`
 
   &:hover:not(:disabled) {
     background: ${theme.colors.muted};
+  }
+`;
+
+/**
+ * A data de entrega do escopo, na barra do cronograma.
+ *
+ * Mesma métrica do select de escopo ao lado (2.25rem, raio lg), para a linha
+ * não ficar com alturas diferentes.
+ */
+export const FieldEntrega = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid ${theme.colors.input};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+
+  input {
+    border: none;
+    background: transparent;
+    font-size: ${theme.fontSize.sm};
+    color: ${theme.colors.foreground};
+    outline: none;
+  }
+
+  &:focus-within {
+    border-color: ${theme.colors.ring};
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 25%, transparent);
+  }
+
+  input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
 

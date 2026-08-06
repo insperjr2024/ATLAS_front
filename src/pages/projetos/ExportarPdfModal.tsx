@@ -13,14 +13,25 @@ import {
 } from "@/styles/modal.styled";
 import { PageButton } from "@/styles/page.styled";
 import { X } from "lucide-react";
-import { CheckboxGrid, CheckboxLabel, FormErrorText } from "./Projetos.styled";
+import { CheckboxGrid, CheckboxLabel, FieldSelect, FormErrorText } from "./Projetos.styled";
 
 interface Props {
-  /** Todos os meses da janela do projeto, em ordem. */
+  /** Os meses do semestre — o recorte que aparece por padrão. */
   meses: Date[];
+  /**
+   * Os meses da janela inteira, oferecidos atrás de "Mais meses".
+   *
+   * A janela cobre o ano corrente e o seguinte, então listar tudo de cara
+   * daria 24 caixas para escolher entre as 6 que interessam.
+   */
+  mesesExtras: Date[];
+  /** Os escopos do projeto, para o PDF poder sair de um só. */
+  escopos: { id: number; nome: string }[];
+  /** O escopo em foco na tela, que vira o padrão do modal. */
+  escopoAtual: number | "geral";
   onCancelar: () => void;
-  /** Recebe os meses escolhidos, em ordem de calendário. */
-  onExportar: (meses: Date[]) => Promise<void>;
+  /** `escopo` = "geral" exporta o projeto inteiro. */
+  onExportar: (meses: Date[], escopo: number | "geral") => Promise<void>;
 }
 
 /**
@@ -30,9 +41,21 @@ interface Props {
  * ganhou as visões de dia e semana, isso virou uma armadilha: quem estivesse
  * na visão de Dia gerava um PDF de um dia só, sem nada avisando.
  */
-export function ExportarPdfModal({ meses, onCancelar, onExportar }: Props) {
+export function ExportarPdfModal({
+  meses,
+  mesesExtras,
+  escopos,
+  escopoAtual,
+  onCancelar,
+  onExportar,
+}: Props) {
+  const [escopo, setEscopo] = useState<number | "geral">(escopoAtual);
+  const [ampliado, setAmpliado] = useState(false);
+  const visiveis = ampliado ? mesesExtras : meses;
   // Todos marcados por padrão: o caso comum é o cronograma inteiro, e o §6.4
   // pede o calendário "pronto para apresentações".
+  // Só os do semestre nascem marcados. Ampliar mostra o resto DESMARCADO —
+  // quem clicou em "mais meses" quer escolher, não levar tudo junto.
   const [escolhidos, setEscolhidos] = useState<Set<string>>(
     () => new Set(meses.map(chaveData)),
   );
@@ -57,7 +80,7 @@ export function ExportarPdfModal({ meses, onCancelar, onExportar }: Props) {
   }
 
   async function gerar() {
-    const selecionados = meses.filter((m) => escolhidos.has(chaveData(m)));
+    const selecionados = mesesExtras.filter((m) => escolhidos.has(chaveData(m)));
     if (selecionados.length === 0) {
       setErro("Escolha pelo menos um mês.");
       return;
@@ -65,14 +88,14 @@ export function ExportarPdfModal({ meses, onCancelar, onExportar }: Props) {
     setErro("");
     setGerando(true);
     try {
-      await onExportar(selecionados);
+      await onExportar(selecionados, escopo);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao gerar o PDF");
       setGerando(false);
     }
   }
 
-  const todos = escolhidos.size === meses.length;
+  const todos = visiveis.every((m) => escolhidos.has(chaveData(m)));
 
   return (
     <ModalOverlay onMouseDown={onCancelar}>
@@ -85,12 +108,29 @@ export function ExportarPdfModal({ meses, onCancelar, onExportar }: Props) {
         </ModalHeader>
 
         <ModalBody>
+          <p style={{ margin: "0 0 0.375rem", fontSize: "0.875rem" }}>O que entra no PDF?</p>
+          <FieldSelect
+            aria-label="Escopo do PDF"
+            style={{ marginBottom: "1rem", width: "100%" }}
+            value={String(escopo)}
+            onChange={(e) =>
+              setEscopo(e.target.value === "geral" ? "geral" : Number(e.target.value))
+            }
+          >
+            <option value="geral">Geral — todos os escopos</option>
+            {escopos.map((e) => (
+              <option key={e.id} value={e.id}>
+                Somente {e.nome}
+              </option>
+            ))}
+          </FieldSelect>
+
           <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem" }}>
             Quais meses entram no PDF?
           </p>
 
           <CheckboxGrid>
-            {meses.map((mes) => {
+            {visiveis.map((mes) => {
               const chave = chaveData(mes);
               return (
                 <CheckboxLabel key={chave}>
@@ -107,16 +147,22 @@ export function ExportarPdfModal({ meses, onCancelar, onExportar }: Props) {
             })}
           </CheckboxGrid>
 
-          <PageButton
-            type="button"
-            $variant="ghost"
-            style={{ marginTop: "0.75rem" }}
-            onClick={() =>
-              setEscolhidos(todos ? new Set() : new Set(meses.map(chaveData)))
-            }
-          >
-            {todos ? "Desmarcar todos" : "Marcar todos"}
-          </PageButton>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
+            <PageButton
+              type="button"
+              $variant="ghost"
+              onClick={() =>
+                setEscolhidos(todos ? new Set() : new Set(visiveis.map(chaveData)))
+              }
+            >
+              {todos ? "Desmarcar todos" : "Marcar todos"}
+            </PageButton>
+            {!ampliado && mesesExtras.length > meses.length && (
+              <PageButton type="button" $variant="ghost" onClick={() => setAmpliado(true)}>
+                Mais meses
+              </PageButton>
+            )}
+          </div>
 
           {erro && <FormErrorText>{erro}</FormErrorText>}
         </ModalBody>

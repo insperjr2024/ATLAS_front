@@ -57,6 +57,12 @@ export interface CronogramaResposta {
   marcos: MarcoCronograma[];
   faixas_derivadas: FaixaDerivadaResposta[];
   janela: { inicio: string; fim: string };
+  /**
+   * A gestão corrente. A `janela` é larga de propósito — o ano corrente e o
+   * seguinte, para a navegação ser livre —, mas o semestre é o recorte que
+   * interessa por padrão: é quando o projeto de fato acontece.
+   */
+  semestre: { nome: string; inicio: string; fim: string } | null;
   dias_nao_uteis: DiaNaoUtilResposta[];
   reajuste_pendente: { id: number; solicitado_por: number; criado_em: string } | null;
 }
