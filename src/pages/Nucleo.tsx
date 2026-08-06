@@ -249,7 +249,7 @@ export function Nucleo() {
         ? `${totalDistribuicao} ${totalDistribuicao === 1 ? "banca" : "bancas"} na frente selecionada`
         : "Selecione uma frente para ver a distribuição por escopos";
 
-  if (usuario?.posicao !== "diretor") {
+  if (!usuario?.cargo.pode_ver_nucleo) {
     return <Navigate to="/dashboard" replace />;
   }
 

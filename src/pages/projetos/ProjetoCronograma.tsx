@@ -9,6 +9,8 @@ import {
   getCronograma,
   moverEtapa,
   oficializarCronograma,
+  responderReajuste,
+  solicitarReajuste,
 } from "@/lib/cronograma";
 import { formatarData } from "@/lib/projetos";
 import { chaveData } from "@/components/calendario/semanas";
@@ -19,7 +21,7 @@ import {
   COR_PAUSA,
   ROTULOS_MARCO,
 } from "@/components/cronograma-pintado/cores";
-import { exportarPDF } from "@/components/cronograma-pintado/exportar";
+import { exportarPDF, exportarPNG } from "@/components/cronograma-pintado/exportar";
 import {
   diasDoIntervalo,
   PaintedCalendar,
@@ -79,6 +81,8 @@ import {
 } from "@/components/cronograma-pintado/trechos";
 import { ExportarPdfModal } from "./ExportarPdfModal";
 import { NovaEtapaModal } from "./NovaEtapaModal";
+import { ResponderReajusteModal } from "./ResponderReajusteModal";
+import { SolicitarReajusteModal } from "./SolicitarReajusteModal";
 import { useProjeto } from "./ProjetoPage";
 
 
@@ -127,8 +131,11 @@ export function ProjetoCronograma() {
     nome: string;
     trechos: number;
   } | null>(null);
+  const [solicitandoReajuste, setSolicitandoReajuste] = useState(false);
+  const [respondendoReajuste, setRespondendoReajuste] = useState(false);
 
   const podeEditar = !!usuario?.cargo.pode_definir_cronograma;
+  const podeAprovarReajuste = !!usuario?.cargo.pode_aprovar_reajuste;
 
   const carregar = useCallback(async () => {
     if (!token) return;
@@ -651,14 +658,33 @@ export function ProjetoCronograma() {
     await carregar();
   }
 
+  async function pedirReajuste(motivo: string) {
+    if (!token || !escopo) return;
+    await solicitarReajuste(escopo.id, motivo, token);
+    setSolicitandoReajuste(false);
+    await carregar();
+  }
+
+  async function responderPedidoReajuste(aprovado: boolean, justificativa: string) {
+    if (!token || !escopo?.reajuste_pendente) return;
+    await responderReajuste(escopo.reajuste_pendente.id, aprovado, justificativa, token);
+    setRespondendoReajuste(false);
+    await carregar();
+  }
+
   /**
-   * Gera o PDF a partir de uma cópia FORA DA TELA com os meses escolhidos.
+   * Gera o PDF ou a imagem a partir de uma cópia FORA DA TELA com os meses
+   * escolhidos.
    *
    * Não dá para rasterizar o calendário visível: ele mostra o recorte da visão
    * atual (um dia, se for o caso), e o §6.4 quer o cronograma de apresentação.
    * O erro sobe para o modal mostrar.
    */
-  async function gerarPdf(mesesEscolhidos: Date[], escopoEscolhido: number | "geral") {
+  async function gerarPdf(
+    mesesEscolhidos: Date[],
+    escopoEscolhido: number | "geral",
+    formato: "pdf" | "png",
+  ) {
     setEscopoExport(escopoEscolhido);
     setMesesExport(mesesEscolhidos);
     // Dois frames: um para o React montar a área, outro para o navegador
@@ -668,7 +694,11 @@ export function ProjetoCronograma() {
     );
     try {
       if (!areaExport.current) throw new Error("A área de exportação não montou");
-      await exportarPDF(areaExport.current, projeto.nome);
+      if (formato === "png") {
+        await exportarPNG(areaExport.current, projeto.nome);
+      } else {
+        await exportarPDF(areaExport.current, projeto.nome);
+      }
       setExportandoPdf(false);
     } finally {
       setMesesExport(null);
@@ -710,11 +740,30 @@ export function ProjetoCronograma() {
 
   return (
     <PageStack>
-      {oficializado && (
+      {oficializado && !escopo!.reajuste_pendente && (
         <AvisoBanner>
           <Lock size={14} /> Cronograma oficializado em{" "}
           {formatarData(escopo!.cronograma_oficializado_em)}. Qualquer mudança agora exige uma
-          solicitação de reajuste aprovada pela diretoria (§5.6).
+          solicitação de reajuste aprovada pela diretoria.
+          {podeEditar && (
+            <PageButton type="button" $variant="outline" onClick={() => setSolicitandoReajuste(true)}>
+              Solicitar reajuste
+            </PageButton>
+          )}
+        </AvisoBanner>
+      )}
+
+      {oficializado && escopo!.reajuste_pendente && (
+        <AvisoBanner>
+          <Lock size={14} />{" "}
+          {podeAprovarReajuste
+            ? "Há um pedido de reajuste de cronograma esperando sua resposta."
+            : `Pedido de reajuste enviado em ${formatarData(escopo!.reajuste_pendente.criado_em)} — aguardando aprovação da diretoria.`}
+          {podeAprovarReajuste && (
+            <PageButton type="button" $variant="outline" onClick={() => setRespondendoReajuste(true)}>
+              Ver pedido
+            </PageButton>
+          )}
         </AvisoBanner>
       )}
 
@@ -826,7 +875,7 @@ export function ProjetoCronograma() {
             botão não fica atrás de `pode()`. */}
         <BotaoBarra type="button" $variant="ghost" onClick={() => setExportandoPdf(true)}>
           <Download size={14} />
-          PDF
+          Exportar
         </BotaoBarra>
       </Barra>
 
@@ -1104,6 +1153,24 @@ export function ProjetoCronograma() {
           rotuloConfirmar="Oficializar"
           onCancelar={() => setConfirmandoOficializacao(false)}
           onConfirmar={oficializar}
+        />
+      )}
+
+      {solicitandoReajuste && escopo && (
+        <SolicitarReajusteModal
+          nomeEscopo={escopo.nome}
+          onCancelar={() => setSolicitandoReajuste(false)}
+          onSolicitar={pedirReajuste}
+        />
+      )}
+
+      {respondendoReajuste && escopo?.reajuste_pendente && (
+        <ResponderReajusteModal
+          nomeEscopo={escopo.nome}
+          motivo={escopo.reajuste_pendente.motivo}
+          solicitadoPorNome={escopo.reajuste_pendente.solicitado_por_nome ?? "Alguém"}
+          onCancelar={() => setRespondendoReajuste(false)}
+          onResponder={responderPedidoReajuste}
         />
       )}
     </PageStack>

@@ -37,6 +37,9 @@ export interface ProjetoResumo {
   kickoff_pendente: boolean;
   /** Arquivar não é excluir — só some das listagens normais (§6.2). */
   arquivado_em: string | null;
+  /** A banca ainda não realizada mais próxima, de qualquer escopo deste
+   *  projeto. `null` se nenhuma estiver marcada ou todas já aconteceram. */
+  proxima_banca: string | null;
 }
 
 export interface MembroProjeto {
@@ -88,6 +91,14 @@ export interface EscopoVendido {
   banca: BancaDoEscopo | null;
   /** 🔒 §5.5: só true quando a banca do escopo saiu aprovada. */
   entrega_liberada: boolean;
+  /** §5.6: pedido de reajuste ainda sem resposta da diretoria, se houver. */
+  reajuste_pendente: {
+    id: number;
+    motivo: string;
+    solicitado_por: number;
+    solicitado_por_nome: string | null;
+    criado_em: string;
+  } | null;
 }
 
 /** A forma completa — página do projeto, aba Visão geral (§6.4). */

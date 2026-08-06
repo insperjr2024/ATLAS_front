@@ -1,9 +1,8 @@
 /**
- * Export do cronograma em PDF (§6.4: "pronto para apresentações").
+ * Export do cronograma em PDF ou imagem (§6.4: "pronto para apresentações").
  *
- * O PNG saiu: o PDF já é o formato de apresentação, e manter dois caminhos
- * para a mesma imagem só dobrava a superfície a testar. A rasterização
- * continua sendo por `toPng` — ela virou etapa interna do PDF, não uma saída.
+ * A rasterização é sempre por `toPng` — o PDF só embute essa imagem numa
+ * página; a saída em PNG é o mesmo dataUrl baixado direto, sem o jsPDF.
  *
  * Atenção: `html-to-image`, não `html2canvas`: o segundo reimplementa um
  * renderizador de CSS e engasga com `color-mix(in srgb, …)`, que este código
@@ -11,9 +10,9 @@
  * `html-to-image` serializa o DOM num `<foreignObject>` de SVG e deixa o
  * próprio navegador rasterizar: o que o navegador pinta, ele exporta.
  *
- * As duas bibliotecas entram por **import dinâmico**, dentro do handler de
+ * As bibliotecas entram por **import dinâmico**, dentro do handler de
  * clique. O Rollup emite um chunk separado e a primeira pintura da aba não
- * carrega os ~350 KB do jsPDF.
+ * carrega os ~350 KB do jsPDF (nem sequer para quem só exporta PNG).
  */
 
 const OPCOES = { pixelRatio: 2, backgroundColor: "#ffffff", cacheBust: true } as const;
@@ -47,6 +46,20 @@ async function comLayoutDeExport<T>(alvo: HTMLElement, acao: () => Promise<T>): 
   } finally {
     alvo.classList.remove("exportando");
   }
+}
+
+export async function exportarPNG(
+  alvo: HTMLElement,
+  nomeProjeto: string,
+  prefixoArquivo = "cronograma",
+): Promise<void> {
+  const { toPng } = await import("html-to-image");
+  const dataUrl = await comLayoutDeExport(alvo, () => toPng(alvo, OPCOES));
+
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = nomeArquivo(nomeProjeto, "png", prefixoArquivo);
+  link.click();
 }
 
 export async function exportarPDF(

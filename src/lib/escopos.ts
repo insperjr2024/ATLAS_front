@@ -8,19 +8,19 @@ export function getEscopos(token: string, frenteId?: number | null) {
   return apiFetch<Escopo[]>(`/escopos${query}`, { token });
 }
 
-export function createEscopo(nome: string, token: string) {
+export function createEscopo(nome: string, frenteId: number | null, token: string) {
   return apiFetch<Escopo>("/escopos", {
     method: "POST",
     token,
-    body: JSON.stringify({ nome }),
+    body: JSON.stringify({ nome, frente_id: frenteId }),
   });
 }
 
-export function updateEscopo(escopoId: number, nome: string, token: string) {
+export function updateEscopo(escopoId: number, nome: string, frenteId: number | null, token: string) {
   return apiFetch<Escopo>(`/escopos/${escopoId}`, {
     method: "PATCH",
     token,
-    body: JSON.stringify({ nome }),
+    body: JSON.stringify({ nome, frente_id: frenteId }),
   });
 }
 

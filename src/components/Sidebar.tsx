@@ -88,7 +88,7 @@ const navItems: NavItemConfig[] = [
     label: "Núcleo",
     path: "/nucleo",
     section: "admin",
-    visiblePorPosicao: (u) => u.posicao === "diretor",
+    visible: (c) => c.pode_ver_nucleo,
   },
   {
     icon: Users,
@@ -110,21 +110,21 @@ const navItems: NavItemConfig[] = [
     path: "/avaliacao-desempenho/painel",
     section: "admin",
     prefixo: true,
-    visiblePorPosicao: (u) => u.posicao === "diretor" || u.posicao === "gerente",
+    visible: (c) => c.pode_administrar_desempenho,
   },
   {
     icon: CalendarCog,
     label: "Calendários base",
     path: "/calendarios-base",
     section: "admin",
-    visiblePorPosicao: (u) => u.posicao === "diretor",
+    visible: (c) => c.pode_administrar_configuracoes,
   },
   {
     icon: Settings,
     label: "Configurações",
     path: "/config",
     section: "admin",
-    visiblePorPosicao: (u) => u.posicao === "diretor",
+    visible: (c) => c.pode_administrar_configuracoes,
   },
 ];
 

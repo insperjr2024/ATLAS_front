@@ -16,6 +16,7 @@ import {
   GraduationCap,
   ListChecks,
   Megaphone,
+  RefreshCw,
   SlidersHorizontal,
   Star,
   Truck,
@@ -25,6 +26,7 @@ import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificacoes } from "@/context/NotificacoesContext";
 import { getNotificacoes, marcarNotificacaoLida, marcarTodasLidas } from "@/lib/notificacoes";
+import type { Usuario } from "@/types/auth";
 import type { Notificacao, TipoNotificacao } from "@/types/notificacao";
 import {
   PageStack,
@@ -95,6 +97,9 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   },
   pdi_prazo_proximo: { icone: GraduationCap, rotulo: "Prazo de PDI próximo", alerta: true },
   pdi_prazo_vencido: { icone: GraduationCap, rotulo: "Prazo de PDI vencido", alerta: true },
+  // Reajuste de cronograma (§5.6) — pedido do coordenador, resposta da diretoria.
+  reajuste_solicitado: { icone: RefreshCw, rotulo: "Pedido de reajuste", alerta: true },
+  reajuste_respondido: { icone: RefreshCw, rotulo: "Reajuste respondido", alerta: false },
 };
 
 /** A ordem dos chips: os 5 do briefing (§6.6) primeiro, na ordem em que ele os
@@ -116,11 +121,43 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "lote_desempenho_aberto",
   "pdi_prazo_proximo",
   "pdi_prazo_vencido",
+  "reajuste_solicitado",
+  "reajuste_respondido",
   "banca_aviso",
 ];
 
+/** O filtro só oferece o que aquela pessoa é capaz de receber — sem isso, o
+ *  consultor via chip pra "Pedido de reajuste" (só diretor recebe) e nunca
+ *  tinha nada pra mostrar nele. Os tipos fora deste switch valem pra
+ *  qualquer cargo (equipe + liderança, ou individual por participação em
+ *  banca), então não entram aqui. */
+function tipoVisivelPara(tipo: TipoNotificacao, usuario: Usuario | null): boolean {
+  if (!usuario) return true;
+  switch (tipo) {
+    // Quem crava a banca (§5.3) e registra a reunião (§6.4) é sempre a
+    // coordenação — o consultor nunca é o alvo individual, e só vira
+    // liderança se também for diretor/gerente.
+    case "banca_nao_marcada":
+    case "projeto_sem_reuniao":
+      return usuario.posicao !== "consultor";
+    // Mentor é sempre coordenador (regra 2.5); fora isso só a diretoria
+    // acompanha PDI. Gerente e consultor nunca recebem.
+    case "pdi_prazo_proximo":
+    case "pdi_prazo_vencido":
+      return usuario.posicao === "coordenador" || usuario.posicao === "diretor";
+    // §5.6: só quem aprova reajuste (a diretoria) recebe o pedido.
+    case "reajuste_solicitado":
+      return !!usuario.cargo.pode_aprovar_reajuste;
+    // E só quem pode solicitar reajuste recebe a resposta a ele.
+    case "reajuste_respondido":
+      return !!usuario.cargo.pode_definir_cronograma;
+    default:
+      return true;
+  }
+}
+
 export function Notificacoes() {
-  const { token } = useAuth();
+  const { token, usuario } = useAuth();
   const { recarregar } = useNotificacoes();
   const navigate = useNavigate();
 
@@ -292,8 +329,9 @@ export function Notificacoes() {
               {/* Todos os tipos aparecem sempre, mesmo zerados: esta lista é o
                   que informa QUAIS alertas existem. Mostrar só os que
                   chegaram faria o filtro sumir junto com o problema
-                  resolvido. */}
-              {ORDEM_FILTROS.map((tipo) => {
+                  resolvido. O que É filtrado por cargo é se aquele tipo
+                  chega pra essa pessoa — ver `tipoVisivelPara`. */}
+              {ORDEM_FILTROS.filter((tipo) => tipoVisivelPara(tipo, usuario)).map((tipo) => {
                 const total = contagemPorTipo[tipo] ?? 0;
                 const marcada = tipos.includes(tipo);
                 return (

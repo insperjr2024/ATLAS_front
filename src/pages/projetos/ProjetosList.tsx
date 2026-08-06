@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ChevronDown, LayoutGrid, KanbanSquare, Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
-import { getProjetos, mudarStatus, ROTULO_STATUS, tomDoStatus } from "@/lib/projetos";
+import { formatarDataHora, getProjetos, mudarStatus, ROTULO_STATUS, tomDoStatus } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import { ProjetoKanbanBoard } from "@/components/kanban/ProjetoKanbanBoard";
 import type { UsuarioResumo } from "@/types/auth";
@@ -296,6 +296,12 @@ export function ProjetosList() {
                 {projeto.consultor_ids.length > 0
                   ? projeto.consultor_ids.map(nomeUsuario).join(", ")
                   : "—"}
+                {projeto.proxima_banca && (
+                  <>
+                    <br />
+                    <strong>Próxima banca:</strong> {formatarDataHora(projeto.proxima_banca)}
+                  </>
+                )}
               </CardEquipe>
 
               {projeto.kickoff_pendente && (

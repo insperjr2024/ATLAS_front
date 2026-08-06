@@ -31,7 +31,7 @@ interface Props {
   escopoAtual: number | "geral";
   onCancelar: () => void;
   /** `escopo` = "geral" exporta o projeto inteiro. */
-  onExportar: (meses: Date[], escopo: number | "geral") => Promise<void>;
+  onExportar: (meses: Date[], escopo: number | "geral", formato: "pdf" | "png") => Promise<void>;
 }
 
 /**
@@ -50,6 +50,7 @@ export function ExportarPdfModal({
   onExportar,
 }: Props) {
   const [escopo, setEscopo] = useState<number | "geral">(escopoAtual);
+  const [formato, setFormato] = useState<"pdf" | "png">("pdf");
   const [ampliado, setAmpliado] = useState(false);
   const visiveis = ampliado ? mesesExtras : meses;
   // Todos marcados por padrão: o caso comum é o cronograma inteiro, e o §6.4
@@ -88,9 +89,9 @@ export function ExportarPdfModal({
     setErro("");
     setGerando(true);
     try {
-      await onExportar(selecionados, escopo);
+      await onExportar(selecionados, escopo, formato);
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao gerar o PDF");
+      setErro(err instanceof Error ? err.message : `Erro ao gerar o ${formato.toUpperCase()}`);
       setGerando(false);
     }
   }
@@ -108,7 +109,18 @@ export function ExportarPdfModal({
         </ModalHeader>
 
         <ModalBody>
-          <p style={{ margin: "0 0 0.375rem", fontSize: "0.875rem" }}>O que entra no PDF?</p>
+          <p style={{ margin: "0 0 0.375rem", fontSize: "0.875rem" }}>Formato do arquivo</p>
+          <FieldSelect
+            aria-label="Formato do arquivo"
+            style={{ marginBottom: "1rem", width: "100%" }}
+            value={formato}
+            onChange={(e) => setFormato(e.target.value as "pdf" | "png")}
+          >
+            <option value="pdf">PDF</option>
+            <option value="png">Imagem (PNG)</option>
+          </FieldSelect>
+
+          <p style={{ margin: "0 0 0.375rem", fontSize: "0.875rem" }}>O que entra no arquivo?</p>
           <FieldSelect
             aria-label="Escopo do PDF"
             style={{ marginBottom: "1rem", width: "100%" }}
@@ -126,7 +138,7 @@ export function ExportarPdfModal({
           </FieldSelect>
 
           <p style={{ margin: "0 0 0.75rem", fontSize: "0.875rem" }}>
-            Quais meses entram no PDF?
+            Quais meses entram no arquivo?
           </p>
 
           <CheckboxGrid>
@@ -172,7 +184,7 @@ export function ExportarPdfModal({
             Cancelar
           </PageButton>
           <PageButton type="button" disabled={gerando} onClick={gerar}>
-            {gerando ? "Gerando…" : "Gerar PDF"}
+            {gerando ? "Gerando…" : `Gerar ${formato.toUpperCase()}`}
           </PageButton>
         </ModalFooter>
       </ModalContent>

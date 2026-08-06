@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
 import type { CronogramaResposta, EtapaCronograma, MarcoCronograma } from "@/types/cronograma";
+import type { ReajusteCronograma, ReajustePendenteResumo } from "@/types/cronograma-reajuste";
 
 /** A aba inteira numa ida só — inclusive os dias cinzas da janela. */
 export function getCronograma(projetoId: number, token: string) {
@@ -60,7 +61,6 @@ export function deleteMarco(marcoId: number, token: string) {
   return apiFetch(`/cronograma/marcos/${marcoId}`, { method: "DELETE", token });
 }
 
-/** §5.3: cravar o cronograma. Depois disso, mudar exige reajuste (§5.6). */
 /**
  * A entrega PLANEJADA do escopo — a data que o cronograma promete.
  *
@@ -79,8 +79,36 @@ export function definirEntregaPlanejada(
   });
 }
 
+/** §5.3: cravar o cronograma. Depois disso, mudar exige reajuste (§5.6). */
 export function oficializarCronograma(escopoId: number, token: string) {
   return apiFetch(`/escopos-projeto/${escopoId}/oficializar`, { method: "POST", token });
+}
+
+/** §5.6: pedido do coordenador pra reabrir um cronograma já oficializado. */
+export function solicitarReajuste(escopoId: number, motivo: string, token: string) {
+  return apiFetch<ReajusteCronograma>(`/escopos-projeto/${escopoId}/reajuste`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ motivo }),
+  });
+}
+
+/** Fila só da diretoria (§5.6: "o gerente não aprova reajustes"). */
+export function getReajustesPendentes(token: string) {
+  return apiFetch<ReajustePendenteResumo[]>("/reajustes/pendentes", { token });
+}
+
+export function responderReajuste(
+  solicitacaoId: number,
+  aprovado: boolean,
+  justificativa: string,
+  token: string,
+) {
+  return apiFetch<ReajusteCronograma>(`/reajustes/${solicitacaoId}/responder`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ aprovado, justificativa }),
+  });
 }
 
 /* ------------------------------------------------------------------ */

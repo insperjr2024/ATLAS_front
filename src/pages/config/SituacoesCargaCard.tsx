@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import styled from "styled-components";
+import { theme } from "@/styles/theme";
 import { useAuth } from "@/context/AuthContext";
 import {
   atualizarSituacaoCarga,
@@ -27,6 +29,12 @@ import {
   TableCell,
   FieldSelect,
 } from "../Membros.styled";
+
+const FaixaTexto = styled.p`
+  margin: 0.25rem 0 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
 
 const PAPEIS: { chave: PapelCarga; titulo: string }[] = [
   { chave: "consultor", titulo: "Consultores" },
@@ -141,8 +149,7 @@ function TabelaPapel({
       <DataTable>
         <TableHead>
           <TableRow>
-            <TableHeadCell>A partir de</TableHeadCell>
-            <TableHeadCell>Faixa</TableHeadCell>
+            <TableHeadCell>A partir de quantos projetos</TableHeadCell>
             <TableHeadCell>Situação</TableHeadCell>
             <TableHeadCell>Cor</TableHeadCell>
           </TableRow>
@@ -162,8 +169,13 @@ function TabelaPapel({
                     }
                   }}
                 />
+                {/* Texto de apoio, não editável — só traduz o número acima
+                    em "vale até onde": um "3" sozinho não diz se é "só 3" ou
+                    "3 pra cima". Antes isso era uma coluna própria ("Faixa"),
+                    que duplicava a mesma informação lado a lado com o campo
+                    editável e confundia mais do que ajudava. */}
+                <FaixaTexto>vale de {descreverFaixa(s, ordenadas[i + 1])} projeto(s)</FaixaTexto>
               </TableCell>
-              <TableCell>{descreverFaixa(s, ordenadas[i + 1])}</TableCell>
               <TableCell>
                 <Input
                   defaultValue={s.nome}

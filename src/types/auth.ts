@@ -1,10 +1,9 @@
 /**
- * As 10 permissões da tabela do §3, editáveis na tela de Cargos.
+ * As permissões da tabela do §3 (as 10 primeiras) + as 4 que a estenderam
+ * depois, editáveis na tela de Cargos.
  *
  * A `posicao` da pessoa define só o PADRÃO com que o cargo dela nasce; daí em
- * diante quem decide é a caixa. O que ficou fora da tabela (formulário de
- * banca, núcleo/configurações, cargos e Avaliação de Desempenho) continua
- * travado por posição no backend.
+ * diante quem decide é a caixa.
  */
 export interface Cargo {
   id: number;
@@ -29,6 +28,17 @@ export interface Cargo {
   pode_ver_proprios_projetos: boolean;
   /** 10. Monitoramento e alocação */
   pode_ver_monitoramento: boolean;
+  /** Administrar a Avaliação de Desempenho (lotes, avaliadores, mentoria, PDI). */
+  pode_administrar_desempenho: boolean;
+  /** Editar os formulários de Avaliação de Desempenho — mais sensível que
+   *  administrar, porque muda o que todo mundo é avaliado. */
+  pode_editar_formularios_desempenho: boolean;
+  /** Ver o Núcleo (visão executiva de bancas por gestão). */
+  pode_ver_nucleo: boolean;
+  /** Administrar Configurações e Calendários base — inclusive editar cargos,
+   *  a mais sensível: quem tem essa caixa pode conceder (ou tirar) qualquer
+   *  permissão de qualquer cargo, inclusive o próprio. */
+  pode_administrar_configuracoes: boolean;
 }
 
 /** Os 4 perfis do §3. Distinto de `Cargo`, que são as permissões do módulo de bancas. */
