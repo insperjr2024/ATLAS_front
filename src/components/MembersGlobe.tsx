@@ -238,6 +238,9 @@ export function MembersGlobe({ nomes }: MembersGlobeProps) {
     const opacity = 0.12 + eased * 0.88;
     const blur = (1 - depth) * 2.2;
     const zIndex = Math.round(proj.z * 1000);
+    // Estimativa de largura do rótulo (não temos medida real de texto aqui)
+    // pra decidir colisão — negrito dos fixos é um pouco mais largo por letra.
+    const largura = entry.nome.length * (entry.fixo ? 8.5 : 7.5) + 14;
     return {
       idx: i,
       left: proj.x,
@@ -246,10 +249,28 @@ export function MembersGlobe({ nomes }: MembersGlobeProps) {
       opacity,
       blur,
       zIndex,
+      largura,
       nome: entry.nome,
       fixo: entry.fixo,
     };
   });
+
+  // Nenhum nome pode sobrepor outro: prioridade pros fixos, depois pelos
+  // mais perto da câmera — cada candidato só fica visível se não colidir
+  // (bounding box) com um rótulo de prioridade maior que já ficou.
+  const visiveis = new Set<number>();
+  const porPrioridade = [...placed].sort((a, b) => {
+    if (a.fixo !== b.fixo) return a.fixo ? -1 : 1;
+    return b.zIndex - a.zIndex;
+  });
+  for (const candidato of porPrioridade) {
+    const colide = [...visiveis].some((idx) => {
+      const v = placed[idx];
+      const folgaX = (candidato.largura + v.largura) / 2 + 6;
+      return Math.abs(candidato.left - v.left) < folgaX && Math.abs(candidato.top - v.top) < 22;
+    });
+    if (!colide) visiveis.add(candidato.idx);
+  }
 
   const meridianLines = useMemo(() => {
     const lines: { d: string; key: string }[] = [];
@@ -315,7 +336,7 @@ export function MembersGlobe({ nomes }: MembersGlobeProps) {
           ))}
         </Wire>
 
-        {placed.map((it) => (
+        {placed.filter((it) => visiveis.has(it.idx)).map((it) => (
           <NameSlot
             key={it.idx}
             style={{
