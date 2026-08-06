@@ -437,6 +437,9 @@ function TabelaEscopos() {
               🔒 A entrega fica travada até a banca do escopo ser aprovada. Os dias correm apenas
               enquanto o escopo está iniciado e não entregue — feriados, provas e recessos do
               calendário do Insper não contam.
+              <br />▶ Um escopo começa a contar na <strong>reunião inicial</strong> dele: registre-a
+              na aba <strong>Reuniões</strong>, escolhendo o dia e o escopo. A data da banca precisa
+              já estar marcada.
             </LegendaTabela>
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </>
@@ -929,6 +932,15 @@ function DataEditavelDiasAmbientacao({
           </>
         )}
       </DataItemValor>
+      {/* 🤖 A única etapa do ciclo que sai sozinha (§5.3): ela tem data de
+          fim calculável, as outras dependem de alguém decidir. A data vem
+          pronta do backend — o front não conta dia útil. */}
+      {projeto.status === "ambientacao" && projeto.fim_ambientacao && (
+        <EmptyText>
+          🤖 até {formatarData(projeto.fim_ambientacao)} — depois disso o projeto passa para{" "}
+          <strong>Em andamento</strong> automaticamente.
+        </EmptyText>
+      )}
       {erro && <FormErrorText>{erro}</FormErrorText>}
     </DataItem>
   );

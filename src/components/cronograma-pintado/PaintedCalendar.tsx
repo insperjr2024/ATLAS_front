@@ -27,6 +27,8 @@ export interface EtapaPintavel {
   id: number;
   /** A chave do grupo. Linhas com a mesma chave são TRECHOS de uma só etapa. */
   grupo: string;
+  /** De qual escopo é — a etapa cobre a faixa de período do próprio escopo. */
+  projeto_escopo_id?: number | null;
   nome: string;
   cor: string;
   data_inicio: string;
@@ -45,7 +47,9 @@ export interface MarcoRenderizavel {
 }
 
 export interface FaixaDerivada {
-  tipo: "ambientacao" | "pausa";
+  tipo: "escopo" | "ambientacao" | "pausa";
+  /** Só o período de escopo tem dono — é o que dá uma fatia por escopo. */
+  projeto_escopo_id?: number | null;
   inicio: string;
   fim: string;
   rotulo: string;
@@ -194,12 +198,32 @@ export function PaintedCalendar({
     // ambientação em que já se pintou uma etapa mostra as duas, dividido. Elas
     // vêm antes para ficarem sempre na mesma posição da divisão, senão a fatia
     // trocaria de lado conforme a ordem em que as etapas foram criadas.
+    //
+    // A chave do grupo carrega o escopo: dois escopos em PARALELO (§5.4) têm
+    // duas faixas de período no mesmo dia, e sem isso o dedupe engoliria a
+    // segunda como se fosse repetição da primeira.
     for (const faixa of faixas) {
-      acrescentar(faixa.inicio, faixa.fim, faixa.cor, faixa.rotulo, `faixa:${faixa.tipo}`);
+      const grupo = `faixa:${faixa.tipo}:${faixa.projeto_escopo_id ?? ""}`;
+      acrescentar(faixa.inicio, faixa.fim, faixa.cor, faixa.rotulo, grupo);
     }
 
     for (const etapa of [...etapas].sort((a, b) => a.ordem - b.ordem)) {
       acrescentar(etapa.data_inicio, etapa.data_fim, etapa.cor, etapa.nome, etapa.grupo);
+      // ⭐ A faixa do escopo é FUNDO, não concorrente: onde a etapa dele já
+      // pinta o dia, a faixa sai de cena. Sem isto toda etapa apareceria pela
+      // metade — dividida com a própria faixa que a contém, o tempo inteiro.
+      if (etapa.projeto_escopo_id) {
+        const chaveFaixa = `faixa:escopo:${etapa.projeto_escopo_id}`;
+        for (const chave of diasDoIntervalo(etapa.data_inicio, etapa.data_fim)) {
+          const lista = porDia.get(chave);
+          if (lista?.some((d) => d.grupo === chaveFaixa)) {
+            porDia.set(
+              chave,
+              lista.filter((d) => d.grupo !== chaveFaixa),
+            );
+          }
+        }
+      }
     }
 
     // A etapa em arrasto entra como mais uma fatia nos dias que ainda não são

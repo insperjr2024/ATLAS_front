@@ -308,3 +308,63 @@ export const SemanaRotulo = styled.span`
   font-weight: ${theme.fontWeight.medium};
   color: ${theme.colors.foreground};
 `;
+
+/* ------------------------------------------------------------------ */
+/* "Sobre qual escopo foi?" — o que dá a largada na contagem (§5.4)     */
+/* ------------------------------------------------------------------ */
+
+export const EscolhaEscopoPainel = styled.div`
+  margin-top: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.muted};
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+export const EscolhaEscopoTitulo = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+`;
+
+export const EscolhaEscopoLista = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+`;
+
+export const EscolhaEscopoOpcao = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+  text-align: left;
+  cursor: pointer;
+  transition: border-color ${theme.transitions.fast}, background ${theme.transitions.fast};
+
+  &:hover:not(:disabled) {
+    border-color: ${theme.colors.ring};
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+`;
+
+export const EscolhaEscopoDica = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  white-space: nowrap;
+`;

@@ -6,6 +6,7 @@ import type { StatusProjeto } from "@/types/projeto";
 
 type LinhaProjeto = Atrasos["por_projeto"][number];
 type Motivo = LinhaProjeto["motivos"][number];
+import { ConteudoPaginado, Paginacao, usePaginacao } from "./Paginacao";
 import {
   PageStack,
   PageCard,
@@ -52,7 +53,7 @@ import {
   TableRow,
   type NivelSeveridade,
 } from "./Monitoramento.styled";
-import { useMonitoramento } from "./MonitoramentoLayout";
+import { useFiltroFrente } from "./FiltroFrente";
 
 const ROTULO_MOTIVO: Record<string, string> = {
   banca: "banca",
@@ -82,7 +83,7 @@ const ROTULO_MOTIVO: Record<string, string> = {
  */
 export function AtrasosAba() {
   const { token } = useAuth();
-  const { frenteId } = useMonitoramento();
+  const { frenteId, seletor } = useFiltroFrente();
   const [dados, setDados] = useState<Atrasos | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -136,21 +137,36 @@ export function AtrasosAba() {
     [projetos],
   );
 
+  // Ordenada por gravidade, então o corte esconde a cauda. Antes dos `return`
+  // cedo de erro e carregando — hook depois deles seria condicional.
+  const listaProjetos = usePaginacao(projetos);
+
   if (erro) {
     return (
-      <ErrorBlock>
-        <ErrorText>{erro}</ErrorText>
-        <PageButton $variant="outline" onClick={carregar}>
-          Tentar novamente
-        </PageButton>
-      </ErrorBlock>
+      <PageStack>
+        {seletor}
+        <ErrorBlock>
+          <ErrorText>{erro}</ErrorText>
+          <PageButton $variant="outline" onClick={carregar}>
+            Tentar novamente
+          </PageButton>
+        </ErrorBlock>
+      </PageStack>
     );
   }
 
-  if (carregando || !dados) return <PageLoadingBlock />;
+  if (carregando || !dados) {
+    return (
+      <PageStack>
+        {seletor}
+        <PageLoadingBlock />
+      </PageStack>
+    );
+  }
 
   return (
     <PageStack>
+      {seletor}
       {projetos.length > 0 && (
         <FaixaResumo>
           <ResumoItem>
@@ -168,14 +184,14 @@ export function AtrasosAba() {
               {diasAcumulados}
               <small>dias</small>
             </ResumoValor>
-            <ResumoRotulo>dias úteis somados (todos os motivos)</ResumoRotulo>
+            <ResumoRotulo>dias úteis somados</ResumoRotulo>
           </ResumoItem>
           <ResumoItem>
             <ResumoValor $nivel={nivel(piorMotivo)}>
               {piorMotivo}
               <small>dias</small>
             </ResumoValor>
-            <ResumoRotulo>pior atraso isolado, em dias úteis</ResumoRotulo>
+            <ResumoRotulo>pior atraso isolado</ResumoRotulo>
           </ResumoItem>
         </FaixaResumo>
       )}
@@ -212,61 +228,66 @@ export function AtrasosAba() {
               </span>
             </EstadoLimpo>
           ) : (
-            <ListaSimples>
-              {projetos.map((p) => {
-                const externo = apenasExterno(p);
-                /* A cor vem do pior motivo isolado — os cortes do `nivel()`
-                   foram escritos sobre o cronograma de UM escopo (§5.6), não
-                   sobre a soma do projeto. Quando o atraso é todo externo a
-                   cor sai de cena: §7.4 não cobra isso do time. */
-                const grau = nivel(pior(p.motivos.filter((m) => !ehExterno(m))));
-                /* Uma soma só é soma quando há o que somar. Com um motivo só,
-                   "soma" confunde: o número É a duração. */
-                const somando = p.motivos.length > 1;
-                return (
-                  <LinhaAtraso key={p.projeto_id}>
-                    <AtrasoDias $nivel={grau} $externo={externo}>
-                      <strong>{p.dias_totais}</strong>
-                      <span>{somando ? "soma" : "dias"}</span>
-                    </AtrasoDias>
-
-                    <AtrasoCorpo>
-                      <AtrasoTitulo>
-                        <LinkProjeto to={`/projetos/${p.projeto_id}`}>{p.projeto_nome}</LinkProjeto>
-                        <Pilula $tom="neutro">
-                          {ROTULO_STATUS[p.status as StatusProjeto] ?? p.status}
-                        </Pilula>
-                        {externo && <Pilula $tom="atencao">espera do cliente</Pilula>}
-                      </AtrasoTitulo>
-
-                      <MotivoLista>
-                        {/* Os motivos descem do pior para o menor: numa lista
-                            de 5 escopos, é o primeiro que explica a linha. */}
-                        {[...p.motivos]
-                          .sort((a, b) => b.dias - a.dias)
-                          .map((m, i) => (
-                            /* O escopo sozinho NÃO é chave única: o mesmo
-                               escopo pode entrar duas vezes, uma pela banca e
-                               outra pela entrega. O par tipo+escopo é. */
-                            <MotivoItem key={`${m.tipo}-${m.projeto_escopo_id ?? i}`}>
-                              <MotivoTag $externo={ehExterno(m)}>
-                                {ROTULO_MOTIVO[m.tipo] ?? m.tipo}
-                              </MotivoTag>
-                              <span>{m.escopo}</span>
-                              <MotivoDias $nivel={nivel(m.dias)} $externo={ehExterno(m)}>
-                                {m.dias} {m.dias === 1 ? "dia" : "dias"}
-                              </MotivoDias>
-                              {m.data_referencia && (
-                                <MotivoData>vencia {formatarData(m.data_referencia)}</MotivoData>
-                              )}
-                            </MotivoItem>
-                          ))}
-                      </MotivoLista>
-                    </AtrasoCorpo>
-                  </LinhaAtraso>
-                );
-              })}
-            </ListaSimples>
+            <>
+            <ConteudoPaginado estado={listaProjetos}>
+              <ListaSimples>
+                {listaProjetos.visiveis.map((p) => {
+                  const externo = apenasExterno(p);
+                  /* A cor vem do pior motivo isolado — os cortes do `nivel()`
+                     foram escritos sobre o cronograma de UM escopo (§5.6), não
+                     sobre a soma do projeto. Quando o atraso é todo externo a
+                     cor sai de cena: §7.4 não cobra isso do time. */
+                  const grau = nivel(pior(p.motivos.filter((m) => !ehExterno(m))));
+                  /* Uma soma só é soma quando há o que somar. Com um motivo só,
+                     "soma" confunde: o número É a duração. */
+                  const somando = p.motivos.length > 1;
+                  return (
+                    <LinhaAtraso key={p.projeto_id}>
+                      <AtrasoDias $nivel={grau} $externo={externo}>
+                        <strong>{p.dias_totais}</strong>
+                        <span>{somando ? "soma" : "dias"}</span>
+                      </AtrasoDias>
+  
+                      <AtrasoCorpo>
+                        <AtrasoTitulo>
+                          <LinkProjeto to={`/projetos/${p.projeto_id}`}>{p.projeto_nome}</LinkProjeto>
+                          <Pilula $tom="neutro">
+                            {ROTULO_STATUS[p.status as StatusProjeto] ?? p.status}
+                          </Pilula>
+                          {externo && <Pilula $tom="atencao">espera do cliente</Pilula>}
+                        </AtrasoTitulo>
+  
+                        <MotivoLista>
+                          {/* Os motivos descem do pior para o menor: numa lista
+                              de 5 escopos, é o primeiro que explica a linha. */}
+                          {[...p.motivos]
+                            .sort((a, b) => b.dias - a.dias)
+                            .map((m, i) => (
+                              /* O escopo sozinho NÃO é chave única: o mesmo
+                                 escopo pode entrar duas vezes, uma pela banca e
+                                 outra pela entrega. O par tipo+escopo é. */
+                              <MotivoItem key={`${m.tipo}-${m.projeto_escopo_id ?? i}`}>
+                                <MotivoTag $externo={ehExterno(m)}>
+                                  {ROTULO_MOTIVO[m.tipo] ?? m.tipo}
+                                </MotivoTag>
+                                <span>{m.escopo}</span>
+                                <MotivoDias $nivel={nivel(m.dias)} $externo={ehExterno(m)}>
+                                  {m.dias} {m.dias === 1 ? "dia" : "dias"}
+                                </MotivoDias>
+                                {m.data_referencia && (
+                                  <MotivoData>vencia {formatarData(m.data_referencia)}</MotivoData>
+                                )}
+                              </MotivoItem>
+                            ))}
+                        </MotivoLista>
+                      </AtrasoCorpo>
+                    </LinhaAtraso>
+                  );
+                })}
+              </ListaSimples>
+</ConteudoPaginado>
+            <Paginacao estado={listaProjetos} />
+            </>
           )}
         </PageCardContent>
       </PageCard>
@@ -279,7 +300,7 @@ export function AtrasosAba() {
           {coordenadores.length === 0 ? (
             <EmptyText>Nenhum coordenador na sua visão.</EmptyText>
           ) : (
-            <TabelaRolagem $min="34rem">
+            <TabelaRolagem $min="34rem" $max="26rem">
               <DataTable>
                 <TableHead>
                   <TableRow>

@@ -30,7 +30,12 @@ export interface EscopoComEtapas extends EscopoVendido {
 }
 
 export interface FaixaDerivadaResposta {
-  tipo: "ambientacao" | "pausa";
+  /**
+   * `escopo` é o período do §5.4: da reunião inicial até a banca daquele
+   * escopo. As outras duas são do projeto inteiro e vêm sem escopo.
+   */
+  tipo: "escopo" | "ambientacao" | "pausa";
+  projeto_escopo_id: number | null;
   inicio: string;
   fim: string;
   rotulo: string;
