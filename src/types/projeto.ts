@@ -198,21 +198,82 @@ export interface JustificativaAtrasoHistorico {
   texto: string;
   registrado_por: number;
   alterado_em: string;
+  //: O campo de autoria comum a todas as cinco fontes — o backend o emite
+  //: junto de `registrado_por` para a tela não precisar saber de qual veio.
+  alterado_por?: number | null;
+  titulo?: string;
+  detalhe?: string | null;
 }
 
-/** A remarcação de uma banca já vencida (§5.6) — `projeto_remarcacao_banca`. */
+/**
+ * ⭐ O que TODA linha do histórico carrega, qualquer que seja o tipo.
+ *
+ * O backend compõe a lista de cinco fontes e devolve `titulo`/`detalhe` já
+ * escritos — é o que deixa a tela renderizar um tipo novo sem saber nada
+ * sobre ele. Antes disto, um tipo não previsto caía no ramo de status,
+ * tentava ler `status_novo` inexistente e derrubava a PÁGINA INTEIRA.
+ */
+interface LinhaBase {
+  id: number | string;
+  /** Frase pronta: "Status: X → Y", "+5 dias de ajuste aprovados — escopo". */
+  titulo?: string;
+  /** O texto livre por baixo: justificativa, motivo, observação. */
+  detalhe?: string | null;
+  /** Chave única de ordenação e agrupamento por dia. Sempre presente. */
+  alterado_em: string;
+  alterado_por?: number | null;
+}
+
+/** §8: o PEDIDO de dias, com o texto que o coordenador escreveu. */
+export interface PedidoDeDiasHistorico extends LinhaBase {
+  tipo: "pedido_de_dias";
+  /** Ainda sem resposta da diretoria — a linha aparece assim mesmo. */
+  aguardando?: boolean;
+}
+
+/** §8: a DECISÃO sobre o pedido, com o texto que a diretoria escreveu. */
+export interface DiasDeAjusteHistorico extends LinhaBase {
+  tipo: "dias_de_ajuste";
+  aprovado?: boolean;
+}
+
+/** §6.4: o que ficou combinado numa reunião — só as que têm anotação. */
+export interface ReuniaoHistorico extends LinhaBase {
+  tipo: "reuniao";
+}
+
+/** §13: uma data de entrega prometida que mudou (ou foi registrada). */
+export interface EntregaAlteradaHistorico extends LinhaBase {
+  tipo: "entrega_alterada";
+  autorizado_por?: number | null;
+}
+
+/** A remarcação de uma banca (§5.6). */
 export interface RemarcacaoBancaHistorico {
-  tipo: "remarcacao_banca";
+  //: ⚠ O backend emite `banca_remarcada`. A tela chamava isto de
+  //: `remarcacao_banca` e o `if` nunca casava — a linha caía no ramo de
+  //: status e quebrava a página.
+  tipo: "banca_remarcada";
   id: number;
   projeto_escopo_id: number | null;
   data_anterior: string;
   data_nova: string;
   justificativa: string;
-  registrado_por: number;
+  registrado_por: number | null;
   alterado_em: string;
+  titulo?: string;
+  detalhe?: string | null;
+  alterado_por?: number | null;
 }
 
-export type HistoricoEntrada = StatusHistorico | JustificativaAtrasoHistorico | RemarcacaoBancaHistorico;
+export type HistoricoEntrada =
+  | StatusHistorico
+  | JustificativaAtrasoHistorico
+  | RemarcacaoBancaHistorico
+  | DiasDeAjusteHistorico
+  | PedidoDeDiasHistorico
+  | ReuniaoHistorico
+  | EntregaAlteradaHistorico;
 
 /** O que o formulário de equipe manda de volta — sem `entrou_em`, que é do backend. */
 export interface MembroEquipePayload {

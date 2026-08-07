@@ -8,6 +8,7 @@ import {
   type TipoAtencao,
   type VisaoGeral,
 } from "@/lib/monitoramento";
+import { paraDataUtc } from "@/lib/projetos";
 // `formatarData`/`formatarDataHora` saíram no merge de propósito: os dois
 // únicos lugares que formatavam data crua aqui (o sparkline de entregas e a
 // lista antiga de bancas) viraram `LinhaEntregas` e `diaDaSemana`/`horaDaBanca`.
@@ -56,13 +57,13 @@ import { useFiltroEscopo } from "./FiltroEscopo";
 /** "seg 11" — o dia da semana é o que a pessoa usa para se localizar numa
  *  agenda de 7 dias; a data completa não acrescenta nada nessa janela. */
 function diaDaSemana(iso: string): string {
-  const d = new Date(iso);
+  const d = paraDataUtc(iso);
   const dia = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
   return `${dia} ${d.getDate()}`;
 }
 
 function horaDaBanca(iso: string): string {
-  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return paraDataUtc(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 /** Itens sem contagem de dias (kickoff não marcado, sem reunião na semana) não
@@ -78,7 +79,7 @@ function nivelAtencao(dias: number | null): NivelSeveridade {
 export function VisaoGeralAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
-  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
     <>
       {seletorFrente}

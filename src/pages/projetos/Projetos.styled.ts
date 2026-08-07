@@ -539,6 +539,31 @@ export const EdicaoBotoes = styled.div`
   margin-top: ${theme.spacing.sm};
 `;
 
+/** O nome do projeto é o título da página (`PageHeading`) — o lápis de
+ *  editar mora ao lado dele, não escondido dentro do card de Descrição. */
+export const NomeEditavel = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+export const NomeBotaoEditar = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  background: transparent;
+  color: ${theme.colors.mutedForeground};
+  cursor: pointer;
+
+  &:hover {
+    color: ${theme.colors.foreground};
+    background: ${theme.colors.muted};
+  }
+`;
+
 export const DataItemValor = styled.div`
   display: flex;
   align-items: center;
@@ -906,7 +931,17 @@ const realce = keyframes`
  * se destacar na timeline, e pulsa quando a pessoa chega aqui direto pelo
  * link "Justificar atraso" (#justificativa-N/#remarcacao-N).
  */
-export const HistoricoTimelineConteudo = styled.div<{ $destaque?: boolean; $realcado?: boolean }>`
+export const HistoricoTimelineConteudo = styled.div<{
+  $destaque?: boolean;
+  $realcado?: boolean;
+  /** A cor da borda esquerda do cartão — neutra por padrão.
+   *
+   *  Era vermelha cravada, de quando só a remarcação usava o destaque. Com
+   *  seis naturezas de evento na timeline, colorir a moldura enchia a coluna
+   *  de vermelho e verde e tudo passava a parecer alerta. A cor vive na
+   *  etiqueta, que é um acento por linha; a moldura só delimita. */
+  $corDestaque?: string;
+}>`
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
@@ -916,13 +951,14 @@ export const HistoricoTimelineConteudo = styled.div<{ $destaque?: boolean; $real
      pula direto pra ele vindo de "Justificar atraso" (§7.4/§5.6). */
   scroll-margin-top: 2rem;
 
-  ${({ $destaque }) =>
+  ${({ $destaque, $corDestaque }) =>
     $destaque &&
     css`
       padding: ${theme.spacing.sm} ${theme.spacing.md};
       border-radius: ${theme.borderRadius.md};
       background: color-mix(in srgb, ${theme.colors.mutedForeground} 4%, transparent);
-      border-left: 3px solid color-mix(in srgb, ${theme.colors.destructive} 45%, transparent);
+      border-left: 3px solid
+        color-mix(in srgb, ${$corDestaque ?? theme.colors.mutedForeground} 45%, transparent);
     `}
 
   ${({ $realcado }) =>
@@ -1154,4 +1190,32 @@ export const EscopoOpcao = styled.label<{ $bloqueado?: boolean }>`
     font-size: ${theme.fontSize.xs};
     color: ${theme.colors.mutedForeground};
   }
+`;
+
+/**
+ * A etiqueta de tipo das linhas do Histórico, com a cor passada por quem usa.
+ *
+ * `HistoricoNotaTag` existe desde antes, mas com o vermelho cravado — servia a
+ * um tipo só (remarcação). Com seis fontes na timeline, a cor precisa dizer
+ * de que natureza é o evento: pedido é neutro, aprovação é verde, recusa é
+ * vermelha, anotação de reunião é azul. Mesma forma, cor por parâmetro.
+ */
+export const HistoricoTipoTag = styled.span<{ $cor: string }>`
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.125rem 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px solid ${({ $cor }) => `color-mix(in srgb, ${$cor} 35%, transparent)`};
+  background: ${({ $cor }) => `color-mix(in srgb, ${$cor} 12%, transparent)`};
+  color: ${({ $cor }) => $cor};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+`;
+
+/** "aguardando a diretoria" — o estado de um pedido ainda sem resposta. */
+export const HistoricoAguardando = styled.span`
+  font-size: ${theme.fontSize.xs};
+  font-style: italic;
+  color: ${theme.colors.mutedForeground};
 `;

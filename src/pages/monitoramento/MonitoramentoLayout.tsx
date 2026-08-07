@@ -3,6 +3,7 @@ import { Outlet, useOutletContext } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { getEscopos } from "@/lib/escopos";
+import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import type { Escopo, Frente } from "@/types/banca";
 import { pode } from "@/utils/permissoes";
 import { PageStack } from "@/styles/page.styled";
@@ -24,6 +25,11 @@ export interface MonitoramentoContexto {
   /** O catálogo de escopos, pro seletor de `useFiltroEscopo` — mesmo motivo
    *  de `frentes`: carrega uma vez no layout, não uma vez por aba. */
   escopos: Escopo[];
+  /** As frentes do usuário logado — usado só pra estreitar as OPÇÕES do
+   *  filtro de escopo de um gerente à frente dele (`useFiltroEscopo`). Não é
+   *  segurança (o backend já trava isso sozinho); é só não oferecer escopo
+   *  de frente que o gerente nunca vai poder ver o resultado. */
+  minhasFrentes: number[];
 }
 
 export function useMonitoramento() {
@@ -42,17 +48,27 @@ export function MonitoramentoLayout() {
   const { usuario, token } = useAuth();
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [escopos, setEscopos] = useState<Escopo[]>([]);
+  const [minhasFrentes, setMinhasFrentes] = useState<number[]>([]);
 
   const podeVerTarefasGerais = pode(usuario, "ver_tarefas_gerais");
+  // A fila é DELA: gerente vê o Monitoramento inteiro, mas não decide nada
+  // do que está nesta aba (§3). Mostrar uma lista que a pessoa não pode
+  // responder é só ansiedade.
+  const podeAprovar = usuario?.posicao === "diretor";
   const podeVerCronogramasGerais = pode(usuario, "ver_cronogramas_gerais");
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !usuario) return;
     getFrentes(token).then(setFrentes).catch(() => setFrentes([]));
     getEscopos(token).then(setEscopos).catch(() => setEscopos([]));
-  }, [token]);
+    getUsuariosFrentes(token)
+      .then((todas) =>
+        setMinhasFrentes(todas.filter((uf) => uf.usuario_id === usuario.id).map((uf) => uf.frente_id)),
+      )
+      .catch(() => setMinhasFrentes([]));
+  }, [token, usuario]);
 
-  const contexto: MonitoramentoContexto = { frentes, escopos };
+  const contexto: MonitoramentoContexto = { frentes, escopos, minhasFrentes };
 
   return (
     <PageStack>
@@ -70,6 +86,7 @@ export function MonitoramentoLayout() {
         <TabLink to="/monitoramento" end>
           Visão geral
         </TabLink>
+        {podeAprovar && <TabLink to="/monitoramento/aprovacoes">Aprovações</TabLink>}
         <TabLink to="/monitoramento/execucao">Execução</TabLink>
         <TabLink to="/monitoramento/alocacao">Alocação</TabLink>
         <TabLink to="/monitoramento/atrasos">Atrasos</TabLink>

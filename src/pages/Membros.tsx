@@ -3,8 +3,7 @@ import { Navigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
-import { getCargos } from "@/lib/cargos";
-import { frentesDoUsuario, nomeCargo, normalizarTexto } from "@/lib/nucleo";
+import { frentesDoUsuario, normalizarTexto } from "@/lib/nucleo";
 import {
   deletarUsuarioPermanente,
   getUsuarios,
@@ -17,7 +16,7 @@ import {
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Frente } from "@/types/banca";
-import type { Cargo, Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
+import type { Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import { pode, ROTULO_POSICAO, ROTULO_STATUS_USUARIO } from "@/utils/permissoes";
 import {
   PageStack,
@@ -80,7 +79,6 @@ const MEMBROS_MAX_VISIVEIS = 9;
 const SEMESTRES_GRADUACAO = [1, 2, 3, 4, 5, 6, 7, 8];
 
 interface Contexto {
-  cargos: Cargo[];
   frentes: Frente[];
   usuariosFrentes: UsuarioFrente[];
 }
@@ -97,7 +95,7 @@ export function Membros() {
   const [reenviandoPara, setReenviandoPara] = useState<UsuarioResumo | null>(null);
   const [transferindo, setTransferindo] = useState(false);
   const [termoPesquisa, setTermoPesquisa] = useState("");
-  const [filtroCargo, setFiltroCargo] = useState("");
+  const [filtroPosicao, setFiltroPosicao] = useState("");
   const [filtroFrente, setFiltroFrente] = useState("");
 
   // `mostrarCarregando=false` é pra recarregar em silêncio, sem acionar o
@@ -112,14 +110,13 @@ export function Membros() {
     if (mostrarCarregando) setCarregando(true);
     setErro("");
     try {
-      const [usuariosResp, cargos, frentes, usuariosFrentes] = await Promise.all([
+      const [usuariosResp, frentes, usuariosFrentes] = await Promise.all([
         getUsuarios(token),
-        getCargos(token),
         getFrentes(token),
         getUsuariosFrentes(token),
       ]);
       setMembros(usuariosResp.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
-      setContexto({ cargos, frentes, usuariosFrentes });
+      setContexto({ frentes, usuariosFrentes });
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar membros");
     } finally {
@@ -134,7 +131,7 @@ export function Membros() {
 
   const membrosAtivos = useMemo(() => membros.filter((m) => m.ativo).length, [membros]);
 
-  if (!usuario?.cargo.pode_gerir_membros) {
+  if (!usuario?.permissoes.pode_gerir_membros) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -153,7 +150,7 @@ export function Membros() {
 
   const termo = normalizarTexto(termoPesquisa.trim());
   const membrosFiltrados = membros.filter((membro) => {
-    if (filtroCargo && String(membro.cargo_id) !== filtroCargo) return false;
+    if (filtroPosicao && membro.posicao !== filtroPosicao) return false;
     if (filtroFrente) {
       const temFrente = contexto.usuariosFrentes.some(
         (uf) => uf.usuario_id === membro.id && uf.frente_id === Number(filtroFrente),
@@ -163,7 +160,7 @@ export function Membros() {
     if (!termo) return true;
     const frentes = frentesDoUsuario(contexto.usuariosFrentes, contexto.frentes, membro.id).join(" ");
     const texto = normalizarTexto(
-      `${membro.nome} ${membro.email_insper ?? ""} ${nomeCargo(contexto.cargos, membro.cargo_id)} ${frentes}`,
+      `${membro.nome} ${membro.email_insper ?? ""} ${ROTULO_POSICAO[membro.posicao] ?? ""} ${frentes}`,
     );
     return texto.includes(termo);
   });
@@ -204,15 +201,15 @@ export function Membros() {
               aria-label="Buscar membros"
             />
             <FieldSelect
-              value={filtroCargo}
-              onChange={(e) => setFiltroCargo(e.target.value)}
-              aria-label="Filtrar por cargo"
+              value={filtroPosicao}
+              onChange={(e) => setFiltroPosicao(e.target.value)}
+              aria-label="Filtrar por posição"
               style={{ width: "10rem" }}
             >
-              <option value="">Todos os cargos</option>
-              {contexto.cargos.map((cargo) => (
-                <option key={cargo.id} value={cargo.id}>
-                  {cargo.nome}
+              <option value="">Todas as posições</option>
+              {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((posicao) => (
+                <option key={posicao} value={posicao}>
+                  {ROTULO_POSICAO[posicao]}
                 </option>
               ))}
             </FieldSelect>
@@ -245,10 +242,7 @@ export function Membros() {
                 <TableRow>
                   <TableHeadCell>Nome</TableHeadCell>
                   <TableHeadCell>E-mail</TableHeadCell>
-                  {/* Posição (§3) e cargo (permissões de banca) são dimensões
-                      diferentes — a tela mostra as duas. */}
                   <TableHeadCell>Posição</TableHeadCell>
-                  <TableHeadCell>Cargo</TableHeadCell>
                   <TableHeadCell>Frentes</TableHeadCell>
                   <TableHeadCell>Semestre</TableHeadCell>
                   <TableHeadCell>Status</TableHeadCell>
@@ -263,7 +257,6 @@ export function Membros() {
                       <NameCell>{membro.nome}</NameCell>
                       <TableCell>{membro.email_insper}</TableCell>
                       <TableCell>{ROTULO_POSICAO[membro.posicao] ?? membro.posicao}</TableCell>
-                      <TableCell>{nomeCargo(contexto.cargos, membro.cargo_id)}</TableCell>
                       <TableCell>{frentes.length > 0 ? frentes.join(", ") : "—"}</TableCell>
                       <TableCell>{membro.semestre_graduacao ? `${membro.semestre_graduacao}º` : "—"}</TableCell>
                       <TableCell>
@@ -632,7 +625,6 @@ function NovoMembroModal({
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [posicao, setPosicao] = useState<Posicao>("consultor");
-  const [cargoId, setCargoId] = useState("");
   const [frenteIds, setFrenteIds] = useState<number[]>([]);
   const [semestreGraduacao, setSemestreGraduacao] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -677,7 +669,6 @@ function NovoMembroModal({
           nome: nome.trim(),
           email_insper: email.trim(),
           posicao,
-          cargo_id: cargoId ? Number(cargoId) : null,
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
@@ -805,24 +796,6 @@ function NovoMembroModal({
                     </CheckboxLabel>
                   ))}
                 </CheckboxGrid>
-                {frenteObrigatoria && (
-                  <EmptyText style={{ fontSize: "0.7rem" }}>
-                    O gerente só enxerga os projetos desta frente — sem nenhuma marcada, ele
-                    entra na plataforma sem ver projeto algum.
-                  </EmptyText>
-                )}
-              </FieldGroup>
-
-              <FieldGroup>
-                <FieldLabel htmlFor="novo-membro-cargo">Cargo (permissões de banca)</FieldLabel>
-                <FieldSelect id="novo-membro-cargo" value={cargoId} onChange={(e) => setCargoId(e.target.value)}>
-                  <option value="">Cargo padrão configurado</option>
-                  {contexto.cargos.map((cargo) => (
-                    <option key={cargo.id} value={cargo.id}>
-                      {cargo.nome}
-                    </option>
-                  ))}
-                </FieldSelect>
               </FieldGroup>
 
               {erro && <FormErrorText>{erro}</FormErrorText>}
@@ -863,7 +836,6 @@ function MembroModal({
   const [excluindo, setExcluindo] = useState(false);
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(membro.nome);
-  const [cargoId, setCargoId] = useState(String(membro.cargo_id));
   const [posicao, setPosicao] = useState<Posicao>(membro.posicao);
   const [status, setStatus] = useState<StatusUsuario>(membro.status);
   const [frenteIds, setFrenteIds] = useState<number[]>(() =>
@@ -907,7 +879,6 @@ function MembroModal({
         membro.id,
         {
           nome: nome.trim(),
-          cargo_id: Number(cargoId),
           posicao,
           status,
           // `ativo` é espelho de `status` (F2) — mandado junto para o front
@@ -958,10 +929,6 @@ function MembroModal({
                 <DetailRow>
                   <DetailTerm>Posição</DetailTerm>
                   <DetailValue>{ROTULO_POSICAO[membro.posicao] ?? membro.posicao}</DetailValue>
-                </DetailRow>
-                <DetailRow>
-                  <DetailTerm>Cargo</DetailTerm>
-                  <DetailValue>{nomeCargo(contexto.cargos, membro.cargo_id)}</DetailValue>
                 </DetailRow>
                 <DetailRow>
                   <DetailTerm>Frentes</DetailTerm>
@@ -1081,23 +1048,6 @@ function MembroModal({
                       </CheckboxLabel>
                     ))}
                   </CheckboxGrid>
-                  {frenteObrigatoria && (
-                    <EmptyText style={{ fontSize: "0.7rem" }}>
-                      O gerente só enxerga os projetos desta frente — sem nenhuma marcada, ele
-                      fica sem ver projeto algum.
-                    </EmptyText>
-                  )}
-                </FieldGroup>
-
-                <FieldGroup>
-                  <FieldLabel htmlFor="cargo-membro">Cargo (permissões de banca)</FieldLabel>
-                  <FieldSelect id="cargo-membro" value={cargoId} onChange={(e) => setCargoId(e.target.value)} required>
-                    {contexto.cargos.map((cargo) => (
-                      <option key={cargo.id} value={cargo.id}>
-                        {cargo.nome}
-                      </option>
-                    ))}
-                  </FieldSelect>
                 </FieldGroup>
 
                 <FieldGroup>
@@ -1130,7 +1080,6 @@ function MembroModal({
                 type="button"
                 onClick={() => {
                   setEditando(false);
-                  setCargoId(String(membro.cargo_id));
                   setPosicao(membro.posicao);
                   setStatus(membro.status);
                   setFrenteIds(

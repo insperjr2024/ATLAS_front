@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { createCargo, deleteCargo, getCargos, updateCargo, type CargoPayload } from "@/lib/cargos";
+import { getPosicoesPermissoes, updatePosicaoPermissao } from "@/lib/posicoes-permissoes";
 import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/escopos";
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
@@ -10,7 +10,8 @@ import { ConfiguracaoBancaCard } from "./config/ConfiguracaoBancaCard";
 import { GestaoSemestralCard } from "./config/GestaoSemestralCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Escopo, Frente } from "@/types/banca";
-import type { Cargo } from "@/types/auth";
+import type { Permissoes, PosicaoPermissao } from "@/types/auth";
+import { ROTULO_POSICAO } from "@/utils/permissoes";
 import {
   PageStack,
   PageCard,
@@ -61,7 +62,7 @@ import {
 import { LIST_MAX_VISIVEIS, TableScrollWrap } from "@/styles/shared.styled";
 
 // Fonte única dos rótulos: alimenta as caixas do modal de edição E as tags da
-// tabela. Cada título é verbo + objeto, para a tag dizer sozinha o que o cargo
+// tabela. Cada título é verbo + objeto, para a tag dizer sozinha o que a posição
 // pode fazer — sem depender de abrir o modal para descobrir.
 const PERMISSOES = [
   {
@@ -92,14 +93,6 @@ const PERMISSOES = [
     titulo: "Definir cronograma por escopo (etapas, banca)",
     descricao:
       "Criar e mover etapas e marcos, definir o cronograma de um escopo e agendar as bancas.",
-  },
-  {
-    // Caixa separada de `pode_definir_cronograma` de propósito: quem monta o
-    // cronograma é quem pede os dias; quem decide o pedido é outra pessoa.
-    campo: "pode_aprovar_reajuste" as const,
-    titulo: "Aprovar reajuste de cronograma",
-    descricao:
-      "Decidir os pedidos de dias de ajuste dos escopos, no card de pedidos da Visão geral do Monitoramento.",
   },
   {
     campo: "pode_criar_tarefa" as const,
@@ -144,37 +137,42 @@ const PERMISSOES = [
     campo: "pode_administrar_configuracoes" as const,
     titulo: "Administrar Configurações",
     descricao:
-      "Abrir Configurações e Calendários base — inclusive editar cargos, o que inclui conceder esta mesma caixa a outros.",
+      "Abrir Configurações e Calendários base — inclusive editar as permissões de qualquer posição, o que inclui conceder esta mesma caixa a outra.",
+  },
+  {
+    campo: "pode_ver_todos_projetos" as const,
+    titulo: "Ver todos os projetos, de qualquer frente",
+    descricao:
+      "A única caixa que muda QUAIS projetos aparecem — as outras de cima só abrem funcionalidade, sem tocar nisso. Sem esta caixa, coordenador e consultor sempre ficam limitados ao que já estão alocados, mesmo com todo o resto marcado.",
   },
 ];
 
 type CampoPermissao = (typeof PERMISSOES)[number]["campo"];
 
-function permissoesDoCargo(cargo: Cargo) {
-  return PERMISSOES.filter((p) => cargo[p.campo]);
+function permissoesDaPosicao(posicao: PosicaoPermissao) {
+  return PERMISSOES.filter((p) => posicao[p.campo]);
 }
 
 export function Config() {
   const { usuario, token } = useAuth();
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [escopos, setEscopos] = useState<Escopo[]>([]);
-  const [cargos, setCargos] = useState<Cargo[]>([]);
+  const [posicoes, setPosicoes] = useState<PosicaoPermissao[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
   const [modalFrente, setModalFrente] = useState<Frente | "novo" | null>(null);
   const [modalEscopo, setModalEscopo] = useState<Escopo | "novo" | null>(null);
-  const [modalCargo, setModalCargo] = useState<Cargo | "novo" | null>(null);
+  const [modalPosicao, setModalPosicao] = useState<PosicaoPermissao | null>(null);
 
   const [paraExcluir, setParaExcluir] = useState<
-    { tipo: "frente"; item: Frente } | { tipo: "escopo"; item: Escopo } | { tipo: "cargo"; item: Cargo } | null
+    { tipo: "frente"; item: Frente } | { tipo: "escopo"; item: Escopo } | null
   >(null);
 
   async function confirmarExclusao() {
     if (!token || !paraExcluir) return;
     if (paraExcluir.tipo === "frente") await deleteFrente(paraExcluir.item.id, token);
-    else if (paraExcluir.tipo === "escopo") await deleteEscopo(paraExcluir.item.id, token);
-    else await deleteCargo(paraExcluir.item.id, token);
+    else await deleteEscopo(paraExcluir.item.id, token);
     setParaExcluir(null);
     buscar();
   }
@@ -184,14 +182,14 @@ export function Config() {
     setCarregando(true);
     setErro("");
     try {
-      const [frentesResp, escoposResp, cargosResp] = await Promise.all([
+      const [frentesResp, escoposResp, posicoesResp] = await Promise.all([
         getFrentes(token),
         getEscopos(token),
-        getCargos(token),
+        getPosicoesPermissoes(token),
       ]);
       setFrentes(frentesResp.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
       setEscopos(escoposResp.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
-      setCargos(cargosResp.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
+      setPosicoes(posicoesResp);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar configurações");
     } finally {
@@ -205,16 +203,16 @@ export function Config() {
   }, [token]);
 
   // Núcleo e Configurações ficaram fora da tabela das 10 do §3, mas viraram
-  // caixa de cargo própria (`pode_administrar_configuracoes`) a pedido
-  // explícito do usuário — inclusive pra editar cargo, que é a ação mais
-  // sensível daqui: quem tem a caixa concede a mesma caixa (ou qualquer
-  // outra) a outro cargo. Só quem já tem a permissão consegue distribuí-la,
-  // então não dá pra se auto-conceder do zero.
-  if (!usuario?.cargo.pode_administrar_configuracoes) {
+  // caixa própria (`pode_administrar_configuracoes`) a pedido explícito do
+  // usuário — inclusive pra editar as permissões de qualquer posição, que é
+  // a ação mais sensível daqui: quem tem a caixa concede a mesma caixa (ou
+  // qualquer outra) a outra posição. Só quem já tem a permissão consegue
+  // distribuí-la, então não dá pra se auto-conceder do zero.
+  if (!usuario?.permissoes.pode_administrar_configuracoes) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const podeEditarCargos = usuario.cargo.pode_administrar_configuracoes;
+  const podeEditarPermissoes = usuario.permissoes.pode_administrar_configuracoes;
 
   if (erro) {
     return (
@@ -235,7 +233,7 @@ export function Config() {
         <PageHeaderText>
           <PageHeading>Configurações</PageHeading>
           <PageSubheading>
-            Gestão semestral, calendário acadêmico, frentes, escopos e cargos.
+            Gestão semestral, calendário acadêmico, frentes, escopos e permissões por posição.
           </PageSubheading>
         </PageHeaderText>
       </PageHeaderRow>
@@ -320,66 +318,48 @@ export function Config() {
       <PageCard>
         <PageCardHeader>
           <CardHeaderActions>
-            <PageCardTitle>Cargos</PageCardTitle>
-            {podeEditarCargos && (
-              <PageButtonSm type="button" onClick={() => setModalCargo("novo")}>
-                <Plus size={14} />
-                Adicionar
-              </PageButtonSm>
-            )}
+            <PageCardTitle>Permissões por posição</PageCardTitle>
           </CardHeaderActions>
         </PageCardHeader>
         <PageCardContent>
-          {!podeEditarCargos && (
+          {!podeEditarPermissoes && (
             <EmptyText style={{ fontSize: "0.7rem" }}>
-              Só quem já tem esta permissão pode editar cargos — impede auto-concessão de acesso.
+              Só quem já tem esta permissão pode editar — impede auto-concessão de acesso.
             </EmptyText>
           )}
-          {cargos.length === 0 && <EmptyText>Nenhum cargo cadastrado.</EmptyText>}
-          {cargos.length > 0 && (
-            <TableScrollWrap $scrollable={cargos.length > LIST_MAX_VISIVEIS}>
+          <TableScrollWrap $scrollable={posicoes.length > LIST_MAX_VISIVEIS}>
             <DataTable>
               <TableHead>
                 <TableRow>
-                  <TableHeadCell>Cargo</TableHeadCell>
+                  <TableHeadCell>Posição</TableHeadCell>
                   <TableHeadCell>Permissões</TableHeadCell>
                   <TableHeadCell />
                 </TableRow>
               </TableHead>
               <TableBody>
-                {cargos.map((cargo) => (
-                  <TableRow key={cargo.id}>
-                    <NameCell>{cargo.nome}</NameCell>
+                {posicoes.map((posicao) => (
+                  <TableRow key={posicao.posicao}>
+                    <NameCell>{ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</NameCell>
                     <TableCell>
-                      {permissoesDoCargo(cargo).length === 0 && "—"}
-                      {permissoesDoCargo(cargo).map((p) => (
+                      {permissoesDaPosicao(posicao).length === 0 && "—"}
+                      {permissoesDaPosicao(posicao).map((p) => (
                         <PermissaoBadge key={p.campo} title={p.descricao}>
                           {p.titulo}
                         </PermissaoBadge>
                       ))}
                     </TableCell>
                     <ActionsCell>
-                      {podeEditarCargos && (
-                        <>
-                          <PageButtonSm $variant="outline" type="button" onClick={() => setModalCargo(cargo)}>
-                            Editar
-                          </PageButtonSm>
-                          <PageButtonSm
-                            $variant="outline"
-                            type="button"
-                            onClick={() => setParaExcluir({ tipo: "cargo", item: cargo })}
-                          >
-                            Excluir
-                          </PageButtonSm>
-                        </>
+                      {podeEditarPermissoes && (
+                        <PageButtonSm $variant="outline" type="button" onClick={() => setModalPosicao(posicao)}>
+                          Editar
+                        </PageButtonSm>
                       )}
                     </ActionsCell>
                   </TableRow>
                 ))}
               </TableBody>
             </DataTable>
-            </TableScrollWrap>
-          )}
+          </TableScrollWrap>
         </PageCardContent>
       </PageCard>
 
@@ -410,15 +390,13 @@ export function Config() {
         />
       )}
 
-      {modalCargo && (
-        <ModalCargo
-          cargo={modalCargo === "novo" ? null : modalCargo}
-          cargos={cargos}
-          onClose={() => setModalCargo(null)}
-          onSalvar={async (dados, cargoId) => {
-            if (cargoId === null) await createCargo(dados, token);
-            else await updateCargo(cargoId, dados, token);
-            setModalCargo(null);
+      {modalPosicao && (
+        <ModalPosicaoPermissao
+          posicao={modalPosicao}
+          onClose={() => setModalPosicao(null)}
+          onSalvar={async (dados) => {
+            await updatePosicaoPermissao(modalPosicao.posicao, dados, token);
+            setModalPosicao(null);
             buscar();
           }}
         />
@@ -427,9 +405,7 @@ export function Config() {
       {paraExcluir && (
         <ConfirmarModal
           titulo="Excluir"
-          mensagem={`Excluir ${
-            paraExcluir.tipo === "frente" ? "a frente" : paraExcluir.tipo === "escopo" ? "o escopo" : "o cargo"
-          } "${paraExcluir.item.nome}"?`}
+          mensagem={`Excluir ${paraExcluir.tipo === "frente" ? "a frente" : "o escopo"} "${paraExcluir.item.nome}"?`}
           onCancelar={() => setParaExcluir(null)}
           onConfirmar={confirmarExclusao}
         />
@@ -636,42 +612,24 @@ function ModalFrente({
 
 /** As caixas do formulário, na ordem em que aparecem — derivadas de
  *  `PERMISSOES` para uma permissão nova não nascer faltando no modal. */
-function permissoesDe(cargo: Cargo | null): Record<CampoPermissao, boolean> {
+function permissoesDe(posicao: PosicaoPermissao): Record<CampoPermissao, boolean> {
   return Object.fromEntries(
-    PERMISSOES.map((p) => [p.campo, cargo?.[p.campo] ?? false]),
+    PERMISSOES.map((p) => [p.campo, posicao[p.campo]]),
   ) as Record<CampoPermissao, boolean>;
 }
 
-function ModalCargo({
-  cargo,
-  cargos,
+function ModalPosicaoPermissao({
+  posicao,
   onClose,
   onSalvar,
 }: {
-  /** `null` = criando um cargo novo. */
-  cargo: Cargo | null;
-  cargos: Cargo[];
+  posicao: PosicaoPermissao;
   onClose: () => void;
-  onSalvar: (dados: CargoPayload, cargoId: number | null) => Promise<void>;
+  onSalvar: (dados: Partial<Permissoes>) => Promise<void>;
 }) {
-  const criando = cargo === null;
-  // Ao editar, o cargo é escolhido numa lista — digitar o nome renomearia o
-  // cargo por engano, que é o oposto do que esta tela existe para fazer.
-  const [cargoId, setCargoId] = useState(cargo?.id ?? null);
-  const [nome, setNome] = useState(cargo?.nome ?? "");
-  const [permissoes, setPermissoes] = useState(permissoesDe(cargo));
+  const [permissoes, setPermissoes] = useState(permissoesDe(posicao));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
-
-  const selecionado = criando ? null : (cargos.find((c) => c.id === cargoId) ?? null);
-
-  function trocarCargo(novoId: number) {
-    // Trocar de cargo recarrega as caixas dele — senão as marcações do cargo
-    // anterior seriam salvas por cima do novo.
-    setCargoId(novoId);
-    setPermissoes(permissoesDe(cargos.find((c) => c.id === novoId) ?? null));
-    setErro("");
-  }
 
   function togglePermissao(campo: keyof typeof permissoes) {
     setPermissoes((p) => ({ ...p, [campo]: !p[campo] }));
@@ -679,20 +637,12 @@ function ModalCargo({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (criando && !nome.trim()) return;
-    if (!criando && !selecionado) {
-      setErro("Escolha o cargo que você quer alterar.");
-      return;
-    }
     setSalvando(true);
     setErro("");
     try {
-      await onSalvar(
-        { nome: criando ? nome.trim() : selecionado!.nome, ...permissoes },
-        criando ? null : selecionado!.id,
-      );
+      await onSalvar(permissoes);
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao salvar cargo");
+      setErro(err instanceof Error ? err.message : "Erro ao salvar permissões");
     } finally {
       setSalvando(false);
     }
@@ -702,40 +652,13 @@ function ModalCargo({
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog">
         <ModalHeader>
-          <ModalTitle>{criando ? "Novo cargo" : "Editar permissões"}</ModalTitle>
+          <ModalTitle>Editar permissões — {ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>
         </ModalHeader>
         <FormStack onSubmit={handleSubmit}>
           <ModalBody>
-            <FieldGroup>
-              <FieldLabel htmlFor="nome-cargo">Cargo</FieldLabel>
-              {criando ? (
-                <FieldInput
-                  id="nome-cargo"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  placeholder="Nome do cargo novo"
-                  required
-                  autoFocus
-                />
-              ) : (
-                <FieldSelect
-                  id="nome-cargo"
-                  value={cargoId ?? ""}
-                  onChange={(e) => trocarCargo(Number(e.target.value))}
-                  autoFocus
-                >
-                  {cargos.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nome}
-                    </option>
-                  ))}
-                </FieldSelect>
-              )}
-            </FieldGroup>
-
             <FieldGroup>
               <FieldLabel>Permissões na plataforma</FieldLabel>
               <PermissoesGrid>

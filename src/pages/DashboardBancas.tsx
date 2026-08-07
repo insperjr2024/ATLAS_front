@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { semestreAtual } from "@/lib/semestres";
 import { nomeEscopo, nomeUsuario } from "@/lib/nucleo";
+import { paraDataUtc } from "@/lib/projetos";
 import type {
   Avaliacao,
   Banca,
@@ -221,11 +222,11 @@ export function DashboardBancas({
     return bancasSemestre
       .filter(
         (b) =>
-          !b.realizado_em && b.alocados < b.piso_minimo && new Date(b.data_hora).getTime() > agora,
+          !b.realizado_em && b.alocados < b.piso_minimo && paraDataUtc(b.data_hora).getTime() > agora,
       )
       .map((b) => ({
         banca: b,
-        diasRestantes: Math.ceil((new Date(b.data_hora).getTime() - agora) / DIA_MS),
+        diasRestantes: Math.ceil((paraDataUtc(b.data_hora).getTime() - agora) / DIA_MS),
         faltam: b.piso_minimo - b.alocados,
       }))
       .sort((a, b) => a.diasRestantes - b.diasRestantes);
@@ -514,7 +515,7 @@ export function DashboardBancas({
                     <InsightTexto>
                       <InsightNome>{banca.nome_projeto}</InsightNome>
                       <InsightMeta>
-                        {new Date(banca.data_hora).toLocaleDateString("pt-BR")} ·{" "}
+                        {paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")} ·{" "}
                         {banca.alocados}/{banca.piso_minimo} do mínimo · faltam {faltam}
                       </InsightMeta>
                     </InsightTexto>

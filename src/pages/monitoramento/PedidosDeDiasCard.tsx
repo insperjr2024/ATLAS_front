@@ -31,7 +31,7 @@ import { ItemLista, LinkProjeto, ListaSimples } from "./Monitoramento.styled";
  * que a recusa fica registrada, e é ela que explica depois por que a janela
  * continuou nos dias vendidos.
  */
-export function PedidosDeDiasCard() {
+export function PedidosDeDiasCard({ onDecidiu }: { onDecidiu?: () => void } = {}) {
   const { token, usuario } = useAuth();
   const [pedidos, setPedidos] = useState<PedidoPendente[]>([]);
   const [erro, setErro] = useState("");
@@ -39,7 +39,14 @@ export function PedidosDeDiasCard() {
   const [justificativa, setJustificativa] = useState("");
   const [enviando, setEnviando] = useState(false);
 
-  const podeAprovar = !!usuario?.cargo.pode_aprovar_reajuste;
+  // ⚠ A régua é a POSIÇÃO, não uma caixa de cargo.
+  //
+  // Isto lia `cargo.pode_aprovar_reajuste`, que o backend removeu junto com a
+  // coluna (migration 1556cc590a06). Como o campo deixou de vir, o default
+  // `false` do AuthContext valia sempre — e o `return null` logo abaixo
+  // escondia o card até da diretora, que é justamente quem decide. O §8 diz
+  // "só a diretoria", e é isso que o `require_diretor` da rota cobra.
+  const podeAprovar = usuario?.posicao === "diretor";
 
   const carregar = useCallback(async () => {
     if (!token || !podeAprovar) return;
@@ -71,6 +78,7 @@ export function PedidosDeDiasCard() {
       setDecidindo(null);
       setJustificativa("");
       await carregar();
+      onDecidiu?.();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Não foi possível responder o pedido");
     } finally {

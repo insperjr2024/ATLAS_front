@@ -57,6 +57,8 @@ import {
   HistoricoNotaLinha,
   HistoricoNotaMotivo,
   HistoricoNotaTag,
+  HistoricoTipoTag,
+  HistoricoAguardando,
   HistoricoNotaTexto,
   HistoricoPeriodoPills,
   HistoricoResumoBarraFill,
@@ -75,6 +77,25 @@ import {
   HistoricoTimelineTrilho,
 } from "./Projetos.styled";
 import { useProjeto } from "./ProjetoPage";
+
+/**
+ * A etiqueta e a cor de cada natureza de evento do Histórico.
+ *
+ * A cor não é decoração: é a leitura rápida da timeline. Verde é o que
+ * destravou (dias aprovados), vermelho o que travou ou mudou uma data
+ * combinada, azul é conversa registrada, cinza é pedido ainda sem desfecho.
+ * Tipo desconhecido cai num genérico em vez de sumir da tela.
+ */
+const APARENCIA_EVENTO: Record<string, { rotulo: string; cor: string }> = {
+  pedido_de_dias: { rotulo: "Pedido de dias", cor: theme.colors.mutedForeground },
+  dias_de_ajuste: { rotulo: "Dias aprovados", cor: theme.colors.success },
+  // ⚠ Nada de `primary` aqui: neste tema ele é o MESMO vermelho do
+  // `destructive`, e "Reunião" saía com cara de alerta. `info` e `warning`
+  // são as cores que dizem "informação" e "atenção" sem gritar erro.
+  reuniao: { rotulo: "Reunião", cor: theme.colors.info },
+  entrega_alterada: { rotulo: "Entrega", cor: theme.colors.warning },
+};
+
 
 function formatarDuracao(ms: number): string {
   const dias = Math.floor(ms / 86_400_000);
@@ -103,9 +124,15 @@ function ehStatus(h: HistoricoEntrada): h is StatusHistorico {
   return h.tipo === "status";
 }
 
-/** Quem registrou a linha, seja transição de status ou nota de atraso. */
+/** Quem registrou a linha, qualquer que seja o tipo.
+ *
+ * `alterado_por` é o único campo de autoria que TODAS as cinco fontes
+ * emitem; `registrado_por` só existe em algumas. Preferir o específico e cair
+ * no comum evita ter de listar as variantes aqui toda vez que nasce uma. */
 function autorDe(h: HistoricoEntrada): number | null {
-  return ehStatus(h) ? h.alterado_por : h.registrado_por;
+  if (ehStatus(h)) return h.alterado_por;
+  const especifico = "registrado_por" in h ? h.registrado_por : null;
+  return especifico ?? h.alterado_por ?? null;
 }
 
 /**
@@ -218,7 +245,12 @@ export function ProjetoHistorico() {
 
   const resumoPorStatus = useMemo(() => {
     if (historicoStatus.length === 0) return [];
-    const ascendente = [...historicoStatus].sort((a, b) => a.alterado_em.localeCompare(b.alterado_em));
+    // `?? ""` porque a lista é composta de cinco fontes no backend, e uma
+    // linha sem data derrubava a TELA INTEIRA no localeCompare. Ordenar mal
+    // uma linha é um defeito; não abrir o Histórico é outro, bem maior.
+    const ascendente = [...historicoStatus].sort((a, b) =>
+      (a.alterado_em ?? "").localeCompare(b.alterado_em ?? ""),
+    );
     const duracoes = new Map<StatusProjeto, number>();
     for (let i = 0; i < ascendente.length; i++) {
       const inicio = new Date(ascendente[i].alterado_em).getTime();
@@ -300,7 +332,9 @@ export function ProjetoHistorico() {
   }, [historico, statusFiltro, autorFiltro, dataInicio, dataFim]);
 
   const gruposPorDia = useMemo(() => {
-    const ordenado = [...historicoFiltrado].sort((a, b) => b.alterado_em.localeCompare(a.alterado_em));
+    const ordenado = [...historicoFiltrado].sort((a, b) =>
+      (b.alterado_em ?? "").localeCompare(a.alterado_em ?? ""),
+    );
     const grupos = new Map<string, HistoricoEntrada[]>();
     for (const linha of ordenado) {
       const chave = chaveDia(linha.alterado_em);
@@ -518,7 +552,7 @@ export function ProjetoHistorico() {
                       return (
                         <HistoricoTimelineItem key={idAncora}>
                           <HistoricoTimelineTrilho $ultimo={ultimo}>
-                            <HistoricoTimelinePonto $cor={theme.colors.destructive} />
+                            <HistoricoTimelinePonto $cor={theme.colors.mutedForeground} />
                           </HistoricoTimelineTrilho>
                           <HistoricoTimelineConteudo
                             id={idAncora}
@@ -557,13 +591,13 @@ export function ProjetoHistorico() {
                       );
                     }
 
-                    if (linha.tipo === "remarcacao_banca") {
+                    if (linha.tipo === "banca_remarcada") {
                       const escopo = projeto.escopos.find((e) => e.id === linha.projeto_escopo_id);
                       const idAncora = `remarcacao-${linha.id}`;
                       return (
                         <HistoricoTimelineItem key={idAncora}>
                           <HistoricoTimelineTrilho $ultimo={ultimo}>
-                            <HistoricoTimelinePonto $cor={theme.colors.destructive} />
+                            <HistoricoTimelinePonto $cor={theme.colors.mutedForeground} />
                           </HistoricoTimelineTrilho>
                           <HistoricoTimelineConteudo
                             id={idAncora}
@@ -585,13 +619,73 @@ export function ProjetoHistorico() {
                               <HistoricoNotaTexto>{linha.justificativa}</HistoricoNotaTexto>
                             </HistoricoNotaLinha>
                             <HistoricoTimelineMeta>
-                              <HistoricoAutorChip>{nomeUsuario(linha.registrado_por)}</HistoricoAutorChip>
+                              <HistoricoAutorChip>
+                                {linha.registrado_por ? nomeUsuario(linha.registrado_por) : "Automático"}
+                              </HistoricoAutorChip>
                               <span>{formatarDataHora(linha.alterado_em)}</span>
                               {podeExcluir && (
                                 <HistoricoExcluirBtn type="button" onClick={() => setExcluindo(linha)}>
                                   Excluir
                                 </HistoricoExcluirBtn>
                               )}
+                            </HistoricoTimelineMeta>
+                          </HistoricoTimelineConteudo>
+                        </HistoricoTimelineItem>
+                      );
+                    }
+
+                    // ⭐ Toda linha que não é transição de status é desenhada
+                    // aqui, a partir do `titulo`/`detalhe` que o backend manda
+                    // pronto — o que deixa uma fonte nova aparecer sem a tela
+                    // saber nada sobre ela. A ETIQUETA é o que dá leitura: sem
+                    // ela, seis naturezas de evento viravam seis frases soltas
+                    // e indistinguíveis na mesma coluna.
+                    if (linha.tipo !== "status") {
+                      const aparencia = APARENCIA_EVENTO[linha.tipo] ?? {
+                        rotulo: "Evento",
+                        cor: theme.colors.mutedForeground,
+                      };
+                      // A recusa de um pedido é o único caso em que o rótulo
+                      // depende do dado, não só do tipo: "aprovados" e
+                      // "negados" são histórias opostas.
+                      const negado = linha.tipo === "dias_de_ajuste" && linha.aprovado === false;
+                      const cor = negado ? theme.colors.destructive : aparencia.cor;
+                      // ⭐ A cor vive só na ETIQUETA. A bolinha e a borda do
+                      // cartão ficam neutras de propósito: com seis naturezas
+                      // de evento, colorir também a moldura enchia a coluna de
+                      // vermelho e verde e a timeline perdia a leitura calma —
+                      // tudo parecia alerta. Um acento por linha basta.
+                      const idAncora = `evento-${linha.id}`;
+                      return (
+                        <HistoricoTimelineItem key={idAncora}>
+                          <HistoricoTimelineTrilho $ultimo={ultimo}>
+                            <HistoricoTimelinePonto $cor={theme.colors.mutedForeground} />
+                          </HistoricoTimelineTrilho>
+                          <HistoricoTimelineConteudo
+                            id={idAncora}
+                            $destaque
+                            $corDestaque={theme.colors.mutedForeground}
+                            $realcado={realcado === idAncora}
+                          >
+                            <HistoricoNotaLinha>
+                              <HistoricoNotaCabecalho>
+                                <HistoricoTipoTag $cor={cor}>
+                                  {negado ? "Dias negados" : aparencia.rotulo}
+                                </HistoricoTipoTag>
+                                <HistoricoNotaMotivo>{linha.titulo}</HistoricoNotaMotivo>
+                                {linha.tipo === "pedido_de_dias" && linha.aguardando && (
+                                  <HistoricoAguardando>aguardando a diretoria</HistoricoAguardando>
+                                )}
+                              </HistoricoNotaCabecalho>
+                              {linha.detalhe && (
+                                <HistoricoNotaTexto>{linha.detalhe}</HistoricoNotaTexto>
+                              )}
+                            </HistoricoNotaLinha>
+                            <HistoricoTimelineMeta>
+                              <HistoricoAutorChip>
+                                {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "Automático"}
+                              </HistoricoAutorChip>
+                              <span>{formatarDataHora(linha.alterado_em)}</span>
                             </HistoricoTimelineMeta>
                           </HistoricoTimelineConteudo>
                         </HistoricoTimelineItem>

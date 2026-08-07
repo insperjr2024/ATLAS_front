@@ -29,6 +29,7 @@ import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
 import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
 import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
 import { VisaoGeralAba } from "@/pages/monitoramento/VisaoGeralAba";
+import { AprovacoesAba } from "@/pages/monitoramento/AprovacoesAba";
 import { ExecucaoAba } from "@/pages/monitoramento/ExecucaoAba";
 import { AlocacaoAba } from "@/pages/monitoramento/AlocacaoAba";
 import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
@@ -72,20 +73,27 @@ export default function App() {
                 <Route path="/vagas" element={<Vagas />} />
               {/* /calendario agora agrega os 4 tipos (§6.5); a visão
                   só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
+              {/* /calendario agrega os 4 tipos (§6.5); a página só-de-bancas
+                  foi removida — o filtro "Banca" aqui já cobre o mesmo caso
+                  de uso (§8: "calendário pra não sobrepor horários") sem
+                  duplicar a tela. */}
               <Route path="/calendario" element={<CalendarioGeral />} />
-              <Route path="/bancas/calendario" element={<Calendario />} />
 
               {/* 🔔 §6.6 — sem guard: todo perfil tem notificação. O que muda
                   é o conteúdo, e quem recorta isso é o backend. */}
               <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
-              {/* Criar projeto é de diretor e gerente — guard por POSIÇÃO,
-                  que é dimensão diferente do cargo do AdminRoute. "Arquivados"
-                  não é rota própria — é só a mesma <ProjetosList /> com outro
-                  recorte de conteúdo (?modo=arquivados), travada por dentro
-                  com a mesma permissão `arquivar_projeto`. */}
-              <Route element={<RequirePosicao posicoes={["diretor", "gerente"]} />}>
+              {/* Criar projeto é a caixa de permissão `pode_criar_projeto` —
+                  a mesma que decide o botão em `ProjetosList` e que o backend
+                  já checava (`require_pode_criar_projeto`). Guard por posição
+                  aqui travava quem tinha a caixa delegada sem ser
+                  diretor/gerente: via o botão, clicava, e caía numa rota que
+                  não deixava entrar. "Arquivados" não é rota própria — é só a
+                  mesma <ProjetosList /> com outro recorte de conteúdo
+                  (?modo=arquivados), travada por dentro com a permissão
+                  `arquivar_projeto`. */}
+              <Route element={<AdminRoute permissao="pode_criar_projeto" />}>
                 <Route path="/projetos/novo" element={<ProjetoNovo />} />
               </Route>
               {/* Abas como sub-rotas: é o que deixa uma notificação abrir
@@ -106,6 +114,10 @@ export default function App() {
               <Route element={<AdminRoute permissao="pode_ver_monitoramento" />}>
                 <Route path="/monitoramento" element={<MonitoramentoLayout />}>
                   <Route index element={<VisaoGeralAba />} />
+                  {/* 🔒 Só a diretoria decide (§3) — o backend cobra
+                      `require_diretor` na rota; o guard aqui evita a tela
+                      vazia com 403 para quem chega pela URL. */}
+                  <Route path="aprovacoes" element={<AprovacoesAba />} />
                   <Route path="execucao" element={<ExecucaoAba />} />
                   <Route path="alocacao" element={<AlocacaoAba />} />
                   <Route path="atrasos" element={<AtrasosAba />} />
@@ -152,9 +164,10 @@ export default function App() {
               <Route element={<FormularioRoute />}>
                 <Route path="/avaliacoes" element={<Avaliacoes />} />
               </Route>
-              {/* Config edita cargos — inclusive quem tem esta mesma caixa —
-                  então é a mais sensível das 4 estendidas. Calendários base
-                  entrou junto por já viver na mesma trava antes. */}
+              {/* Config edita as permissões de qualquer posição — inclusive
+                  esta mesma caixa —, então é a mais sensível das 4
+                  estendidas. Calendários base entrou junto por já viver na
+                  mesma trava antes. */}
               <Route element={<AdminRoute permissao="pode_administrar_configuracoes" />}>
                 <Route path="/config" element={<Config />} />
                 <Route path="/calendarios-base" element={<CalendariosBase />} />
