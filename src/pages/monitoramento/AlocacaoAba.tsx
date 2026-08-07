@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAlocacao, type Alocacao, type LinhaCarga } from "@/lib/monitoramento";
 
@@ -25,7 +25,6 @@ import {
   BarraCargaTrilho,
   ChipProjeto,
   ChipsProjetos,
-  ControlesGrafico,
   DataTable,
   DemandaAltaLista,
   DemandaAltaPessoa,
@@ -52,9 +51,9 @@ const ROTULO_PAPEL: Record<Papel, { singular: string; plural: string }> = {
 
 /** §7.3 — carga por pessoa.
  *
- *  A aba fala de UM papel por vez, escolhido no toggle do topo. Antes eram
- *  duas tabelas empilhadas mais um toggle só do gráfico: a mesma pergunta
- *  respondida três vezes, e as três podiam discordar entre si. */
+ *  A aba fala de UM papel por vez, escolhido no filtro que aparece no
+ *  cabeçalho de cada card. Antes eram duas tabelas empilhadas mais um toggle
+ *  só do gráfico: a mesma pergunta respondida três vezes. */
 export function AlocacaoAba() {
   const { token } = useAuth();
   const { frenteId, seletor } = useFiltroFrente();
@@ -112,68 +111,51 @@ export function AlocacaoAba() {
     papel === "consultor" ? dados.demanda_alta.consultores : dados.demanda_alta.coordenadores;
   const rotulo = ROTULO_PAPEL[papel];
 
+  /* ⭐ O controle aparece DENTRO de cada card, mas o estado é UM só.
+     Três estados independentes deixariam o gráfico em "Consultores" e a tabela
+     em "Coordenadores" ao mesmo tempo — três recortes da mesma pergunta se
+     contradizendo na mesma tela. Assim ele fica à mão em qualquer ponto da
+     página e os cards nunca discordam. */
+  const filtro = (
+    <GrupoBotoes role="group" aria-label="Papel">
+      <BotaoAlternativa
+        type="button"
+        $ativo={papel === "consultor"}
+        aria-pressed={papel === "consultor"}
+        onClick={() => setPapel("consultor")}
+      >
+        Consultores
+      </BotaoAlternativa>
+      <BotaoAlternativa
+        type="button"
+        $ativo={papel === "coordenador"}
+        aria-pressed={papel === "coordenador"}
+        onClick={() => setPapel("coordenador")}
+      >
+        Coordenadores
+      </BotaoAlternativa>
+    </GrupoBotoes>
+  );
+
   return (
     <PageStack>
       {seletor}
-      {/* Abre a aba: leitura de relance, e é o único lugar que responde "quem
-          está cheio DE PROJETO EM TAL ETAPA" — as tabelas mostram só a carga
-          inteira. Depois vêm elas, com o detalhe, e o card de demanda alta
-          fecha. */}
-      {/* ⭐ UM toggle para a aba inteira, e não um por card. Com um em cada
-          lugar, o gráfico podia mostrar Consultores enquanto a tabela mostrava
-          Coordenadores — três recortes diferentes da mesma pergunta na mesma
-          tela. Aqui a aba inteira fala de um papel por vez. */}
-      <ControlesGrafico>
-        <GrupoBotoes role="group" aria-label="Papel">
-          <BotaoAlternativa
-            type="button"
-            $ativo={papel === "consultor"}
-            aria-pressed={papel === "consultor"}
-            onClick={() => setPapel("consultor")}
-          >
-            Consultores
-          </BotaoAlternativa>
-          <BotaoAlternativa
-            type="button"
-            $ativo={papel === "coordenador"}
-            aria-pressed={papel === "coordenador"}
-            onClick={() => setPapel("coordenador")}
-          >
-            Coordenadores
-          </BotaoAlternativa>
-        </GrupoBotoes>
-      </ControlesGrafico>
-
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>Carga por {rotulo.singular}</PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          <Suspense fallback={<PageLoadingBlock />}>
-            <BarrasCarga papel={papel} linhas={linhas} />
-          </Suspense>
-        </PageCardContent>
-      </PageCard>
-
-      {/* Fica fora do toggle: as duas colunas são os DOIS papéis lado a lado,
-          e é essa comparação que responde "de qual deles falta gente". */}
-      <CapacidadePorFrente capacidade={dados.capacidade} />
-
+      {/* Quem são as pessoas — a lista completa abre a aba. */}
       <TabelaCarga
         titulo={rotulo.plural}
         linhas={linhas}
         vazio={`Nenhum ${rotulo.singular} na sua visão.`}
+        filtro={filtro}
       />
 
-      {/* Fecha a aba porque é a conclusão dela: a tabela acima ordena do menos
-          carregado para o mais, então quem está sobrecarregado cai no fim.
-          Este card é onde ele aparece — sem isso, inverter a ordem da tabela
-          teria escondido o gargalo do §7.3. */}
+      {/* Quem dentro dessa lista precisa de atenção. Vem logo depois porque é
+          o recorte do card acima, não um assunto novo. */}
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>
             {rotulo.plural} com demanda alta{destacados.length > 0 && ` (${destacados.length})`}
           </PageCardTitle>
+          {filtro}
         </PageCardHeader>
         <PageCardContent>
           {destacados.length === 0 ? (
@@ -181,6 +163,22 @@ export function AlocacaoAba() {
           ) : (
             <ColunaDemandaAlta linhas={destacados} />
           )}
+        </PageCardContent>
+      </PageCard>
+
+      {/* Sem filtro de papel: as duas colunas são os DOIS papéis lado a lado, e
+          é essa comparação que responde "de qual deles falta gente". */}
+      <CapacidadePorFrente capacidade={dados.capacidade} />
+
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Carga por {rotulo.singular}</PageCardTitle>
+          {filtro}
+        </PageCardHeader>
+        <PageCardContent>
+          <Suspense fallback={<PageLoadingBlock />}>
+            <BarrasCarga papel={papel} linhas={linhas} />
+          </Suspense>
         </PageCardContent>
       </PageCard>
     </PageStack>
@@ -319,10 +317,13 @@ function TabelaCarga({
   titulo,
   linhas,
   vazio,
+  filtro,
 }: {
   titulo: string;
   linhas: LinhaCarga[];
   vazio: string;
+  /** O seletor de papel, renderizado à direita do título. */
+  filtro?: ReactNode;
 }) {
   /* A escala é POR TABELA, não global: coordenador e consultor carregam
      volumes diferentes por natureza, e uma régua só faria a tabela dos
@@ -333,6 +334,7 @@ function TabelaCarga({
     <PageCard>
       <PageCardHeader>
         <PageCardTitle>{titulo}</PageCardTitle>
+        {filtro}
       </PageCardHeader>
       <PageCardContent>
         {linhas.length === 0 ? (
