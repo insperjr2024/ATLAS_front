@@ -207,7 +207,7 @@ function CardArrastavel({
           </AlertaKickoff>
         )}
       </CardTopo>
-      <CardMeta title={projeto.cliente}>{projeto.cliente}</CardMeta>
+      <CardMeta title={projeto.cliente ?? undefined}>{projeto.cliente}</CardMeta>
       <CardFrentes>
         {projeto.frente_ids.map((id) => (
           <CardFrenteTag key={id} title={nomeFrente(id)}>
