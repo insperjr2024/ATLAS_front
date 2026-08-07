@@ -11,6 +11,7 @@ import { RedefinirSenha } from "@/pages/RedefinirSenha";
 import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
+import { MeuPerfil } from "@/pages/MeuPerfil";
 import { Calendario } from "@/pages/Calendario";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Membros } from "@/pages/Membros";
@@ -66,6 +67,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />
+                <Route path="/meu-perfil" element={<MeuPerfil />} />
               {/* /calendario agora agrega os 4 tipos (§6.5); a visão
                   só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
               <Route path="/calendario" element={<CalendarioGeral />} />

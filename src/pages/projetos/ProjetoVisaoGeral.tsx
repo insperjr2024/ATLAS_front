@@ -25,6 +25,7 @@ import {
   validarEquipe,
   type EquipeSelecionada,
 } from "@/components/membros/MemberPicker";
+import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { EscopoVendido, ProjetoCompleto } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
@@ -1102,6 +1103,11 @@ function EditarEquipeModal({
               frentes={frentes}
               frenteIdsProjeto={projeto.frente_ids}
             />
+
+            {/* Mesma leitura de quando o projeto nasceu: trocar alguém pode
+                fechar a única janela em que o time se reunia. */}
+            <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={ativos} />
+
             <EmptyText>
               Trocar alguém não apaga o passado: a linha antiga é fechada e uma nova é aberta, para o
               histórico de quem participou continuar de pé.
