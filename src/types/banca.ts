@@ -52,6 +52,11 @@ export interface Banca extends BancaBase {
   projeto_escopo_ids: number[];
   realizado_em: string | null;
   resultado: ResultadoBanca | null;
+  /** O relato do coordenador do projeto sobre a banca — texto livre, no
+   *  lugar do formulário de avaliação (ele não é avaliador da própria
+   *  banca). Nulo até ele preencher, só disponível depois de `realizado_em`. */
+  descricao_coordenador: string | null;
+  descricao_coordenador_enviada_em: string | null;
 }
 
 export interface Candidatura {
@@ -104,6 +109,10 @@ export interface Configuracao {
   /** Teto de pessoas por banca (§8) — editável pela diretoria em Config. */
   vagas_por_banca: number;
   cargo_padrao_id: number | null;
+  /** Quantas lideranças (gerente da frente, ou diretor) cada frente
+   *  vinculada precisa ter na banca, separado do piso de membros comuns
+   *  (§8) — editável pela diretoria em Config. */
+  lideranca_minima_por_frente: number;
 }
 
 export interface BancaFrente {
@@ -202,4 +211,8 @@ export interface HistoricoBanca {
   nota_final: number | null;
   semestre_id: number | null;
   semestre_nome: string | null;
+  /** O relato do coordenador — ao lado da nota dos avaliadores, os dois
+   *  lados da mesma banca (ver `descricao_coordenador` em `Banca`). */
+  descricao_coordenador: string | null;
+  descricao_coordenador_enviada_em: string | null;
 }

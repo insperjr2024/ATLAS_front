@@ -1,4 +1,4 @@
-import styled, { css } from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import type { TonsColuna } from "@/lib/colunas-tarefa";
@@ -131,6 +131,15 @@ export const CardEquipe = styled.p`
   }
 `;
 
+/** O ícone antes de "Arquivado em ..." — em linha com o texto, não numa
+ *  linha própria: o SVG do ícone é um elemento de bloco por padrão, e sem
+ *  esse wrapper `inline-flex` ele empurrava o texto pra baixo dele. */
+export const ArquivadoEmLinha = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
 /** ⚠ kickoff pendente — o único alerta que o card carrega hoje. */
 export const CardAlerta = styled.p`
   display: flex;
@@ -219,6 +228,45 @@ export const FrenteFilterPanel = styled.div`
   border: 1px solid ${theme.colors.border};
   background: ${theme.colors.popover};
   box-shadow: ${theme.shadows.lg};
+`;
+
+/** Separa grupos de opções dentro de um dropdown de filtro (ex.: frentes,
+ *  ordem, "Mostrar arquivados", em `ProjetosList`) sem precisar de um
+ *  dropdown por grupo. */
+export const FrenteFilterDivisor = styled.div`
+  border-top: 1px solid ${theme.colors.border};
+  margin: 0.125rem 0;
+`;
+
+/** O rótulo de cada grupo dentro do dropdown de filtro — "Frentes", "Ordem",
+ *  "Arquivados". */
+export const FrenteFilterSecao = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** Uma opção clicável dentro do dropdown que não é checkbox (ex.: a direção
+ *  da ordenação) — mesma tipografia do `CheckboxLabel` ao lado, só sem o
+ *  quadradinho. */
+export const FrenteFilterOpcao = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: ${theme.colors.primary};
+  }
 `;
 
 export const FrenteFilterFooter = styled.button`
@@ -734,9 +782,9 @@ export const HistoricoAutorChip = styled.span`
   font-weight: ${theme.fontWeight.medium};
 `;
 
-/* Timeline vertical — substitui as caixas empilhadas por dia por uma linha
-   contínua com um ponto por mudança, conectados. O agrupamento por dia vira
-   um rótulo leve dentro da própria linha, não uma caixa separada. */
+/* Timeline vertical — uma linha contínua com um ponto por mudança,
+   conectados. O agrupamento por dia é um rótulo leve dentro da própria
+   linha, não uma caixa separada. */
 
 export const HistoricoPeriodoPills = styled.div`
   display: flex;
@@ -800,12 +848,41 @@ export const HistoricoTimelinePonto = styled.div<{ $cor: string }>`
   box-shadow: 0 0 0 3px color-mix(in srgb, ${({ $cor }) => $cor} 20%, ${theme.colors.background});
 `;
 
-export const HistoricoTimelineConteudo = styled.div`
+const realce = keyframes`
+  0%, 100% { background: transparent; }
+  25%, 75% { background: color-mix(in srgb, ${theme.colors.primary} 12%, transparent); }
+`;
+
+/**
+ * $destaque/$realcado (§7.4/§5.6): uma nota de atraso ou remarcação de
+ * banca — em vez de uma transição de status — ganha uma faixa à esquerda pra
+ * se destacar na timeline, e pulsa quando a pessoa chega aqui direto pelo
+ * link "Justificar atraso" (#justificativa-N/#remarcacao-N).
+ */
+export const HistoricoTimelineConteudo = styled.div<{ $destaque?: boolean; $realcado?: boolean }>`
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
   padding-bottom: ${theme.spacing.lg};
   min-width: 0;
+  /* Espaço pro scroll não esconder o item embaixo de nada quando a gente
+     pula direto pra ele vindo de "Justificar atraso" (§7.4/§5.6). */
+  scroll-margin-top: 2rem;
+
+  ${({ $destaque }) =>
+    $destaque &&
+    css`
+      padding: ${theme.spacing.sm} ${theme.spacing.md};
+      border-radius: ${theme.borderRadius.md};
+      background: color-mix(in srgb, ${theme.colors.mutedForeground} 4%, transparent);
+      border-left: 3px solid color-mix(in srgb, ${theme.colors.destructive} 45%, transparent);
+    `}
+
+  ${({ $realcado }) =>
+    $realcado &&
+    css`
+      animation: ${realce} 1.8s ease-in-out;
+    `}
 `;
 
 export const HistoricoTimelineTransicao = styled.div`
@@ -821,6 +898,78 @@ export const HistoricoTimelineMeta = styled.div`
   gap: 0.5rem;
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
+`;
+
+/** §7.4 — a linha de nota de atraso ocupa a largura toda: é texto livre da
+ *  diretoria, não cabe ao lado de uma pílula de status como a transição. */
+export const HistoricoNotaLinha = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  width: 100%;
+`;
+
+export const HistoricoNotaCabecalho = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+export const HistoricoNotaTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  border-radius: ${theme.borderRadius.full};
+  background: color-mix(in srgb, ${theme.colors.destructive} 14%, transparent);
+  color: ${theme.colors.destructive};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+`;
+
+/** O nome do escopo, texto corrido. Pro TIPO do motivo (banca/entrega), ver
+ *  `HistoricoNotaMotivoTag` — mesma linguagem visual do `MotivoTag` da aba
+ *  Atrasos, pra a nota no histórico parecer a mesma coisa que gerou ela. */
+export const HistoricoNotaMotivo = styled.span`
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const HistoricoNotaMotivoTag = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: ${theme.borderRadius.md};
+  background: color-mix(in srgb, ${theme.colors.foreground} 8%, transparent);
+  color: ${theme.colors.foreground};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+`;
+
+export const HistoricoNotaTexto = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.5;
+  color: ${theme.colors.foreground};
+  white-space: pre-wrap;
+`;
+
+/** Excluir uma nota (§7.4/§5.6) — não é edição de rotina, então fica discreto
+ *  e vermelho, só pra quem tem a permissão (a mesma trava de quem registra). */
+export const HistoricoExcluirBtn = styled.button`
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.destructive};
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
 `;
 
 export const HistoricoCarregarMais = styled.button`

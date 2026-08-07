@@ -2,10 +2,10 @@ import { apiFetch } from "@/lib/api";
 import { API_URL } from "@/config/config";
 import type {
   EscopoVendido,
+  HistoricoEntrada,
   MembroEquipePayload,
   ProjetoCompleto,
   ProjetoResumo,
-  StatusHistorico,
   StatusProjeto,
 } from "@/types/projeto";
 
@@ -178,7 +178,42 @@ export function updateDiaReuniaoPadrao(projetoId: number, diaReuniaoPadrao: numb
 }
 
 export function getHistoricoProjeto(projetoId: number, token: string) {
-  return apiFetch<StatusHistorico[]>(`/projetos/${projetoId}/historico`, { token });
+  return apiFetch<HistoricoEntrada[]>(`/projetos/${projetoId}/historico`, { token });
+}
+
+/** §7.4 — só a diretoria; o backend recusa com 403 quem não for. */
+export function registrarJustificativaAtraso(
+  projetoId: number,
+  texto: string,
+  token: string,
+  projetoEscopoId?: number,
+  motivoTipo?: string,
+) {
+  return apiFetch<HistoricoEntrada>(`/projetos/${projetoId}/justificativa-atraso`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({
+      texto,
+      projeto_escopo_id: projetoEscopoId ?? null,
+      motivo_tipo: motivoTipo ?? null,
+    }),
+  });
+}
+
+/** §7.4 — não é edição de rotina, é pra corrigir engano/teste. Só diretoria. */
+export function excluirJustificativaAtraso(projetoId: number, justificativaId: number, token: string) {
+  return apiFetch<null>(`/projetos/${projetoId}/justificativa-atraso/${justificativaId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+/** §5.6 — mesma lógica da justificativa de atraso acima. Só diretoria. */
+export function excluirRemarcacaoBanca(projetoId: number, remarcacaoId: number, token: string) {
+  return apiFetch<null>(`/projetos/${projetoId}/remarcacao-banca/${remarcacaoId}`, {
+    method: "DELETE",
+    token,
+  });
 }
 
 /** "Limpar histórico" não apaga nada — só marca 'agora' como corte de
@@ -296,6 +331,15 @@ export const ROTULO_STATUS_ESCOPO: Record<string, string> = {
   cancelado: "Cancelado",
 };
 
+/** §7.4 — o `tipo` de `MotivoAtraso`, usado tanto na aba Atrasos quanto no
+ *  histórico do projeto (pra mostrar a que motivo uma justificativa se
+ *  refere). Um só lugar pras duas telas não divergirem no rótulo. */
+export const ROTULO_MOTIVO_ATRASO: Record<string, string> = {
+  banca: "Banca",
+  entrega_interna: "Entrega",
+  entrega_externa: "Agenda do cliente",
+};
+
 /* ------------------------------------------------------------------ */
 /* Ciclo de vida — espelho de utils/status_projeto.py                  */
 /* ------------------------------------------------------------------ */
@@ -373,6 +417,16 @@ export const CORES_STATUS: Record<StatusProjeto, string> = {
   pausado: "#F59E0B", // âmbar — vermelho fica reservado pro alerta de vencida
 };
 
+/** Mesma ordem de colunas do kanban de projetos (`ProjetoKanbanBoard`,
+ *  que itera `Object.keys(CORES_STATUS)`) — usada pra ordenar a lista pela
+ *  fase do ciclo de vida sem inventar uma segunda ordem que discorde do
+ *  kanban. */
+const ORDEM_STATUS_KANBAN = Object.keys(CORES_STATUS) as StatusProjeto[];
+
+export function ordemStatus(status: StatusProjeto): number {
+  return ORDEM_STATUS_KANBAN.indexOf(status);
+}
+
 /* ------------------------------------------------------------------ */
 /* Formatação                                                          */
 /* ------------------------------------------------------------------ */
@@ -429,4 +483,16 @@ export function formatarDataHora(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return formatarData(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * "dd/mm/aaaa às hh:mm" — usado nos cards de projeto (kanban e lista) pra
+ * mostrar a data da próxima banca (§6.2). Espaço inquebrável em volta do
+ * "às" pra data e hora nunca se separarem numa quebra de linha do card.
+ */
+export function formatarDataHoraBanca(iso: string | null | undefined): string {
+  const completo = formatarDataHora(iso);
+  const espaco = completo.indexOf(" ");
+  if (espaco === -1) return completo;
+  return `${completo.slice(0, espaco)} às ${completo.slice(espaco + 1)}`;
 }
