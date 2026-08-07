@@ -73,21 +73,59 @@ export interface EscopoVendido {
   /** Já resolvido: o nome do catálogo, ou o digitado quando é um "Outro". */
   nome: string;
   frente_id: number;
+  /** ⭐ Imutável — o registro comercial. Nunca vira "vendidos + ajustados". */
   dias_uteis_vendidos: number;
+  /** Dias extras autorizados pela diretoria (§8). Somam com os vendidos para
+   *  formar a janela, mas são mostrados à parte: a tela diz
+   *  *20 vendidos · 10 ajustados*, nunca "30 vendidos". */
+  dias_uteis_ajustados: number;
   status: StatusEscopo;
+  /** A reunião inicial — é ela que abre a janela do escopo. */
   data_inicio: string | null;
   data_entrega_planejada: string | null;
   data_entrega_real: string | null;
   tipo_atraso_entrega: "interno" | "externo" | null;
-  cronograma_oficializado_em: string | null;
   consumidos: number;
-  /** Pode ser negativo — é o "estourou em N dias". */
+  /** Pode ser negativo — é o "estourou em N dias". Medido contra
+   *  *vendidos + ajustados*. */
   restantes: number;
   estourou: boolean;
   em_contagem: boolean;
+  /** §10 — dias úteis além da janela, derivados. Zero enquanto ela não estoura. */
+  atraso: number;
+  /**
+   * §11 — dias úteis pintados depois de a BANCA ser realizada: as
+   * **correções** que ela apontou.
+   *
+   * ⚠️ **Não confundir com `dias_uteis_ajustados`.** Dias de ajuste aumentam a
+   * JANELA do escopo e são pedidos à diretoria nos 3 primeiros dias úteis
+   * depois da largada — é trabalho vendido que faltou. Correção é o tempo
+   * gasto depois da banca arrumando o que ela apontou: não aumenta janela, não
+   * se pede a ninguém, e não conta como atraso.
+   */
+  correcoes: number;
+  /** O último dia da janela: início + vendidos + ajustados dias úteis.
+   *  `null` enquanto o escopo não tem reunião inicial. */
+  fim_janela: string | null;
+  /** §8: último dia em que ainda cabe PEDIR dias de ajuste. */
+  prazo_pedido_ajuste: string | null;
+  /** O prazo ainda está aberto hoje. */
+  pedido_ajuste_aberto: boolean;
   banca: BancaDoEscopo | null;
   /** 🔒 §5.5: só true quando a banca do escopo saiu aprovada. */
   entrega_liberada: boolean;
+  /** O pedido de dias aguardando a diretoria — um por vez. */
+  reajuste_pendente: PedidoDeDias | null;
+}
+
+/** §8: um pedido de dias de ajuste aguardando decisão. */
+export interface PedidoDeDias {
+  id: number;
+  dias_solicitados: number;
+  motivo: string;
+  solicitado_por: number;
+  solicitado_por_nome: string | null;
+  criado_em: string;
 }
 
 /** A forma completa — página do projeto, aba Visão geral (§6.4). */

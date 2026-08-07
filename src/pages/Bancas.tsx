@@ -281,7 +281,12 @@ export function Bancas() {
   // Coordenador ou membro da equipe daquela banca — o próprio grupo, que não
   // pode se candidatar a assistir/avaliar a própria banca.
   function ehDoProprioGrupo(banca: Banca): boolean {
+    // `equipe_ids` já vem do backend somando coordenador + equipe do projeto
+    // (`projeto_membro`) + a tabela legada. O `equipesProjeto` fica como
+    // segunda checagem só para bancas antigas servidas por um backend anterior
+    // ao campo — some quando todas tiverem passado por aqui.
     return (
+      banca.equipe_ids?.includes(usuarioLogado.id) ||
       banca.coordenador_id === usuarioLogado.id ||
       contextoAtual.equipesProjeto.some((e) => e.banca_id === banca.id && e.usuario_id === usuarioLogado.id)
     );

@@ -139,10 +139,20 @@ export function ProjetoPage() {
     }
   }, [projetoId, token]);
 
+  // ⭐ Revalida a cada troca de aba, e não só na montagem.
+  //
+  // As abas são SUB-ROTAS: o shell não remonta ao ir do Cronograma para a
+  // Visão geral, então o `projeto` continuava o da primeira visita — a banca
+  // que acabara de ser marcada no calendário aparecia como "não marcada" ali,
+  // e os dias do escopo ficavam em "não iniciado". Como só o Cronograma
+  // escreve datas hoje, revalidar na navegação é o que mantém as duas telas
+  // contando a mesma história.
+  //
+  // Em silêncio: `carregando` já nasce `true`, e ligá-lo de novo a cada aba
+  // faria a página piscar num spinner a cada clique.
   useEffect(() => {
-    setCarregando(true);
     carregar();
-  }, [carregar]);
+  }, [carregar, location.pathname]);
 
   async function aplicarStatus(statusNovo: string) {
     if (!token || !projeto) return;
@@ -284,7 +294,6 @@ export function ProjetoPage() {
         </TabLink>
         <TabLink to={`/projetos/${projeto.id}/cronograma`}>Cronograma</TabLink>
         <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
-        <TabLink to={`/projetos/${projeto.id}/reunioes`}>Reuniões</TabLink>
         <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
       </TabBar>
 

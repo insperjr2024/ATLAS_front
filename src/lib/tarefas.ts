@@ -117,33 +117,55 @@ export function getReunioes(projetoId: number, token: string) {
 }
 
 /**
- * ⭐ `escopoId` é o "sobre qual escopo foi" do §6.4 — e, quando é a primeira
- * reunião daquele escopo, é o que dá a largada na contagem do §5.4. Vazio =
- * reunião geral do projeto.
+ * ⭐ `escopoId` decide o TIPO da reunião, e as duas são marcadas no calendário
+ * do cronograma (§12):
+ *
+ * - preenchido → **reunião inicial**, que abre a janela daquele escopo e faz a
+ *   contagem correr;
+ * - vazio → **reunião geral** do projeto, que conta para o §7.2 ("projeto sem
+ *   reunião na semana") mas não mexe em contagem nenhuma.
+ *
+ * As duas cabem no mesmo dia — o backend só recusa duas do mesmo tipo.
  */
 export function createReuniao(
   projetoId: number,
   data: string,
   escopoId: number | null,
   token: string,
+  observacoes?: string | null,
 ) {
   return apiFetch<ReuniaoRegistrada>(`/projetos/${projetoId}/reunioes`, {
     method: "POST",
     token,
-    body: JSON.stringify({ data_reuniao: data, projeto_escopo_id: escopoId }),
+    body: JSON.stringify({
+      data_reuniao: data,
+      projeto_escopo_id: escopoId,
+      observacoes: observacoes ?? null,
+    }),
   });
 }
 
+/**
+ * Mover de dia, trocar o escopo ou editar as observações.
+ *
+ * `observacoes` só viaja quando é passado: omitir preserva o que estava lá,
+ * que é o que "arrastei a reunião de quarta para quinta" precisa.
+ */
 export function updateReuniao(
   reuniaoId: number,
   data: string,
   escopoId: number | null,
   token: string,
+  observacoes?: string | null,
 ) {
   return apiFetch<ReuniaoRegistrada>(`/reunioes/${reuniaoId}`, {
     method: "PATCH",
     token,
-    body: JSON.stringify({ data_reuniao: data, projeto_escopo_id: escopoId }),
+    body: JSON.stringify({
+      data_reuniao: data,
+      projeto_escopo_id: escopoId,
+      ...(observacoes === undefined ? {} : { observacoes }),
+    }),
   });
 }
 

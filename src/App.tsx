@@ -24,7 +24,6 @@ import { ProjetoPage } from "@/pages/projetos/ProjetoPage";
 import { ProjetoVisaoGeral } from "@/pages/projetos/ProjetoVisaoGeral";
 import { ProjetoCronograma } from "@/pages/projetos/ProjetoCronograma";
 import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
-import { ProjetoReunioes } from "@/pages/projetos/ProjetoReunioes";
 import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
 import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
 import { VisaoGeralAba } from "@/pages/monitoramento/VisaoGeralAba";
@@ -87,7 +86,6 @@ export default function App() {
                 <Route index element={<ProjetoVisaoGeral />} />
                 <Route path="cronograma" element={<ProjetoCronograma />} />
                 <Route path="tarefas" element={<ProjetoTarefas />} />
-                <Route path="reunioes" element={<ProjetoReunioes />} />
                 <Route path="historico" element={<ProjetoHistorico />} />
               </Route>
 
