@@ -21,6 +21,7 @@ import {
   type TomPilula,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { useFiltroEscopo } from "./FiltroEscopo";
 
 /** Um limiar curto o bastante para chamar atenção antes de estourar — não
  *  é a mesma régua do backend (que só distingue em_contagem/estourou), é
@@ -59,7 +60,14 @@ const VOLTAR_PARA_AQUI = {
  */
 export function CronogramasGeraisAba() {
   const { token } = useAuth();
-  const { frenteId, seletor } = useFiltroFrente();
+  const { frenteId, seletor: seletorFrente } = useFiltroFrente();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const seletor = (
+    <>
+      {seletorFrente}
+      {seletorEscopo}
+    </>
+  );
   const [dados, setDados] = useState<CronogramasGerais | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -69,7 +77,7 @@ export function CronogramasGeraisAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getCronogramasGerais(token, frenteId));
+      setDados(await getCronogramasGerais(token, frenteId, escopoId));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar os cronogramas");
     } finally {
@@ -80,7 +88,7 @@ export function CronogramasGeraisAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId]);
+  }, [token, frenteId, escopoId]);
 
   if (erro) {
     return (

@@ -6,6 +6,7 @@ import { getFrentes } from "@/lib/bancas";
 import { getCargos } from "@/lib/cargos";
 import { frentesDoUsuario, nomeCargo, normalizarTexto } from "@/lib/nucleo";
 import {
+  deletarUsuarioPermanente,
   getUsuarios,
   reenviarSenhaProvisoria,
   registrarUsuario,
@@ -14,9 +15,10 @@ import {
   type SenhaProvisoriaEmitida,
 } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Frente } from "@/types/banca";
 import type { Cargo, Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
-import { ROTULO_POSICAO, ROTULO_STATUS_USUARIO } from "@/utils/permissoes";
+import { pode, ROTULO_POSICAO, ROTULO_STATUS_USUARIO } from "@/utils/permissoes";
 import {
   PageStack,
   PageCard,
@@ -318,6 +320,10 @@ export function Membros() {
                 .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
             );
             carregarMembros(false);
+          }}
+          onApagado={() => {
+            setMembros((lista) => lista.filter((m) => m.id !== membroDetalhe.id));
+            setMembroDetalhe(null);
           }}
         />
       )}
@@ -842,13 +848,19 @@ function MembroModal({
   token,
   onClose,
   onSalvo,
+  onApagado,
 }: {
   membro: UsuarioResumo;
   contexto: Contexto;
   token: string;
   onClose: () => void;
   onSalvo: (membro: UsuarioResumo) => void;
+  onApagado: () => void;
 }) {
+  const { usuario } = useAuth();
+  const podeApagar = pode(usuario, "apagar_usuario_permanente");
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(membro.nome);
   const [cargoId, setCargoId] = useState(String(membro.cargo_id));
@@ -914,6 +926,17 @@ function MembroModal({
     }
   }
 
+  async function confirmarExclusao() {
+    setExcluindo(true);
+    try {
+      await deletarUsuarioPermanente(membro.id, token);
+      onApagado();
+    } catch (err) {
+      setExcluindo(false);
+      throw err;
+    }
+  }
+
   return (
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="membro-titulo">
@@ -961,6 +984,17 @@ function MembroModal({
               </DetailList>
             </ModalBody>
             <ModalFooter>
+              {podeApagar && membro.status === "desligado" && (
+                <PageButton
+                  $variant="outline"
+                  type="button"
+                  disabled={excluindo}
+                  onClick={() => setConfirmandoExclusao(true)}
+                  style={{ marginRight: "auto" }}
+                >
+                  Apagar para sempre
+                </PageButton>
+              )}
               <PageButton $variant="outline" type="button" onClick={onClose}>
                 Fechar
               </PageButton>
@@ -968,6 +1002,16 @@ function MembroModal({
                 Editar
               </PageButton>
             </ModalFooter>
+
+            {confirmandoExclusao && (
+              <ConfirmarModal
+                titulo="Apagar membro para sempre"
+                mensagem={`Apagar "${membro.nome}" para sempre? Tarefas, bancas coordenadas, avaliações, candidaturas e vínculos dela são todos apagados junto — inclusive registros que envolvem outras pessoas, como bancas que ela coordenou. Essa ação não pode ser desfeita.`}
+                rotuloConfirmar="Apagar para sempre"
+                onCancelar={() => setConfirmandoExclusao(false)}
+                onConfirmar={confirmarExclusao}
+              />
+            )}
           </>
         ) : (
           <FormStack onSubmit={handleSalvar}>

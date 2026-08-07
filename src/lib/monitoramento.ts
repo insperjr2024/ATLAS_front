@@ -371,12 +371,17 @@ export interface CronogramasGerais {
   projetos: CronogramaProjetoResumo[];
 }
 
-function query(frenteId?: number | null): string {
-  return frenteId ? `?frente_id=${frenteId}` : "";
+function query(frenteId?: number | null, escopoId?: number | null, extra?: Record<string, string | undefined>): string {
+  const partes = [
+    frenteId ? `frente_id=${frenteId}` : "",
+    escopoId ? `escopo_id=${escopoId}` : "",
+    ...Object.entries(extra ?? {}).map(([k, v]) => (v ? `${k}=${v}` : "")),
+  ].filter(Boolean);
+  return partes.length ? `?${partes.join("&")}` : "";
 }
 
-export function getVisaoGeral(token: string, frenteId?: number | null) {
-  return apiFetch<VisaoGeral>(`/monitoramento/visao-geral${query(frenteId)}`, { token });
+export function getVisaoGeral(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<VisaoGeral>(`/monitoramento/visao-geral${query(frenteId, escopoId)}`, { token });
 }
 
 /**
@@ -388,24 +393,30 @@ export function getVisaoGeral(token: string, frenteId?: number | null) {
  * duas medem ausência de registro; a tela acusaria o time por algo que ainda
  * nem teve chance de acontecer.
  */
-export function getExecucao(token: string, frenteId?: number | null, referencia?: string) {
-  const partes = [frenteId ? `frente_id=${frenteId}` : "", referencia ? `referencia=${referencia}` : ""];
-  const qs = partes.filter(Boolean).join("&");
-  return apiFetch<Execucao>(`/monitoramento/execucao${qs ? `?${qs}` : ""}`, { token });
+export function getExecucao(
+  token: string,
+  frenteId?: number | null,
+  referencia?: string,
+  escopoId?: number | null,
+) {
+  return apiFetch<Execucao>(
+    `/monitoramento/execucao${query(frenteId, escopoId, { referencia })}`,
+    { token },
+  );
 }
 
-export function getAlocacao(token: string, frenteId?: number | null) {
-  return apiFetch<Alocacao>(`/monitoramento/alocacao${query(frenteId)}`, { token });
+export function getAlocacao(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<Alocacao>(`/monitoramento/alocacao${query(frenteId, escopoId)}`, { token });
 }
 
-export function getAtrasos(token: string, frenteId?: number | null) {
-  return apiFetch<Atrasos>(`/monitoramento/atrasos${query(frenteId)}`, { token });
+export function getAtrasos(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<Atrasos>(`/monitoramento/atrasos${query(frenteId, escopoId)}`, { token });
 }
 
-export function getTarefasGerais(token: string, frenteId?: number | null) {
-  return apiFetch<TarefasGerais>(`/monitoramento/tarefas${query(frenteId)}`, { token });
+export function getTarefasGerais(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<TarefasGerais>(`/monitoramento/tarefas${query(frenteId, escopoId)}`, { token });
 }
 
-export function getCronogramasGerais(token: string, frenteId?: number | null) {
-  return apiFetch<CronogramasGerais>(`/monitoramento/cronogramas${query(frenteId)}`, { token });
+export function getCronogramasGerais(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<CronogramasGerais>(`/monitoramento/cronogramas${query(frenteId, escopoId)}`, { token });
 }

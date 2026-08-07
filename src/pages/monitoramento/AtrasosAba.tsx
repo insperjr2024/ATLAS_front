@@ -75,6 +75,7 @@ import {
   type NivelSeveridade,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { useFiltroEscopo } from "./FiltroEscopo";
 
 /**
  * §7.4 — o pilar é a BANCA: "um escopo está atrasado quando passa da data da
@@ -107,7 +108,14 @@ const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/atrasos", voltarRotulo: "
 export function AtrasosAba() {
   const { token, usuario } = useAuth();
   const navigate = useNavigate();
-  const { frenteId, seletor } = useFiltroFrente();
+  const { frenteId, seletor: seletorFrente } = useFiltroFrente();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const seletor = (
+    <>
+      {seletorFrente}
+      {seletorEscopo}
+    </>
+  );
   const [dados, setDados] = useState<Atrasos | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -125,7 +133,7 @@ export function AtrasosAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getAtrasos(token, frenteId));
+      setDados(await getAtrasos(token, frenteId, escopoId));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar os atrasos");
     } finally {
@@ -136,7 +144,7 @@ export function AtrasosAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId]);
+  }, [token, frenteId, escopoId]);
 
   const projetos = dados?.por_projeto ?? [];
   const coordenadores = dados?.por_coordenador ?? [];

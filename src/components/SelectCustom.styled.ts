@@ -67,6 +67,20 @@ export const SelectPanel = styled.div`
   border: 1px solid ${theme.colors.border};
   background: ${theme.colors.popover};
   box-shadow: ${theme.shadows.lg};
+
+  /* Sempre visível, não só ao passar o mouse (padrão do macOS) — sem isso
+     uma lista mais longa que a altura do painel parece só "acabar", sem
+     nenhum indício de que dá pra rolar pra ver o resto. */
+  scrollbar-width: thin;
+  scrollbar-color: ${theme.colors.mutedForeground} transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, ${theme.colors.mutedForeground} 55%, transparent);
+    border-radius: ${theme.borderRadius.full};
+  }
 `;
 
 export const SelectOption = styled.button<{ $selecionado: boolean }>`
@@ -90,6 +104,23 @@ export const SelectOption = styled.button<{ $selecionado: boolean }>`
   &:disabled {
     cursor: not-allowed;
     opacity: 0.5;
+  }
+`;
+
+/** O campo de busca no topo do painel, quando `pesquisavel`. */
+export const SelectBusca = styled.input`
+  width: 100%;
+  margin-bottom: ${theme.spacing.xs};
+  padding: 0.375rem 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.background};
+  color: ${theme.colors.foreground};
+  font-size: ${theme.fontSize.sm};
+
+  &:focus {
+    outline: none;
+    border-color: ${theme.colors.ring};
   }
 `;
 
