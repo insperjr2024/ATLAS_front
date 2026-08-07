@@ -73,6 +73,7 @@ export function MonitoramentoLayout() {
         <TabLink to="/monitoramento/execucao">Execução</TabLink>
         <TabLink to="/monitoramento/alocacao">Alocação</TabLink>
         <TabLink to="/monitoramento/atrasos">Atrasos</TabLink>
+        <TabLink to="/monitoramento/graficos">Gráficos</TabLink>
         {podeVerTarefasGerais && <TabLink to="/monitoramento/tarefas">Tarefas</TabLink>}
         {podeVerCronogramasGerais && (
           <TabLink to="/monitoramento/cronogramas">Cronogramas</TabLink>
