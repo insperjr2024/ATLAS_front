@@ -65,6 +65,8 @@ export interface CreateProjetoPayload {
   link_proposta?: string | null;
   frente_ids: number[];
   dias_ambientacao: number;
+  /** Teto de consultores — decide quando o projeto sai da lista de vagas. */
+  max_consultores: number;
   equipe: MembroEquipePayload[];
   dia_reuniao_padrao?: number | null;
   escopos?: EscopoVendidoPayload[];
