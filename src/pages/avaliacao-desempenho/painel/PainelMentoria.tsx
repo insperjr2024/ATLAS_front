@@ -18,7 +18,24 @@ import {
 } from "@/styles/page.styled";
 import { FieldGroup, FieldLabel, FieldSelect, FormStack } from "@/pages/Bancas.styled";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
-import { MentoriaGrupo, MentoriaGrupoTitulo, MentoriaLinha } from "./Painel.styled";
+import {
+  MentoriaGrupo,
+  MentoriaCabecalho,
+  MentoriaGrupoTitulo,
+  MentoriaLinha,
+  MentoradosLista,
+  MentorPapel,
+  Iniciais,
+} from "./Painel.styled";
+
+/** "Ana Souza" -> "AS". Duas letras bastam e cabem no círculo. */
+function iniciais(nome: string | null | undefined): string {
+  const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  const primeira = partes[0][0];
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : "";
+  return (primeira + ultima).toUpperCase();
+}
 
 export function PainelMentoria() {
   const { token } = useAuth();
@@ -162,15 +179,29 @@ export function PainelMentoria() {
           ) : (
             porMentor.map((lista) => (
               <MentoriaGrupo key={lista[0].mentor_id}>
-                <MentoriaGrupoTitulo>{lista[0].mentor_nome}</MentoriaGrupoTitulo>
-                {lista.map((m) => (
-                  <MentoriaLinha key={m.id}>
-                    <span>{m.mentorado_nome}</span>
-                    <PageButtonSm $variant="outline" type="button" onClick={() => setParaRemover(m)}>
-                      Remover
-                    </PageButtonSm>
-                  </MentoriaLinha>
-                ))}
+                <MentoriaCabecalho>
+                  <Iniciais $mentor aria-hidden>
+                    {iniciais(lista[0].mentor_nome)}
+                  </Iniciais>
+                  <div>
+                    <MentoriaGrupoTitulo>{lista[0].mentor_nome}</MentoriaGrupoTitulo>
+                    <MentorPapel>
+                      Mentor de {lista.length}{" "}
+                      {lista.length === 1 ? "pessoa" : "pessoas"}
+                    </MentorPapel>
+                  </div>
+                </MentoriaCabecalho>
+                <MentoradosLista>
+                  {lista.map((m) => (
+                    <MentoriaLinha key={m.id}>
+                      <Iniciais aria-hidden>{iniciais(m.mentorado_nome)}</Iniciais>
+                      <span>{m.mentorado_nome}</span>
+                      <PageButtonSm $variant="outline" type="button" onClick={() => setParaRemover(m)}>
+                        Remover
+                      </PageButtonSm>
+                    </MentoriaLinha>
+                  ))}
+                </MentoradosLista>
               </MentoriaGrupo>
             ))
           )}
