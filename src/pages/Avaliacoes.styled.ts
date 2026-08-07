@@ -1,5 +1,8 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
+// Importado de verdade (o bloco abaixo é `export ... from`, que não traz nada
+// para o escopo): o modal do formulário mira `ModalBody` por seletor.
+import { ModalBody } from "./Bancas.styled";
 
 export {
   PageHeaderRow,
@@ -260,3 +263,55 @@ export const NotaFinalDestaque = styled.p`
     color: ${theme.colors.primary};
   }
 `;
+
+/* ------------------------------------------------------------------ */
+/* Modal de editar o formulário padrão                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Container próprio, e não o `WideModalContent`: este modal lista uma seção
+ * por escopo, agrupadas por frente — hoje são 15 escopos. Em 36rem cada
+ * pergunta ficava apertada, e o teto de 640px de altura deixava a rolagem
+ * interminável mesmo num monitor grande.
+ *
+ * ⚠ O `WideModalContent` tem 16 outros usos. Alargar lá para resolver aqui
+ * mexeria em modal de tarefa, de membro, de cargo — todos dimensionados para
+ * o pouco conteúdo que têm.
+ *
+ * ⚠ Coluna ÚNICA, de propósito. Tentei duas colunas e quebrou: a linha da
+ * pergunta é `1fr auto auto auto` (campo, tipo, setas, remover) e não encolhe
+ * abaixo do conteúdo, então estourava a borda e cortava o "Remover". Fora que
+ * "Geral" tem 3 perguntas e "Business" tem 4 escopos inteiros — as colunas
+ * saíam com alturas absurdamente diferentes.
+ */
+export const FormularioModalContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 52rem;
+  /* "dvh" em vez de "vh": no celular a barra do navegador some e volta, e o
+     "vh" não acompanha — o rodapé com o botão Publicar ficaria fora da tela. */
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+  border-radius: ${theme.borderRadius.xl};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.lg};
+
+  /* Cabeçalho e rodapé ficam parados, só o miolo rola. Antes o container
+     inteiro rolava, e o botão "Publicar nova versão" sumia da vista assim que
+     a pessoa descia para editar a terceira pergunta. */
+  form {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+  }
+
+  ${ModalBody} {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+`;
+
