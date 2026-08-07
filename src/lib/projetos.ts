@@ -381,6 +381,16 @@ export const CORES_STATUS: Record<StatusProjeto, string> = {
   pausado: "#F59E0B", // âmbar — vermelho fica reservado pro alerta de vencida
 };
 
+/** Mesma ordem de colunas do kanban de projetos (`ProjetoKanbanBoard`,
+ *  que itera `Object.keys(CORES_STATUS)`) — usada pra ordenar a lista pela
+ *  fase do ciclo de vida sem inventar uma segunda ordem que discorde do
+ *  kanban. */
+const ORDEM_STATUS_KANBAN = Object.keys(CORES_STATUS) as StatusProjeto[];
+
+export function ordemStatus(status: StatusProjeto): number {
+  return ORDEM_STATUS_KANBAN.indexOf(status);
+}
+
 /* ------------------------------------------------------------------ */
 /* Formatação                                                          */
 /* ------------------------------------------------------------------ */
@@ -424,4 +434,16 @@ export function formatarDataHora(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return formatarData(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * "dd/mm/aaaa às hh:mm" — usado nos cards de projeto (kanban e lista) pra
+ * mostrar a data da próxima banca (§6.2). Espaço inquebrável em volta do
+ * "às" pra data e hora nunca se separarem numa quebra de linha do card.
+ */
+export function formatarDataHoraBanca(iso: string | null | undefined): string {
+  const completo = formatarDataHora(iso);
+  const espaco = completo.indexOf(" ");
+  if (espaco === -1) return completo;
+  return `${completo.slice(0, espaco)} às ${completo.slice(espaco + 1)}`;
 }

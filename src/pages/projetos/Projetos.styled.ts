@@ -131,6 +131,15 @@ export const CardEquipe = styled.p`
   }
 `;
 
+/** O ícone antes de "Arquivado em ..." — em linha com o texto, não numa
+ *  linha própria: o SVG do ícone é um elemento de bloco por padrão, e sem
+ *  esse wrapper `inline-flex` ele empurrava o texto pra baixo dele. */
+export const ArquivadoEmLinha = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
 /** ⚠ kickoff pendente — o único alerta que o card carrega hoje. */
 export const CardAlerta = styled.p`
   display: flex;
@@ -219,6 +228,45 @@ export const FrenteFilterPanel = styled.div`
   border: 1px solid ${theme.colors.border};
   background: ${theme.colors.popover};
   box-shadow: ${theme.shadows.lg};
+`;
+
+/** Separa grupos de opções dentro de um dropdown de filtro (ex.: frentes,
+ *  ordem, "Mostrar arquivados", em `ProjetosList`) sem precisar de um
+ *  dropdown por grupo. */
+export const FrenteFilterDivisor = styled.div`
+  border-top: 1px solid ${theme.colors.border};
+  margin: 0.125rem 0;
+`;
+
+/** O rótulo de cada grupo dentro do dropdown de filtro — "Frentes", "Ordem",
+ *  "Arquivados". */
+export const FrenteFilterSecao = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** Uma opção clicável dentro do dropdown que não é checkbox (ex.: a direção
+ *  da ordenação) — mesma tipografia do `CheckboxLabel` ao lado, só sem o
+ *  quadradinho. */
+export const FrenteFilterOpcao = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: ${theme.colors.primary};
+  }
 `;
 
 export const FrenteFilterFooter = styled.button`

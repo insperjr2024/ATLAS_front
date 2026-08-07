@@ -20,6 +20,7 @@ import { Avaliacoes } from "@/pages/Avaliacoes";
 import { CalendariosBase } from "@/pages/CalendariosBase";
 import { Config } from "@/pages/Config";
 import { ProjetosList } from "@/pages/projetos/ProjetosList";
+import { ProjetosArquivados } from "@/pages/projetos/ProjetosArquivados";
 import { ProjetoNovo } from "@/pages/projetos/ProjetoNovo";
 import { ProjetoPage } from "@/pages/projetos/ProjetoPage";
 import { ProjetoVisaoGeral } from "@/pages/projetos/ProjetoVisaoGeral";
@@ -78,10 +79,14 @@ export default function App() {
               <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
-              {/* Criar projeto é de diretor e gerente — guard por POSIÇÃO,
-                  que é dimensão diferente do cargo do AdminRoute. */}
+              {/* Criar projeto e ver arquivados são de diretor e gerente —
+                  guard por POSIÇÃO, que é dimensão diferente do cargo do
+                  AdminRoute (mesma trava de `arquivar_projeto` em
+                  permissoes.ts). Rota estática, então bate antes de
+                  `/projetos/:id` mesmo vindo depois na declaração. */}
               <Route element={<RequirePosicao posicoes={["diretor", "gerente"]} />}>
                 <Route path="/projetos/novo" element={<ProjetoNovo />} />
+                <Route path="/projetos/arquivados" element={<ProjetosArquivados />} />
               </Route>
               {/* Abas como sub-rotas: é o que deixa uma notificação abrir
                   direto em /projetos/42/tarefas. */}
