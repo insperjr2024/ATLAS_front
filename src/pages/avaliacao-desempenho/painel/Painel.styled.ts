@@ -303,27 +303,128 @@ export const LoteCardAcoes = styled.div`
   gap: ${theme.spacing.xs};
 `;
 
+/** Rolagem própria: com 20 projetos a lista empurrava o botão "Criar lote"
+ *  para fora da tela, e não dava para ver o que tinha sido marcado. */
 export const ProjetoChipsRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: ${theme.spacing.xs};
+  max-height: 11rem;
+  overflow-y: auto;
+  padding: ${theme.spacing.sm};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
 `;
 
 export const ProjetoChip = styled.button<{ $selecionado: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   padding: 0.25rem 0.625rem;
   border-radius: ${theme.borderRadius.full};
   border: 1px solid ${({ $selecionado }) => ($selecionado ? theme.colors.primary : theme.colors.border)};
-  background: ${({ $selecionado }) => ($selecionado ? theme.colors.primary : theme.colors.background)};
+  background: ${({ $selecionado }) => ($selecionado ? theme.colors.primary : theme.colors.card)};
   color: ${({ $selecionado }) => ($selecionado ? theme.colors.primaryForeground : theme.colors.foreground)};
   font-size: ${theme.fontSize.xs};
   font-weight: ${theme.fontWeight.medium};
   cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    border-color: ${theme.colors.primary};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 1px;
+  }
 `;
 
-export const MentoriaGrupo = styled.div`
+/** O "(Finalizado)" some dentro do texto do chip; como selo separado ele
+ *  continua legível mesmo quando o chip está vermelho. */
+export const ChipMarca = styled.span<{ $selecionado: boolean }>`
+  font-size: 0.625rem;
+  font-weight: ${theme.fontWeight.medium};
+  padding: 0 0.25rem;
+  border-radius: ${theme.borderRadius.sm};
+  background: ${({ $selecionado }) =>
+    $selecionado ? "rgb(255 255 255 / 25%)" : theme.colors.muted};
+  color: ${({ $selecionado }) => ($selecionado ? theme.colors.primaryForeground : theme.colors.mutedForeground)};
+`;
+
+/** Busca + ações + contador, acima da lista. */
+export const SeletorBarra = styled.div`
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: ${theme.spacing.sm};
+  flex-wrap: wrap;
+  margin-bottom: ${theme.spacing.sm};
+`;
+
+export const SeletorBusca = styled.input`
+  flex: 1;
+  min-width: 10rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  color: ${theme.colors.foreground};
+  font-size: ${theme.fontSize.sm};
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: -1px;
+  }
+`;
+
+export const SeletorContagem = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  white-space: nowrap;
+`;
+
+/**
+ * Cada mentor vira um cartão com os seus mentorados pendurados.
+ *
+ * 📐 Antes era um `h4` com linhas soltas embaixo, e lia como título e
+ * subtítulo — nada dizia que uma pessoa orienta a outra. Agora as iniciais e
+ * o fio à esquerda dos mentorados desenham a relação.
+ */
+export const MentoriaGrupo = styled.div`
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.card};
+
+  & + & {
+    margin-top: ${theme.spacing.md};
+  }
+`;
+
+export const MentoriaCabecalho = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+/** Iniciais em círculo. Sem foto no sistema, é o que dá rosto à linha. */
+export const Iniciais = styled.span<{ $mentor?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: ${({ $mentor }) => ($mentor ? "2.25rem" : "1.75rem")};
+  height: ${({ $mentor }) => ($mentor ? "2.25rem" : "1.75rem")};
+  border-radius: ${theme.borderRadius.full};
+  font-size: ${({ $mentor }) => ($mentor ? theme.fontSize.xs : "0.625rem")};
+  font-weight: ${theme.fontWeight.semibold};
+  letter-spacing: 0.02em;
+
+  background: ${({ $mentor }) =>
+    $mentor
+      ? theme.colors.primary
+      : `color-mix(in srgb, ${theme.colors.primary} 12%, white)`};
+  color: ${({ $mentor }) => ($mentor ? theme.colors.primaryForeground : theme.colors.primary)};
 `;
 
 export const MentoriaGrupoTitulo = styled.h4`
@@ -333,15 +434,46 @@ export const MentoriaGrupoTitulo = styled.h4`
   color: ${theme.colors.foreground};
 `;
 
+export const MentorPapel = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** O fio vertical que liga o mentor aos mentorados. */
+export const MentoradosLista = styled.div`
+  margin: ${theme.spacing.sm} 0 0 1.0625rem;
+  padding-left: ${theme.spacing.md};
+  border-left: 2px solid ${theme.colors.border};
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+`;
+
 export const MentoriaLinha = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.375rem ${theme.spacing.md};
+  gap: ${theme.spacing.sm};
+  padding: 0.375rem ${theme.spacing.sm};
   border-radius: ${theme.borderRadius.md};
-  background: ${theme.colors.muted};
   font-size: ${theme.fontSize.sm};
   color: ${theme.colors.foreground};
+
+  /* O "Remover" só aparece no hover ou no foco pelo teclado: são vínculos
+     que quase nunca se desfazem, e um botão vermelho por linha competia
+     visualmente com os nomes, que é o que se vem ler aqui. */
+  button {
+    opacity: 0;
+    margin-left: auto;
+  }
+
+  &:hover,
+  &:focus-within {
+    background: ${theme.colors.muted};
+
+    button {
+      opacity: 1;
+    }
+  }
 `;
 
 export const FormularioAbasRow = styled.div`

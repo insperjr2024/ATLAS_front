@@ -44,6 +44,10 @@ import {
   PendenciaTexto,
   ProjetoChip,
   ProjetoChipsRow,
+  ChipMarca,
+  SeletorBarra,
+  SeletorBusca,
+  SeletorContagem,
   SubLista,
 } from "./Painel.styled";
 
@@ -118,6 +122,7 @@ export function PainelLotes() {
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [projetoIds, setProjetoIds] = useState<number[]>([]);
+  const [buscaProjeto, setBuscaProjeto] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState("");
 
@@ -129,18 +134,6 @@ export function PainelLotes() {
       const [l, p] = await Promise.all([getLotes(token, false), getProjetos(token)]);
       setLotes(l);
       setProjetos(p);
-      // Tipo default do formulário é "periódico" — pré-marca na carga
-      // inicial os mesmos projetos que `handleMudarTipo` marcaria.
-      const finalizadosNaCarga = new Set<number>();
-      for (const proj of p) {
-        if (proj.status === "finalizado") finalizadosNaCarga.add(proj.id);
-      }
-      for (const lote of l) {
-        if (lote.tipo === "finalizacao" && !lote.aberto) {
-          for (const pid of lote.projeto_ids) finalizadosNaCarga.add(pid);
-        }
-      }
-      setProjetoIds(p.filter((proj) => !finalizadosNaCarga.has(proj.id)).map((proj) => proj.id));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar lotes");
     } finally {
@@ -172,18 +165,23 @@ export function PainelLotes() {
     return finalizados;
   }, [projetos, lotes]);
 
+  const projetosVisiveis = useMemo(() => {
+    const alvo = buscaProjeto.trim().toLowerCase();
+    if (!alvo) return projetos;
+    return projetos.filter((p) => `${p.nome} ${p.cliente}`.toLowerCase().includes(alvo));
+  }, [projetos, buscaProjeto]);
+
   function toggleProjeto(id: number) {
     setProjetoIds((atual) => (atual.includes(id) ? atual.filter((p) => p !== id) : [...atual, id]));
   }
 
   function handleMudarTipo(novoTipo: DesempenhoTipo) {
     setTipo(novoTipo);
-    // Periódica pré-marca tudo que ainda não terminou (o time normalmente
-    // quer avaliar todo mundo); finalização começa vazia — é por projeto
-    // específico que está encerrando, não um "avalia todo mundo de novo".
-    setProjetoIds(
-      novoTipo === "periodico" ? projetos.filter((p) => !projetosFinalizados.has(p.id)).map((p) => p.id) : [],
-    );
+    // Começa vazio nos dois tipos. Antes a periódica vinha com TODOS os
+    // projetos marcados, e a tela abria como um paredão vermelho onde não se
+    // distinguia o que estava escolhido do que era só o padrão. O atalho de
+    // marcar todos continua existindo — agora como botão, escolha explícita.
+    setProjetoIds([]);
   }
 
   async function handleCriar(e: React.FormEvent) {
@@ -356,18 +354,54 @@ export function PainelLotes() {
             </FieldGroup>
             <FieldGroup>
               <FieldLabel>Projetos cobertos</FieldLabel>
+              <SeletorBarra>
+                <SeletorBusca
+                  type="search"
+                  value={buscaProjeto}
+                  onChange={(e) => setBuscaProjeto(e.target.value)}
+                  placeholder="Buscar por projeto ou cliente"
+                  aria-label="Buscar projeto"
+                />
+                <PageButtonSm
+                  type="button"
+                  $variant="outline"
+                  onClick={() =>
+                    setProjetoIds((atual) => [
+                      ...new Set([...atual, ...projetosVisiveis.map((p) => p.id)]),
+                    ])
+                  }
+                >
+                  Marcar todos
+                </PageButtonSm>
+                <PageButtonSm type="button" $variant="outline" onClick={() => setProjetoIds([])}>
+                  Limpar
+                </PageButtonSm>
+                <SeletorContagem>
+                  {projetoIds.length} de {projetos.length} escolhidos
+                </SeletorContagem>
+              </SeletorBarra>
               <ProjetoChipsRow>
-                {projetos.map((p) => (
-                  <ProjetoChip
-                    key={p.id}
-                    type="button"
-                    $selecionado={projetoIds.includes(p.id)}
-                    onClick={() => toggleProjeto(p.id)}
-                  >
-                    {p.nome}
-                    {projetosFinalizados.has(p.id) && " (Finalizado)"}
-                  </ProjetoChip>
-                ))}
+                {projetosVisiveis.length === 0 ? (
+                  <EmptyText>Nenhum projeto encontrado.</EmptyText>
+                ) : (
+                  projetosVisiveis.map((p) => {
+                    const selecionado = projetoIds.includes(p.id);
+                    return (
+                      <ProjetoChip
+                        key={p.id}
+                        type="button"
+                        $selecionado={selecionado}
+                        aria-pressed={selecionado}
+                        onClick={() => toggleProjeto(p.id)}
+                      >
+                        {p.nome}
+                        {projetosFinalizados.has(p.id) && (
+                          <ChipMarca $selecionado={selecionado}>finalizado</ChipMarca>
+                        )}
+                      </ProjetoChip>
+                    );
+                  })
+                )}
               </ProjetoChipsRow>
             </FieldGroup>
             {erroForm && <ErrorText>{erroForm}</ErrorText>}
