@@ -1,8 +1,13 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { ConteudoPaginado, POR_PAGINA, Paginacao, usePaginacao } from "./Paginacao";
 import { useAuth } from "@/context/AuthContext";
-import { getVisaoGeral, type VisaoGeral } from "@/lib/monitoramento";
+import {
+  getVisaoGeral,
+  ROTULO_ATENCAO,
+  type TipoAtencao,
+  type VisaoGeral,
+} from "@/lib/monitoramento";
 
 // Sob demanda: o recharts pesa ~450KB num bundle que já está acima do limite
 // de aviso do Vite, e os gráficos só existem dentro do monitoramento.
@@ -21,6 +26,8 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  ControlesGrafico,
+  FieldSelect,
   ItemAtencao,
   ItemDestaque,
   ItemTexto,
@@ -118,8 +125,34 @@ export function VisaoGeralAba() {
  * condicional — a contagem muda entre renders e o React desalinha o estado.
  */
 function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: ReactNode }) {
+  const [motivoPedido, setMotivoPedido] = useState<TipoAtencao | "">("");
+
+  /* Quantos itens de cada motivo, na ordem de `ROTULO_ATENCAO` — do que o time
+     controla para o que depende de terceiro. Só entram os que têm item. */
+  const motivosPresentes = useMemo(() => {
+    const contagem = new Map<TipoAtencao, number>();
+    for (const i of dados.atencao_agora) {
+      contagem.set(i.tipo, (contagem.get(i.tipo) ?? 0) + 1);
+    }
+    return (Object.keys(ROTULO_ATENCAO) as TipoAtencao[])
+      .filter((t) => contagem.has(t))
+      .map((t) => [t, contagem.get(t)!] as const);
+  }, [dados.atencao_agora]);
+
+  /* ⚠ O motivo é DERIVADO, não guardado cru. Trocar a frente troca os dados, e
+     o motivo escolhido pode não existir mais no recorte novo — aí o card
+     ficaria vazio exibindo um filtro que sumiu da lista. Voltar para "todos"
+     quando isso acontece é o mesmo cuidado do clamp de página em
+     `usePaginacao`. */
+  const motivo = motivosPresentes.some(([t]) => t === motivoPedido) ? motivoPedido : "";
+
+  const filtrados = useMemo(
+    () => (motivo ? dados.atencao_agora.filter((i) => i.tipo === motivo) : dados.atencao_agora),
+    [dados.atencao_agora, motivo],
+  );
+
   // Estes três crescem com o tamanho do núcleo e não têm teto no backend.
-  const atencao = usePaginacao(dados.atencao_agora, POR_PAGINA);
+  const atencao = usePaginacao(filtrados, POR_PAGINA);
   const bancas = usePaginacao(dados.bancas_proximas, POR_PAGINA);
   const parados = usePaginacao(dados.tempo_parado, POR_PAGINA);
 
@@ -282,13 +315,35 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
 
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Atenção agora ({dados.atencao_agora.length})</PageCardTitle>
+          <PageCardTitle>
+            Atenção agora ({filtrados.length}
+            {motivo && ` de ${dados.atencao_agora.length}`})
+          </PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
           {dados.atencao_agora.length === 0 ? (
             <EmptyText>Nada pedindo ação no momento.</EmptyText>
           ) : (
             <>
+              {/* As opções saem do que EXISTE hoje, não de uma lista fixa:
+                  oferecer "Kickoff" quando nenhum projeto está sem kickoff
+                  devolve card vazio e a impressão de que quebrou. A contagem
+                  ao lado evita ter que filtrar para descobrir se vale a pena. */}
+              <ControlesGrafico>
+                <FieldSelect
+                  value={motivo}
+                  onChange={(e) => setMotivoPedido(e.target.value as TipoAtencao | "")}
+                  aria-label="Filtrar por motivo"
+                >
+                  <option value="">Todos os motivos ({dados.atencao_agora.length})</option>
+                  {motivosPresentes.map(([tipo, n]) => (
+                    <option key={tipo} value={tipo}>
+                      {ROTULO_ATENCAO[tipo]} ({n})
+                    </option>
+                  ))}
+                </FieldSelect>
+              </ControlesGrafico>
+
               <ConteudoPaginado estado={atencao}>
                 <ListaSimples>
                   {atencao.visiveis.map((item, i) => (

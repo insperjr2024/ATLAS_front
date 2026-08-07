@@ -5,6 +5,29 @@ import type { CronogramaResposta } from "@/types/cronograma";
 
 /* Os tipos espelham `use_cases/monitoramento/monitoramento.py`. */
 
+/** O que faz um projeto pedir atenção (§7.1).
+ *
+ *  `entrega_interna` e `entrega_externa` são separadas porque o §7.4 as trata
+ *  diferente — a externa depende da agenda do cliente e não se cobra do time. */
+export type TipoAtencao =
+  | "kickoff"
+  | "banca"
+  | "entrega_interna"
+  | "entrega_externa"
+  | "reuniao"
+  | "tarefa";
+
+/** Os rótulos do filtro, na ordem em que aparecem. A ordem é do que o time
+ *  controla (tarefa, reunião) para o que depende de terceiro (cliente). */
+export const ROTULO_ATENCAO: Record<TipoAtencao, string> = {
+  tarefa: "Tarefas",
+  reuniao: "Reuniões",
+  banca: "Bancas",
+  entrega_interna: "Entregas",
+  entrega_externa: "Entregas (cliente)",
+  kickoff: "Kickoff",
+};
+
 /** Uma etapa do ciclo de vida e os projetos parados nela.
  *
  *  Vem em LISTA, não em objeto indexado por status: a ordem é o dado. A pizza
@@ -69,6 +92,10 @@ export interface VisaoGeral {
   atencao_agora: {
     projeto_id: number;
     projeto_nome: string;
+    /** A categoria, para a tela filtrar. Vem separada do `motivo` porque
+     *  aquele é frase escrita para humano e muda de redação — agrupar por ela
+     *  seria agrupar por string livre. */
+    tipo: TipoAtencao;
     motivo: string;
     dias: number | null;
   }[];
