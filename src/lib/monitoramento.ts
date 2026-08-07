@@ -41,18 +41,19 @@ export interface VisaoGeral {
    *  os rótulos precisam dizer o que cada um mede. */
   atrasados_gestao: { percentual: number; atrasados: number; total_ativos: number };
   entregas: {
+    /** Escopos entregues NA GESTÃO ATUAL — o assunto do card.
+     *
+     *  ⚠ Não bate com a soma da `tendencia`: ela abre 6 meses e ignora o
+     *  semestre, senão viriam quatro meses zerados (a gestão começou em
+     *  julho). São duas leituras no mesmo card, de propósito. */
     total_escopos: number;
-    projetos_finalizados: number;
-    recentes: {
-      projeto_id: number;
-      projeto_nome: string;
-      escopo: string;
-      data: string;
-      no_prazo: boolean;
-    }[];
+    /** Entregas por mês nos últimos 6, do mais antigo ao mais novo. O mês
+     *  corrente entra incompleto — é "o que saiu até agora", não previsão. */
     tendencia: { inicio: string; total: number }[];
   };
   bancas_proximas: {
+    /** O id da banca, para a linha do card levar até ela em /bancas. */
+    banca_id: number;
     projeto_id: number | null;
     projeto_nome: string;
     escopo: string;

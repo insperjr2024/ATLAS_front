@@ -101,6 +101,144 @@ export const TabelaRolagem = styled.div<{ $min?: string; $max?: string }>`
   }
 `;
 
+/* ─── Linha de card com destaque à esquerda ──────────────────────────────── */
+
+/**
+ * Uma linha clicável com um valor em destaque à esquerda, duas linhas de texto
+ * e a seta. Usada pelos cards de **bancas próximas** e **tempo parado**.
+ *
+ * A linha INTEIRA é o link: o alvo útil é o item todo, e um trecho clicável no
+ * meio do texto é difícil de acertar — ainda mais no celular.
+ */
+export const LinhaItem = styled(RouterLink)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: 0.4rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: ${theme.borderRadius.md};
+  color: ${theme.colors.mutedForeground};
+  text-decoration: none;
+
+  &:hover {
+    background: ${theme.colors.muted};
+    color: ${theme.colors.foreground};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: -2px;
+  }
+`;
+
+/** A coluna da esquerda: dois valores empilhados, largura fixa. É ela que
+ *  alinha as linhas umas sob as outras e deixa a lista ser lida na vertical —
+ *  "seg 11 / 14:00" nas bancas, "145 / dias" no tempo parado. */
+export const ItemDestaque = styled.span`
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 3.25rem;
+  line-height: 1.2;
+
+  strong {
+    font-size: ${theme.fontSize.xs};
+    font-weight: ${theme.fontWeight.semibold};
+    text-transform: capitalize;
+    color: ${theme.colors.foreground};
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    font-variant-numeric: tabular-nums;
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+export const ItemTexto = styled.span`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+
+  /* Projeto e escopo em duas linhas, cada um truncando sozinho: juntos numa
+     linha só, o escopo empurrava o nome do projeto para fora. */
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: ${theme.fontSize.sm};
+    font-weight: ${theme.fontWeight.medium};
+    color: ${theme.colors.foreground};
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/** O campo de busca por projeto, na aba de Tarefas.
+ *
+ *  Largura contida: é filtro de uma coluna, não busca global da plataforma —
+ *  esticado na largura toda ele prometeria procurar em tudo. */
+export const BarraBusca = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  max-width: 22rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.card};
+  color: ${theme.colors.mutedForeground};
+
+  &:focus-within {
+    border-color: ${theme.colors.ring};
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: ${theme.fontSize.sm};
+    color: ${theme.colors.foreground};
+
+    /* O anel de foco fica na barra inteira, via focus-within, e não no input:
+       dois anéis concêntricos poluem. */
+    &:focus {
+      outline: none;
+    }
+  }
+`;
+
+export const BotaoLimparBusca = styled.button`
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: ${theme.colors.mutedForeground};
+  cursor: pointer;
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+    border-radius: ${theme.borderRadius.sm};
+  }
+`;
+
 /** A linha do filtro de frente, no topo de cada aba.
  *
  *  Alinhado à direita para não competir com o primeiro card: é um controle de
@@ -506,57 +644,6 @@ export const ItemAtencao = styled.li<{ $nivel?: NivelSeveridade }>`
     font-size: ${theme.fontSize.xs};
     color: ${theme.colors.mutedForeground};
   }
-`;
-
-/** A tendência de entregas — barras simples, sem lib de gráfico nova. */
-export const GraficoTendencia = styled.div`
-  margin-top: ${theme.spacing.md};
-  padding-top: ${theme.spacing.md};
-  border-top: 1px solid ${theme.colors.border};
-`;
-
-export const Sparkline = styled.div`
-  display: flex;
-  align-items: flex-end;
-  gap: 0.25rem;
-  height: 3.5rem;
-  padding-top: ${theme.spacing.sm};
-`;
-
-/** A coluna inteira é a área de hover, não a barra. Uma barra de 2px de altura
- *  numa semana sem entrega praticamente não recebe o mouse, e aí o `title` com
- *  o total nunca aparece justamente na semana que interessa explicar. */
-export const SparkColuna = styled.div`
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  height: 100%;
-  border-radius: ${theme.borderRadius.sm};
-
-  &:hover > div {
-    background: color-mix(in srgb, ${theme.colors.success} 80%, black);
-  }
-`;
-
-export const SparkBarra = styled.div<{ $altura: number }>`
-  width: 100%;
-  min-height: 2px;
-  height: ${({ $altura }) => Math.max(2, $altura)}%;
-  border-radius: ${theme.borderRadius.sm} ${theme.borderRadius.sm} 0 0;
-  background: ${theme.colors.success};
-  transition: background ${theme.transitions.fast};
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-`;
-
-export const SparkRotulos = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.35rem;
-  font-size: ${theme.fontSize.xs};
-  color: ${theme.colors.mutedForeground};
 `;
 
 /** `atencao` (âmbar) fica entre `ok` e `alerta`: sinaliza o que merece olhada
@@ -1136,9 +1223,24 @@ export const SwimGrid = styled.div<{ $colunas: number }>`
   }
 `;
 
-export const SwimHeaderCell = styled.div`
+/** O cabeçalho de uma coluna do quadro.
+ *
+ *  ⚠ `$fixa` para a PRIMEIRA célula, a que fica sobre a coluna de projetos.
+ *  Sem isso ela rola junto com as colunas de tarefa enquanto a coluna de
+ *  projetos (que é sticky) fica parada — o cabeçalho deixa de casar com o
+ *  corpo, e a leitura é de que o título do projeto "andou junto". */
+export const SwimHeaderCell = styled.div<{ $fixa?: boolean }>`
   display: flex;
   align-items: center;
+
+  ${({ $fixa }) =>
+    $fixa &&
+    css`
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: ${theme.colors.card};
+    `}
 `;
 
 /** A linha entre uma faixa de projeto e a próxima — mesmo cinza neutro dos
@@ -1158,20 +1260,32 @@ export const SwimDivisor = styled.div`
  * `$cor` é a identidade fixa do projeto: uma barra fininha que não muda
  * mesmo se a ordem das linhas mudar ou a etiqueta sair da tela ao rolar.
  */
+/**
+ * O nome do projeto na ponta esquerda da faixa.
+ *
+ * ⭐ **Não é um card, e não pode parecer um.** Ele tinha `border-radius`,
+ * borda e fundo tingido — a mesma forma dos cards de tarefa que ficam ao lado
+ * —, e com isso se lia como se fosse mais uma tarefa daquela linha. Aqui ele
+ * vira um RÓTULO DE LINHA: canto reto, sem moldura, e um divisor à direita
+ * separando a coluna de identificação do quadro em si.
+ *
+ * Continua `sticky` para não sumir ao rolar o quadro na horizontal, e o fundo
+ * precisa ser OPACO — é ele que fica por cima dos cards enquanto passam por
+ * baixo.
+ */
 export const SwimLabelCell = styled.div<{ $cor?: string }>`
   position: sticky;
   left: 0;
   z-index: 1;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 0.125rem;
-  padding: ${theme.spacing.sm};
-  padding-left: 1rem;
-  border-radius: ${theme.borderRadius.lg};
-  border: 1px solid transparent;
-  background: ${theme.colors.muted};
+  padding: ${theme.spacing.sm} ${theme.spacing.md} ${theme.spacing.sm} 1rem;
+  border-right: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
   cursor: pointer;
-  transition: border-color ${theme.transitions.fast}, box-shadow ${theme.transitions.fast};
+  transition: background ${theme.transitions.fast};
 
   &::before {
     content: "";
@@ -1185,8 +1299,7 @@ export const SwimLabelCell = styled.div<{ $cor?: string }>`
   }
 
   &:hover {
-    border-color: ${theme.colors.ring};
-    box-shadow: ${theme.shadows.md};
+    background: ${theme.colors.muted};
   }
 
   &:focus-visible {

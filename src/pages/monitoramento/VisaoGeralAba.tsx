@@ -1,12 +1,13 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
 import { ConteudoPaginado, POR_PAGINA, Paginacao, usePaginacao } from "./Paginacao";
 import { useAuth } from "@/context/AuthContext";
 import { getVisaoGeral, type VisaoGeral } from "@/lib/monitoramento";
-import { formatarData, formatarDataHora } from "@/lib/projetos";
 
 // Sob demanda: o recharts pesa ~450KB num bundle que já está acima do limite
 // de aviso do Vite, e os gráficos só existem dentro do monitoramento.
 const PizzaEtapas = lazy(() => import("./PizzaEtapas"));
+const LinhaEntregas = lazy(() => import("./LinhaEntregas"));
 import {
   PageStack,
   PageCard,
@@ -20,25 +21,33 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
-  GraficoTendencia,
   ItemAtencao,
-  ItemLista,
+  ItemDestaque,
+  ItemTexto,
   KpiCard,
   KpiGrid,
   KpiNota,
   KpiRotulo,
   KpiValor,
+  LinhaItem,
   LinkProjeto,
   ListaSimples,
   PainelGrid,
-  Pilula,
-  SparkBarra,
-  SparkColuna,
-  SparkRotulos,
-  Sparkline,
   type NivelSeveridade,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+
+/** "seg 11" — o dia da semana é o que a pessoa usa para se localizar numa
+ *  agenda de 7 dias; a data completa não acrescenta nada nessa janela. */
+function diaDaSemana(iso: string): string {
+  const d = new Date(iso);
+  const dia = d.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+  return `${dia} ${d.getDate()}`;
+}
+
+function horaDaBanca(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
 
 /** Itens sem contagem de dias (kickoff não marcado, sem reunião na semana) não
  *  são menos importantes — só não têm magnitude. Ficam no degrau do meio em
@@ -109,8 +118,6 @@ export function VisaoGeralAba() {
  * condicional — a contagem muda entre renders e o React desalinha o estado.
  */
 function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: ReactNode }) {
-  const maxTendencia = Math.max(1, ...dados.entregas.tendencia.map((t) => t.total));
-
   // Estes três crescem com o tamanho do núcleo e não têm teto no backend.
   const atencao = usePaginacao(dados.atencao_agora, POR_PAGINA);
   const bancas = usePaginacao(dados.bancas_proximas, POR_PAGINA);
@@ -181,47 +188,12 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
             </PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
-            {dados.entregas.recentes.length === 0 ? (
-              <EmptyText>Nenhuma entrega registrada na gestão atual.</EmptyText>
+            {dados.entregas.tendencia.length === 0 ? (
+              <EmptyText>Nenhuma entrega registrada.</EmptyText>
             ) : (
-              <ListaSimples>
-                {dados.entregas.recentes.map((e, i) => (
-                  <ItemLista key={i}>
-                    <span>
-                      {e.projeto_nome} · {e.escopo}
-                    </span>
-                    <small>
-                      {formatarData(e.data)}{" "}
-                      <Pilula $tom={e.no_prazo ? "ok" : "alerta"}>
-                        {e.no_prazo ? "no prazo" : "atrasada"}
-                      </Pilula>
-                    </small>
-                  </ItemLista>
-                ))}
-              </ListaSimples>
-            )}
-            {/* Sem esse guard a tela QUEBRA quando não há tendência: o
-                `tendencia[0]?.inicio` vira `undefined`, a data sai
-                `"undefinedT12:00:00"` e o `format` do date-fns lança
-                `RangeError: Invalid time value` em vez de renderizar. */}
-            {dados.entregas.tendencia.length > 0 && (
-              <GraficoTendencia>
-                <Sparkline>
-                  {dados.entregas.tendencia.map((t) => (
-                    /* O alvo do hover é a COLUNA inteira, não a barra: numa
-                       semana sem entrega a barra tem 2px e o `title` com o
-                       total nunca aparece justo onde precisa explicar. */
-                    <SparkColuna key={t.inicio} title={`${formatarData(t.inicio)}: ${t.total} entrega(s)`}>
-                      <SparkBarra $altura={(t.total / maxTendencia) * 100} />
-                    </SparkColuna>
-                  ))}
-                </Sparkline>
-                <SparkRotulos>
-                  <span>{formatarData(dados.entregas.tendencia[0].inicio)}</span>
-                  <span>ritmo das últimas 8 semanas</span>
-                  <span>hoje</span>
-                </SparkRotulos>
-              </GraficoTendencia>
+              <Suspense fallback={<PageLoadingBlock />}>
+                <LinhaEntregas meses={dados.entregas.tendencia} />
+              </Suspense>
             )}
           </PageCardContent>
         </PageCard>
@@ -237,13 +209,23 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
               <>
                 <ConteudoPaginado estado={bancas}>
                   <ListaSimples>
-                    {bancas.visiveis.map((b, i) => (
-                      <ItemLista key={i}>
-                        <span>
-                          {b.projeto_nome} · {b.escopo}
-                        </span>
-                        <small>{formatarDataHora(b.data_hora)}</small>
-                      </ItemLista>
+                    {bancas.visiveis.map((b) => (
+                      <li key={b.banca_id}>
+                        {/* A linha inteira é o link, não só o nome: numa agenda
+                            o alvo útil é o compromisso todo, e um trecho
+                            clicável no meio do texto é difícil de acertar. */}
+                        <LinhaItem to={`/bancas?banca=${b.banca_id}`}>
+                          <ItemDestaque>
+                            <strong>{diaDaSemana(b.data_hora)}</strong>
+                            <span>{horaDaBanca(b.data_hora)}</span>
+                          </ItemDestaque>
+                          <ItemTexto>
+                            <strong>{b.projeto_nome}</strong>
+                            <span>{b.escopo}</span>
+                          </ItemTexto>
+                          <ChevronRight size={15} aria-hidden="true" />
+                        </LinhaItem>
+                      </li>
                     ))}
                   </ListaSimples>
                 </ConteudoPaginado>
@@ -267,12 +249,27 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                 <ConteudoPaginado estado={parados}>
                   <ListaSimples>
                     {parados.visiveis.map((p) => (
-                      <ItemLista key={p.projeto_id}>
-                        <LinkProjeto to={`/projetos/${p.projeto_id}`}>
-                          {p.projeto_nome} — entregou {p.escopo_entregue}
-                        </LinkProjeto>
-                        <small>há {p.dias_parado} dias</small>
-                      </ItemLista>
+                      <li key={p.projeto_id}>
+                        {/* Vai direto para o CRONOGRAMA, não para a visão geral
+                            do projeto: o que destrava um projeto parado é dar
+                            `data_inicio` ao próximo escopo, e é lá que isso se
+                            faz. Cair na visão geral obrigaria mais um clique
+                            justo em quem veio resolver. */}
+                        <LinhaItem to={`/projetos/${p.projeto_id}/cronograma`}>
+                          {/* Os dias vêm para a esquerda, no lugar que a agenda
+                              de bancas usa para a data: é o número que ordena a
+                              lista, então é por ele que o olho desce. */}
+                          <ItemDestaque>
+                            <strong>{p.dias_parado}</strong>
+                            <span>{p.dias_parado === 1 ? "dia" : "dias"}</span>
+                          </ItemDestaque>
+                          <ItemTexto>
+                            <strong>{p.projeto_nome}</strong>
+                            <span>entregou {p.escopo_entregue}</span>
+                          </ItemTexto>
+                          <ChevronRight size={15} aria-hidden="true" />
+                        </LinhaItem>
+                      </li>
                     ))}
                   </ListaSimples>
                 </ConteudoPaginado>

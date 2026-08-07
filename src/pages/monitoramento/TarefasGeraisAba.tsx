@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import { Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getTarefasGerais, type TarefasGerais } from "@/lib/monitoramento";
@@ -19,6 +20,8 @@ import {
   SwimCell,
   SwimCellVazia,
   SwimDivisor,
+  BarraBusca,
+  BotaoLimparBusca,
   SwimGrid,
   SwimHeaderCell,
   SwimLabelCell,
@@ -56,6 +59,7 @@ const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/tarefas", voltarRotulo: "
 export function TarefasGeraisAba() {
   const { token } = useAuth();
   const { frenteId, seletor } = useFiltroFrente();
+  const [busca, setBusca] = useState("");
   const navigate = useNavigate();
 
   function abrirProjeto(projetoId: number) {
@@ -121,7 +125,13 @@ export function TarefasGeraisAba() {
       dados.tarefas.map((t) => [t.projeto_id, { nome: t.projeto_nome, cliente: t.cliente }]),
     ),
     ([id, info]) => ({ id, ...info }),
-  ).sort((a, b) => a.nome.localeCompare(b.nome));
+  )
+    // A busca casa com NOME e CLIENTE: quem procura "Padaria" costuma ter o
+    // cliente na cabeça, não o nome interno do projeto.
+    .filter((p) =>
+      `${p.nome} ${p.cliente}`.toLowerCase().includes(busca.trim().toLowerCase()),
+    )
+    .sort((a, b) => a.nome.localeCompare(b.nome));
 
   return (
     <PageStack>
@@ -131,8 +141,26 @@ export function TarefasGeraisAba() {
         projeto correspondente.
       </AvisoSomenteLeitura>
 
+      <BarraBusca>
+        <Search size={15} aria-hidden="true" />
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar projeto ou cliente"
+          aria-label="Buscar projeto ou cliente"
+        />
+        {busca && (
+          <BotaoLimparBusca type="button" onClick={() => setBusca("")} aria-label="Limpar busca">
+            <X size={14} />
+          </BotaoLimparBusca>
+        )}
+      </BarraBusca>
+
+      {projetos.length === 0 ? (
+        <EmptyText>Nenhum projeto com "{busca}".</EmptyText>
+      ) : (
       <SwimGrid $colunas={dados.colunas.length}>
-        <SwimHeaderCell />
+        <SwimHeaderCell $fixa />
         {dados.colunas.map((coluna) => {
           const tons = tonsDaColuna(coluna.cor);
           return (
@@ -204,6 +232,7 @@ export function TarefasGeraisAba() {
           </Fragment>
         ))}
       </SwimGrid>
+      )}
     </PageStack>
   );
 }

@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { theme } from "@/styles/theme";
 import { ModalFooter as BaseModalFooter } from "./Calendario.styled";
 
@@ -251,7 +251,7 @@ export const SectionTitle = styled.h2`
   color: ${theme.colors.foreground};
 `;
 
-export const BancaLinha = styled.div`
+export const BancaLinha = styled.div<{ $destacada?: boolean }>`
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -259,6 +259,18 @@ export const BancaLinha = styled.div`
   padding: 0.625rem 0.25rem;
   border-bottom: 1px solid ${theme.colors.border};
   transition: background ${theme.transitions.fast};
+
+  /* Quem chega pelo card do monitoramento (/bancas?banca=123) cai numa lista
+     longa. Sem uma marca, a pessoa precisa procurar de novo justamente a banca
+     em que acabou de clicar. A marca é lateral e sutil: aponta sem esconder o
+     que já está na tela. */
+  ${({ $destacada }) =>
+    $destacada &&
+    css`
+      background: ${theme.alpha(theme.colors.ring, 0.08)};
+      box-shadow: inset 3px 0 0 ${theme.colors.ring};
+      border-radius: ${theme.borderRadius.sm};
+    `}
 
   &:last-child {
     border-bottom: none;
