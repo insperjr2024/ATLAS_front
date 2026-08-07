@@ -184,6 +184,34 @@ export const ItemTexto = styled.span`
   }
 `;
 
+/** O contexto do pior caso na tabela por coordenador: projeto em cima, motivo
+ *  embaixo. Largura limitada e truncando, senão a descrição do motivo — que é
+ *  frase inteira — estica a coluna e espreme as outras quatro. */
+export const PiorCaso = styled.span`
+  display: flex;
+  flex-direction: column;
+  max-width: 20rem;
+  line-height: 1.3;
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: ${theme.fontSize.sm};
+    font-weight: ${theme.fontWeight.medium};
+    color: ${theme.colors.foreground};
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
 /** O campo de busca por projeto, na aba de Tarefas.
  *
  *  Largura contida: é filtro de uma coluna, não busca global da plataforma —

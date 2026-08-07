@@ -236,7 +236,13 @@ export interface Atrasos {
     projeto_id: number;
     projeto_nome: string;
     status: string;
+    /** A SOMA dos dias de todos os motivos. Serve para volume acumulado, não
+     *  para "há quanto tempo está parado" — três escopos com 4 dias cada somam
+     *  12 sem que nada esteja parado há 12 dias. */
     dias_totais: number;
+    /** O PIOR motivo isolado. É o número em destaque na tela, e o que ordena
+     *  a lista — responde "qual é o maior buraco deste projeto". */
+    pior_motivo: number;
     motivos: {
       tipo: string;
       descricao: string;
@@ -252,8 +258,26 @@ export interface Atrasos {
     nome: string;
     projetos: number;
     atrasados: number;
-    dias_acumulados: number;
+    /** O maior atraso isolado entre os projetos dele, com o contexto junto.
+     *
+     *  Substituiu o acumulado: "40 dias somados" não diz se são quatro atrasos
+     *  de 10 ou um de 40, e a ação é diferente em cada caso. */
+    pior_dias: number;
+    pior_projeto: string;
+    pior_motivo: string;
   }[];
+  /** Os números da faixa do topo, calculados no backend — a divisão
+   *  banca/entrega decide a leitura do §7.4 e o front recontar isso a partir
+   *  das descrições seria reimplementar a classificação. */
+  resumo: {
+    projetos: number;
+    pior_caso: number;
+    /** Projetos com entrega travada do lado do CLIENTE. O §7.4 tira isso do
+     *  que se cobra do time, mas é o caso mais delicado do portfólio — quem
+     *  resolve é a diretoria falando com o cliente. */
+    com_externo: number;
+    pior_externo: number;
+  };
 }
 
 /** Espelha `Urgencia` de `types/tarefa.ts` — mesma gradação, backend igual. */
