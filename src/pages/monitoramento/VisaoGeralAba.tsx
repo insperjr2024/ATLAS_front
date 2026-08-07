@@ -43,6 +43,7 @@ import {
   type NivelSeveridade,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { useFiltroEscopo } from "./FiltroEscopo";
 
 /** "seg 11" — o dia da semana é o que a pessoa usa para se localizar numa
  *  agenda de 7 dias; a data completa não acrescenta nada nessa janela. */
@@ -68,7 +69,14 @@ function nivelAtencao(dias: number | null): NivelSeveridade {
 
 export function VisaoGeralAba() {
   const { token } = useAuth();
-  const { frenteId, seletor } = useFiltroFrente();
+  const { frenteId, seletor: seletorFrente } = useFiltroFrente();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const seletor = (
+    <>
+      {seletorFrente}
+      {seletorEscopo}
+    </>
+  );
   const [dados, setDados] = useState<VisaoGeral | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -78,7 +86,7 @@ export function VisaoGeralAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getVisaoGeral(token, frenteId));
+      setDados(await getVisaoGeral(token, frenteId, escopoId));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar o monitoramento");
     } finally {
@@ -89,7 +97,7 @@ export function VisaoGeralAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId]);
+  }, [token, frenteId, escopoId]);
 
   if (erro) {
     return (

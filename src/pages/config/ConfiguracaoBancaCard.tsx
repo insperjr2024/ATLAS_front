@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getConfiguracao, updateConfiguracao } from "@/lib/configuracao";
+import { getCargos } from "@/lib/cargos";
 import type { Configuracao } from "@/types/banca";
+import type { Cargo } from "@/types/auth";
 import { PageCard, PageCardHeader, PageCardTitle, PageCardContent, PageButton, EmptyText } from "@/styles/page.styled";
-import { FieldGroup, FieldLabel, FieldInput, FormErrorText } from "../Config.styled";
+import { FieldGroup, FieldLabel, FieldInput, FieldSelect, FormErrorText } from "../Config.styled";
 
 /**
  * O teto de pessoas por banca (§8) — hoje já é usado de verdade (bloqueia
@@ -12,8 +14,10 @@ import { FieldGroup, FieldLabel, FieldInput, FormErrorText } from "../Config.sty
 export function ConfiguracaoBancaCard() {
   const { token } = useAuth();
   const [configuracao, setConfiguracao] = useState<Configuracao | null>(null);
+  const [cargos, setCargos] = useState<Cargo[]>([]);
   const [vagas, setVagas] = useState("");
   const [lideranca, setLideranca] = useState("");
+  const [cargoPadraoId, setCargoPadraoId] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
@@ -22,10 +26,12 @@ export function ConfiguracaoBancaCard() {
     if (!token) return;
     setErro("");
     try {
-      const resp = await getConfiguracao(token);
+      const [resp, listaCargos] = await Promise.all([getConfiguracao(token), getCargos(token)]);
       setConfiguracao(resp);
       setVagas(String(resp.vagas_por_banca));
       setLideranca(String(resp.lideranca_minima_por_frente));
+      setCargoPadraoId(resp.cargo_padrao_id ? String(resp.cargo_padrao_id) : "");
+      setCargos(listaCargos.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar configurações de banca");
     }
@@ -53,7 +59,11 @@ export function ConfiguracaoBancaCard() {
     setAviso("");
     try {
       await updateConfiguracao(
-        { vagas_por_banca: numero, lideranca_minima_por_frente: numeroLideranca },
+        {
+          vagas_por_banca: numero,
+          lideranca_minima_por_frente: numeroLideranca,
+          cargo_padrao_id: cargoPadraoId ? Number(cargoPadraoId) : null,
+        },
         token,
       );
       setAviso("Salvo.");
@@ -102,6 +112,25 @@ export function ConfiguracaoBancaCard() {
               Quantas lideranças (gerente da frente, ou diretor) cada frente vinculada precisa ter
               na banca, à parte do piso de membros comuns. Se ninguém estiver alocado, a alocação
               automática puxa alguém para cobrir.
+            </EmptyText>
+            <FieldGroup style={{ marginTop: "0.75rem" }}>
+              <FieldLabel htmlFor="cargo-padrao">Cargo padrão ao cadastrar membro</FieldLabel>
+              <FieldSelect
+                id="cargo-padrao"
+                value={cargoPadraoId}
+                onChange={(e) => setCargoPadraoId(e.target.value)}
+              >
+                <option value="">Nenhum (cadastro exige escolher o cargo)</option>
+                {cargos.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
+              </FieldSelect>
+            </FieldGroup>
+            <EmptyText style={{ fontSize: "0.7rem", marginTop: "0.5rem" }}>
+              Usado quando quem cadastra um membro novo deixa o campo "Cargo" em branco. Sem isto
+              configurado, cadastrar sem escolher um cargo falha.
             </EmptyText>
             {erro && <FormErrorText>{erro}</FormErrorText>}
             {aviso && <EmptyText style={{ color: "green" }}>{aviso}</EmptyText>}
