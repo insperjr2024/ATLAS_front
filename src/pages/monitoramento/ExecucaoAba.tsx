@@ -162,29 +162,29 @@ export function ExecucaoAba() {
       <FaixaResumo>
         <ResumoItem>
           <ResumoValor>{resumo.projetos}</ResumoValor>
-          <ResumoRotulo>projetos na gestão</ResumoRotulo>
+          <ResumoRotulo>Projetos na gestão</ResumoRotulo>
         </ResumoItem>
         <ResumoItem>
           <ResumoValor $nivel={resumo.sem_tarefas > 0 ? "critica" : undefined}>
             {resumo.sem_tarefas}
           </ResumoValor>
-          <ResumoRotulo>sem tarefa atribuída</ResumoRotulo>
+          <ResumoRotulo>Sem tarefa atribuída</ResumoRotulo>
         </ResumoItem>
         <ResumoItem>
           <ResumoValor $nivel={resumo.sem_tarefas_ativas > 0 ? "leve" : undefined}>
             {resumo.sem_tarefas_ativas}
           </ResumoValor>
-          <ResumoRotulo>quadro zerado</ResumoRotulo>
+          <ResumoRotulo>Quadro zerado</ResumoRotulo>
         </ResumoItem>
         <ResumoItem>
           <ResumoValor>{resumo.sem_distribuir_na_semana}</ResumoValor>
-          <ResumoRotulo>não distribuiu na semana</ResumoRotulo>
+          <ResumoRotulo>Não distribuiu na semana</ResumoRotulo>
         </ResumoItem>
         <ResumoItem>
           <ResumoValor $nivel={resumo.com_vencidas > 0 ? "media" : undefined}>
             {resumo.com_vencidas}
           </ResumoValor>
-          <ResumoRotulo>com tarefa vencida</ResumoRotulo>
+          <ResumoRotulo>Com tarefa vencida</ResumoRotulo>
         </ResumoItem>
       </FaixaResumo>
 
@@ -203,9 +203,9 @@ export function ExecucaoAba() {
                       {/* Mesmos tons da coluna "Ativas" da tabela abaixo, para as
                           duas leituras da mesma situação não se contradizerem. */}
                       {linha.sem_tarefas ? (
-                        <Pilula $tom="alerta">nunca recebeu tarefa</Pilula>
+                        <Pilula $tom="alerta">Nunca recebeu tarefa</Pilula>
                       ) : (
-                        <Pilula $tom="atencao">quadro zerado</Pilula>
+                        <Pilula $tom="atencao">Quadro zerado</Pilula>
                       )}
                     </strong>
                     <span>{motivoSemTarefa(linha)}</span>
@@ -280,7 +280,7 @@ export function ExecucaoAba() {
                         </TableCell>
                         <TableCell>
                           <Pilula $tom={linha.distribuiu_na_semana ? "ok" : "alerta"}>
-                            {linha.distribuiu_na_semana ? "sim" : "não"}
+                            {linha.distribuiu_na_semana ? "Sim" : "Não"}
                           </Pilula>
                         </TableCell>
                         <TableCell>
@@ -288,9 +288,9 @@ export function ExecucaoAba() {
                               precisa dizer qual: nunca teve tarefa (alerta) ou
                               terminou todas e não recebeu mais (atenção). */}
                           {linha.sem_tarefas ? (
-                            <Pilula $tom="alerta">nenhuma tarefa</Pilula>
+                            <Pilula $tom="alerta">Nenhuma tarefa</Pilula>
                           ) : linha.sem_tarefas_ativas ? (
-                            <Pilula $tom="atencao">quadro zerado</Pilula>
+                            <Pilula $tom="atencao">Quadro zerado</Pilula>
                           ) : dados.semana.eh_passada ? (
                             /* A explicação vai no tooltip, não em parágrafo:
                                interessa a quem estranhar o selo, e é a minoria
@@ -321,7 +321,7 @@ export function ExecucaoAba() {
                         </TableCell>
                         <TableCell>
                           {linha.dias_uteis_sem_tarefa === null ? (
-                            <Pilula $tom="neutro">sem kickoff</Pilula>
+                            <Pilula $tom="neutro">Sem kickoff</Pilula>
                           ) : (
                             /* A MESMA coluna conta de dois lugares: da última
                                tarefa criada, ou do kickoff quando o projeto
@@ -383,13 +383,16 @@ export function ExecucaoAba() {
                   {paginaReunioes.visiveis.map((linha) => (
                     <TableRow key={linha.projeto_id}>
                       <TableCell>
-                        <LinkProjeto to={`/projetos/${linha.projeto_id}/reunioes`}>{linha.projeto_nome}</LinkProjeto>
+                        {/* A aba Reuniões deixou de existir: as reuniões
+                            passaram a ser marcadas no calendário do
+                            cronograma, que é para onde este link leva. */}
+                        <LinkProjeto to={`/projetos/${linha.projeto_id}/cronograma`}>{linha.projeto_nome}</LinkProjeto>
                       </TableCell>
                       <TableCell>
                         {/* "Não realizou" é AUSÊNCIA de linha na janela
                             seg–dom, não um campo. */}
                         <Pilula $tom={linha.realizou ? "ok" : "alerta"}>
-                          {linha.realizou ? "sim" : "não"}
+                          {linha.realizou ? "Sim" : "Não"}
                         </Pilula>
                       </TableCell>
                       <TableCell>
@@ -415,9 +418,9 @@ export function ExecucaoAba() {
   );
 }
 
-/** "semana passada", "2 semanas atrás", "3 semanas atrás"... */
+/** "Semana passada", "2 semanas atrás", "3 semanas atrás"... */
 function rotuloSemana(semanasAtras: number): string {
-  return semanasAtras === 1 ? "semana passada" : `${semanasAtras} semanas atrás`;
+  return semanasAtras === 1 ? "Semana passada" : `${semanasAtras} semanas atrás`;
 }
 
 function plural(dias: number): string {
@@ -478,15 +481,15 @@ function origemDoMarco(linha: LinhaTarefas): string {
  */
 function motivoSemTarefa(linha: LinhaTarefas): string {
   if (linha.dias_uteis_sem_tarefa === null) {
-    return "kickoff ainda não marcado — a execução não começou";
+    return "Kickoff ainda não marcado: a execução não começou";
   }
   const ha = `há ${linha.dias_uteis_sem_tarefa}${plural(linha.dias_uteis_sem_tarefa)} úteis`;
   if (linha.sem_tarefas_ativas) {
-    return `todas as tarefas foram encerradas e nenhuma nova entrou desde ${marcoEmPalavras(
+    return `Todas as tarefas foram encerradas e nenhuma nova entrou desde ${marcoEmPalavras(
       linha,
     )}, ${ha}`;
   }
-  return `nenhuma tarefa criada desde ${marcoEmPalavras(linha)}, ${ha}`;
+  return `Nenhuma tarefa criada desde ${marcoEmPalavras(linha)}, ${ha}`;
 }
 
 /** Ordena a tabela por gravidade. Os pesos são arbitrários de propósito: o que

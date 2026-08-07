@@ -14,12 +14,13 @@ export interface EventoCalendario {
 }
 
 /**
- * O calendário geral (§6.5) — **sem recorte de visão**, todos veem tudo.
+ * O calendário geral (§6.5) — recortado por posição no backend (diretor vê
+ * tudo, gerente a própria frente, coordenador/consultor só os projetos em
+ * que estão alocados), igual ao resto do site.
  *
- * Consequência de UX que o §6.5 não menciona: um consultor pode ver o kickoff
- * de um projeto de outra equipe, mas `GET /projetos/{id}` devolveria 404 para
- * ele. Por isso a resposta já traz `projeto_nome` — a tela abre um modal com
- * o que tem, em vez de navegar para um erro.
+ * A resposta sempre traz `projeto_nome`, mesmo quando o front não precisa
+ * mais navegar pro projeto: o modal de detalhe mostra o que já veio aqui,
+ * sem depender de uma segunda chamada.
  */
 export function getEventos(inicio: string, fim: string, token: string, tipos?: TipoEvento[]) {
   const filtro = tipos && tipos.length > 0 ? `&tipos=${tipos.join(",")}` : "";
@@ -36,10 +37,12 @@ export const ROTULO_TIPO: Record<TipoEvento, string> = {
   entrega: "Entrega",
 };
 
-/** Glifo + cor, nunca cor sozinha — o calendário também é impresso. */
+/** Glifo + cor, nunca cor sozinha — o calendário também é impresso.
+ *  Símbolos tipográficos, não emoji: precisam renderizar igual em qualquer
+ *  fonte/SO e não competir visualmente com o resto da tela. */
 export const GLIFO_TIPO: Record<TipoEvento, string> = {
   banca: "★",
-  kickoff: "🏁",
+  kickoff: "■",
   reuniao: "▲",
   entrega: "●",
 };

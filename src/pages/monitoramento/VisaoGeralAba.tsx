@@ -9,6 +9,10 @@ import {
   type VisaoGeral,
 } from "@/lib/monitoramento";
 import { paraDataUtc } from "@/lib/projetos";
+// `formatarData`/`formatarDataHora` saíram no merge de propósito: os dois
+// únicos lugares que formatavam data crua aqui (o sparkline de entregas e a
+// lista antiga de bancas) viraram `LinhaEntregas` e `diaDaSemana`/`horaDaBanca`.
+import { PedidosDeDiasCard } from "./PedidosDeDiasCard";
 
 // Sob demanda: o recharts pesa ~450KB num bundle que já está acima do limite
 // de aviso do Vite, e os gráficos só existem dentro do monitoramento.
@@ -31,6 +35,10 @@ import {
   FieldSelect,
   ItemAtencao,
   ItemDestaque,
+  // A main tirou `ItemLista` daqui porque converteu bancas e tempo parado para
+  // `LinhaItem`; o card "Janela dos escopos" da `ajustes` ainda usa a linha
+  // simples (nome + resumo, sem navegação por linha inteira), então volta.
+  ItemLista,
   ItemTexto,
   KpiCard,
   KpiGrid,
@@ -164,6 +172,13 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
   const atencao = usePaginacao(filtrados, POR_PAGINA);
   const bancas = usePaginacao(dados.bancas_proximas, POR_PAGINA);
   const parados = usePaginacao(dados.tempo_parado, POR_PAGINA);
+  // A janela do escopo (§5), por projeto: dias ajustados, atraso e dias
+  // parados. Só entram os projetos com algum número diferente de zero —
+  // listar o portfólio inteiro com três zeros esconderia os que importam.
+  const comJanela = (dados.janela?.por_projeto ?? []).filter(
+    (p) => p.dias_ajustados || p.dias_de_atraso || p.dias_parados,
+  );
+  const janela = usePaginacao(comJanela, POR_PAGINA);
 
   return (
     <PageStack>
@@ -320,7 +335,59 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
             )}
           </PageCardContent>
         </PageCard>
+
+        {/* ⭐ Os números da janela do escopo (§5) — o placar que a Visão geral
+            do projeto mostra por escopo, aqui somado por projeto.
+
+            ⚠ "Dias parados" NÃO é o card acima: aquele conta os dias corridos
+            entre a entrega de um escopo e o começo do próximo; este conta os
+            dias ÚTEIS EM BRANCO do cronograma inteiro desde o kickoff — dia
+            sem etapa, reunião, banca ou entrega. Um responde "está entre
+            escopos?", o outro "está andando?". */}
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>Janela dos escopos</PageCardTitle>
+          </PageCardHeader>
+          <PageCardContent>
+            {comJanela.length === 0 ? (
+              <EmptyText>Nenhum projeto com dias ajustados, atraso ou parada.</EmptyText>
+            ) : (
+              <>
+                <KpiNota>
+                  {dados.janela.totais.dias_ajustados} dias ajustados ·{" "}
+                  {dados.janela.totais.dias_de_atraso} em atraso ·{" "}
+                  {dados.janela.totais.dias_parados} parados na gestão
+                </KpiNota>
+                <ConteudoPaginado estado={janela}>
+                  <ListaSimples>
+                    {janela.visiveis.map((p) => (
+                      <ItemLista key={p.projeto_id}>
+                        <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`}>
+                          {p.projeto_nome}
+                        </LinkProjeto>
+                        <small>
+                          {[
+                            p.dias_ajustados && `+${p.dias_ajustados} ajustados`,
+                            p.dias_de_atraso && `${p.dias_de_atraso} em atraso`,
+                            p.dias_parados && `${p.dias_parados} parados`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </small>
+                      </ItemLista>
+                    ))}
+                  </ListaSimples>
+                </ConteudoPaginado>
+                <Paginacao estado={janela} />
+              </>
+            )}
+          </PageCardContent>
+        </PageCard>
       </PainelGrid>
+
+      {/* Antes de "Atenção agora" de propósito: pedido pendente é uma decisão
+          esperando pessoa, não um alerta para observar. */}
+      <PedidosDeDiasCard />
 
       <PageCard>
         <PageCardHeader>

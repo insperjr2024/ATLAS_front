@@ -45,6 +45,17 @@ export interface Banca extends BancaBase {
   status: StatusBanca;
   vagas: number;
   alocados: number;
+  /**
+   * ⭐ §8: quem NÃO pode avaliar esta banca por ser do grupo dela —
+   * coordenador + equipe do projeto dos escopos que ela cobre.
+   *
+   * ⚠ Vem do backend porque a resposta depende de duas fontes: a tabela legada
+   * `equipe_projeto` (preenchida à mão na tela de bancas) e `projeto_membro`,
+   * que é a equipe real e a única que existe quando a banca nasce pelo
+   * cronograma. Olhar só a primeira deixava o consultor se inscrever na banca
+   * do próprio projeto.
+   */
+  equipe_ids: number[];
   semestre_id: number;
   semestre_nome: string;
   /** A costura com o projeto: os escopos vendidos que esta banca cobre.

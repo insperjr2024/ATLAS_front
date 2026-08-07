@@ -92,7 +92,7 @@ const PERMISSOES = [
     campo: "pode_definir_cronograma" as const,
     titulo: "Definir cronograma por escopo (etapas, banca)",
     descricao:
-      "Criar e mover etapas e marcos, oficializar o cronograma de um escopo e agendar as bancas.",
+      "Criar e mover etapas e marcos, definir o cronograma de um escopo e agendar as bancas.",
   },
   {
     campo: "pode_criar_tarefa" as const,

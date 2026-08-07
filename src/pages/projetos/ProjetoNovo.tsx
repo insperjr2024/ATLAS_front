@@ -39,6 +39,7 @@ import {
   PageHeaderRow,
   PageHeaderText,
   PageHeading,
+  PageSubheading,
   FormStack,
   FieldGroup,
   FieldLabel,
@@ -55,7 +56,9 @@ import {
   VoltarLink,
 } from "./Projetos.styled";
 
-const MAX_FRENTES = 2;
+/** Duas ou mais frentes tornam o projeto sinérgico — mesmo critério do
+ *  backend em `get_projeto` (`len(frentes) > 1`). Não há teto de frentes. */
+const MIN_FRENTES_SINERGICO = 2;
 
 /**
  * O cadastro do §6.3.
@@ -133,7 +136,6 @@ export function ProjetoNovo() {
         setEscopos((lista) => lista.filter((e) => novas.includes(e.frente_id)));
         return novas;
       }
-      if (atual.length >= MAX_FRENTES) return atual;
       return [...atual, id];
     });
   }
@@ -227,6 +229,8 @@ export function ProjetoNovo() {
 
   if (carregando) return <PageLoadingBlock />;
 
+  const sinergico = frenteIds.length >= MIN_FRENTES_SINERGICO;
+
   return (
     <PageStack>
       <PageHeaderRow>
@@ -282,7 +286,6 @@ export function ProjetoNovo() {
                         <input
                           type="checkbox"
                           checked={marcada}
-                          disabled={!marcada && frenteIds.length >= MAX_FRENTES}
                           onChange={() => toggleFrente(frente.id)}
                         />
                         {frente.nome}
@@ -290,6 +293,13 @@ export function ProjetoNovo() {
                     );
                   })}
                 </CheckboxGrid>
+                {/* O texto acompanha a regra nova: sem teto de frentes, "sinérgico"
+                    passa a ser ">= 2" em vez de "exatamente 2". */}
+                <PageSubheading>
+                  {sinergico
+                    ? `🔗 ${frenteIds.length} frentes marcadas: o projeto é sinérgico e aparece para os gerentes de todas elas.`
+                    : "Marque quantas frentes o projeto tiver. Duas ou mais = projeto sinérgico."}
+                </PageSubheading>
               </FieldGroup>
 
               <FieldGroup>

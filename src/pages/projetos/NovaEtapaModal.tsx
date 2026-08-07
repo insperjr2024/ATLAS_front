@@ -27,8 +27,9 @@ interface Props {
   /** A cor pré-selecionada — a próxima da rampa, pela ordem da etapa. */
   corInicial: string;
   /**
-   * Os escopos em que a etapa pode nascer — já sem os oficializados, que não
-   * aceitam etapa nova (§5.6).
+   * Os escopos em que a etapa pode nascer — todos eles: o cadeado de
+   * oficialização acabou, e pintar além da janela avisa em vez de impedir
+   * (§15).
    *
    * Na visão Geral não há escopo escolhido na barra, então a pergunta vem para
    * cá: toda etapa pertence a um escopo, e o banco exige isso.

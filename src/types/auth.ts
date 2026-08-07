@@ -5,6 +5,9 @@
  * até 2026-08-07 eram editáveis por um catálogo de "cargo" separado, que
  * foi removido: a distinção não sobrevivia ao uso real (dava pra marcar uma
  * caixa "Admin" numa pessoa sem isso mudar quais projetos ela via).
+ * ("Ver o Núcleo" existiu brevemente como uma extensão a mais, mas a página
+ * em si foi substituída pelo Dashboard Bancas antes de a permissão chegar a
+ * ser usada.)
  */
 export interface Permissoes {
   /** 1. Criar projeto e alocar equipe */
@@ -17,6 +20,9 @@ export interface Permissoes {
   pode_marcar_kickoff: boolean;
   /** 5. Definir cronograma por escopo (etapas, banca) */
   pode_definir_cronograma: boolean;
+  // ⚠ `pode_aprovar_reajuste` foi removido: decidir os pedidos de dias (§8) é
+  // da POSIÇÃO diretor, não de uma caixa de cargo. O backend derrubou a coluna
+  // na migration 1556cc590a06, e a rota cobra `require_diretor`.
   /** 7. Criar tarefa */
   pode_criar_tarefa: boolean;
   /** 8. Mover e editar tarefa */

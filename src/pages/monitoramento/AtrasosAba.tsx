@@ -199,7 +199,7 @@ export function AtrasosAba() {
                 PIOR projeto diria que os 12 estão críticos quando só um está. */}
             <ResumoValor>{resumo.projetos}</ResumoValor>
             <ResumoRotulo>
-              {resumo.projetos === 1 ? "projeto atrasado" : "projetos atrasados"}
+              {resumo.projetos === 1 ? "Projeto atrasado" : "Projetos atrasados"}
             </ResumoRotulo>
           </ResumoItem>
           <ResumoItem>
@@ -219,7 +219,7 @@ export function AtrasosAba() {
             <ResumoValor $nivel={resumo.com_externo > 0 ? nivel(resumo.pior_externo) : undefined}>
               {resumo.com_externo}
             </ResumoValor>
-            <ResumoRotulo>esperando o cliente</ResumoRotulo>
+            <ResumoRotulo>Esperando o cliente</ResumoRotulo>
           </ResumoItem>
         </FaixaResumo>
       )}
@@ -482,7 +482,7 @@ function JustificarAtrasoModal({
         motivo.projeto_escopo_id ?? undefined,
         motivo.tipo,
       );
-      onSalvo(criada.id);
+      onSalvo(Number(criada.id));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao registrar a justificativa");
     } finally {

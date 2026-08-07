@@ -55,6 +55,7 @@ import {
   NomeEditavel,
   NomeBotaoEditar,
   EdicaoBotoes,
+  StatusPilula,
 } from "./Projetos.styled";
 
 /** O que o shell entrega para as abas. */
@@ -152,10 +153,20 @@ export function ProjetoPage() {
     }
   }, [projetoId, token]);
 
+  // ⭐ Revalida a cada troca de aba, e não só na montagem.
+  //
+  // As abas são SUB-ROTAS: o shell não remonta ao ir do Cronograma para a
+  // Visão geral, então o `projeto` continuava o da primeira visita — a banca
+  // que acabara de ser marcada no calendário aparecia como "não marcada" ali,
+  // e os dias do escopo ficavam em "não iniciado". Como só o Cronograma
+  // escreve datas hoje, revalidar na navegação é o que mantém as duas telas
+  // contando a mesma história.
+  //
+  // Em silêncio: `carregando` já nasce `true`, e ligá-lo de novo a cada aba
+  // faria a página piscar num spinner a cada clique.
   useEffect(() => {
-    setCarregando(true);
     carregar();
-  }, [carregar]);
+  }, [carregar, location.pathname]);
 
   async function aplicarStatus(statusNovo: string) {
     if (!token || !projeto) return;
@@ -371,13 +382,15 @@ export function ProjetoPage() {
         </AvisoBanner>
       )}
 
-      {/* Kickoff já marcado, mas o projeto continua Vendido — cadastrado
-          agora com início planejado pra mais adiante. Não é alerta: é só
-          informação até alguém confirmar Ambientação no seletor de etapa. */}
+      {/* ⚠ Estado que o §4 não prevê mais: marcar o kickoff JÁ move para
+          Ambientação. Sobra só quem foi marcado antes dessa regra existir —
+          por isso o texto explica o que fazer, em vez de descrever um passo
+          normal do fluxo. */}
       {projeto.status === "vendido" && projeto.data_kickoff && (
         <AvisoBanner>
-          🗓 Kickoff planejado para {formatarData(projeto.data_kickoff)} — o projeto continua Vendido até alguém
-          confirmar o início escolhendo "Ambientação" ali em cima.
+          🗓 Kickoff marcado para {formatarData(projeto.data_kickoff)}, mas o projeto ainda está em
+          Vendido — marcações feitas antes da regra atual pararam aqui. Escolha "Ambientação" no
+          seletor de etapa para acertar.
         </AvisoBanner>
       )}
 
@@ -387,7 +400,6 @@ export function ProjetoPage() {
         </TabLink>
         <TabLink to={`/projetos/${projeto.id}/cronograma`}>Cronograma</TabLink>
         <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
-        <TabLink to={`/projetos/${projeto.id}/reunioes`}>Reuniões</TabLink>
         <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
       </TabBar>
 
@@ -466,14 +478,15 @@ function EtapaSeletor({
     <EtapaSeletorWrap ref={ref}>
       <EtapaBotaoAtual
         type="button"
-        $cor={tonsAtual}
         disabled={ocupado || semOpcoes}
         aria-expanded={aberto}
         aria-haspopup="menu"
         onClick={() => setAberto((v) => !v)}
       >
-        <Ponto $cor={tonsAtual.ponto} />
-        {rotuloAtual}
+        <StatusPilula $cor={tonsAtual}>
+          <Ponto $cor={tonsAtual.ponto} />
+          {rotuloAtual}
+        </StatusPilula>
         {!semOpcoes && <ChevronDown size={14} />}
       </EtapaBotaoAtual>
       {aberto && !semOpcoes && (
@@ -485,14 +498,19 @@ function EtapaSeletor({
                 key={opcao.chave}
                 type="button"
                 role="menuitem"
-                $cor={tons}
                 onClick={() => {
                   setAberto(false);
                   onSelecionar(opcao.chave);
                 }}
               >
-                {tons && <Ponto $cor={tons.ponto} />}
-                {opcao.rotulo}
+                {tons ? (
+                  <StatusPilula $cor={tons}>
+                    <Ponto $cor={tons.ponto} />
+                    {opcao.rotulo}
+                  </StatusPilula>
+                ) : (
+                  opcao.rotulo
+                )}
               </EtapaOpcaoBotao>
             );
           })}

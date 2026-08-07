@@ -61,25 +61,9 @@ export const ColunaTitulo = styled.h3`
   font-weight: ${theme.fontWeight.medium};
 `;
 
-/**
- * A pílula do cabeçalho: ponto colorido + rótulo, no molde do board.
- * `min-width: 0` é o que permite ela encolher dentro do `ColunaTitulo` (flex
- * por padrão recusa encolher abaixo do conteúdo) — sem isso, um rótulo longo
- * ("Período de ajustes") empurrava o `Contador` ao lado quase pra fora.
- */
-export const ColunaPilula = styled.span<{ $cor: TonsColuna }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  min-width: 0;
-  padding: 0.15rem 0.5rem;
-  border-radius: ${theme.borderRadius.md};
-  background: ${({ $cor }) => $cor.fundo};
-  color: ${({ $cor }) => $cor.texto};
-`;
-
-/** O texto do rótulo dentro da pílula — é ele que trunca com reticências
- *  quando não cabe, não a pílula inteira nem o contador ao lado. */
+/** O texto do rótulo dentro da pílula (`StatusPilula`, de `Projetos.styled`,
+ *  usada em todo cabeçalho de coluna do board) — é ele que trunca com
+ *  reticências quando não cabe, não a pílula inteira nem o contador ao lado. */
 export const ColunaRotuloTexto = styled.span`
   overflow: hidden;
   min-width: 0;

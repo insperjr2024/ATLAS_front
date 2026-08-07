@@ -12,7 +12,6 @@ import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { MeuPerfil } from "@/pages/MeuPerfil";
-import { Calendario } from "@/pages/Calendario";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Membros } from "@/pages/Membros";
 import { Notificacoes } from "@/pages/Notificacoes";
@@ -20,19 +19,19 @@ import { Avaliacoes } from "@/pages/Avaliacoes";
 import { CalendariosBase } from "@/pages/CalendariosBase";
 import { Config } from "@/pages/Config";
 import { ProjetosList } from "@/pages/projetos/ProjetosList";
-import { ProjetosArquivados } from "@/pages/projetos/ProjetosArquivados";
 import { ProjetoNovo } from "@/pages/projetos/ProjetoNovo";
 import { ProjetoPage } from "@/pages/projetos/ProjetoPage";
 import { ProjetoVisaoGeral } from "@/pages/projetos/ProjetoVisaoGeral";
 import { ProjetoCronograma } from "@/pages/projetos/ProjetoCronograma";
 import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
-import { ProjetoReunioes } from "@/pages/projetos/ProjetoReunioes";
 import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
 import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
 import { VisaoGeralAba } from "@/pages/monitoramento/VisaoGeralAba";
+import { AprovacoesAba } from "@/pages/monitoramento/AprovacoesAba";
 import { ExecucaoAba } from "@/pages/monitoramento/ExecucaoAba";
 import { AlocacaoAba } from "@/pages/monitoramento/AlocacaoAba";
 import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
+import { GraficosAba } from "@/pages/monitoramento/GraficosAba";
 import { AvaliacaoDesempenho } from "@/pages/avaliacao-desempenho/AvaliacaoDesempenho";
 import { MeuRelatorio } from "@/pages/avaliacao-desempenho/MeuRelatorio";
 import { MeusMentorados } from "@/pages/avaliacao-desempenho/MeusMentorados";
@@ -69,31 +68,28 @@ export default function App() {
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />
                 <Route path="/meu-perfil" element={<MeuPerfil />} />
-              {/* /calendario agora agrega os 4 tipos (§6.5); a visão
-                  só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
+              {/* /calendario agrega os 4 tipos (§6.5); a página só-de-bancas
+                  foi removida — o filtro "Banca" aqui já cobre o mesmo caso
+                  de uso (§8: "calendário pra não sobrepor horários") sem
+                  duplicar a tela. */}
               <Route path="/calendario" element={<CalendarioGeral />} />
-              <Route path="/bancas/calendario" element={<Calendario />} />
 
               {/* 🔔 §6.6 — sem guard: todo perfil tem notificação. O que muda
                   é o conteúdo, e quem recorta isso é o backend. */}
               <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
-              {/* Criar projeto é a caixa de CARGO `pode_criar_projeto` — a
-                  mesma que decide o botão em `ProjetosList` e que o backend
+              {/* Criar projeto é a caixa de permissão `pode_criar_projeto` —
+                  a mesma que decide o botão em `ProjetosList` e que o backend
                   já checava (`require_pode_criar_projeto`). Guard por posição
                   aqui travava quem tinha a caixa delegada sem ser
                   diretor/gerente: via o botão, clicava, e caía numa rota que
-                  não deixava entrar. Rotas estáticas, então batem antes de
-                  `/projetos/:id` mesmo vindo depois na declaração. */}
+                  não deixava entrar. "Arquivados" não é rota própria — é só a
+                  mesma <ProjetosList /> com outro recorte de conteúdo
+                  (?modo=arquivados), travada por dentro com a permissão
+                  `arquivar_projeto`. */}
               <Route element={<AdminRoute permissao="pode_criar_projeto" />}>
                 <Route path="/projetos/novo" element={<ProjetoNovo />} />
-              </Route>
-              {/* Ver arquivados continua só diretor/gerente — mesma trava de
-                  `arquivar_projeto` em permissoes.ts, que nunca virou caixa
-                  de cargo própria. */}
-              <Route element={<RequirePosicao posicoes={["diretor", "gerente"]} />}>
-                <Route path="/projetos/arquivados" element={<ProjetosArquivados />} />
               </Route>
               {/* Abas como sub-rotas: é o que deixa uma notificação abrir
                   direto em /projetos/42/tarefas. */}
@@ -101,7 +97,6 @@ export default function App() {
                 <Route index element={<ProjetoVisaoGeral />} />
                 <Route path="cronograma" element={<ProjetoCronograma />} />
                 <Route path="tarefas" element={<ProjetoTarefas />} />
-                <Route path="reunioes" element={<ProjetoReunioes />} />
                 <Route path="historico" element={<ProjetoHistorico />} />
               </Route>
 
@@ -114,9 +109,14 @@ export default function App() {
               <Route element={<AdminRoute permissao="pode_ver_monitoramento" />}>
                 <Route path="/monitoramento" element={<MonitoramentoLayout />}>
                   <Route index element={<VisaoGeralAba />} />
+                  {/* 🔒 Só a diretoria decide (§3) — o backend cobra
+                      `require_diretor` na rota; o guard aqui evita a tela
+                      vazia com 403 para quem chega pela URL. */}
+                  <Route path="aprovacoes" element={<AprovacoesAba />} />
                   <Route path="execucao" element={<ExecucaoAba />} />
                   <Route path="alocacao" element={<AlocacaoAba />} />
                   <Route path="atrasos" element={<AtrasosAba />} />
+                  <Route path="graficos" element={<GraficosAba />} />
                   <Route path="tarefas" element={<TarefasGeraisAba />} />
                   <Route path="cronogramas" element={<CronogramasGeraisAba />} />
                 </Route>
