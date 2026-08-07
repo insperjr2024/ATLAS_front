@@ -383,7 +383,10 @@ export function ExecucaoAba() {
                   {paginaReunioes.visiveis.map((linha) => (
                     <TableRow key={linha.projeto_id}>
                       <TableCell>
-                        <LinkProjeto to={`/projetos/${linha.projeto_id}/reunioes`}>{linha.projeto_nome}</LinkProjeto>
+                        {/* A aba Reuniões deixou de existir: as reuniões
+                            passaram a ser marcadas no calendário do
+                            cronograma, que é para onde este link leva. */}
+                        <LinkProjeto to={`/projetos/${linha.projeto_id}/cronograma`}>{linha.projeto_nome}</LinkProjeto>
                       </TableCell>
                       <TableCell>
                         {/* "Não realizou" é AUSÊNCIA de linha na janela

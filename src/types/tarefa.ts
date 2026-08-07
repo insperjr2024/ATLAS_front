@@ -42,6 +42,11 @@ export interface ReuniaoSemanal {
    */
   projeto_escopo_id: number | null;
   data_reuniao: string;
+  /** Texto livre — a ata informal da reunião geral (§12). */
+  observacoes: string | null;
+  /** Derivado do vínculo, não gravado: um campo próprio poderia divergir e
+   *  criar uma reunião "geral" com escopo preenchido. */
+  tipo: "inicial" | "geral";
   registrado_por: number;
 }
 

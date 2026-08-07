@@ -99,6 +99,29 @@ export interface VisaoGeral {
     motivo: string;
     dias: number | null;
   }[];
+  /**
+   * ⭐ Os números da JANELA DO ESCOPO (§5), agregados por projeto.
+   *
+   * ⚠ Não confundir `dias_parados` com `tempo_parado` acima: aquele conta os
+   * dias CORRIDOS desde a última entrega enquanto o projeto espera o próximo
+   * escopo começar; este conta os **dias úteis em branco** do cronograma
+   * inteiro, do kickoff até hoje — dia sem etapa, reunião, banca ou entrega.
+   * O primeiro responde "está entre escopos?"; o segundo, "está andando?".
+   *
+   * `dias_de_atraso` é o PIOR atraso entre os escopos do projeto, não a soma:
+   * somar dois escopos atrasados em paralelo contaria o mesmo calendário duas
+   * vezes.
+   */
+  janela: {
+    por_projeto: {
+      projeto_id: number;
+      projeto_nome: string;
+      dias_ajustados: number;
+      dias_de_atraso: number;
+      dias_parados: number;
+    }[];
+    totais: { dias_ajustados: number; dias_de_atraso: number; dias_parados: number };
+  };
 }
 
 export interface LinhaTarefas {

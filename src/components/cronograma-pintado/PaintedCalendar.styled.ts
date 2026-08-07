@@ -540,6 +540,62 @@ export const LegendaItem = styled.button<{ $ativa?: boolean }>`
   }
 `;
 
+/**
+ * ⭐ O alerta de estouro **ao lado do calendário** — um por escopo, dentro da
+ * legenda.
+ *
+ * Fica aqui, e não só no banner do topo, porque a pergunta que ele responde é
+ * sobre UM escopo ("as etapas deste escopo passaram do que foi vendido?") e a
+ * resposta precisa estar encostada na lista de etapas daquele escopo. No topo,
+ * um projeto com três escopos daria três avisos empilhados sem dizer de quem é
+ * cada um.
+ *
+ * Âmbar, não vermelho: passar do previsto é um aviso para negociar dias, não
+ * um erro — e vermelho é a cor de `destructive` no tema.
+ */
+export const AvisoEscopo = styled.div<{ $tom?: "alerta" | "atraso" }>`
+  display: flex;
+  gap: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  font-size: ${theme.fontSize.xs};
+  line-height: 1.4;
+  border: 1px solid
+    ${({ $tom }) =>
+      $tom === "atraso" ? theme.alpha(theme.colors.destructive, 0.35) : theme.alpha(theme.colors.warning, 0.4)};
+  background: ${({ $tom }) =>
+    $tom === "atraso" ? theme.alpha(theme.colors.destructive, 0.08) : theme.alpha(theme.colors.warning, 0.12)};
+  color: ${theme.colors.foreground};
+
+  strong {
+    font-weight: ${theme.fontWeight.semibold};
+  }
+`;
+
+/**
+ * A etiqueta "correção" no trecho da legenda.
+ *
+ * ⭐ Depois que a banca do escopo é realizada, tudo que se pinta ali é correção
+ * do que ela apontou — e sem rótulo os dois ficam indistinguíveis: o mesmo
+ * retângulo colorido pode ser o trabalho vendido ou a correção. É a diferença
+ * entre "o escopo levou 14 dias" e "levou 10 + 4 de correção".
+ *
+ * ⚠️ Correção não é "dia de ajuste": ajuste aumenta a JANELA do escopo e é
+ * pedido à diretoria nos 3 primeiros dias úteis depois da largada.
+ */
+export const TagCorrecao = styled.span`
+  display: inline-block;
+  margin-left: 0.375rem;
+  padding: 0 0.3rem;
+  border-radius: ${theme.borderRadius.sm};
+  border: 1px solid ${theme.alpha(theme.colors.info, 0.4)};
+  background: ${theme.alpha(theme.colors.info, 0.12)};
+  font-size: 0.6875rem;
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+  white-space: nowrap;
+`;
+
 export const Amostra = styled.span<{ $cor: string }>`
   width: 0.75rem;
   height: 0.75rem;

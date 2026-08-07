@@ -541,6 +541,19 @@ export const DataItemValor = styled.div`
   color: ${theme.colors.foreground};
 `;
 
+/**
+ * A dica embaixo de uma data que é **lida** do cronograma, não editada aqui.
+ *
+ * Existe porque tirar o formulário sem dizer onde ele foi parar viraria um
+ * beco: a pessoa via a data vazia, nenhum campo, e concluía que faltava
+ * permissão.
+ */
+export const DataItemNota = styled.span`
+  font-size: ${theme.fontSize.xs};
+  line-height: 1.4;
+  color: ${theme.colors.mutedForeground};
+`;
+
 export const EquipeList = styled.ul`
   display: flex;
   flex-direction: column;

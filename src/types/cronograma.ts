@@ -1,4 +1,5 @@
 import type { EscopoVendido } from "@/types/projeto";
+import type { ReuniaoSemanal } from "@/types/tarefa";
 
 export interface EtapaCronograma {
   id: number;
@@ -31,8 +32,15 @@ export interface EscopoComEtapas extends EscopoVendido {
 
 export interface FaixaDerivadaResposta {
   /**
-   * `escopo` é o período do §5.4: da reunião inicial até a banca daquele
-   * escopo. As outras duas são do projeto inteiro e vêm sem escopo.
+   * ⭐ `escopo` é a JANELA do §5: da reunião inicial até *vendidos +
+   * ajustados* dias úteis depois dela.
+   *
+   * ⚠ Já foi "até a banca", e por isso sumia enquanto a banca não tivesse
+   * data — justamente quando é mais útil. A faixa é **previsão**: ela mostra
+   * até onde o escopo cabe no que foi prometido, e é dentro dela que a banca
+   * precisa caber (§9), não o contrário.
+   *
+   * As outras duas são do projeto inteiro e vêm sem escopo.
    */
   tipo: "escopo" | "ambientacao" | "pausa";
   projeto_escopo_id: number | null;
@@ -69,4 +77,19 @@ export interface CronogramaResposta {
    */
   semestre: { nome: string; inicio: string; fim: string } | null;
   dias_nao_uteis: DiaNaoUtilResposta[];
+  /**
+   * As reuniões do projeto — a inicial de cada escopo e as gerais.
+   *
+   * Vêm aqui porque elas são MARCAÇÕES DO CRONOGRAMA desde que a aba Reuniões
+   * deixou de existir: sem isso, o que o coordenador acabou de marcar sumia da
+   * tela até o próximo carregamento.
+   */
+  reunioes: ReuniaoSemanal[];
+  /**
+   * ⚠ Não procure `reajuste_pendente` aqui: o pedido de dias de ajuste (§8) é
+   * de UM escopo, não do projeto, e por isso mora em `EscopoVendido`
+   * (`escopos[].reajuste_pendente: PedidoDeDias`), que carrega dias
+   * solicitados e motivo. O campo solto que existia neste nível só tinha id e
+   * autor, e sumia de vista quando o projeto tinha duas frentes.
+   */
 }

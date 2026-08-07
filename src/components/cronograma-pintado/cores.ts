@@ -128,7 +128,13 @@ export type TipoMarco =
   | "entrega"
   | "kickoff"
   | "reuniao_alinhamento"
-  | "visita_presencial";
+  | "visita_presencial"
+  // As reuniões semanais viraram marcações do cronograma quando a aba
+  // Reuniões deixou de existir: elas são marcadas aqui e precisam aparecer
+  // aqui. Não são `cronograma_marco` — moram em `reuniao_semanal`, que é
+  // quem dá a largada da contagem do escopo (§5.4).
+  | "reuniao_geral"
+  | "reuniao_inicial";
 
 /**
  * Um vermelho só para todos os marcos.
@@ -155,4 +161,8 @@ export const ROTULOS_MARCO: Record<TipoMarco, string> = {
   kickoff: "Kickoff",
   reuniao_alinhamento: "Reunião",
   visita_presencial: "Visita",
+  reuniao_geral: "Reunião",
+  // Curto de propósito: na visão de mês a célula não cabe "Reunião inicial",
+  // e é a largada do escopo que interessa distinguir da reunião de rotina.
+  reuniao_inicial: "Largada",
 };

@@ -1,9 +1,8 @@
 /**
- * As permissões da tabela do §3 (9 das 10 — "aprovar reajuste" saiu em
- * 2026-08-06 junto com a feature de reajuste, removida) + as 3 que a
- * estenderam depois, editáveis na tela de Cargos. ("Ver o Núcleo" existiu
- * brevemente como a 4ª extensão, mas a página em si foi substituída pelo
- * Dashboard Bancas no `main` antes de a permissão chegar a ser usada.)
+ * As 10 permissões da tabela do §3 + as 3 que a estenderam depois, editáveis
+ * na tela de Cargos. ("Ver o Núcleo" existiu brevemente como a 4ª extensão,
+ * mas a página em si foi substituída pelo Dashboard Bancas no `main` antes de
+ * a permissão chegar a ser usada.)
  *
  * A `posicao` da pessoa define só o PADRÃO com que o cargo dela nasce; daí em
  * diante quem decide é a caixa.
@@ -21,6 +20,10 @@ export interface Cargo {
   pode_marcar_kickoff: boolean;
   /** 5. Definir cronograma por escopo (etapas, banca) */
   pode_definir_cronograma: boolean;
+  /** 6. Aprovar reajuste de cronograma — decidir os pedidos de dias de ajuste
+   *  (§8), no banner do cronograma do projeto e no card da Visão geral do
+   *  Monitoramento. */
+  pode_aprovar_reajuste: boolean;
   /** 7. Criar tarefa */
   pode_criar_tarefa: boolean;
   /** 8. Mover e editar tarefa */
