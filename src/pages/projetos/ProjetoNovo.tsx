@@ -13,6 +13,7 @@ import {
   validarEquipe,
   type EquipeSelecionada,
 } from "@/components/membros/MemberPicker";
+import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
 import {
   EscopoPicker,
   montarEscoposPayload,
@@ -355,6 +356,13 @@ export function ProjetoNovo() {
                 usuariosFrentes={usuariosFrentes}
                 frentes={frentes}
                 frenteIdsProjeto={frenteIds}
+              />
+
+              {/* Logo abaixo da escolha: serve para rever o time ANTES de
+                  fechar, não para descobrir o problema depois. */}
+              <CompatibilidadeHorarios
+                consultorIds={equipe.consultorIds}
+                usuarios={usuarios}
               />
 
               <FieldGroup>

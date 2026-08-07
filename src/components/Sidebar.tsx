@@ -6,7 +6,7 @@ import { rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, Gauge, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, Gauge, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarContainer,
@@ -68,6 +68,8 @@ const navItems: NavItemConfig[] = [
   },
   { icon: ClipboardList, label: "Bancas", path: "/bancas" },
   { icon: Calendar, label: "Calendário", path: "/calendario" },
+  // Sem trava: a grade de aulas (§11) é de todo mundo, e cada um só vê a sua.
+  { icon: User, label: "Meu perfil", path: "/meu-perfil" },
   // 🔔 Notificações NÃO entram aqui: o acesso é pelo sino no rodapé, que já
   // mostra as últimas sem trocar de página. Ter os dois seria duas portas
   // para a mesma coisa.
