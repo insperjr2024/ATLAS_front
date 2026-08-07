@@ -119,6 +119,25 @@ export const FrenteTag = styled.span`
   color: ${theme.colors.foreground};
 `;
 
+/**
+ * A pílula de status no card da lista de projetos — mesma borda arredondada
+ * e tamanho de fonte da `FrenteTag` ao lado dela. `ColunaPilula` (kanban)
+ * usa `borderRadius.md`, não `full`, porque lá ela é cabeçalho de coluna,
+ * não uma tag dentro de um card — não dá pra reaproveitar sem herdar essa
+ * diferença de formato.
+ */
+export const StatusPilula = styled.span<{ $cor: TonsColuna }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px solid ${({ $cor }) => $cor.borda};
+  background: ${({ $cor }) => $cor.fundo};
+  color: ${({ $cor }) => $cor.texto};
+  font-size: ${theme.fontSize.xs};
+`;
+
 export const CardEquipe = styled.p`
   margin: 0;
   font-size: ${theme.fontSize.xs};

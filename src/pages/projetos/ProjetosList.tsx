@@ -22,7 +22,7 @@ import {
 } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import { ProjetoKanbanBoard } from "@/components/kanban/ProjetoKanbanBoard";
-import { ColunaPilula, Ponto } from "@/components/kanban/Kanban.styled";
+import { Ponto } from "@/components/kanban/Kanban.styled";
 import { tonsDaColuna } from "@/lib/colunas-tarefa";
 import type { UsuarioResumo } from "@/types/auth";
 import type { Frente } from "@/types/banca";
@@ -47,6 +47,7 @@ import {
   CardTitle,
   TagRow,
   FrenteTag,
+  StatusPilula,
   CardEquipe,
   CardAlerta,
   FiltersRow,
@@ -63,7 +64,7 @@ import {
   FormErrorText,
 } from "./Projetos.styled";
 
-type ModoVisualizacao = "lista" | "kanban";
+type ModoVisualizacao = "lista" | "kanban" | "arquivados";
 
 export function ProjetosList() {
   const { usuario, token } = useAuth();
@@ -74,22 +75,28 @@ export function ProjetosList() {
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [frentesSelecionadas, setFrentesSelecionadas] = useState<number[]>([]);
   const [filtroAberto, setFiltroAberto] = useState(false);
-  // Além do lugar próprio (/projetos/arquivados), dá pra misturar os
-  // arquivados na lista/kanban geral — pra quem quer comparar lado a lado
-  // com os ativos, sem trocar de tela.
+  // Independente do modo "Arquivados": dá pra misturar os arquivados na
+  // lista/kanban geral também, pra quem quer comparar lado a lado com os
+  // ativos sem trocar de aba.
   const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   // O kanban é a visão prioritária de Projetos — a lista é a segunda opção,
-  // pra quem quer conferir/ordenar em texto corrido. Guardado na URL (não só
-  // em estado local) pra "voltar" de dentro de um projeto devolver pro modo
-  // de onde a pessoa veio, em vez de sempre resetar pro kanban.
+  // pra quem quer conferir/ordenar em texto corrido, e "Arquivados" é a
+  // MESMA lista, só que com outro recorte de conteúdo (não é uma página
+  // separada — ver `projetosVisiveis` abaixo). Guardado na URL (não só em
+  // estado local) pra "voltar" de dentro de um projeto devolver pro modo de
+  // onde a pessoa veio, em vez de sempre resetar pro kanban.
   const [modo, setModoState] = useState<ModoVisualizacao>(
-    searchParams.get("modo") === "lista" ? "lista" : "kanban",
+    searchParams.get("modo") === "lista"
+      ? "lista"
+      : searchParams.get("modo") === "arquivados"
+        ? "arquivados"
+        : "kanban",
   );
   function setModo(novoModo: ModoVisualizacao) {
     setModoState(novoModo);
-    setSearchParams(novoModo === "lista" ? { modo: "lista" } : {}, { replace: true });
+    setSearchParams(novoModo === "kanban" ? {} : { modo: novoModo }, { replace: true });
   }
   const [avisoKanban, setAvisoKanban] = useState("");
   const [ordemAsc, setOrdemAsc] = useState(true);
@@ -111,9 +118,12 @@ export function ProjetosList() {
       // aparece assim que QUALQUER uma das suas frentes estiver marcada.
       const [projetosResp, frentesResp, usuariosResp] = await Promise.all([
         // `frente_id` não vai mais pro backend — o filtro de frente(s) virou
-        // um refinamento no cliente (ver `projetosFiltrados` abaixo), pra
-        // suportar marcar várias de uma vez.
-        getProjetos(token, null, podeArquivar && mostrarArquivados),
+        // um refinamento no cliente (ver `projetosVisiveis` abaixo), pra
+        // suportar marcar várias de uma vez. Arquivados sempre vêm junto
+        // (quando a permissão existe) — a aba "Arquivados" e o checkbox
+        // "Mostrar" só filtram em cima do mesmo dado já carregado, sem
+        // precisar de uma nova busca a cada troca.
+        getProjetos(token, null, podeArquivar),
         getFrentes(token),
         getUsuarios(token),
       ]);
@@ -130,7 +140,7 @@ export function ProjetosList() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, mostrarArquivados]);
+  }, [token]);
 
   useEffect(() => {
     if (!filtroAberto) return;
@@ -170,10 +180,18 @@ export function ProjetosList() {
     }
   }
 
+  // "Arquivados" é a MESMA tela de Lista, só trocando o recorte de conteúdo
+  // (§6.2) — nunca uma rota/página à parte. Fora dela, o checkbox "Mostrar"
+  // é quem decide se os arquivados aparecem misturados aos ativos.
+  const projetosVisiveis =
+    modo === "arquivados"
+      ? projetos.filter((p) => p.arquivado_em)
+      : projetos.filter((p) => mostrarArquivados || !p.arquivado_em);
+
   const projetosFiltrados =
     frentesSelecionadas.length === 0
-      ? projetos
-      : projetos.filter((p) => p.frente_ids.some((id) => frentesSelecionadas.includes(id)));
+      ? projetosVisiveis
+      : projetosVisiveis.filter((p) => p.frente_ids.some((id) => frentesSelecionadas.includes(id)));
 
   // Ordena pela mesma fila de fases do kanban (`ordemStatus`), não por nome —
   // é a etapa do ciclo de vida que a diretoria quer varrer em ordem, com a
@@ -201,6 +219,8 @@ export function ProjetosList() {
   if (carregando && projetos.length === 0) return <PageLoadingBlock />;
 
   const pendentes = projetosFiltrados.filter((p) => p.kickoff_pendente).length;
+  const mostrarSecaoOrdem = modo !== "kanban";
+  const mostrarSecaoArquivados = podeArquivar && modo !== "arquivados";
 
   return (
     <PageStack>
@@ -235,15 +255,16 @@ export function ProjetosList() {
               <LayoutGrid size={14} />
               Lista
             </ViewToggleBtn>
-            {/* Arquivados é outro LUGAR (rota própria, §6.2), não um terceiro
-                `modo` desta tela — mas mora na mesma fileira de abas pra não
-                virar mais um botão solto no cabeçalho. */}
+            {/* Arquivados (§6.2) é a MESMA tela de Lista — troca só o recorte
+                de conteúdo (`projetosVisiveis`), não a rota nem o
+                componente. */}
             {podeArquivar && (
               <ViewToggleBtn
                 type="button"
                 role="tab"
-                aria-selected={false}
-                onClick={() => navigate("/projetos/arquivados")}
+                aria-selected={modo === "arquivados"}
+                $ativo={modo === "arquivados"}
+                onClick={() => setModo("arquivados")}
               >
                 <Archive size={14} />
                 Arquivados
@@ -280,24 +301,27 @@ export function ProjetosList() {
                         Limpar seleção
                       </FrenteFilterFooter>
                     )}
-                    {(modo === "lista" || podeArquivar) && <FrenteFilterDivisor />}
+                    {(mostrarSecaoOrdem || mostrarSecaoArquivados) && <FrenteFilterDivisor />}
                   </>
                 )}
 
-                {/* Ordem só faz sentido na Lista — no Kanban quem organiza os
-                    cards é a coluna (status), não uma fila crescente/decrescente. */}
-                {modo === "lista" && (
+                {/* Ordem só faz sentido em Lista/Arquivados — no Kanban quem
+                    organiza os cards é a coluna (status), não uma fila
+                    crescente/decrescente. */}
+                {mostrarSecaoOrdem && (
                   <>
                     <FrenteFilterSecao>Ordem</FrenteFilterSecao>
                     <FrenteFilterOpcao type="button" onClick={() => setOrdemAsc((atual) => !atual)}>
                       {ordemAsc ? <ArrowDownNarrowWide size={14} /> : <ArrowUpNarrowWide size={14} />}
                       {ordemAsc ? "Início → Fim" : "Fim → Início"}
                     </FrenteFilterOpcao>
-                    {podeArquivar && <FrenteFilterDivisor />}
+                    {mostrarSecaoArquivados && <FrenteFilterDivisor />}
                   </>
                 )}
 
-                {podeArquivar && (
+                {/* Já dentro da aba Arquivados o checkbox não faz sentido —
+                    o recorte ali JÁ é só arquivados. */}
+                {mostrarSecaoArquivados && (
                   <>
                     <FrenteFilterSecao>Arquivados</FrenteFilterSecao>
                     <CheckboxLabel>
@@ -324,11 +348,13 @@ export function ProjetosList() {
 
       {projetosFiltrados.length === 0 ? (
         <EmptyText>
-          {frentesSelecionadas.length > 0
-            ? "Nenhum projeto nas frentes selecionadas."
-            : podeCriar
-              ? "Nenhum projeto ainda. Crie o primeiro."
-              : "Você ainda não está alocado em nenhum projeto."}
+          {modo === "arquivados"
+            ? "Nenhum projeto arquivado."
+            : frentesSelecionadas.length > 0
+              ? "Nenhum projeto nas frentes selecionadas."
+              : podeCriar
+                ? "Nenhum projeto ainda. Crie o primeiro."
+                : "Você ainda não está alocado em nenhum projeto."}
         </EmptyText>
       ) : modo === "kanban" ? (
         <>
@@ -348,10 +374,10 @@ export function ProjetosList() {
               <ProjetoCard
                 key={projeto.id}
                 to={`/projetos/${projeto.id}`}
-                // Só aqui (visão Lista): kanban já é o padrão pra onde "Voltar"
-                // cai sem state nenhum, então só precisa dizer explicitamente
-                // quando o destino NÃO é o padrão.
-                state={{ voltarPara: "/projetos?modo=lista", voltarRotulo: "Voltar para projetos" }}
+                // Este card só renderiza fora do Kanban (que já é o padrão
+                // pra onde "Voltar" cai sem state nenhum) — aqui é sempre
+                // preciso dizer explicitamente o modo de onde se veio.
+                state={{ voltarPara: `/projetos?modo=${modo}`, voltarRotulo: "Voltar para projetos" }}
               >
                 <div>
                   <CardTitle>{projeto.nome}</CardTitle>
@@ -366,12 +392,18 @@ export function ProjetosList() {
 
                 <div>
                   {/* Mesma cor por fase do kanban de projetos (`CORES_STATUS`) —
-                      pra a etapa não parecer outra coisa entre as duas visões. */}
-                  <ColunaPilula $cor={tonsStatus}>
+                      pra a etapa não parecer outra coisa entre as duas visões.
+                      Borda arredondada igual à `FrenteTag` ao lado, não a
+                      borda do cabeçalho de coluna do kanban. */}
+                  <StatusPilula $cor={tonsStatus}>
                     <Ponto $cor={tonsStatus.ponto} />
                     {ROTULO_STATUS[projeto.status]}
-                  </ColunaPilula>
-                  {projeto.arquivado_em && <PageBadge $tone="muted">📦 Arquivado</PageBadge>}
+                  </StatusPilula>
+                  {/* Redundante dentro da própria aba Arquivados — lá TODO
+                      card já é arquivado. */}
+                  {projeto.arquivado_em && modo !== "arquivados" && (
+                    <PageBadge $tone="muted">📦 Arquivado</PageBadge>
+                  )}
                 </div>
 
                 <CardEquipe>
