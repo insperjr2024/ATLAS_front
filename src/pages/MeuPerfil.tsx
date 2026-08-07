@@ -142,10 +142,6 @@ export function MeuPerfil() {
               <DadoValor>{ROTULO_POSICAO[usuario.posicao] ?? usuario.posicao}</DadoValor>
             </DadoItem>
             <DadoItem>
-              <DadoRotulo>Cargo</DadoRotulo>
-              <DadoValor>{usuario.cargo.nome}</DadoValor>
-            </DadoItem>
-            <DadoItem>
               <DadoRotulo>{nomesFrentes.length === 1 ? "Frente" : "Frentes"}</DadoRotulo>
               <DadoValor>{nomesFrentes.length > 0 ? nomesFrentes.join(" · ") : "—"}</DadoValor>
             </DadoItem>

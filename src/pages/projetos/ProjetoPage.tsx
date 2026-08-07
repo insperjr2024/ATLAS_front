@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { Archive, ArchiveRestore, ArrowLeft, ChevronDown, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowLeft, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
@@ -14,6 +14,7 @@ import {
   getProjeto,
   mudarStatus,
   podePausar,
+  renomearProjeto,
   ROTULO_STATUS,
   tomDoStatus,
 } from "@/lib/projetos";
@@ -36,6 +37,7 @@ import {
   PageHeaderText,
   PageHeading,
   PageSubheading,
+  FieldInput,
   FormErrorText,
   ProjetoShell,
   ShellHeader,
@@ -50,6 +52,9 @@ import {
   EtapaBotaoAtual,
   EtapaMenu,
   EtapaOpcaoBotao,
+  NomeEditavel,
+  NomeBotaoEditar,
+  EdicaoBotoes,
 } from "./Projetos.styled";
 
 /** O que o shell entrega para as abas. */
@@ -123,6 +128,10 @@ export function ProjetoPage() {
   const [confirmandoArquivamento, setConfirmandoArquivamento] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [editandoNome, setEditandoNome] = useState(false);
+  const [nomeEditado, setNomeEditado] = useState("");
+  const [salvandoNome, setSalvandoNome] = useState(false);
+  const [erroNome, setErroNome] = useState("");
 
   const carregar = useCallback(async () => {
     if (!token || !projetoId) return;
@@ -189,6 +198,25 @@ export function ProjetoPage() {
     }
   }
 
+  async function salvarNome() {
+    if (!token || !projeto) return;
+    if (!nomeEditado.trim()) {
+      setErroNome("O nome do projeto não pode ficar vazio.");
+      return;
+    }
+    setSalvandoNome(true);
+    setErroNome("");
+    try {
+      await renomearProjeto(projeto.id, nomeEditado.trim(), token);
+      setEditandoNome(false);
+      await carregar();
+    } catch (err) {
+      setErroNome(err instanceof Error ? err.message : "Erro ao renomear");
+    } finally {
+      setSalvandoNome(false);
+    }
+  }
+
   if (erro) {
     return (
       <ErrorBlock>
@@ -208,6 +236,9 @@ export function ProjetoPage() {
   const podeMudarStatus = pode(usuario, "mudar_status_projeto");
   const podeArquivar = pode(usuario, "arquivar_projeto");
   const podeExcluir = pode(usuario, "apagar_projeto_permanente");
+  // Mesma permissão que já gatilhava a edição do nome quando ela morava no
+  // card de Descrição — só mudou de lugar, não de regra.
+  const podeRenomear = !!usuario?.permissoes.pode_editar_equipe;
   const temKickoff = !!projeto.data_kickoff;
 
   // ✋ Livre entre as etapas ativas, nos dois sentidos — não só a vizinha.
@@ -237,7 +268,51 @@ export function ProjetoPage() {
             <ArrowLeft size={14} />
             {voltar.rotulo}
           </VoltarLink>
-          <PageHeading>{projeto.nome}</PageHeading>
+          {editandoNome ? (
+            <>
+              <NomeEditavel>
+                <FieldInput
+                  value={nomeEditado}
+                  onChange={(e) => setNomeEditado(e.target.value)}
+                  aria-label="Nome do projeto"
+                  autoFocus
+                />
+              </NomeEditavel>
+              {erroNome && <FormErrorText>{erroNome}</FormErrorText>}
+              <EdicaoBotoes>
+                <PageButtonSm type="button" disabled={salvandoNome} onClick={salvarNome}>
+                  {salvandoNome ? "Salvando…" : "Salvar"}
+                </PageButtonSm>
+                <PageButtonSm
+                  type="button"
+                  $variant="ghost"
+                  onClick={() => {
+                    setEditandoNome(false);
+                    setErroNome("");
+                  }}
+                >
+                  Cancelar
+                </PageButtonSm>
+              </EdicaoBotoes>
+            </>
+          ) : (
+            <NomeEditavel>
+              <PageHeading>{projeto.nome}</PageHeading>
+              {podeRenomear && (
+                <NomeBotaoEditar
+                  type="button"
+                  aria-label="Editar nome do projeto"
+                  title="Editar nome do projeto"
+                  onClick={() => {
+                    setNomeEditado(projeto.nome);
+                    setEditandoNome(true);
+                  }}
+                >
+                  <Pencil size={14} />
+                </NomeBotaoEditar>
+              )}
+            </NomeEditavel>
+          )}
           <PageSubheading>{projeto.cliente}</PageSubheading>
           <TagRow>
             {projeto.frente_ids.map((frenteId) => (

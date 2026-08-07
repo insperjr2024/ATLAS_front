@@ -25,6 +25,7 @@ import {
 } from "@/lib/nucleo";
 import type { Banca, BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente } from "@/types/banca";
 import type { UsuarioResumo } from "@/types/auth";
+import { paraDataUtc } from "@/lib/projetos";
 import {
   PageStack,
   Breadcrumb,
@@ -154,7 +155,7 @@ export function Calendario() {
   const bancasPorDia = useMemo(() => {
     const mapa = new Map<string, Banca[]>();
     for (const banca of bancas) {
-      const chave = chaveData(new Date(banca.data_hora));
+      const chave = chaveData(paraDataUtc(banca.data_hora));
       const lista = mapa.get(chave) ?? [];
       lista.push(banca);
       mapa.set(chave, lista);
@@ -168,14 +169,14 @@ export function Calendario() {
   const bancasDoMes = useMemo(
     () =>
       bancas
-        .filter((b) => isSameMonth(new Date(b.data_hora), mesAtual))
+        .filter((b) => isSameMonth(paraDataUtc(b.data_hora), mesAtual))
         .sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()),
     [bancas, mesAtual],
   );
 
   const proximasDoMes = useMemo(() => {
     const agora = Date.now();
-    return bancasDoMes.filter((b) => new Date(b.data_hora).getTime() >= agora);
+    return bancasDoMes.filter((b) => paraDataUtc(b.data_hora).getTime() >= agora);
   }, [bancasDoMes]);
 
   function irHoje() {
@@ -308,8 +309,8 @@ export function Calendario() {
             <UpcomingEventCard key={banca.id} type="button" onClick={() => setBancaDetalhe(banca)}>
               <UpcomingEventName>Banca {banca.nome_projeto}</UpcomingEventName>
               <UpcomingEventMeta>
-                {format(new Date(banca.data_hora), "dd/MM")} às{" "}
-                {format(new Date(banca.data_hora), "HH:mm")} · {nomeEscopo(contexto.escopos, banca.escopo_id)}
+                {format(paraDataUtc(banca.data_hora), "dd/MM")} às{" "}
+                {format(paraDataUtc(banca.data_hora), "HH:mm")} · {nomeEscopo(contexto.escopos, banca.escopo_id)}
               </UpcomingEventMeta>
             </UpcomingEventCard>
           ))}
@@ -444,7 +445,7 @@ function VistaDia({
           <UpcomingEventCard key={banca.id} type="button" onClick={() => onBanca(banca)}>
             <UpcomingEventName>Banca {banca.nome_projeto}</UpcomingEventName>
             <UpcomingEventMeta>
-              {format(new Date(banca.data_hora), "HH:mm")} · {nomeEscopo(contexto.escopos, banca.escopo_id)} ·{" "}
+              {format(paraDataUtc(banca.data_hora), "HH:mm")} · {nomeEscopo(contexto.escopos, banca.escopo_id)} ·{" "}
               {nomeUsuario(contexto.usuarios, banca.coordenador_id)}
             </UpcomingEventMeta>
           </UpcomingEventCard>
@@ -463,7 +464,7 @@ function DetalheModal({
   contexto: Contexto;
   onClose: () => void;
 }) {
-  const dataHora = new Date(banca.data_hora);
+  const dataHora = paraDataUtc(banca.data_hora);
   const status = statusBanca(banca);
 
   return (

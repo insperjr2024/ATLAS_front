@@ -109,7 +109,7 @@ export function AtrasosAba() {
   const { token, usuario } = useAuth();
   const navigate = useNavigate();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
-  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
     <>
       {seletorFrente}

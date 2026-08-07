@@ -512,6 +512,31 @@ export const EdicaoBotoes = styled.div`
   margin-top: ${theme.spacing.sm};
 `;
 
+/** O nome do projeto é o título da página (`PageHeading`) — o lápis de
+ *  editar mora ao lado dele, não escondido dentro do card de Descrição. */
+export const NomeEditavel = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+export const NomeBotaoEditar = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: none;
+  border-radius: ${theme.borderRadius.md};
+  background: transparent;
+  color: ${theme.colors.mutedForeground};
+  cursor: pointer;
+
+  &:hover {
+    color: ${theme.colors.foreground};
+    background: ${theme.colors.muted};
+  }
+`;
+
 export const DataItemValor = styled.div`
   display: flex;
   align-items: center;

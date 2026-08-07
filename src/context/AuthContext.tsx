@@ -1,15 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { apiFetch } from "@/lib/api";
-import type { Usuario, Cargo, Posicao, StatusUsuario } from "@/types/auth";
+import { getPosicoesPermissoes } from "@/lib/posicoes-permissoes";
+import type { Usuario, Permissoes, Posicao, StatusUsuario } from "@/types/auth";
 
-// A API devolve `cargo_id` solto em /auth/me e /usuarios/{id}, não o objeto
-// `cargo` aninhado que o resto do front espera — por isso buscamos o cargo
-// à parte e montamos o Usuario completo aqui.
+// A API devolve `posicao` solto em /auth/me, sem as 13 caixas de permissão
+// dela aninhadas — por isso buscamos as permissões à parte (por posição,
+// desde 2026-08-07 — antes era por `cargo_id`) e montamos o Usuario completo
+// aqui.
 interface UsuarioResponse {
   id: number;
   nome: string;
   email_insper: string;
-  cargo_id: number;
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
@@ -33,13 +34,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-/** Cargo de mentira, todas as caixas desmarcadas — só pra existir enquanto
- *  `senha_provisoria` for true. O PrivateRoute não deixa nada além de
- *  /definir-senha acontecer nesse estado, então nenhuma dessas permissões
- *  chega a ser lida de verdade. */
-const CARGO_PLACEHOLDER: Cargo = {
-  id: 0,
-  nome: "",
+/** Permissões de mentira, todas as caixas desmarcadas — só pra existir
+ *  enquanto `senha_provisoria` for true. O PrivateRoute não deixa nada além
+ *  de /definir-senha acontecer nesse estado, então nenhuma delas chega a ser
+ *  lida de verdade. */
+const PERMISSOES_PLACEHOLDER: Permissoes = {
   pode_criar_projeto: false,
   pode_editar_equipe: false,
   pode_gerir_membros: false,
@@ -52,6 +51,7 @@ const CARGO_PLACEHOLDER: Cargo = {
   pode_administrar_desempenho: false,
   pode_editar_formularios_desempenho: false,
   pode_administrar_configuracoes: false,
+  pode_ver_todos_projetos: false,
 };
 
 /**
@@ -85,14 +85,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const dados = await apiFetch<UsuarioResponse>("/auth/me", { token });
       // Com senha provisória o backend trava QUALQUER rota fora das 3 do
-      // primeiro acesso — /cargos/{id} não é uma delas, e 403 caía no catch
-      // abaixo, que desloga. O cargo de verdade não faz falta agora: o
-      // PrivateRoute só deixa passar pra /definir-senha até isso resolver, e
-      // recarregarUsuario() busca o cargo real depois, quando já não trava.
-      const cargo = dados.senha_provisoria
-        ? CARGO_PLACEHOLDER
-        : await apiFetch<Cargo>(`/cargos/${dados.cargo_id}`, { token });
-      setUsuario({ ...dados, cargo });
+      // primeiro acesso — /posicoes-permissoes não é uma delas, e 403 caía no
+      // catch abaixo, que desloga. As permissões de verdade não fazem falta
+      // agora: o PrivateRoute só deixa passar pra /definir-senha até isso
+      // resolver, e recarregarUsuario() busca as permissões reais depois,
+      // quando já não trava.
+      const permissoes = dados.senha_provisoria
+        ? PERMISSOES_PLACEHOLDER
+        : (await getPosicoesPermissoes(token)).find((p) => p.posicao === dados.posicao) ??
+          PERMISSOES_PLACEHOLDER;
+      setUsuario({ ...dados, permissoes });
       renovarSessao(token);
     } catch {
       setToken(null);

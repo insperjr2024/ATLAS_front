@@ -33,16 +33,19 @@ export interface EquipeSelecionada {
 }
 
 /**
- * Cada papel do projeto (§6.3) exige uma posição mínima (§3): coordenador só
- * quem É coordenador; consultor é aberto pra quem tem posição igual ou acima
- * na hierarquia (coordenador, gerente ou diretor também podem entrar como
- * consultor — o inverso não vale, consultor não vira coordenador sem ser
- * promovido de posição de verdade, isso é o §10). Espelha
- * `POSICOES_ELEGIVEIS_CONSULTOR` de `src/utils/validacao_equipe.py`.
+ * Cada papel do projeto (§6.3) exige posição igual ou acima na hierarquia
+ * ATÉ gerente (gerente > coordenador > consultor): um gerente que também
+ * coordena projeto na prática pode ocupar a vaga de coordenador sem virar
+ * "coordenador" de posição de verdade (2026-08-07). Diretor fica de fora das
+ * duas — só supervisiona, não é alocado na equipe de execução. O que NUNCA
+ * abre, pra ninguém, é o sentido inverso — consultor não vira coordenador
+ * sem ser promovido de posição de verdade, isso é o §10. Espelha
+ * `POSICOES_ELEGIVEIS_CONSULTOR`/`POSICOES_ELEGIVEIS_COORDENADOR` de
+ * `src/utils/validacao_equipe.py`.
  */
-export const POSICAO_COORDENADOR: Posicao = "coordenador";
 export const POSICAO_CONSULTOR: Posicao = "consultor";
-export const POSICOES_ELEGIVEIS_CONSULTOR: Posicao[] = ["consultor", "coordenador", "gerente", "diretor"];
+export const POSICOES_ELEGIVEIS_CONSULTOR: Posicao[] = ["consultor", "coordenador", "gerente"];
+export const POSICOES_ELEGIVEIS_COORDENADOR: Posicao[] = ["coordenador", "gerente"];
 
 /**
  * A regra do coordenador e do mínimo de consultor (§6.3) numa função só,
@@ -140,9 +143,8 @@ export function MemberPicker({
   };
 
   // O backend recusa quem não tem a posição do papel, então nem oferecemos.
-  // Coordenador é estrito: só quem É coordenador aparece aqui.
   const elegiveisCoordenador = usuarios.filter(
-    (u) => u.posicao === POSICAO_COORDENADOR && atendeFiltroFrente(u),
+    (u) => POSICOES_ELEGIVEIS_COORDENADOR.includes(u.posicao) && atendeFiltroFrente(u),
   );
 
   // Menos carregado primeiro: quem tem menos projetos abre a lista, para a

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Download, ExternalLink, Lock, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
+import { ROTULO_STATUS_BANCA, toDateInputValue, toTimeInputValue, tomDoStatusBanca } from "@/lib/bancas";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import {
   baixarAnexoProposta,
   DIAS_REUNIAO,
   formatarData,
   formatarDataHora,
+  formatarDataHoraBanca,
   marcarBancaDoEscopo,
   marcarEntregaCliente,
   marcarEntregaEscopo,
@@ -41,13 +42,10 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
-  FieldGroup,
   FieldInput,
-  FieldLabel,
   FieldSelect,
   FieldTextarea,
   FormErrorText,
-  Required,
   ModalOverlay,
   ModalHeader,
   ModalTitle,
@@ -98,24 +96,19 @@ export function ProjetoVisaoGeral() {
   const [baixandoAnexo, setBaixandoAnexo] = useState(false);
   const [erroAnexo, setErroAnexo] = useState("");
   const [editandoDescricao, setEditandoDescricao] = useState(false);
-  const [nome, setNome] = useState(projeto.nome);
   const [descricao, setDescricao] = useState(projeto.descricao ?? "");
   const [salvandoDescricao, setSalvandoDescricao] = useState(false);
   const [erroDescricao, setErroDescricao] = useState("");
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
-  const podeEditarEquipe = !!usuario?.cargo.pode_editar_equipe;
+  const podeEditarEquipe = !!usuario?.permissoes.pode_editar_equipe;
 
   async function handleSalvarDescricao() {
     if (!token) return;
-    if (!nome.trim()) {
-      setErroDescricao("O nome do projeto não pode ficar vazio.");
-      return;
-    }
     setSalvandoDescricao(true);
     setErroDescricao("");
     try {
-      await updateDescricao(projeto.id, descricao, token, nome.trim());
+      await updateDescricao(projeto.id, descricao, token);
       setEditandoDescricao(false);
       await recarregar();
     } catch (err) {
@@ -161,7 +154,6 @@ export function ProjetoVisaoGeral() {
                 type="button"
                 $variant="outline"
                 onClick={() => {
-                  setNome(projeto.nome);
                   setDescricao(projeto.descricao ?? "");
                   setEditandoDescricao(true);
                 }}
@@ -173,16 +165,6 @@ export function ProjetoVisaoGeral() {
           <PageCardContent>
             {editandoDescricao ? (
               <>
-                <FieldGroup>
-                  <FieldLabel htmlFor="projeto-nome-editar">
-                    Nome do projeto<Required>*</Required>
-                  </FieldLabel>
-                  <FieldInput
-                    id="projeto-nome-editar"
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                  />
-                </FieldGroup>
                 <FieldTextarea
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
@@ -322,7 +304,7 @@ function TabelaEscopos() {
   // responsabilidade é do coordenador, mas o acesso não é exclusivo dele.
   // (O backend usa só `exigir_acesso_ao_projeto` aqui; o front não pode ser
   // mais restrito que ele, ou esconde um botão que a pessoa tem direito de ver.)
-  const podeConduzir = !!usuario?.cargo.pode_marcar_kickoff;
+  const podeConduzir = !!usuario?.permissoes.pode_marcar_kickoff;
 
   async function agir(escopoId: number, acao: () => Promise<unknown>) {
     if (!token) return;
@@ -408,7 +390,7 @@ function TabelaEscopos() {
                       <TableCell>
                         {banca ? (
                           <PageBadge $tone={tomDoStatusBanca(banca.status)}>
-                            {banca.data_hora ? formatarData(banca.data_hora) : "—"} ·{" "}
+                            {banca.data_hora ? formatarDataHoraBanca(banca.data_hora) : "—"} ·{" "}
                             {ROTULO_STATUS_BANCA[banca.status]}
                           </PageBadge>
                         ) : (
@@ -486,7 +468,7 @@ function BancasPorFrente() {
 
   // §5.6: marcar/remarcar banca é de liderança — o backend usa
   // `require_lideranca` e cobra justificativa da diretoria na remarcação.
-  const podeMarcar = !!usuario?.cargo.pode_definir_cronograma;
+  const podeMarcar = !!usuario?.permissoes.pode_definir_cronograma;
 
   // A ordem é a das frentes do projeto; escopo de uma frente que saiu do
   // projeto ainda aparece, senão a banca dele sumiria da tela sem aviso.
@@ -635,7 +617,11 @@ function MarcarBancaModal({
   onSalvo: () => void;
 }) {
   const remarcacao = Boolean(escopo.banca?.data_hora);
-  const [dataHora, setDataHora] = useState(escopo.banca?.data_hora?.slice(0, 16) ?? "");
+  const [dataHora, setDataHora] = useState(
+    escopo.banca?.data_hora
+      ? `${toDateInputValue(escopo.banca.data_hora)}T${toTimeInputValue(escopo.banca.data_hora)}`
+      : "",
+  );
   const [justificativa, setJustificativa] = useState("");
   const [selecionados, setSelecionados] = useState<number[]>(
     escopo.banca?.escopo_ids ?? [escopo.id],
@@ -671,7 +657,7 @@ function MarcarBancaModal({
     try {
       await marcarBancaDoEscopo(
         escopo.id,
-        dataHora,
+        new Date(dataHora).toISOString(),
         token,
         justificativa.trim() || undefined,
         [...new Set([escopo.id, ...selecionados])],
@@ -801,7 +787,7 @@ function DataEditavel({
   // Mesma permissão do backend (`require_pode_marcar_kickoff` em
   // `routers/projetos.py`) — sem esse gate o botão aparecia pra qualquer
   // um, que só descobria que não podia depois de preencher e salvar (403).
-  const podeEditar = !!usuario?.cargo.pode_marcar_kickoff;
+  const podeEditar = !!usuario?.permissoes.pode_marcar_kickoff;
   const [editando, setEditando] = useState(false);
   const [data, setData] = useState(valor?.slice(0, 10) ?? "");
   const [salvando, setSalvando] = useState(false);
@@ -878,7 +864,7 @@ function DataEditavelDiasAmbientacao({
   recarregar: () => Promise<void>;
 }) {
   const { usuario } = useAuth();
-  const podeEditar = !!usuario?.cargo.pode_editar_equipe;
+  const podeEditar = !!usuario?.permissoes.pode_editar_equipe;
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(String(projeto.dias_ambientacao));
   const [salvando, setSalvando] = useState(false);
@@ -970,7 +956,7 @@ function DataEditavelDiaReuniao({
   recarregar: () => Promise<void>;
 }) {
   const { usuario } = useAuth();
-  const podeEditar = !!usuario?.cargo.pode_editar_equipe;
+  const podeEditar = !!usuario?.permissoes.pode_editar_equipe;
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(
     projeto.dia_reuniao_padrao ? String(projeto.dia_reuniao_padrao) : "",

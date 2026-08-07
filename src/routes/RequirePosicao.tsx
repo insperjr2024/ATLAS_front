@@ -4,9 +4,9 @@ import type { Posicao } from "@/types/auth";
 import { PageLoadingBlock } from "@/styles/page.styled";
 
 /**
- * Guard por **posição** (§3) — no molde do `AdminRoute`, que guarda por
- * `cargo` (as permissões do módulo de bancas). São dimensões diferentes: um
- * gerente de frente não é necessariamente Diretor de Projetos no cargo.
+ * Guard por **posição direto** — pra regra que nunca virou caixa de
+ * permissão (`AdminRoute`), como identidade organizacional (último diretor,
+ * elegibilidade de coordenador) em vez de algo delegável.
  *
  * Quem não passa cai em `/projetos`, a nova home — não em `/login`, porque
  * está logado, só não tem a posição.

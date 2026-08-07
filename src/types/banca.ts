@@ -108,7 +108,6 @@ export interface Configuracao {
   id: number;
   /** Teto de pessoas por banca (§8) — editável pela diretoria em Config. */
   vagas_por_banca: number;
-  cargo_padrao_id: number | null;
   /** Quantas lideranças (gerente da frente, ou diretor) cada frente
    *  vinculada precisa ter na banca, separado do piso de membros comuns
    *  (§8) — editável pela diretoria em Config. */

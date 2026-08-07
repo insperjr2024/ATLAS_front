@@ -145,19 +145,20 @@ export function mudarStatus(projetoId: number, statusNovo: string, token: string
   );
 }
 
-export function updateDescricao(
-  projetoId: number,
-  descricao: string,
-  token: string,
-  nome?: string,
-) {
+export function updateDescricao(projetoId: number, descricao: string, token: string) {
   return apiFetch<{ id: number; nome: string; descricao: string | null }>(
     `/projetos/${projetoId}/descricao`,
-    {
-      method: "PATCH",
-      token,
-      body: JSON.stringify(nome ? { descricao, nome } : { descricao }),
-    },
+    { method: "PATCH", token, body: JSON.stringify({ descricao }) },
+  );
+}
+
+/** Renomear é separado da descrição (mesma rota, mas só o campo `nome`) — o
+ *  nome é o título da página, não um conteúdo do card de Descrição, então
+ *  a edição mora no cabeçalho, ao lado do título. */
+export function renomearProjeto(projetoId: number, nome: string, token: string) {
+  return apiFetch<{ id: number; nome: string; descricao: string | null }>(
+    `/projetos/${projetoId}/descricao`,
+    { method: "PATCH", token, body: JSON.stringify({ nome }) },
   );
 }
 

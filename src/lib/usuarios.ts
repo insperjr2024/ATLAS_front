@@ -8,7 +8,6 @@ export function getUsuarios(token: string) {
 export interface UpdateUsuarioPayload {
   nome?: string;
   email_insper?: string;
-  cargo_id?: number;
   /** §10: a promoção da virada de gestão — consultor vira coordenador. */
   posicao?: Posicao;
   /**
@@ -42,8 +41,6 @@ export interface RegistrarUsuarioPayload {
   nome: string;
   email_insper: string;
   posicao: Posicao;
-  /** Sem cargo escolhido, o backend usa o cargo padrão configurado. */
-  cargo_id?: number | null;
   semestre_graduacao?: number | null;
 }
 
