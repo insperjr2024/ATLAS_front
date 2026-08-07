@@ -1,10 +1,12 @@
 /**
- * As 10 permissões da tabela do §3, editáveis na tela de Cargos.
+ * As permissões da tabela do §3 (9 das 10 — "aprovar reajuste" saiu em
+ * 2026-08-06 junto com a feature de reajuste, removida) + as 3 que a
+ * estenderam depois, editáveis na tela de Cargos. ("Ver o Núcleo" existiu
+ * brevemente como a 4ª extensão, mas a página em si foi substituída pelo
+ * Dashboard Bancas no `main` antes de a permissão chegar a ser usada.)
  *
  * A `posicao` da pessoa define só o PADRÃO com que o cargo dela nasce; daí em
- * diante quem decide é a caixa. O que ficou fora da tabela (formulário de
- * banca, núcleo/configurações, cargos e Avaliação de Desempenho) continua
- * travado por posição no backend.
+ * diante quem decide é a caixa.
  */
 export interface Cargo {
   id: number;
@@ -19,8 +21,6 @@ export interface Cargo {
   pode_marcar_kickoff: boolean;
   /** 5. Definir cronograma por escopo (etapas, banca) */
   pode_definir_cronograma: boolean;
-  /** 6. Aprovar reajuste de cronograma */
-  pode_aprovar_reajuste: boolean;
   /** 7. Criar tarefa */
   pode_criar_tarefa: boolean;
   /** 8. Mover e editar tarefa */
@@ -29,6 +29,15 @@ export interface Cargo {
   pode_ver_proprios_projetos: boolean;
   /** 10. Monitoramento e alocação */
   pode_ver_monitoramento: boolean;
+  /** Administrar a Avaliação de Desempenho (lotes, avaliadores, mentoria, PDI). */
+  pode_administrar_desempenho: boolean;
+  /** Editar os formulários de Avaliação de Desempenho — mais sensível que
+   *  administrar, porque muda o que todo mundo é avaliado. */
+  pode_editar_formularios_desempenho: boolean;
+  /** Administrar Configurações e Calendários base — inclusive editar cargos,
+   *  a mais sensível: quem tem essa caixa pode conceder (ou tirar) qualquer
+   *  permissão de qualquer cargo, inclusive o próprio. */
+  pode_administrar_configuracoes: boolean;
 }
 
 /** Os 4 perfis do §3. Distinto de `Cargo`, que são as permissões do módulo de bancas. */

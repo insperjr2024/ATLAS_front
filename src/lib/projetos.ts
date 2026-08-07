@@ -200,6 +200,23 @@ export function excluirRemarcacaoBanca(projetoId: number, remarcacaoId: number, 
   });
 }
 
+/** "Limpar histórico" não apaga nada — só marca 'agora' como corte de
+ *  exibição da timeline. As linhas continuam no banco, usadas na contagem
+ *  de dias (§5.4); só saem da tela até alguém pedir pra ver tudo de novo. */
+export function ocultarHistorico(projetoId: number, token: string) {
+  return apiFetch<{ id: number; historico_oculto_ate: string }>(
+    `/projetos/${projetoId}/historico/ocultar`,
+    { method: "PATCH", token },
+  );
+}
+
+export function mostrarHistoricoCompleto(projetoId: number, token: string) {
+  return apiFetch<{ id: number; historico_oculto_ate: null }>(
+    `/projetos/${projetoId}/historico/mostrar-tudo`,
+    { method: "PATCH", token },
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Escopos vendidos (F4)                                               */
 /* ------------------------------------------------------------------ */

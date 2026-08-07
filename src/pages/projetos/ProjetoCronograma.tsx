@@ -19,7 +19,7 @@ import {
   COR_PAUSA,
   ROTULOS_MARCO,
 } from "@/components/cronograma-pintado/cores";
-import { exportarPDF } from "@/components/cronograma-pintado/exportar";
+import { exportarPDF, exportarPNG } from "@/components/cronograma-pintado/exportar";
 import {
   diasDoIntervalo,
   PaintedCalendar,
@@ -652,13 +652,18 @@ export function ProjetoCronograma() {
   }
 
   /**
-   * Gera o PDF a partir de uma cópia FORA DA TELA com os meses escolhidos.
+   * Gera o PDF ou a imagem a partir de uma cópia FORA DA TELA com os meses
+   * escolhidos.
    *
    * Não dá para rasterizar o calendário visível: ele mostra o recorte da visão
    * atual (um dia, se for o caso), e o §6.4 quer o cronograma de apresentação.
    * O erro sobe para o modal mostrar.
    */
-  async function gerarPdf(mesesEscolhidos: Date[], escopoEscolhido: number | "geral") {
+  async function gerarPdf(
+    mesesEscolhidos: Date[],
+    escopoEscolhido: number | "geral",
+    formato: "pdf" | "png",
+  ) {
     setEscopoExport(escopoEscolhido);
     setMesesExport(mesesEscolhidos);
     // Dois frames: um para o React montar a área, outro para o navegador
@@ -668,7 +673,11 @@ export function ProjetoCronograma() {
     );
     try {
       if (!areaExport.current) throw new Error("A área de exportação não montou");
-      await exportarPDF(areaExport.current, projeto.nome);
+      if (formato === "png") {
+        await exportarPNG(areaExport.current, projeto.nome);
+      } else {
+        await exportarPDF(areaExport.current, projeto.nome);
+      }
       setExportandoPdf(false);
     } finally {
       setMesesExport(null);
@@ -712,9 +721,7 @@ export function ProjetoCronograma() {
     <PageStack>
       {oficializado && (
         <AvisoBanner>
-          <Lock size={14} /> Cronograma oficializado em{" "}
-          {formatarData(escopo!.cronograma_oficializado_em)}. Qualquer mudança agora exige uma
-          solicitação de reajuste aprovada pela diretoria (§5.6).
+          Cronograma oficializado em {formatarData(escopo!.cronograma_oficializado_em)}.
         </AvisoBanner>
       )}
 
@@ -777,12 +784,7 @@ export function ProjetoCronograma() {
             <input
               type="date"
               value={escopo.data_entrega_planejada?.slice(0, 10) ?? ""}
-              disabled={oficializado}
-              title={
-                oficializado
-                  ? "Cronograma oficializado: mudar exige reajuste aprovado pela diretoria"
-                  : `Entrega planejada de ${escopo.nome}`
-              }
+              title={`Entrega planejada de ${escopo.nome}`}
               onChange={(e) => salvarEntrega(e.target.value)}
             />
           </FieldEntrega>
@@ -826,7 +828,7 @@ export function ProjetoCronograma() {
             botão não fica atrás de `pode()`. */}
         <BotaoBarra type="button" $variant="ghost" onClick={() => setExportandoPdf(true)}>
           <Download size={14} />
-          PDF
+          Exportar
         </BotaoBarra>
       </Barra>
 
@@ -1100,7 +1102,7 @@ export function ProjetoCronograma() {
       {confirmandoOficializacao && (
         <ConfirmarModal
           titulo="Oficializar cronograma"
-          mensagem="Oficializar trava o cronograma: qualquer mudança passa a exigir reajuste aprovado pela diretoria. Confirma?"
+          mensagem="Marca este cronograma como oficializado. Confirma?"
           rotuloConfirmar="Oficializar"
           onCancelar={() => setConfirmandoOficializacao(false)}
           onConfirmar={oficializar}

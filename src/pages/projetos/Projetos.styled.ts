@@ -723,28 +723,81 @@ export const HistoricoLimparFiltros = styled.button`
   }
 `;
 
-export const HistoricoDiaGrupo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.sm};
+export const HistoricoAutorChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.secondary};
+  color: ${theme.colors.foreground};
+  font-weight: ${theme.fontWeight.medium};
 `;
 
-export const HistoricoDiaTitulo = styled.p`
-  margin: 0;
+/* Timeline vertical — uma linha contínua com um ponto por mudança,
+   conectados. O agrupamento por dia é um rótulo leve dentro da própria
+   linha, não uma caixa separada. */
+
+export const HistoricoPeriodoPills = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+`;
+
+export const HistoricoTimeline = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+export const HistoricoTimelineDiaTitulo = styled.p`
+  margin: ${theme.spacing.lg} 0 ${theme.spacing.sm} 2.25rem;
   font-size: ${theme.fontSize.xs};
   font-weight: ${theme.fontWeight.semibold};
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: ${theme.colors.mutedForeground};
+
+  &:first-child {
+    margin-top: 0;
+  }
 `;
 
-export const HistoricoLinhas = styled.div`
+export const HistoricoTimelineItem = styled.div`
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  column-gap: 0.75rem;
+`;
+
+export const HistoricoTimelineTrilho = styled.div<{ $ultimo?: boolean }>`
+  position: relative;
   display: flex;
-  flex-direction: column;
-  border-radius: ${theme.borderRadius.xl};
-  border: 1px solid ${theme.colors.border};
-  background: ${theme.colors.card};
-  overflow: hidden;
+  justify-content: center;
+
+  ${({ $ultimo }) =>
+    !$ultimo &&
+    css`
+      &::before {
+        content: "";
+        position: absolute;
+        top: 0.85rem;
+        bottom: 0;
+        left: 50%;
+        width: 2px;
+        transform: translateX(-50%);
+        background: ${theme.colors.border};
+      }
+    `}
+`;
+
+export const HistoricoTimelinePonto = styled.div<{ $cor: string }>`
+  z-index: 1;
+  margin-top: 0.4rem;
+  width: 0.65rem;
+  height: 0.65rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: ${({ $cor }) => $cor};
+  box-shadow: 0 0 0 3px color-mix(in srgb, ${({ $cor }) => $cor} 20%, ${theme.colors.background});
 `;
 
 const realce = keyframes`
@@ -752,24 +805,27 @@ const realce = keyframes`
   25%, 75% { background: color-mix(in srgb, ${theme.colors.primary} 12%, transparent); }
 `;
 
-export const HistoricoLinha = styled.div<{ $destaque?: boolean; $realcado?: boolean }>`
+/**
+ * $destaque/$realcado (§7.4/§5.6): uma nota de atraso ou remarcação de
+ * banca — em vez de uma transição de status — ganha uma faixa à esquerda pra
+ * se destacar na timeline, e pulsa quando a pessoa chega aqui direto pelo
+ * link "Justificar atraso" (#justificativa-N/#remarcacao-N).
+ */
+export const HistoricoTimelineConteudo = styled.div<{ $destaque?: boolean; $realcado?: boolean }>`
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  /* Espaço pro scroll não esconder a linha embaixo de nada quando a gente
-     pula direto pra ela vindo de "Justificar atraso" (§7.4/§5.6). */
+  flex-direction: column;
+  gap: 0.375rem;
+  padding-bottom: ${theme.spacing.lg};
+  min-width: 0;
+  /* Espaço pro scroll não esconder o item embaixo de nada quando a gente
+     pula direto pra ele vindo de "Justificar atraso" (§7.4/§5.6). */
   scroll-margin-top: 2rem;
-
-  & + & {
-    border-top: 1px solid ${theme.colors.border};
-  }
 
   ${({ $destaque }) =>
     $destaque &&
     css`
+      padding: ${theme.spacing.sm} ${theme.spacing.md};
+      border-radius: ${theme.borderRadius.md};
       background: color-mix(in srgb, ${theme.colors.mutedForeground} 4%, transparent);
       border-left: 3px solid color-mix(in srgb, ${theme.colors.destructive} 45%, transparent);
     `}
@@ -781,31 +837,19 @@ export const HistoricoLinha = styled.div<{ $destaque?: boolean; $realcado?: bool
     `}
 `;
 
-export const HistoricoLinhaTransicao = styled.div`
+export const HistoricoTimelineTransicao = styled.div`
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  min-width: 0;
 `;
 
-export const HistoricoLinhaMeta = styled.div`
+export const HistoricoTimelineMeta = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-shrink: 0;
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
-`;
-
-export const HistoricoAutorChip = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: ${theme.borderRadius.full};
-  background: ${theme.colors.secondary};
-  color: ${theme.colors.foreground};
-  font-weight: ${theme.fontWeight.medium};
 `;
 
 /** §7.4 — a linha de nota de atraso ocupa a largura toda: é texto livre da
@@ -877,6 +921,25 @@ export const HistoricoExcluirBtn = styled.button`
 
   &:hover {
     text-decoration: underline;
+  }
+`;
+
+export const HistoricoCarregarMais = styled.button`
+  display: block;
+  margin: ${theme.spacing.sm} auto 0;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.background};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+  transition: border-color ${theme.transitions.fast}, background ${theme.transitions.fast};
+
+  &:hover {
+    border-color: ${theme.colors.ring};
+    background: ${theme.colors.muted};
   }
 `;
 

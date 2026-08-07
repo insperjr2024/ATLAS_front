@@ -60,7 +60,6 @@ export function deleteMarco(marcoId: number, token: string) {
   return apiFetch(`/cronograma/marcos/${marcoId}`, { method: "DELETE", token });
 }
 
-/** §5.3: cravar o cronograma. Depois disso, mudar exige reajuste (§5.6). */
 /**
  * A entrega PLANEJADA do escopo — a data que o cronograma promete.
  *
@@ -79,6 +78,7 @@ export function definirEntregaPlanejada(
   });
 }
 
+/** §5.3: cravar o cronograma — marco informativo, não trava mais edição. */
 export function oficializarCronograma(escopoId: number, token: string) {
   return apiFetch(`/escopos-projeto/${escopoId}/oficializar`, { method: "POST", token });
 }
