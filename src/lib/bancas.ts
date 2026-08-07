@@ -54,6 +54,21 @@ export function registrarResultado(
 
 
 /**
+ * O relato do coordenador do projeto sobre a banca — ele não é avaliador
+ * dela (ver §8: "ninguém avalia o próprio grupo"), então isto substitui o
+ * formulário de avaliação/notas pra ele, não se soma a ele. Só aceito depois
+ * de `realizado_em` e só pelo próprio `banca.coordenador_id` (o backend
+ * confere os dois).
+ */
+export function registrarDescricaoCoordenador(bancaId: number, descricao: string, token: string) {
+  return apiFetch(`/bancas/${bancaId}/descricao-coordenador`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ descricao }),
+  });
+}
+
+/**
  * A escalação automática do §8: uma semana antes, preenche as bancas que ainda
  * estão sem gente, por rodízio e priorizando a mesma frente.
  */

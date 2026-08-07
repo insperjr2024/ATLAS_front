@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Plus, X } from "lucide-react";
+import { NotebookPen, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   createNovaVersaoFormulario,
@@ -11,6 +11,7 @@ import {
   isPerguntaNota,
 } from "@/lib/avaliacoes";
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
+import { DescricaoQuote } from "@/styles/shared.styled";
 import { getEscopos, getFrentes } from "@/lib/bancas";
 import { getHistoricoBancas } from "@/lib/historico";
 import { getBancas, getBancasFrentes, getCandidaturas } from "@/lib/bancas";
@@ -96,6 +97,7 @@ import {
   PreviewToggleRow,
   SectionTitle,
   NotaFinalDestaque,
+  DescricaoIndicador,
   AvaliacaoBlock,
   AvaliacaoTitulo,
   AvaliacaoMeta,
@@ -302,7 +304,14 @@ export function Avaliacoes() {
               <TableBody>
                 {historicoFiltrado.map((banca) => (
                   <TableRow key={banca.id}>
-                    <NameCell>{banca.nome_projeto}</NameCell>
+                    <NameCell>
+                      {banca.nome_projeto}
+                      {banca.descricao_coordenador && (
+                        <DescricaoIndicador title="Coordenador registrou descrição">
+                          <NotebookPen size={13} aria-hidden="true" />
+                        </DescricaoIndicador>
+                      )}
+                    </NameCell>
                     <TableCell>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</TableCell>
                     <TableCell>{nomeUsuario(usuarios, banca.coordenador_id)}</TableCell>
                     <TableCell>{nomeEscopo(escopos, banca.escopo_id)}</TableCell>
@@ -442,6 +451,13 @@ function VerAvaliacoesModal({
           <NotaFinalDestaque>
             Nota final: <strong>{formatNota(banca.nota_final)}</strong>
           </NotaFinalDestaque>
+
+          <SectionTitle>Descrição do coordenador</SectionTitle>
+          {banca.descricao_coordenador ? (
+            <DescricaoQuote>{banca.descricao_coordenador}</DescricaoQuote>
+          ) : (
+            <EmptyText>O coordenador ainda não registrou uma descrição desta banca.</EmptyText>
+          )}
 
           <SectionTitle>Médias por critério</SectionTitle>
           {carregando && <EmptyText>Carregando médias...</EmptyText>}

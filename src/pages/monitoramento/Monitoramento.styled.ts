@@ -801,7 +801,7 @@ export const LinhaAtraso = styled.li`
   grid-template-columns: 3.75rem 1fr;
   align-items: start;
   gap: 0 ${theme.spacing.md};
-  padding: 0.625rem 0.5rem;
+  padding: 0.85rem 0.5rem;
   margin: 0 -0.5rem;
   border-radius: ${theme.borderRadius.lg};
   transition: background ${theme.transitions.fast};
@@ -880,7 +880,7 @@ export const AtrasoDias = styled.div<{ $nivel: NivelSeveridade; $externo?: boole
 export const AtrasoCorpo = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.4rem;
   min-width: 0;
 `;
 
@@ -901,13 +901,84 @@ export const MotivoLista = styled.ul`
   list-style: none;
 `;
 
+/** Colunas fixas (tag · escopo · dias · data · ação), não `flex-wrap`: com
+ *  nome de escopo de tamanho variável, o flex antigo fazia cada linha
+ *  quebrar num ponto diferente e nada alinhava verticalmente — a régua de
+ *  datas e o botão de ação ficavam impossíveis de escanear de cima a baixo.
+ *  Grid fixa a régua por projeto (cada `MotivoLista` é a sua própria grade). */
 export const MotivoItem = styled.li`
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  font-size: ${theme.fontSize.xs};
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0;
+  font-size: ${theme.fontSize.sm};
   color: ${theme.colors.mutedForeground};
+
+  & + & {
+    border-top: 1px dashed ${theme.colors.border};
+  }
+`;
+
+/** §7.4 — "Justificar" por motivo. Do tamanho do próprio selo "justificado"
+ *  ao lado (`MotivoJustificadoBadge`), não do resto da linha (`xs`) — os dois
+ *  ocupam o mesmo lugar num estado ou noutro e precisam pesar igual. */
+/** Contorno em vez de texto sublinhado sozinho: `primary` e `destructive`
+ *  são a MESMA cor institucional aqui (ver `theme.ts`), então ao lado dos
+ *  números vermelhos de atraso um link vermelho sem contorno se perdia no
+ *  meio da severidade — parecia mais um aviso do que uma ação. A forma de
+ *  pílula (igual ao selo verde "Justificado" ao lado) é o que diferencia
+ *  "isto é clicável" quando a cor não pode. */
+export const MotivoJustificarBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  justify-self: end;
+  padding: 0.2rem 0.6rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px solid ${theme.colors.primary};
+  background: transparent;
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.primary};
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background ${theme.transitions.fast};
+
+  &:hover {
+    background: color-mix(in srgb, ${theme.colors.primary} 10%, transparent);
+  }
+`;
+
+/** O selo "justificado" por motivo — maior que o resto da linha (`xs`) de
+ *  propósito: é a prova de que a diretoria já respondeu aquele atraso, não
+ *  deveria se perder no meio do texto pequeno da lista.
+ *
+ *  É um LINK (pra `/projetos/{id}/historico#justificativa-{id}`), não um
+ *  selo mudo — de que adianta dizer "já foi respondido" sem levar pra
+ *  resposta? `AtrasosAba` decide se renderiza como link ou como span puro
+ *  (quando não tem `justificativa_id` pra apontar). */
+export const MotivoJustificadoBadge = styled(RouterLink)`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  justify-self: end;
+  padding: 0.2rem 0.6rem;
+  border-radius: ${theme.borderRadius.full};
+  background: color-mix(in srgb, ${theme.colors.success} 16%, transparent);
+  color: ${theme.colors.success};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, ${theme.colors.success} 26%, transparent);
+  }
+
+  &::before {
+    content: "✓";
+  }
 `;
 
 /** A data que venceu. Entra em `tabular-nums` e um pouco mais escura que o
@@ -929,8 +1000,21 @@ export const MotivoDias = styled.span<{ $nivel: NivelSeveridade; $externo?: bool
   font-variant-numeric: tabular-nums;
   font-weight: ${theme.fontWeight.medium};
   white-space: nowrap;
+  /* Alinha "4 dias"/"14 dias" pela direita dentro da coluna — sem isto, o
+     dígito a mais empurrava a coluna de data, que já vem logo depois. */
+  justify-self: end;
   color: ${({ $nivel, $externo }) =>
     $externo ? theme.colors.mutedForeground : SEVERIDADE_TEXTO[$nivel]};
+`;
+
+/** O nome do escopo — coluna flexível da grade (`1fr`), truncada com "…" em
+ *  vez de empurrar as colunas de dias/data/ação pra fora quando o nome é
+ *  comprido. */
+export const MotivoEscopoNome = styled.span`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 `;
 
 /** Distingue o atraso do TIME (banca, entrega interna) do que veio da agenda
@@ -946,14 +1030,17 @@ export const MotivoDias = styled.span<{ $nivel: NivelSeveridade; $externo?: bool
  *  do cliente é só contorno. */
 export const MotivoTag = styled.span<{ $externo?: boolean }>`
   flex-shrink: 0;
-  padding: 0.05rem 0.4rem;
-  border-radius: ${theme.borderRadius.sm};
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: ${theme.borderRadius.md};
   font-size: ${theme.fontSize.xs};
-  font-weight: ${theme.fontWeight.medium};
+  font-weight: ${theme.fontWeight.semibold};
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border: 1px solid ${theme.colors.border};
-  background: ${({ $externo }) => ($externo ? "transparent" : theme.colors.muted)};
+  border: 1px solid ${({ $externo }) => ($externo ? theme.colors.border : "transparent")};
+  background: ${({ $externo }) =>
+    $externo ? "transparent" : `color-mix(in srgb, ${theme.colors.foreground} 8%, transparent)`};
   color: ${({ $externo }) =>
     $externo ? theme.colors.mutedForeground : theme.colors.foreground};
 `;

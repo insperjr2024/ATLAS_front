@@ -19,6 +19,7 @@ import {
   getFrentes,
   podeGerenciarBanca,
   realizarBanca,
+  registrarDescricaoCoordenador,
   ROTULO_STATUS_BANCA,
   syncBancaFrentes,
   syncEquipeProjeto,
@@ -42,6 +43,7 @@ import {
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
 import { AlertModal } from "@/components/AlertModal";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
+import { DescricaoQuote } from "@/styles/shared.styled";
 import {
   cancelarSolicitacaoTroca,
   confirmarSolicitacaoTroca,
@@ -89,6 +91,7 @@ import {
   DetailRow,
   DetailTerm,
   DetailValue,
+  DescricaoSecao,
   FormStack,
   FieldGroup,
   FieldLabel,
@@ -191,6 +194,7 @@ export function Bancas() {
   const [aba, setAba] = useState<AbaBancas>("alocacao");
   const [avisoErro, setAvisoErro] = useState("");
   const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
+  const [bancaConvidar, setBancaConvidar] = useState<Banca | null>(null);
 
   const podeAgendar = !!usuario?.cargo.pode_definir_cronograma;
   const ehDiretor = usuario?.posicao === "diretor";
@@ -347,6 +351,18 @@ export function Bancas() {
     }
   }
 
+  async function handleConvidarTroca(bancaId: number, usuarioConvidadoId: number) {
+    const candidatura = candidaturaDe(bancaId);
+    if (!token || !candidatura) return;
+    try {
+      await createSolicitacaoTroca(candidatura.id, token, usuarioConvidadoId);
+      setBancaConvidar(null);
+      recarregar();
+    } catch (err) {
+      setAvisoErro(err instanceof Error ? err.message : "Erro ao convidar para a troca");
+    }
+  }
+
   async function handleConfirmarTroca(solicitacaoId: number) {
     if (!token) return;
     try {
@@ -471,6 +487,7 @@ export function Bancas() {
             ehDiretorLista={ehDiretor}
             onAcao={handleDesalocar}
             onPedirTroca={handlePedirTroca}
+            onConvidar={setBancaConvidar}
             onCancelarTroca={handleCancelarTroca}
             onVerMais={setBancaDetalhe}
           />
@@ -547,10 +564,22 @@ export function Bancas() {
         banca={bancaDetalhe}
         contexto={contexto}
         usuarioId={usuario.id}
+        token={token}
         onClose={() => setBancaDetalhe(null)}
         onEditar={setBancaEditar}
         onExcluir={handleExcluir}
+        onDescricaoEnviada={recarregar}
       />
+
+      {bancaConvidar && contexto && (
+        <ConvidarTrocaModal
+          banca={bancaConvidar}
+          contexto={contexto}
+          usuarioId={usuario.id}
+          onConvidar={(usuarioConvidadoId) => handleConvidarTroca(bancaConvidar.id, usuarioConvidadoId)}
+          onClose={() => setBancaConvidar(null)}
+        />
+      )}
 
       {bancaRealizar && usuario && (
         <RealizarBancaModal
@@ -646,6 +675,7 @@ function SecaoBancas({
   onAlocarPessoas,
   ehDiretorLista,
   onPedirTroca,
+  onConvidar,
   onCancelarTroca,
   bancaDestacada,
   refDestacada,
@@ -670,6 +700,8 @@ function SecaoBancas({
   /** Alocar OUTRA pessoa é ação de diretoria (§8), diferente de gerenciar. */
   ehDiretorLista?: boolean;
   onPedirTroca?: (bancaId: number) => void;
+  /** Abre o picker de convite específico — alternativa ao pedido aberto. */
+  onConvidar?: (banca: Banca) => void;
   onCancelarTroca?: (solicitacaoId: number) => void;
 }) {
   return (
@@ -808,11 +840,18 @@ function SecaoBancas({
                             Cancelar troca
                           </PageButtonSm>
                         ) : (
-                          onPedirTroca && (
-                            <PageButtonSm $variant="outline" type="button" onClick={() => onPedirTroca(banca.id)}>
-                              Pedir troca
-                            </PageButtonSm>
-                          )
+                          <>
+                            {onPedirTroca && (
+                              <PageButtonSm $variant="outline" type="button" onClick={() => onPedirTroca(banca.id)}>
+                                Pedir troca
+                              </PageButtonSm>
+                            )}
+                            {onConvidar && (
+                              <PageButtonSm $variant="outline" type="button" onClick={() => onConvidar(banca)}>
+                                Convidar alguém
+                              </PageButtonSm>
+                            )}
+                          </>
                         )}
                       </>
                     )}
@@ -863,13 +902,21 @@ function SecaoTrocas({
   onCancelar: (solicitacaoId: number) => void;
 }) {
   const pendentes = solicitacoes.filter((s) => s.status === "pendente");
-  const disponiveis = pendentes.filter((s) => s.usuario_original_id !== usuarioId);
+  // Convite pra outra pessoa não aparece pra mais ninguém: só quem pediu
+  // ("Meu pedido") e quem foi convidado ("Convite pra você") — o resto do
+  // pool nem sabe que existe (o backend também recusaria a confirmação).
+  const disponiveis = pendentes.filter(
+    (s) =>
+      s.usuario_original_id !== usuarioId &&
+      (s.usuario_convidado_id === null || s.usuario_convidado_id === usuarioId),
+  );
   const minhas = pendentes.filter((s) => s.usuario_original_id === usuarioId);
   const total = disponiveis.length + minhas.length;
 
   function linha(solicitacao: SolicitacaoTroca, propria: boolean) {
     const banca = bancas.find((b) => b.id === solicitacao.banca_id);
     const dataHora = banca ? new Date(banca.data_hora) : null;
+    const convitePraMim = !propria && solicitacao.usuario_convidado_id === usuarioId;
     return (
       <BancaLinha key={solicitacao.id}>
         <BancaData>
@@ -885,8 +932,8 @@ function SecaoTrocas({
         <BancaInfo>
           <BancaNomeLinha>
             <BancaNome>{banca?.nome_projeto ?? `Banca ${solicitacao.banca_id}`}</BancaNome>
-            <PageBadge $tone={propria ? "default" : "warning"}>
-              {propria ? "Meu pedido" : "Troca aberta"}
+            <PageBadge $tone={propria ? "default" : convitePraMim ? "success" : "warning"}>
+              {propria ? "Meu pedido" : convitePraMim ? "Convite pra você" : "Troca aberta"}
             </PageBadge>
           </BancaNomeLinha>
           {dataHora && (
@@ -1319,20 +1366,28 @@ function VerMaisModal({
   banca,
   contexto,
   usuarioId,
+  token,
   onClose,
   onEditar,
   onExcluir,
+  onDescricaoEnviada,
 }: {
   banca: Banca | null;
   contexto: Contexto;
   usuarioId: number;
+  token: string | null;
   onClose: () => void;
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
+  onDescricaoEnviada?: () => void;
 }) {
   if (!banca) return null;
 
   const podeGerenciar = podeGerenciarBanca(banca, usuarioId);
+  // O coordenador não é avaliador da própria banca (§8: "ninguém avalia o
+  // próprio grupo") — no lugar do formulário de notas, ele só registra este
+  // relato livre, e só depois que a banca de fato aconteceu.
+  const ehCoordenador = usuarioId === banca.coordenador_id;
 
   return (
     <ModalOverlay onClick={onClose} role="presentation">
@@ -1376,6 +1431,17 @@ function VerMaisModal({
               <DetailValue>{avaliadoresDaBanca(contexto.candidaturas, contexto.usuarios, banca.id).join(", ") || "—"}</DetailValue>
             </DetailRow>
           </DetailList>
+
+          {banca.realizado_em && (ehCoordenador || banca.descricao_coordenador) && (
+            <DescricaoSecao>
+              <DescricaoCoordenador
+                banca={banca}
+                editavel={ehCoordenador}
+                token={token}
+                onEnviada={onDescricaoEnviada}
+              />
+            </DescricaoSecao>
+          )}
         </ModalBody>
         <ModalFooter>
           {podeGerenciar && onEditar && (
@@ -1390,6 +1456,155 @@ function VerMaisModal({
           )}
           <PageButton $variant="outline" type="button" onClick={onClose}>
             Fechar
+          </PageButton>
+        </ModalFooter>
+      </NarrowModalContent>
+    </ModalOverlay>
+  );
+}
+
+/**
+ * O relato do coordenador sobre a banca — não é o formulário de avaliação
+ * (ele nem candidato dela é, ver `create_candidatura`). Só aparece depois de
+ * `realizado_em`; só o próprio coordenador edita, o resto só lê.
+ */
+function DescricaoCoordenador({
+  banca,
+  editavel,
+  token,
+  onEnviada,
+}: {
+  banca: Banca;
+  editavel: boolean;
+  token: string | null;
+  onEnviada?: () => void;
+}) {
+  const [descricao, setDescricao] = useState(banca.descricao_coordenador ?? "");
+  const [editando, setEditando] = useState(!banca.descricao_coordenador);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function enviar() {
+    if (!token || !descricao.trim()) return;
+    setEnviando(true);
+    setErro("");
+    try {
+      await registrarDescricaoCoordenador(banca.id, descricao.trim(), token);
+      setEditando(false);
+      onEnviada?.();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao enviar a descrição");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <FieldGroup>
+      <FieldLabel htmlFor="descricao-coordenador">Descrição do coordenador</FieldLabel>
+      {editavel && editando ? (
+        <>
+          <FieldTextarea
+            id="descricao-coordenador"
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            placeholder="Como foi a banca, o que ficou combinado com o cliente…"
+            disabled={enviando}
+          />
+          {erro && <FormErrorText>{erro}</FormErrorText>}
+          <PageButtonSm type="button" disabled={enviando || !descricao.trim()} onClick={enviar}>
+            {enviando ? "Enviando..." : "Enviar descrição"}
+          </PageButtonSm>
+        </>
+      ) : (
+        <>
+          <DescricaoQuote>{banca.descricao_coordenador}</DescricaoQuote>
+          {editavel && (
+            <PageButtonSm $variant="outline" type="button" onClick={() => setEditando(true)}>
+              Editar
+            </PageButtonSm>
+          )}
+        </>
+      )}
+    </FieldGroup>
+  );
+}
+
+/**
+ * Convite direto pra troca — alternativa ao "Pedir troca" (pool aberto,
+ * qualquer elegível confirma). Aqui quem pede escolhe a pessoa; só ela
+ * consegue confirmar depois (o backend garante, ver `confirmar_solicitacao_troca`).
+ * As mesmas exclusões do pool aberto valem aqui: coordenador e equipe do
+ * projeto da banca, e quem já é candidato dela.
+ */
+function ConvidarTrocaModal({
+  banca,
+  contexto,
+  usuarioId,
+  onConvidar,
+  onClose,
+}: {
+  banca: Banca;
+  contexto: Contexto;
+  usuarioId: number;
+  onConvidar: (usuarioConvidadoId: number) => void;
+  onClose: () => void;
+}) {
+  const excluidos = new Set<number>([usuarioId, banca.coordenador_id]);
+  contexto.equipesProjeto
+    .filter((e) => e.banca_id === banca.id)
+    .forEach((e) => excluidos.add(e.usuario_id));
+  contexto.candidaturas
+    .filter((c) => c.banca_id === banca.id)
+    .forEach((c) => excluidos.add(c.usuario_id));
+
+  const elegiveis = contexto.usuarios
+    .filter((u) => u.ativo && !excluidos.has(u.id))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+
+  const [usuarioEscolhidoId, setUsuarioEscolhidoId] = useState<number | "">("");
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="convidar-troca-titulo">
+        <ModalHeader>
+          <ModalTitle id="convidar-troca-titulo">Convidar para a troca — {banca.nome_projeto}</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          {elegiveis.length === 0 ? (
+            <EmptyText>Ninguém elegível pra convidar nesta banca no momento.</EmptyText>
+          ) : (
+            <FieldGroup>
+              <FieldLabel htmlFor="convidado">Pessoa</FieldLabel>
+              <FieldSelect
+                id="convidado"
+                value={usuarioEscolhidoId}
+                onChange={(e) => setUsuarioEscolhidoId(Number(e.target.value))}
+                autoFocus
+              >
+                <option value="">Escolha quem convidar</option>
+                {elegiveis.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome}
+                  </option>
+                ))}
+              </FieldSelect>
+            </FieldGroup>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <PageButton $variant="outline" type="button" onClick={onClose}>
+            Cancelar
+          </PageButton>
+          <PageButton
+            type="button"
+            disabled={!usuarioEscolhidoId}
+            onClick={() => usuarioEscolhidoId && onConvidar(usuarioEscolhidoId)}
+          >
+            Enviar convite
           </PageButton>
         </ModalFooter>
       </NarrowModalContent>

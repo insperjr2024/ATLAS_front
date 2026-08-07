@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { pode } from "@/utils/permissoes";
 import { getAtrasos, type Atrasos } from "@/lib/monitoramento";
-import { formatarData, ROTULO_STATUS } from "@/lib/projetos";
+import {
+  formatarData,
+  registrarJustificativaAtraso,
+  ROTULO_MOTIVO_ATRASO,
+  ROTULO_STATUS,
+} from "@/lib/projetos";
 import type { StatusProjeto } from "@/types/projeto";
 
 type LinhaProjeto = Atrasos["por_projeto"][number];
@@ -20,6 +27,16 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalClose,
+  ModalBody,
+  ModalFooter,
+} from "@/styles/modal.styled";
+import { FieldTextarea, FormErrorText } from "@/pages/Bancas.styled";
+import {
   AtrasoCorpo,
   AtrasoDias,
   AtrasoTitulo,
@@ -37,7 +54,10 @@ import {
   ListaSimples,
   MotivoData,
   MotivoDias,
+  MotivoEscopoNome,
   MotivoItem,
+  MotivoJustificadoBadge,
+  MotivoJustificarBtn,
   MotivoLista,
   MotivoTag,
   Pilula,
@@ -55,12 +75,6 @@ import {
   type NivelSeveridade,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
-
-const ROTULO_MOTIVO: Record<string, string> = {
-  banca: "banca",
-  entrega_interna: "entrega",
-  entrega_externa: "agenda do cliente",
-};
 
 /**
  * §7.4 — o pilar é a BANCA: "um escopo está atrasado quando passa da data da
@@ -85,12 +99,26 @@ const ROTULO_MOTIVO: Record<string, string> = {
  * pior caso, e a lista é ordenada por ele: o número em destaque é o mesmo que
  * define a ordem, então ninguém precisa adivinhar o critério.
  */
+// Mesmo padrão de `TarefasGeraisAba`/`CronogramasGeraisAba`: sem isto, o link
+// "Voltar" da página do projeto caía sempre em `/projetos`, perdendo a aba de
+// Monitoramento de onde a pessoa realmente veio.
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/atrasos", voltarRotulo: "Voltar para Atrasos" };
+
 export function AtrasosAba() {
-  const { token } = useAuth();
+  const { token, usuario } = useAuth();
+  const navigate = useNavigate();
   const { frenteId, seletor } = useFiltroFrente();
   const [dados, setDados] = useState<Atrasos | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  // §7.4 — o alerta é automático; só a diretoria digita o porquê. A
+  // justificativa é POR MOTIVO (escopo + tipo): o mesmo escopo pode estar
+  // atrasado em banca e entrega ao mesmo tempo, e uma nota genérica do
+  // projeto não distingue qual dos dois foi respondido.
+  const podeJustificar = pode(usuario, "registrar_justificativa_atraso");
+  const [justificando, setJustificando] = useState<{ projeto: LinhaProjeto; motivo: Motivo } | null>(
+    null,
+  );
 
   async function carregar() {
     if (!token) return;
@@ -171,7 +199,7 @@ export function AtrasosAba() {
               {resumo.pior_caso}
               <small>dias</small>
             </ResumoValor>
-            <ResumoRotulo>pior atraso isolado</ResumoRotulo>
+            <ResumoRotulo>Pior atraso isolado</ResumoRotulo>
           </ResumoItem>
           {/* 🤝 A entrega travada do lado do CLIENTE.
               O §7.4 tira isso do que se cobra do time, e por isso ela some das
@@ -193,9 +221,9 @@ export function AtrasosAba() {
           <PageCardTitle>Por projeto</PageCardTitle>
           {projetos.length > 0 && (
             <Legenda>
-              <LegendaItem $nivel="leve">até 3 dias</LegendaItem>
-              <LegendaItem $nivel="media">4 a 10</LegendaItem>
-              <LegendaItem $nivel="critica">mais de 10</LegendaItem>
+              <LegendaItem $nivel="leve">Até 3 dias</LegendaItem>
+              <LegendaItem $nivel="media">4 a 10 dias</LegendaItem>
+              <LegendaItem $nivel="critica">Mais de 10 dias</LegendaItem>
             </Legenda>
           )}
         </PageCardHeader>
@@ -245,11 +273,13 @@ export function AtrasosAba() {
   
                       <AtrasoCorpo>
                         <AtrasoTitulo>
-                          <LinkProjeto to={`/projetos/${p.projeto_id}`}>{p.projeto_nome}</LinkProjeto>
+                          <LinkProjeto to={`/projetos/${p.projeto_id}`} state={VOLTAR_PARA_AQUI}>
+                            {p.projeto_nome}
+                          </LinkProjeto>
                           <Pilula $tom="neutro">
                             {ROTULO_STATUS[p.status as StatusProjeto] ?? p.status}
                           </Pilula>
-                          {externo && <Pilula $tom="atencao">espera do cliente</Pilula>}
+                          {externo && <Pilula $tom="atencao">Espera do cliente</Pilula>}
                         </AtrasoTitulo>
   
                         <MotivoLista>
@@ -261,16 +291,40 @@ export function AtrasosAba() {
                               /* O escopo sozinho NÃO é chave única: o mesmo
                                  escopo pode entrar duas vezes, uma pela banca e
                                  outra pela entrega. O par tipo+escopo é. */
+                              /* 5 filhos SEMPRE, mesmo quando um deles não
+                                 tem conteúdo — MotivoItem é uma grade de 5
+                                 colunas fixas por posição; se um filho sumir
+                                 do DOM (em vez de ficar vazio), os de depois
+                                 escorregam pra coluna errada. */
                               <MotivoItem key={`${m.tipo}-${m.projeto_escopo_id ?? i}`}>
                                 <MotivoTag $externo={ehExterno(m)}>
-                                  {ROTULO_MOTIVO[m.tipo] ?? m.tipo}
+                                  {ROTULO_MOTIVO_ATRASO[m.tipo] ?? m.tipo}
                                 </MotivoTag>
-                                <span>{m.escopo}</span>
+                                <MotivoEscopoNome title={m.escopo}>{m.escopo}</MotivoEscopoNome>
                                 <MotivoDias $nivel={nivel(m.dias)} $externo={ehExterno(m)}>
                                   {m.dias} {m.dias === 1 ? "dia" : "dias"}
                                 </MotivoDias>
-                                {m.data_referencia && (
-                                  <MotivoData>vencia {formatarData(m.data_referencia)}</MotivoData>
+                                <MotivoData>
+                                  {m.data_referencia && `vencia ${formatarData(m.data_referencia)}`}
+                                </MotivoData>
+                                {/* §7.4: por MOTIVO, não por projeto — o mesmo
+                                    escopo pode estar atrasado em banca e
+                                    entrega ao mesmo tempo, cada um com sua
+                                    própria nota. Já justificado vira selo, não
+                                    fica reabrindo pra "adicionar mais uma". */}
+                                {m.justificado && m.justificativa_id != null ? (
+                                  <MotivoJustificadoBadge
+                                    to={`/projetos/${p.projeto_id}/historico#justificativa-${m.justificativa_id}`}
+                                    state={VOLTAR_PARA_AQUI}
+                                  >
+                                    Justificado
+                                  </MotivoJustificadoBadge>
+                                ) : podeJustificar ? (
+                                  <MotivoJustificarBtn type="button" onClick={() => setJustificando({ projeto: p, motivo: m })}>
+                                    Justificar
+                                  </MotivoJustificarBtn>
+                                ) : (
+                                  <span />
                                 )}
                               </MotivoItem>
                             ))}
@@ -317,7 +371,7 @@ export function AtrasosAba() {
                             {c.atrasados} de {c.projetos}
                           </Pilula>
                         ) : (
-                          <Pilula $tom="ok">nenhum</Pilula>
+                          <Pilula $tom="ok">Nenhum</Pilula>
                         )}
                       </TableCell>
                       <TableCell>
@@ -359,7 +413,114 @@ export function AtrasosAba() {
           )}
         </PageCardContent>
       </PageCard>
+
+      {justificando && token && (
+        <JustificarAtrasoModal
+          projeto={justificando.projeto}
+          motivo={justificando.motivo}
+          token={token}
+          onClose={() => setJustificando(null)}
+          onSalvo={(criadaId) => {
+            const projetoId = justificando.projeto.projeto_id;
+            setJustificando(null);
+            // Direto pra nota que acabou de ser escrita, não pro topo do
+            // histórico inteiro — e "Voltar" de lá cai aqui, não em /projetos.
+            navigate(`/projetos/${projetoId}/historico#justificativa-${criadaId}`, {
+              state: VOLTAR_PARA_AQUI,
+            });
+          }}
+        />
+      )}
     </PageStack>
+  );
+}
+
+/**
+ * §7.4: o alerta de atraso é automático — ninguém digita nada pra ele
+ * acontecer. O "porquê" é outra coisa: a diretoria pergunta ao coordenador e
+ * registra a nota aqui, que fica gravada pra sempre no histórico do projeto
+ * (`ProjetoHistorico.tsx`). Por MOTIVO (escopo + tipo), não por projeto: o
+ * mesmo escopo pode estar atrasado em banca e entrega ao mesmo tempo.
+ */
+function JustificarAtrasoModal({
+  projeto,
+  motivo,
+  token,
+  onClose,
+  onSalvo,
+}: {
+  projeto: LinhaProjeto;
+  motivo: Motivo;
+  token: string;
+  onClose: () => void;
+  onSalvo: (criadaId: number) => void;
+}) {
+  const [texto, setTexto] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function salvar() {
+    if (!texto.trim()) {
+      setErro("Digite a justificativa antes de salvar");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      const criada = await registrarJustificativaAtraso(
+        projeto.projeto_id,
+        texto.trim(),
+        token,
+        motivo.projeto_escopo_id ?? undefined,
+        motivo.tipo,
+      );
+      onSalvo(criada.id);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao registrar a justificativa");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <ModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <ModalHeader>
+          <ModalTitle>
+            Justificar atraso — {projeto.projeto_nome}
+            <br />
+            <small>
+              {ROTULO_MOTIVO_ATRASO[motivo.tipo] ?? motivo.tipo} de {motivo.escopo}
+            </small>
+          </ModalTitle>
+          <ModalClose type="button" onClick={onClose} aria-label="Fechar">
+            ✕
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          <EmptyText style={{ marginBottom: "0.75rem" }}>
+            Pergunte ao coordenador o motivo e registre aqui — fica salvo no histórico do projeto.
+          </EmptyText>
+          <FieldTextarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Por que este atraso aconteceu"
+            aria-label="Justificativa do atraso"
+            autoFocus
+            required
+          />
+          {erro && <FormErrorText>{erro}</FormErrorText>}
+        </ModalBody>
+        <ModalFooter>
+          <PageButton type="button" $variant="outline" onClick={onClose} disabled={salvando}>
+            Cancelar
+          </PageButton>
+          <PageButton type="button" onClick={salvar} disabled={salvando}>
+            {salvando ? "Salvando..." : "Salvar justificativa"}
+          </PageButton>
+        </ModalFooter>
+      </ModalContent>
+    </ModalOverlay>
   );
 }
 

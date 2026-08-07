@@ -251,6 +251,14 @@ export interface Atrasos {
       projeto_escopo_id: number | null;
       /** A data que venceu: a banca não realizada ou a entrega planejada. */
       data_referencia: string | null;
+      /** §7.4 — já tem justificativa da diretoria cobrindo ESTE motivo (o
+       *  mesmo escopo pode estar atrasado em banca e entrega ao mesmo tempo;
+       *  uma nota de uma rodada de atraso anterior, já resolvida, não conta).
+       *  O motivo continua na lista mesmo justificado: o alerta é automático. */
+      justificado: boolean;
+      /** Qual nota justifica — pra o selo "justificado" levar direto pra ela
+       *  no histórico do projeto. `null` quando `justificado` é `false`. */
+      justificativa_id: number | null;
     }[];
   }[];
   por_coordenador: {

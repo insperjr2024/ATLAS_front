@@ -203,13 +203,55 @@ export const CardTitulo = styled.span`
   line-height: 1.35;
 `;
 
+/**
+ * O cliente — texto corrido, sempre em linha própria (nunca dividindo
+ * espaço com outra informação de largura variável: era isso que fazia o
+ * mesmo card quebrar diferente dependendo da coluna). Trunca com
+ * reticências se não couber; o nome completo fica no title (tooltip).
+ */
 export const CardMeta = styled.div`
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/**
+ * As frentes do projeto — pílulas, não texto corrido, pra não se confundir
+ * visualmente com o cliente logo acima (mesma cor/tamanho de fonte, só a
+ * posição os diferenciava, o que sumia quando um dos dois quebrava linha).
+ */
+export const CardFrentes = styled.div`
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
   gap: 0.25rem;
+`;
+
+export const CardFrenteTag = styled.span`
+  display: inline-flex;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0.05rem 0.4rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.secondary};
   font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.foreground};
+`;
+
+/**
+ * A data da próxima banca (§6.2), quando o projeto tem uma marcada. Sem
+ * reticências aqui — cortar o texto escondia o horário, que é o dado que
+ * essa linha existe pra mostrar. Deixa quebrar pra uma segunda linha se
+ * precisar; o componente troca o espaço entre data e hora por um espaço
+ * inquebrável, pra nunca cortar bem no meio do "hh:mm".
+ */
+export const CardBanca = styled.div`
+  font-size: ${theme.fontSize.xs};
+  font-variant-numeric: tabular-nums;
   color: ${theme.colors.mutedForeground};
 `;
 
