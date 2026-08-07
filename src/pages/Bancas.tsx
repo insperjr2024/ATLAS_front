@@ -129,6 +129,10 @@ import {
   EscolhidoBox,
   EscopoIndisponivel,
   BancaLinha,
+  BancaCard,
+  BancaCardScrollWrap,
+  BancaCardFooter,
+  BancaAcoesSecundarias,
   BancaData,
   BancaDataDiaSemana,
   BancaDataDia,
@@ -713,7 +717,7 @@ function SecaoBancas({
       <PageCardContent>
         {bancas.length === 0 && <EmptyText>Nenhuma banca aqui.</EmptyText>}
         {bancas.length > 0 && (
-          <ListScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
+          <BancaCardScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
             {bancas.map((banca) => {
               const dataHora = new Date(banca.data_hora);
               const diaSemana = dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
@@ -743,11 +747,26 @@ function SecaoBancas({
               const prazo = acao === "avaliar" ? contexto.prazosAvaliacao[banca.id] : undefined;
               const prazoExpirado = !!prazo?.prazoExpirado;
 
+              // Qualquer clique dentro do rodapé de ações não deve também
+              // disparar o clique do card inteiro (que abre "Ver mais").
+              function pararPropagacao<T extends unknown[]>(fn?: (...args: T) => void) {
+                return (e: React.MouseEvent, ...args: T) => {
+                  e.stopPropagation();
+                  fn?.(...args);
+                };
+              }
+
               return (
-                <BancaLinha
+                <BancaCard
                   key={banca.id}
                   $destacada={banca.id === bancaDestacada}
                   ref={banca.id === bancaDestacada ? refDestacada : undefined}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onVerMais(banca)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onVerMais(banca);
+                  }}
                 >
                   <BancaData>
                     <BancaDataDiaSemana>{diaSemana}</BancaDataDiaSemana>
@@ -790,77 +809,83 @@ function SecaoBancas({
                     </BancaMeta>
                   </BancaInfo>
 
-                  <BancaAcoes>
-                    <PageButtonSm $variant="outline" type="button" onClick={() => onVerMais(banca)}>
-                      Ver mais
-                    </PageButtonSm>
-                    {podeGerenciar && onEditar && (
-                      <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(banca)}>
-                        Editar
-                      </PageButtonSm>
-                    )}
-                    {podeGerenciar && onExcluir && (
-                      <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(banca)}>
-                        Excluir
-                      </PageButtonSm>
-                    )}
+                  <BancaCardFooter>
+                    <BancaAcoesSecundarias>
+                      {podeGerenciar && onEditar && (
+                        <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onEditar(banca))}>
+                          Editar
+                        </PageButtonSm>
+                      )}
+                      {podeGerenciar && onExcluir && (
+                        <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onExcluir(banca))}>
+                          Excluir
+                        </PageButtonSm>
+                      )}
 
-                    {/* Escalar à mão: a diretoria não precisa esperar a janela
-                        de uma semana do push para preencher uma banca vazia. */}
-                    {ehDiretorLista && onAlocarPessoas && !banca.realizado_em && (
-                      <PageButtonSm
-                        $variant="outline"
-                        type="button"
-                        onClick={() => onAlocarPessoas(banca)}
-                      >
-                        Alocar pessoas
-                      </PageButtonSm>
-                    )}
+                      {/* Escalar à mão: a diretoria não precisa esperar a
+                          janela de uma semana do push para preencher uma
+                          banca vazia. */}
+                      {ehDiretorLista && onAlocarPessoas && !banca.realizado_em && (
+                        <PageButtonSm
+                          $variant="outline"
+                          type="button"
+                          onClick={pararPropagacao(() => onAlocarPessoas(banca))}
+                        >
+                          Alocar pessoas
+                        </PageButtonSm>
+                      )}
 
-                    {/* Ainda não aconteceu: o passo que tira a banca de
-                        "atrasada" e alimenta o cálculo do §7.4.
-                        ⚠ Trava por CARGO (`gerenciar`), não por ser o
-                        coordenador daquela banca: o backend usa
-                        `require_pode_definir_cronograma`, e usar
-                        `podeGerenciarBanca` aqui escondia o botão da própria
-                        diretoria — que é justamente quem precisa dele. */}
-                    {gerenciar && onRealizar && !banca.realizado_em && banca.data_hora && (
-                      <PageButtonSm $variant="outline" type="button" onClick={() => onRealizar(banca)}>
-                        Registrar realização
-                      </PageButtonSm>
-                    )}
-                    {acao === "deslocar" && minhaCandidatura && (
-                      <>
-                        {minhaSolicitacaoPendente && onCancelarTroca ? (
-                          <PageButtonSm
-                            $variant="outline"
-                            type="button"
-                            onClick={() => onCancelarTroca(minhaSolicitacaoPendente.id)}
-                          >
-                            Cancelar troca
-                          </PageButtonSm>
-                        ) : (
-                          <>
-                            {onPedirTroca && (
-                              <PageButtonSm $variant="outline" type="button" onClick={() => onPedirTroca(banca.id)}>
-                                Pedir troca
-                              </PageButtonSm>
-                            )}
-                            {onConvidar && (
-                              <PageButtonSm $variant="outline" type="button" onClick={() => onConvidar(banca)}>
-                                Convidar alguém
-                              </PageButtonSm>
-                            )}
-                          </>
-                        )}
-                      </>
-                    )}
+                      {/* Ainda não aconteceu: o passo que tira a banca de
+                          "atrasada" e alimenta o cálculo do §7.4.
+                          ⚠ Trava por CARGO (`gerenciar`), não por ser o
+                          coordenador daquela banca: o backend usa
+                          `require_pode_definir_cronograma`, e usar
+                          `podeGerenciarBanca` aqui escondia o botão da
+                          própria diretoria — que é justamente quem precisa
+                          dele. */}
+                      {gerenciar && onRealizar && !banca.realizado_em && banca.data_hora && (
+                        <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onRealizar(banca))}>
+                          Registrar realização
+                        </PageButtonSm>
+                      )}
+                      {acao === "deslocar" && minhaCandidatura && (
+                        <>
+                          {minhaSolicitacaoPendente && onCancelarTroca ? (
+                            <PageButtonSm
+                              $variant="outline"
+                              type="button"
+                              onClick={pararPropagacao(() => onCancelarTroca(minhaSolicitacaoPendente.id))}
+                            >
+                              Cancelar troca
+                            </PageButtonSm>
+                          ) : (
+                            <>
+                              {onPedirTroca && (
+                                <PageButtonSm
+                                  $variant="outline"
+                                  type="button"
+                                  onClick={pararPropagacao(() => onPedirTroca(banca.id))}
+                                >
+                                  Pedir troca
+                                </PageButtonSm>
+                              )}
+                              {onConvidar && (
+                                <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onConvidar(banca))}>
+                                  Convidar alguém
+                                </PageButtonSm>
+                              )}
+                            </>
+                          )}
+                        </>
+                      )}
+                    </BancaAcoesSecundarias>
+
                     {acao !== "nenhuma" && onAcao && (
                       <PageButtonSm
                         $variant={acao === "deslocar" ? "outline" : "primary"}
                         type="button"
                         disabled={lotada || prazoExpirado}
-                        onClick={() => onAcao(banca.id)}
+                        onClick={pararPropagacao(() => onAcao(banca.id))}
                       >
                         {lotada
                           ? "Lotada"
@@ -873,11 +898,11 @@ function SecaoBancas({
                                 : "Avaliar"}
                       </PageButtonSm>
                     )}
-                  </BancaAcoes>
-                </BancaLinha>
+                  </BancaCardFooter>
+                </BancaCard>
               );
             })}
-          </ListScrollWrap>
+          </BancaCardScrollWrap>
         )}
       </PageCardContent>
     </PageCard>

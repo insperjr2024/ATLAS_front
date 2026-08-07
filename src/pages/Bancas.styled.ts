@@ -351,6 +351,88 @@ export const BancaAcoes = styled.div`
   justify-content: flex-end;
 `;
 
+/**
+ * O card de uma banca na lista principal (§8) — não confundir com
+ * `BancaLinha`, que continua sendo a linha fina usada em listas mais simples
+ * (o picker do `AlocarPessoasModal`, as trocas em `SecaoTrocas`). Aqui a
+ * banca carrega até 5-6 ações possíveis dependendo de quem olha, e por isso
+ * ganha um cartão próprio: título/meta em cima, ações num rodapé separado
+ * por uma borda — em vez de tudo espremido numa linha só (era isso que
+ * deixava a tela cheia de pílulas iguais, sem hierarquia nenhuma). O cartão
+ * inteiro é clicável (abre "Ver mais"), no mesmo padrão dos cards de
+ * Projetos — por isso o botão "Ver mais" deixou de existir separado.
+ */
+export const BancaCard = styled.div<{ $destacada?: boolean }>`
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.xl};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.sm};
+  cursor: pointer;
+  transition: border-color ${theme.transitions.fast}, box-shadow ${theme.transitions.fast};
+
+  &:hover {
+    border-color: ${theme.colors.ring};
+    box-shadow: ${theme.shadows.md};
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 30%, transparent);
+  }
+
+  /* Quem chega pelo card do monitoramento (/bancas?banca=123) cai numa lista
+     longa. Sem uma marca, a pessoa precisa procurar de novo justamente a
+     banca em que acabou de clicar. */
+  ${({ $destacada }) =>
+    $destacada &&
+    css`
+      border-color: ${theme.colors.ring};
+      box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 18%, transparent);
+    `}
+`;
+
+/** As duas colunas da lista de bancas viram uma coluna só em telas
+ *  estreitas — a grade de data+ações lado a lado não cabe. */
+export const BancaCardScrollWrap = styled.div<{ $scrollable?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+
+  ${({ $scrollable }) =>
+    $scrollable &&
+    css`
+      max-height: 34rem;
+      overflow-y: auto;
+    `}
+`;
+
+/** O rodapé do card — separado do título/meta por uma borda, pra ação não
+ *  parecer parte do mesmo bloco de texto. `justify-content: space-between`
+ *  separa as ações administrativas (esquerda) da ação principal (direita),
+ *  que é a única pílula cheia do card — o resto fica em contorno. */
+export const BancaCardFooter = styled.div`
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.xs};
+  padding-top: ${theme.spacing.sm};
+  border-top: 1px solid ${theme.colors.border};
+`;
+
+export const BancaAcoesSecundarias = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  flex-wrap: wrap;
+`;
+
 export const TabCount = styled.span`
   display: inline-flex;
   align-items: center;
