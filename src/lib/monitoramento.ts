@@ -420,3 +420,58 @@ export function getTarefasGerais(token: string, frenteId?: number | null, escopo
 export function getCronogramasGerais(token: string, frenteId?: number | null, escopoId?: number | null) {
   return apiFetch<CronogramasGerais>(`/monitoramento/cronogramas${query(frenteId, escopoId)}`, { token });
 }
+
+/* ------------------------------------------------------------------ */
+/* Aprovações — a fila da diretoria                                    */
+/* ------------------------------------------------------------------ */
+
+export interface AprovacaoDiasDeAjuste {
+  id: number;
+  projeto_id: number;
+  projeto_nome: string;
+  escopo_nome: string;
+  dias_solicitados: number;
+  dias_vendidos: number;
+  dias_ajustados: number;
+  motivo: string;
+  solicitado_por_nome: string | null;
+  criado_em: string;
+}
+
+export interface AprovacaoAtraso {
+  projeto_id: number;
+  projeto_nome: string;
+  status: string;
+  dias_totais: number;
+  motivos: string[];
+}
+
+export interface AprovacaoEntrega {
+  escopo_id: number;
+  projeto_id: number;
+  projeto_nome: string;
+  escopo_nome: string;
+  data_prometida: string;
+  data_entrega: string;
+  dias_de_atraso: number;
+}
+
+export interface Aprovacoes {
+  dias_de_ajuste: AprovacaoDiasDeAjuste[];
+  atrasos_sem_justificativa: AprovacaoAtraso[];
+  entregas_sem_classificacao: AprovacaoEntrega[];
+  /** Servido pronto pelo backend — o badge da aba precisa dele antes de
+   *  qualquer render, e somar no front duplicaria a conta. */
+  total: number;
+}
+
+/**
+ * Tudo que espera decisão da diretoria, numa chamada.
+ *
+ * Sem `frenteId` de propósito: a fila é dela e ela enxerga a área inteira
+ * (§3). Um filtro aqui só criaria a chance de um pedido ficar escondido atrás
+ * de uma opção que alguém deixou ligada.
+ */
+export function getAprovacoes(token: string) {
+  return apiFetch<Aprovacoes>("/monitoramento/aprovacoes", { token });
+}

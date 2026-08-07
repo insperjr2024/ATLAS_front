@@ -28,6 +28,7 @@ import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
 import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
 import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
 import { VisaoGeralAba } from "@/pages/monitoramento/VisaoGeralAba";
+import { AprovacoesAba } from "@/pages/monitoramento/AprovacoesAba";
 import { ExecucaoAba } from "@/pages/monitoramento/ExecucaoAba";
 import { AlocacaoAba } from "@/pages/monitoramento/AlocacaoAba";
 import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
@@ -104,6 +105,10 @@ export default function App() {
               <Route element={<AdminRoute permissao="pode_ver_monitoramento" />}>
                 <Route path="/monitoramento" element={<MonitoramentoLayout />}>
                   <Route index element={<VisaoGeralAba />} />
+                  {/* 🔒 Só a diretoria decide (§3) — o backend cobra
+                      `require_diretor` na rota; o guard aqui evita a tela
+                      vazia com 403 para quem chega pela URL. */}
+                  <Route path="aprovacoes" element={<AprovacoesAba />} />
                   <Route path="execucao" element={<ExecucaoAba />} />
                   <Route path="alocacao" element={<AlocacaoAba />} />
                   <Route path="atrasos" element={<AtrasosAba />} />
