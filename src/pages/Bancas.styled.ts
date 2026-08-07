@@ -71,6 +71,14 @@ export const DetailValue = styled.dd`
   text-align: right;
 `;
 
+/** Separa a seção da descrição do coordenador do bloco de detalhes acima —
+ *  sem isto os dois grudam, sem hierarquia visual nenhuma. */
+export const DescricaoSecao = styled.div`
+  margin-top: ${theme.spacing.md};
+  padding-top: ${theme.spacing.md};
+  border-top: 1px solid ${theme.colors.border};
+`;
+
 export const FormStack = styled.form`
   display: flex;
   flex-direction: column;

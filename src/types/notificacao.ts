@@ -16,6 +16,7 @@ export type TipoNotificacao =
   | "escalacao_banca"
   | "troca_banca"
   | "avaliacao_pendente"
+  | "descricao_coordenador_pendente"
   | "banca_aviso"
   // 🔄 condições — recalculadas a cada GET; somem sozinhas quando resolvidas
   | "kickoff_pendente"
@@ -55,6 +56,9 @@ export interface SolicitacaoTroca {
   banca_id: number;
   usuario_original_id: number;
   candidatura_id: number | null;
+  /** Nulo = pedido aberto, qualquer elegível confirma. Preenchido = convite
+   *  direto pra essa pessoa — só ela pode confirmar. */
+  usuario_convidado_id: number | null;
   status: StatusSolicitacaoTroca;
   criado_em: string;
   confirmada_por: number | null;

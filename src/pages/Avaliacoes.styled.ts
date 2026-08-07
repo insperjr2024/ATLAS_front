@@ -250,6 +250,16 @@ export const PreviewToggleRow = styled.div`
   justify-content: flex-end;
 `;
 
+/** O indicador de "tem descrição" ao lado do nome do projeto na tabela — só
+ *  um sinal visual discreto, o texto em si fica no modal "Ver avaliações". */
+export const DescricaoIndicador = styled.span`
+  display: inline-flex;
+  align-items: center;
+  margin-left: ${theme.spacing.xs};
+  color: ${theme.colors.mutedForeground};
+  vertical-align: middle;
+`;
+
 export const NotaFinalDestaque = styled.p`
   margin: 0 0 ${theme.spacing.md};
   font-size: ${theme.fontSize.base};

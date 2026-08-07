@@ -16,6 +16,7 @@ import {
   GraduationCap,
   ListChecks,
   Megaphone,
+  NotebookPen,
   SlidersHorizontal,
   Star,
   Truck,
@@ -84,6 +85,7 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   // Vindos do módulo de bancas (§8), que passou a escrever nesta mesma central.
   troca_banca: { icone: ArrowLeftRight, rotulo: "Troca de banca", alerta: false },
   avaliacao_pendente: { icone: ClipboardCheck, rotulo: "Avaliação pendente", alerta: true },
+  descricao_coordenador_pendente: { icone: NotebookPen, rotulo: "Descrição de banca pendente", alerta: true },
   banca_aviso: { icone: Megaphone, rotulo: "Aviso de banca", alerta: false },
   // O plano mudou depois de combinado — pintados como alerta porque exigem
   // replanejamento de quem já tinha a data antiga na agenda.
@@ -114,6 +116,7 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "entrega_registrada",
   "troca_banca",
   "avaliacao_pendente",
+  "descricao_coordenador_pendente",
   "lote_desempenho_aberto",
   "pdi_prazo_proximo",
   "pdi_prazo_vencido",
