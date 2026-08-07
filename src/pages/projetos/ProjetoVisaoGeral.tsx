@@ -41,10 +41,13 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  FieldGroup,
   FieldInput,
+  FieldLabel,
   FieldSelect,
   FieldTextarea,
   FormErrorText,
+  Required,
   ModalOverlay,
   ModalHeader,
   ModalTitle,
@@ -95,6 +98,7 @@ export function ProjetoVisaoGeral() {
   const [baixandoAnexo, setBaixandoAnexo] = useState(false);
   const [erroAnexo, setErroAnexo] = useState("");
   const [editandoDescricao, setEditandoDescricao] = useState(false);
+  const [nome, setNome] = useState(projeto.nome);
   const [descricao, setDescricao] = useState(projeto.descricao ?? "");
   const [salvandoDescricao, setSalvandoDescricao] = useState(false);
   const [erroDescricao, setErroDescricao] = useState("");
@@ -104,14 +108,18 @@ export function ProjetoVisaoGeral() {
 
   async function handleSalvarDescricao() {
     if (!token) return;
+    if (!nome.trim()) {
+      setErroDescricao("O nome do projeto não pode ficar vazio.");
+      return;
+    }
     setSalvandoDescricao(true);
     setErroDescricao("");
     try {
-      await updateDescricao(projeto.id, descricao, token);
+      await updateDescricao(projeto.id, descricao, token, nome.trim());
       setEditandoDescricao(false);
       await recarregar();
     } catch (err) {
-      setErroDescricao(err instanceof Error ? err.message : "Erro ao salvar a descrição");
+      setErroDescricao(err instanceof Error ? err.message : "Erro ao salvar");
     } finally {
       setSalvandoDescricao(false);
     }
@@ -153,6 +161,7 @@ export function ProjetoVisaoGeral() {
                 type="button"
                 $variant="outline"
                 onClick={() => {
+                  setNome(projeto.nome);
                   setDescricao(projeto.descricao ?? "");
                   setEditandoDescricao(true);
                 }}
@@ -164,6 +173,16 @@ export function ProjetoVisaoGeral() {
           <PageCardContent>
             {editandoDescricao ? (
               <>
+                <FieldGroup>
+                  <FieldLabel htmlFor="projeto-nome-editar">
+                    Nome do projeto<Required>*</Required>
+                  </FieldLabel>
+                  <FieldInput
+                    id="projeto-nome-editar"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                  />
+                </FieldGroup>
                 <FieldTextarea
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
@@ -434,14 +453,6 @@ function TabelaEscopos() {
               </TableBody>
             </DataTable>
 
-            <LegendaTabela>
-              🔒 A entrega fica travada até a banca do escopo ser aprovada. Os dias correm apenas
-              enquanto o escopo está iniciado e não entregue — feriados, provas e recessos do
-              calendário do Insper não contam.
-              <br />▶ Um escopo começa a contar na <strong>reunião inicial</strong> dele: registre-a
-              na aba <strong>Reuniões</strong>, escolhendo o dia e o escopo. A data da banca precisa
-              já estar marcada.
-            </LegendaTabela>
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </>
         )}
@@ -1108,10 +1119,6 @@ function EditarEquipeModal({
                 fechar a única janela em que o time se reunia. */}
             <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={ativos} />
 
-            <EmptyText>
-              Trocar alguém não apaga o passado: a linha antiga é fechada e uma nova é aberta, para o
-              histórico de quem participou continuar de pé.
-            </EmptyText>
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>
           <ModalFooter>

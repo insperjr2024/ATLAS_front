@@ -39,7 +39,6 @@ import {
   PageHeaderRow,
   PageHeaderText,
   PageHeading,
-  PageSubheading,
   FormStack,
   FieldGroup,
   FieldLabel,
@@ -182,7 +181,7 @@ export function ProjetoNovo() {
         const projeto = await createProjeto(
           {
             nome: nome.trim(),
-            cliente: cliente.trim(),
+            cliente: cliente.trim() || null,
             descricao: descricao.trim() || null,
             link_proposta: modoProposta === "link" ? linkProposta.trim() || null : null,
             frente_ids: frenteIds,
@@ -228,8 +227,6 @@ export function ProjetoNovo() {
 
   if (carregando) return <PageLoadingBlock />;
 
-  const sinergico = frenteIds.length === MAX_FRENTES;
-
   return (
     <PageStack>
       <PageHeaderRow>
@@ -239,10 +236,6 @@ export function ProjetoNovo() {
             Voltar para projetos
           </VoltarLink>
           <PageHeading>Criar projeto</PageHeading>
-          <PageSubheading>
-            O projeto nasce como <strong>Vendido</strong>. O kickoff é marcado depois, na página do
-            projeto — é ele que move o status para Ambientação.
-          </PageSubheading>
         </PageHeaderText>
       </PageHeaderRow>
 
@@ -267,15 +260,12 @@ export function ProjetoNovo() {
               </FieldGroup>
 
               <FieldGroup>
-                <FieldLabel htmlFor="projeto-cliente">
-                  Cliente<Required>*</Required>
-                </FieldLabel>
+                <FieldLabel htmlFor="projeto-cliente">Cliente</FieldLabel>
                 <FieldInput
                   id="projeto-cliente"
                   value={cliente}
                   onChange={(e) => setCliente(e.target.value)}
                   placeholder="Padaria do Zé"
-                  required
                 />
               </FieldGroup>
 
@@ -300,19 +290,6 @@ export function ProjetoNovo() {
                     );
                   })}
                 </CheckboxGrid>
-                <PageSubheading>
-                  {sinergico
-                    ? "🔗 Duas frentes marcadas: o projeto é sinérgico e aparece para os dois gerentes."
-                    : "Até 2 frentes. Duas marcadas = projeto sinérgico."}
-                </PageSubheading>
-                {frenteIds.length > 0 && (
-                  <PageSubheading>
-                    📅 O cronograma já nasce marcando de cinza os dias não úteis do calendário base{" "}
-                    {frenteIds.length > 1 ? "dessas frentes" : "dessa frente"} (
-                    {frenteIds.map((id) => frentes.find((f) => f.id === id)?.nome ?? id).join(", ")}) —
-                    configurável em Calendários base.
-                  </PageSubheading>
-                )}
               </FieldGroup>
 
               <FieldGroup>
@@ -327,10 +304,6 @@ export function ProjetoNovo() {
                   onChange={setEscopos}
                   desabilitado={salvando}
                 />
-                <PageSubheading>
-                  Cada escopo tem os seus próprios dias úteis vendidos, banca e entrega. A contagem
-                  só começa quando o escopo é iniciado, na página do projeto.
-                </PageSubheading>
               </FieldGroup>
 
               <FieldGroup>
@@ -426,7 +399,6 @@ export function ProjetoNovo() {
                     {erroAnexo && <FormErrorText>{erroAnexo}</FormErrorText>}
                   </>
                 )}
-                <PageSubheading>Um ou outro — link para a proposta, ou o PDF anexado.</PageSubheading>
               </FieldGroup>
 
               <FieldGroup>

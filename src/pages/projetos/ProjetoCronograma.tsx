@@ -770,7 +770,7 @@ export function ProjetoCronograma() {
         >
           {/* Geral junta tudo: etapas, marcos e os dias não úteis de todas as
               frentes. Escolher um escopo estreita a tela para o que é dele. */}
-          <option value="geral">Geral — o projeto inteiro</option>
+          <option value="geral">Geral</option>
           {dados.escopos.map((e) => (
             <option key={e.id} value={e.id}>
               {e.nome}
@@ -869,6 +869,7 @@ export function ProjetoCronograma() {
           onPaintRange={aoPintar}
           onEraseRange={aoApagar}
           onArrasteMudou={setPreviewIntervalo}
+          semScrollProprio
         />
 
         <LegendaBox>

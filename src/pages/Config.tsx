@@ -7,6 +7,7 @@ import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/esco
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
 import { ConfiguracaoBancaCard } from "./config/ConfiguracaoBancaCard";
+import { GestaoSemestralCard } from "./config/GestaoSemestralCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Escopo, Frente } from "@/types/banca";
 import type { Cargo } from "@/types/auth";
@@ -231,6 +232,8 @@ export function Config() {
         </PageHeaderText>
       </PageHeaderRow>
 
+      <GestaoSemestralCard />
+
       <SituacoesCargaCard />
 
       <PageCard>
@@ -321,8 +324,7 @@ export function Config() {
         <PageCardContent>
           {!podeEditarCargos && (
             <EmptyText style={{ fontSize: "0.7rem" }}>
-              Só a diretoria altera cargos e permissões — é o que impede alguém de
-              se auto-conceder acesso. Aqui você consulta quem pode o quê.
+              Só quem já tem esta permissão pode editar cargos — impede auto-concessão de acesso.
             </EmptyText>
           )}
           {cargos.length === 0 && <EmptyText>Nenhum cargo cadastrado.</EmptyText>}

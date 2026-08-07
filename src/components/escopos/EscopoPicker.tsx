@@ -1,4 +1,4 @@
-import { Plus, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import type { Escopo, Frente } from "@/types/banca";
 import { PageButtonSm, EmptyText } from "@/styles/page.styled";
 import { FieldInput, FieldLabel, FieldSelect } from "@/pages/Bancas.styled";
@@ -6,9 +6,22 @@ import {
   EscopoLinha,
   EscopoLista,
   DiasInput,
+  MoverBotao,
+  MoverBotoes,
   RemoverBotao,
   PickerRodape,
 } from "./EscopoPicker.styled";
+
+/** A hierarquia dos 4 escopos clássicos da Business, sempre nessa ordem
+ *  quando aparecem juntos num projeto (a pedido do usuário, 2026-08-07).
+ *  Espelha `ORDEM_PADRAO_BUSINESS` da migration `9ef5e8c8a983` no backend —
+ *  só o nome muda de arquivo, a regra é a mesma. */
+const ORDEM_PADRAO_BUSINESS: Record<string, number> = {
+  "Análise Mercadológica": 0,
+  "Plano Operacional": 1,
+  "Plano Estratégico de Marketing": 2,
+  "Viabilidade Financeira": 3,
+};
 
 /** Um escopo sendo montado no formulário, antes de virar `projeto_escopo`. */
 export interface EscopoEmEdicao {
@@ -77,20 +90,45 @@ export function EscopoPicker({
     onChange(valor.filter((_, i) => i !== indice));
   }
 
+  /** Troca de posição com o vizinho — é isso que "ordem" significa aqui: a
+   *  sequência em que a lista vai ser enviada na criação do projeto. */
+  function mover(indice: number, direcao: -1 | 1) {
+    const alvo = indice + direcao;
+    if (alvo < 0 || alvo >= valor.length) return;
+    const nova = [...valor];
+    [nova[indice], nova[alvo]] = [nova[alvo], nova[indice]];
+    onChange(nova);
+  }
+
   function adicionar(escopoId: number | null) {
-    const frentePadrao =
-      escopoId !== null
-        ? (catalogo.find((e) => e.id === escopoId)?.frente_id ?? frentesMarcadas[0])
-        : frentesMarcadas[0];
-    onChange([
-      ...valor,
-      {
-        escopo_id: escopoId,
-        nome_customizado: "",
-        frente_id: frentePadrao,
-        dias_uteis_vendidos: "",
-      },
-    ]);
+    const catalogoItem = escopoId !== null ? catalogo.find((e) => e.id === escopoId) : null;
+    const frentePadrao = catalogoItem?.frente_id ?? frentesMarcadas[0];
+    const novo: EscopoEmEdicao = {
+      escopo_id: escopoId,
+      nome_customizado: "",
+      frente_id: frentePadrao,
+      dias_uteis_vendidos: "",
+    };
+
+    // Um dos 4 clássicos da Business: entra já no lugar certo da hierarquia
+    // em vez de sempre no fim — antes do primeiro que já esteja na lista com
+    // ordem maior que a dele. Escopo "Outro" ou de catálogo fora dessa lista
+    // simplesmente vai pro fim, como sempre foi.
+    const ordemNovo = catalogoItem ? ORDEM_PADRAO_BUSINESS[catalogoItem.nome] : undefined;
+    if (ordemNovo === undefined) {
+      onChange([...valor, novo]);
+      return;
+    }
+    const posicao = valor.findIndex((e) => {
+      const nomeExistente = catalogo.find((c) => c.id === e.escopo_id)?.nome;
+      const ordemExistente = nomeExistente ? ORDEM_PADRAO_BUSINESS[nomeExistente] : undefined;
+      return ordemExistente !== undefined && ordemExistente > ordemNovo;
+    });
+    onChange(
+      posicao === -1
+        ? [...valor, novo]
+        : [...valor.slice(0, posicao), novo, ...valor.slice(posicao)],
+    );
   }
 
   if (frentesMarcadas.length === 0) {
@@ -107,6 +145,25 @@ export function EscopoPicker({
         const ehOutro = escopo.escopo_id === null;
         return (
           <EscopoLinha key={indice}>
+            <MoverBotoes>
+              <MoverBotao
+                type="button"
+                aria-label="Mover pra cima"
+                disabled={desabilitado || indice === 0}
+                onClick={() => mover(indice, -1)}
+              >
+                <ChevronUp size={12} />
+              </MoverBotao>
+              <MoverBotao
+                type="button"
+                aria-label="Mover pra baixo"
+                disabled={desabilitado || indice === valor.length - 1}
+                onClick={() => mover(indice, 1)}
+              >
+                <ChevronDown size={12} />
+              </MoverBotao>
+            </MoverBotoes>
+
             {ehOutro ? (
               <FieldInput
                 value={escopo.nome_customizado}

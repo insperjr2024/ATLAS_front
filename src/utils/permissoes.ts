@@ -9,6 +9,7 @@ import type { Posicao, StatusUsuario, Usuario } from "@/types/auth";
  */
 export type Acao =
   | "arquivar_projeto"
+  | "apagar_projeto_permanente"
   | "mudar_status_projeto"
   | "mover_projeto_kanban"
   | "remarcar_banca"
@@ -25,6 +26,8 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   arquivar_projeto: ["diretor", "gerente"],
 
   // Só a diretoria
+  /** Sem volta — mais pesado que arquivar, por isso não é diretor+gerente. */
+  apagar_projeto_permanente: ["diretor"],
   remarcar_banca: ["diretor"],
   liberar_excecao_choque: ["diretor"],
   registrar_justificativa_atraso: ["diretor"],
