@@ -83,6 +83,73 @@ export function oficializarCronograma(escopoId: number, token: string) {
   return apiFetch(`/escopos-projeto/${escopoId}/oficializar`, { method: "POST", token });
 }
 
+/* ----------------------------------------------- §8 · dias de ajuste */
+
+/* Os dois fluxos CONVIVEM — não são versões um do outro, apesar de terem se
+   cruzado no merge. `oficializarCronograma` acima só carimba
+   `cronograma_oficializado_em`: virou marco informativo e não tranca mais o
+   calendário atrás de uma fila de aprovação, que era o cadeado que
+   transformava em rotina a exceção que o §5.6 pedia que fosse rara. A janela
+   do escopo NÃO consulta esse carimbo: quem a estica é o pedido de DIAS
+   abaixo, e é só ele que passa por aprovação. */
+
+/**
+ * ⭐ O coordenador pede dias extras para o escopo (§8).
+ *
+ * Só dá certo nos **3 primeiros dias úteis** da janela (a partir da reunião
+ * inicial) e só para o coordenador daquele projeto — as duas regras são do
+ * backend, e ele responde 422 com a explicação pronta para a tela mostrar.
+ */
+export function pedirDiasDeAjuste(
+  escopoId: number,
+  dados: { dias_solicitados: number; motivo: string },
+  token: string,
+) {
+  return apiFetch(`/escopos-projeto/${escopoId}/reajuste`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+/** A fila de pedidos aguardando decisão — só a diretoria enxerga. */
+export function getPedidosDeDiasPendentes(token: string) {
+  return apiFetch<PedidoPendente[]>("/reajustes/pendentes", { token });
+}
+
+/**
+ * A decisão da diretoria. Aprovar **soma** os dias em `dias_uteis_ajustados` e
+ * estica a janela; negar só registra — e o coordenador pode pedir de novo,
+ * desde que ainda esteja dentro do prazo.
+ */
+export function responderPedidoDeDias(
+  solicitacaoId: number,
+  dados: { aprovado: boolean; justificativa: string },
+  token: string,
+) {
+  return apiFetch(`/reajustes/${solicitacaoId}/responder`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+export interface PedidoPendente {
+  id: number;
+  projeto_escopo_id: number;
+  projeto_id: number | null;
+  projeto_nome: string | null;
+  escopo_nome: string | null;
+  solicitado_por: number;
+  solicitado_por_nome: string | null;
+  dias_solicitados: number;
+  /** A janela de hoje, para a decisão ter contra o que somar. */
+  dias_uteis_vendidos: number | null;
+  dias_uteis_ajustados: number | null;
+  motivo: string;
+  criado_em: string;
+}
+
 /* ------------------------------------------------------------------ */
 
 /* `mesesDaJanela` vivia aqui: expandia a janela do backend na lista de meses a

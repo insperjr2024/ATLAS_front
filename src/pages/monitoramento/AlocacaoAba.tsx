@@ -41,6 +41,7 @@ import {
   VagaLivre,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { useFiltroEscopo } from "./FiltroEscopo";
 
 type Papel = "consultor" | "coordenador";
 
@@ -56,7 +57,14 @@ const ROTULO_PAPEL: Record<Papel, { singular: string; plural: string }> = {
  *  só do gráfico: a mesma pergunta respondida três vezes. */
 export function AlocacaoAba() {
   const { token } = useAuth();
-  const { frenteId, seletor } = useFiltroFrente();
+  const { frenteId, seletor: seletorFrente } = useFiltroFrente();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const seletor = (
+    <>
+      {seletorFrente}
+      {seletorEscopo}
+    </>
+  );
   const [papel, setPapel] = useState<Papel>("consultor");
   const [dados, setDados] = useState<Alocacao | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -67,7 +75,7 @@ export function AlocacaoAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getAlocacao(token, frenteId));
+      setDados(await getAlocacao(token, frenteId, escopoId));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar a alocação");
     } finally {
@@ -78,7 +86,7 @@ export function AlocacaoAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId]);
+  }, [token, frenteId, escopoId]);
 
   // ⚠ O seletor fica FORA do early return de erro e de carregando. Se ele
   // sumisse durante uma falha, quem filtrasse numa frente que dá erro ficaria

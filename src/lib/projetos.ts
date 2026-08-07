@@ -130,12 +130,9 @@ export function marcarKickoff(projetoId: number, dataKickoff: string, token: str
   );
 }
 
-export function marcarEntregaCliente(projetoId: number, data: string, token: string) {
-  return apiFetch<{ id: number; data_entrega_cliente: string }>(
-    `/projetos/${projetoId}/entrega-cliente`,
-    { method: "PATCH", token, body: JSON.stringify({ data_entrega_cliente: data }) },
-  );
-}
+// ⭐ Não existe `marcarEntregaCliente`: entrega ao cliente e entrega do escopo
+// são a MESMA data (§5.5) — quem a escreve é `marcarEntregaEscopo`, e a do
+// projeto é derivada da última pelo backend.
 
 /** `statusNovo` aceita qualquer etapa ativa (ver `destinosValidos`), `"pausado"` ou `"retomar"`. */
 export function mudarStatus(projetoId: number, statusNovo: string, token: string) {
@@ -282,15 +279,35 @@ export function updateEscopoProjeto(
   });
 }
 
-// ⭐ A contagem do §5.4 começa pela REUNIÃO INICIAL, registrada na aba
-// Reuniões com o escopo escolhido (`createReuniao` em `lib/tarefas.ts`). Não
-// existe mais um "iniciar escopo" digitado à parte.
+// ⭐ A contagem do §5.4 começa pela REUNIÃO INICIAL, marcada no calendário do
+// CRONOGRAMA com o escopo escolhido (`createReuniao` em `lib/tarefas.ts`). A
+// aba Reuniões, que era onde isso ficava, deixou de existir: todas as datas do
+// projeto passaram a ser cravadas numa tela só (§2). Não existe um "iniciar
+// escopo" digitado à parte.
+//
+// (Merge) `updateEscopoProjeto` acima veio da main e convive com isso: ele edita
+// os CAMPOS do escopo vendido (nome, dias, entrega planejada, ordem na tabela),
+// não a data de início — que continua sendo a reunião inicial do cronograma.
 
-/** 🔒 O backend recusa com 422 até a banca do escopo sair aprovada (§5.5). */
-export function marcarEntregaEscopo(escopoId: number, data: string, token: string) {
+/**
+ * 🔒 O backend recusa com 422 até a banca do escopo ser realizada (§5.5).
+ *
+ * `justificativa` só é exigida para ALTERAR uma entrega já registrada, e nesse
+ * caso o backend também exige que quem altera seja a diretoria (§13).
+ */
+export function marcarEntregaEscopo(
+  escopoId: number,
+  data: string,
+  token: string,
+  justificativa?: string,
+) {
   return apiFetch<{ id: number; data_entrega_real: string; status: string }>(
     `/escopos-projeto/${escopoId}/entrega`,
-    { method: "PATCH", token, body: JSON.stringify({ data_entrega_real: data }) },
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ data_entrega_real: data, justificativa }),
+    },
   );
 }
 

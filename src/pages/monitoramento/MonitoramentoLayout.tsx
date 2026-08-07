@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Outlet, useOutletContext } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
-import type { Frente } from "@/types/banca";
+import { getEscopos } from "@/lib/escopos";
+import type { Escopo, Frente } from "@/types/banca";
 import { pode } from "@/utils/permissoes";
 import { PageStack } from "@/styles/page.styled";
 import {
@@ -20,6 +21,9 @@ export interface MonitoramentoContexto {
    *  iguais a cada troca de aba. Quem guarda a escolha é cada aba, via
    *  `useFiltroFrente`. */
   frentes: Frente[];
+  /** O catálogo de escopos, pro seletor de `useFiltroEscopo` — mesmo motivo
+   *  de `frentes`: carrega uma vez no layout, não uma vez por aba. */
+  escopos: Escopo[];
 }
 
 export function useMonitoramento() {
@@ -37,6 +41,7 @@ export function useMonitoramento() {
 export function MonitoramentoLayout() {
   const { usuario, token } = useAuth();
   const [frentes, setFrentes] = useState<Frente[]>([]);
+  const [escopos, setEscopos] = useState<Escopo[]>([]);
 
   const podeVerTarefasGerais = pode(usuario, "ver_tarefas_gerais");
   const podeVerCronogramasGerais = pode(usuario, "ver_cronogramas_gerais");
@@ -44,9 +49,10 @@ export function MonitoramentoLayout() {
   useEffect(() => {
     if (!token) return;
     getFrentes(token).then(setFrentes).catch(() => setFrentes([]));
+    getEscopos(token).then(setEscopos).catch(() => setEscopos([]));
   }, [token]);
 
-  const contexto: MonitoramentoContexto = { frentes };
+  const contexto: MonitoramentoContexto = { frentes, escopos };
 
   return (
     <PageStack>

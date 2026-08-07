@@ -41,6 +41,7 @@ import {
   type TomPilula,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { useFiltroEscopo } from "./FiltroEscopo";
 
 /**
  * §7.2 — ver quem não está distribuindo tarefa nem fazendo reunião, sem
@@ -53,7 +54,14 @@ import { useFiltroFrente } from "./FiltroFrente";
  */
 export function ExecucaoAba() {
   const { token } = useAuth();
-  const { frenteId, seletor } = useFiltroFrente();
+  const { frenteId, seletor: seletorFrente } = useFiltroFrente();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const seletor = (
+    <>
+      {seletorFrente}
+      {seletorEscopo}
+    </>
+  );
   const [dados, setDados] = useState<Execucao | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -67,7 +75,7 @@ export function ExecucaoAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getExecucao(token, frenteId, referencia ?? undefined));
+      setDados(await getExecucao(token, frenteId, referencia ?? undefined, escopoId));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar a execução");
     } finally {
@@ -78,7 +86,7 @@ export function ExecucaoAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId, referencia]);
+  }, [token, frenteId, referencia, escopoId]);
 
   /** Anda `dias` a partir do início da semana exibida. */
   function navegar(dias: number) {
@@ -375,7 +383,10 @@ export function ExecucaoAba() {
                   {paginaReunioes.visiveis.map((linha) => (
                     <TableRow key={linha.projeto_id}>
                       <TableCell>
-                        <LinkProjeto to={`/projetos/${linha.projeto_id}/reunioes`}>{linha.projeto_nome}</LinkProjeto>
+                        {/* A aba Reuniões deixou de existir: as reuniões
+                            passaram a ser marcadas no calendário do
+                            cronograma, que é para onde este link leva. */}
+                        <LinkProjeto to={`/projetos/${linha.projeto_id}/cronograma`}>{linha.projeto_nome}</LinkProjeto>
                       </TableCell>
                       <TableCell>
                         {/* "Não realizou" é AUSÊNCIA de linha na janela

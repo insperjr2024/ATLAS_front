@@ -82,6 +82,21 @@ interface PaintedCalendarProps {
    * restrito que o escopo. Ausente, vale o próprio `diasNaoUteis`.
    */
   diasBloqueados?: Map<string, DiaNaoUtil>;
+  /**
+   * ⭐ Os dias que a trava **não** deveria tratar como parede.
+   *
+   * Fim de semana e feriado são fato: não se trabalha, ponto. Já "fora da
+   * janela do escopo" é um limite NEGOCIADO — a janela pode crescer se a
+   * diretoria autorizar. Tratar os dois igual fazia o arrasto ser aparado em
+   * silêncio, e a pessoa ficava arrastando sem entender por que nada
+   * acontecia.
+   *
+   * Estes dias continuam com a mesma aparência de bloqueado (a janela ainda
+   * não cresceu), mas o gesto que os alcança dispara `onNegociar` em vez de
+   * ser engolido. A parte que cabe na janela é pintada normalmente — não se
+   * perde o trabalho por causa do pedido.
+   */
+  diasNegociaveis?: Set<string>;
   /** O grupo do "pintando: X". `null` = cursor de leitura. */
   grupoAtivo: string | null;
   /** Nome e cor do grupo ativo. Necessário à parte porque uma etapa recém
@@ -108,6 +123,22 @@ interface PaintedCalendarProps {
   onEraseRange?: (grupo: string, inicio: string, fim: string) => void;
   /** Notifica o intervalo em construção, para a barra mostrar a contagem. */
   onArrasteMudou?: (intervalo: { inicio: string; fim: string } | null) => void;
+  /**
+   * O arrasto alcançou dias negociáveis: quem chamou decide o que fazer (na
+   * página, abrir o pedido de dias à diretoria). Recebe quantos dias úteis
+   * negociáveis foram alcançados e o último deles.
+   */
+  onNegociar?: (grupo: string, diasExtras: number, ultimoDia: string) => void;
+  /**
+   * ⭐ Um CLIQUE simples num dia, quando a página está num modo de marcação
+   * (reunião inicial, reunião geral, banca, entrega — §4 do de-para).
+   *
+   * Não interfere no arrasto: enquanto ele existe, `grupoAtivo` é `null` (a
+   * página desliga o pincel ao entrar num modo), então os dois gestos nunca
+   * disputam o mesmo clique. Dia não útil não dispara — não se marca reunião
+   * em feriado.
+   */
+  onDiaClicado?: (dia: string) => void;
 }
 
 interface Arraste {
@@ -142,6 +173,7 @@ export function PaintedCalendar({
   faixas,
   diasNaoUteis,
   diasBloqueados,
+  diasNegociaveis,
   grupoAtivo,
   pincel,
   somenteLeitura,
@@ -149,7 +181,9 @@ export function PaintedCalendar({
   semScrollProprio,
   onPaintRange,
   onEraseRange,
+  onNegociar,
   onArrasteMudou,
+  onDiaClicado,
 }: PaintedCalendarProps) {
   const [arraste, setArraste] = useState<Arraste | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -249,12 +283,29 @@ export function PaintedCalendar({
 
   const travas = diasBloqueados ?? diasNaoUteis;
 
+  /** Negociável é alcançável pelo gesto, mesmo parecendo bloqueado: é assim
+   *  que o arrasto além da janela vira um pedido em vez de nada. */
   const pintavel = useCallback(
-    (chave: string) => !somenteLeitura && grupoAtivo !== null && !travas.has(chave),
-    [somenteLeitura, grupoAtivo, travas],
+    (chave: string) =>
+      !somenteLeitura &&
+      grupoAtivo !== null &&
+      (!travas.has(chave) || !!diasNegociaveis?.has(chave)),
+    [somenteLeitura, grupoAtivo, travas, diasNegociaveis],
+  );
+
+  /** O clique do modo de marcação. Só quando não há pincel disputando. */
+  const marcavel = useCallback(
+    (chave: string) =>
+      !somenteLeitura && grupoAtivo === null && !!onDiaClicado && !travas.has(chave),
+    [somenteLeitura, grupoAtivo, onDiaClicado, travas],
   );
 
   function iniciarArraste(e: React.PointerEvent<HTMLDivElement>, chave: string) {
+    if (marcavel(chave) && e.button === 0) {
+      e.preventDefault();
+      onDiaClicado!(chave);
+      return;
+    }
     if (!pintavel(chave) || e.button !== 0) return;
     // Mata a seleção de texto nativa sobre a grade.
     e.preventDefault();
@@ -308,10 +359,23 @@ export function PaintedCalendar({
         atual.ancora <= fimReal
           ? { inicio: atual.ancora, fim: fimReal }
           : { inicio: fimReal, fim: atual.ancora };
+      // ⭐ O gesto que passa da janela: a parte que cabe é pintada, e o
+      // excedente vira o pedido à diretoria. Antes de aparar, porque aparar é
+      // exatamente o que apagava a intenção.
+      const negociados = diasNegociaveis
+        ? diasDoIntervalo(bruto.inicio, bruto.fim).filter((d) => diasNegociaveis.has(d))
+        : [];
+
       const aparado = apararPontas(bruto.inicio, bruto.fim, travas);
-      if (!aparado) return; // intervalo inteiro em dia não útil: aborta calado
-      if (atual.apagando) onEraseRange?.(atual.grupo, aparado.inicio, aparado.fim);
-      else onPaintRange(atual.grupo, aparado.inicio, aparado.fim);
+      if (aparado) {
+        if (atual.apagando) onEraseRange?.(atual.grupo, aparado.inicio, aparado.fim);
+        else onPaintRange(atual.grupo, aparado.inicio, aparado.fim);
+      }
+
+      // Apagar nunca negocia: tirar dias não precisa de autorização.
+      if (negociados.length > 0 && !atual.apagando) {
+        onNegociar?.(atual.grupo, negociados.length, negociados[negociados.length - 1]);
+      }
     }
 
     window.addEventListener("pointermove", aoMover);
@@ -324,7 +388,7 @@ export function PaintedCalendar({
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     };
-  }, [arraste, travas, onPaintRange, onEraseRange, onArrasteMudou]);
+  }, [arraste, travas, diasNegociaveis, onPaintRange, onEraseRange, onNegociar, onArrasteMudou]);
 
   // Avisa a barra do intervalo em construção, para a contagem viva.
   useEffect(() => {

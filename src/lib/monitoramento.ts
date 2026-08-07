@@ -99,6 +99,29 @@ export interface VisaoGeral {
     motivo: string;
     dias: number | null;
   }[];
+  /**
+   * ⭐ Os números da JANELA DO ESCOPO (§5), agregados por projeto.
+   *
+   * ⚠ Não confundir `dias_parados` com `tempo_parado` acima: aquele conta os
+   * dias CORRIDOS desde a última entrega enquanto o projeto espera o próximo
+   * escopo começar; este conta os **dias úteis em branco** do cronograma
+   * inteiro, do kickoff até hoje — dia sem etapa, reunião, banca ou entrega.
+   * O primeiro responde "está entre escopos?"; o segundo, "está andando?".
+   *
+   * `dias_de_atraso` é o PIOR atraso entre os escopos do projeto, não a soma:
+   * somar dois escopos atrasados em paralelo contaria o mesmo calendário duas
+   * vezes.
+   */
+  janela: {
+    por_projeto: {
+      projeto_id: number;
+      projeto_nome: string;
+      dias_ajustados: number;
+      dias_de_atraso: number;
+      dias_parados: number;
+    }[];
+    totais: { dias_ajustados: number; dias_de_atraso: number; dias_parados: number };
+  };
 }
 
 export interface LinhaTarefas {
@@ -348,12 +371,17 @@ export interface CronogramasGerais {
   projetos: CronogramaProjetoResumo[];
 }
 
-function query(frenteId?: number | null): string {
-  return frenteId ? `?frente_id=${frenteId}` : "";
+function query(frenteId?: number | null, escopoId?: number | null, extra?: Record<string, string | undefined>): string {
+  const partes = [
+    frenteId ? `frente_id=${frenteId}` : "",
+    escopoId ? `escopo_id=${escopoId}` : "",
+    ...Object.entries(extra ?? {}).map(([k, v]) => (v ? `${k}=${v}` : "")),
+  ].filter(Boolean);
+  return partes.length ? `?${partes.join("&")}` : "";
 }
 
-export function getVisaoGeral(token: string, frenteId?: number | null) {
-  return apiFetch<VisaoGeral>(`/monitoramento/visao-geral${query(frenteId)}`, { token });
+export function getVisaoGeral(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<VisaoGeral>(`/monitoramento/visao-geral${query(frenteId, escopoId)}`, { token });
 }
 
 /**
@@ -365,24 +393,30 @@ export function getVisaoGeral(token: string, frenteId?: number | null) {
  * duas medem ausência de registro; a tela acusaria o time por algo que ainda
  * nem teve chance de acontecer.
  */
-export function getExecucao(token: string, frenteId?: number | null, referencia?: string) {
-  const partes = [frenteId ? `frente_id=${frenteId}` : "", referencia ? `referencia=${referencia}` : ""];
-  const qs = partes.filter(Boolean).join("&");
-  return apiFetch<Execucao>(`/monitoramento/execucao${qs ? `?${qs}` : ""}`, { token });
+export function getExecucao(
+  token: string,
+  frenteId?: number | null,
+  referencia?: string,
+  escopoId?: number | null,
+) {
+  return apiFetch<Execucao>(
+    `/monitoramento/execucao${query(frenteId, escopoId, { referencia })}`,
+    { token },
+  );
 }
 
-export function getAlocacao(token: string, frenteId?: number | null) {
-  return apiFetch<Alocacao>(`/monitoramento/alocacao${query(frenteId)}`, { token });
+export function getAlocacao(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<Alocacao>(`/monitoramento/alocacao${query(frenteId, escopoId)}`, { token });
 }
 
-export function getAtrasos(token: string, frenteId?: number | null) {
-  return apiFetch<Atrasos>(`/monitoramento/atrasos${query(frenteId)}`, { token });
+export function getAtrasos(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<Atrasos>(`/monitoramento/atrasos${query(frenteId, escopoId)}`, { token });
 }
 
-export function getTarefasGerais(token: string, frenteId?: number | null) {
-  return apiFetch<TarefasGerais>(`/monitoramento/tarefas${query(frenteId)}`, { token });
+export function getTarefasGerais(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<TarefasGerais>(`/monitoramento/tarefas${query(frenteId, escopoId)}`, { token });
 }
 
-export function getCronogramasGerais(token: string, frenteId?: number | null) {
-  return apiFetch<CronogramasGerais>(`/monitoramento/cronogramas${query(frenteId)}`, { token });
+export function getCronogramasGerais(token: string, frenteId?: number | null, escopoId?: number | null) {
+  return apiFetch<CronogramasGerais>(`/monitoramento/cronogramas${query(frenteId, escopoId)}`, { token });
 }

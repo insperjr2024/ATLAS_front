@@ -30,6 +30,14 @@ export function updateUsuario(usuarioId: number, dados: UpdateUsuarioPayload, to
   });
 }
 
+/** Sem volta — o backend só aceita se o usuário já estiver desligado. */
+export function deletarUsuarioPermanente(usuarioId: number, token: string) {
+  return apiFetch<{ nome: string }>(`/usuarios/${usuarioId}/permanente`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 export interface RegistrarUsuarioPayload {
   nome: string;
   email_insper: string;

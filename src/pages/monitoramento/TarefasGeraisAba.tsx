@@ -32,6 +32,7 @@ import {
   SwimLabelTexto,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { useFiltroEscopo } from "./FiltroEscopo";
 
 /**
  * Board macro (§7): todas as tarefas de todos os projetos visíveis, num
@@ -61,7 +62,14 @@ const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/tarefas", voltarRotulo: "
 
 export function TarefasGeraisAba() {
   const { token } = useAuth();
-  const { frenteId, seletor } = useFiltroFrente();
+  const { frenteId, seletor: seletorFrente } = useFiltroFrente();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const seletor = (
+    <>
+      {seletorFrente}
+      {seletorEscopo}
+    </>
+  );
   const [busca, setBusca] = useState("");
   /* O cabeçalho é um elemento separado do quadro (ver o JSX); esta referência
      existe só para manter os dois na mesma posição horizontal. */
@@ -80,7 +88,7 @@ export function TarefasGeraisAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getTarefasGerais(token, frenteId));
+      setDados(await getTarefasGerais(token, frenteId, escopoId));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar as tarefas");
     } finally {
@@ -91,7 +99,7 @@ export function TarefasGeraisAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId]);
+  }, [token, frenteId, escopoId]);
 
   if (erro) {
     return (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Download, ExternalLink, Lock, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
@@ -8,9 +9,6 @@ import {
   DIAS_REUNIAO,
   formatarData,
   formatarDataHora,
-  marcarBancaDoEscopo,
-  marcarEntregaCliente,
-  marcarEntregaEscopo,
   marcarKickoff,
   ROTULO_STATUS_ESCOPO,
   rotuloDiaSemana,
@@ -27,7 +25,7 @@ import {
 } from "@/components/membros/MemberPicker";
 import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
-import type { EscopoVendido, ProjetoCompleto } from "@/types/projeto";
+import type { ProjetoCompleto } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
 import {
   PageStack,
@@ -58,11 +56,10 @@ import {
   InfoGrid,
   DescricaoTexto,
   LinkExterno,
-  DataRow,
-  DataLabel,
   DatasGrid,
   DataItem,
   DataItemLabel,
+  DataItemNota,
   DataItemValor,
   EdicaoBotoes,
   EquipeList,
@@ -86,8 +83,6 @@ import {
   BancaLinha,
   BancaEscopo,
   BancaData,
-  EscopoPicker,
-  EscopoOpcao,
 } from "./Projetos.styled";
 import { useProjeto } from "./ProjetoPage";
 
@@ -255,22 +250,27 @@ export function ProjetoVisaoGeral() {
               <DataItemLabel>Criado em</DataItemLabel>
               <DataItemValor>{formatarDataHora(projeto.criado_em)}</DataItemValor>
             </DataItem>
-            <DataEditavel
-              rotulo="Kickoff"
-              valor={projeto.data_kickoff}
-              projeto={projeto}
-              token={token}
-              recarregar={recarregar}
-              tipo="kickoff"
-            />
-            <DataEditavel
-              rotulo="Entrega ao cliente"
-              valor={projeto.data_entrega_cliente}
-              projeto={projeto}
-              token={token}
-              recarregar={recarregar}
-              tipo="entrega"
-            />
+            {/* ⭐ Datas são AGENDADAS no Cronograma, e só LIDAS aqui — a mesma
+                data com duas portas de escrita foi o que se quis acabar.
+                ⚠️ O KICKOFF é a exceção deliberada: é a única das seis datas
+                sem regra de janela (não cai dentro nem fora de nada, não pede
+                justificativa e não depende de banca), então nada se ganha em
+                obrigar a ir ao calendário só para digitá-la. Ele aceita os dois
+                caminhos. */}
+            <DataEditavelKickoff projeto={projeto} token={token} recarregar={recarregar} />
+            {/* ⭐ DERIVADA: entrega ao cliente e entrega do escopo são a mesma
+                coisa — o cliente recebe quando o escopo é entregue. Esta é a do
+                último escopo entregue; as individuais estão na tabela abaixo. */}
+            <DataItem>
+              <DataItemLabel>Entrega ao cliente</DataItemLabel>
+              <DataItemValor>
+                <span>{formatarData(projeto.data_entrega_cliente)}</span>
+              </DataItemValor>
+              <DataItemNota>
+                É a entrega do último escopo — cada escopo tem a sua, registrada em{" "}
+                <strong>Entrega</strong>, no calendário do Cronograma.
+              </DataItemNota>
+            </DataItem>
             <DataEditavelDiasAmbientacao projeto={projeto} token={token} recarregar={recarregar} />
             <DataEditavelDiaReuniao projeto={projeto} token={token} recarregar={recarregar} />
           </DatasGrid>
@@ -313,30 +313,18 @@ export function ProjetoVisaoGeral() {
  * banca do escopo não estiver aprovada.
  */
 function TabelaEscopos() {
-  const { projeto, recarregar } = useProjeto();
-  const { usuario, token } = useAuth();
-  const [erro, setErro] = useState("");
-  const [ocupado, setOcupado] = useState<number | null>(null);
-
+  const { projeto } = useProjeto();
+  const { usuario } = useAuth();
   // §6.4: marcar kickoff e data de entrega é dos QUATRO perfis — a
   // responsabilidade é do coordenador, mas o acesso não é exclusivo dele.
   // (O backend usa só `exigir_acesso_ao_projeto` aqui; o front não pode ser
   // mais restrito que ele, ou esconde um botão que a pessoa tem direito de ver.)
   const podeConduzir = !!usuario?.cargo.pode_marcar_kickoff;
 
-  async function agir(escopoId: number, acao: () => Promise<unknown>) {
-    if (!token) return;
-    setOcupado(escopoId);
-    setErro("");
-    try {
-      await acao();
-      await recarregar();
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao atualizar o escopo");
-    } finally {
-      setOcupado(null);
-    }
-  }
+  // ⚠️ Nenhuma escrita aqui: esta tabela só LÊ. Datas de escopo — banca e
+  // entrega — são agendadas no Cronograma, que é onde dá para ver o dia contra
+  // a janela do escopo e o calendário do Insper.
+  // (E por isso não existe estado de erro nesta função: não há o que falhar.)
 
   return (
     <PageCard>
@@ -354,16 +342,25 @@ function TabelaEscopos() {
                   <TableHeadCell>Escopo</TableHeadCell>
                   <TableHeadCell>Status</TableHeadCell>
                   <TableHeadCell>Dias usados</TableHeadCell>
+                  {/* Atraso é o §10 (dias úteis além da janela) e Correções é o
+                      §11 (dias pintados depois da banca). O número da seção
+                      fica aqui, no comentário: texto que o usuário lê não cita
+                      parágrafo de documento interno. */}
+                  <TableHeadCell title="Dias úteis além da janela">Atraso</TableHeadCell>
+                  <TableHeadCell title="Dias úteis pintados depois da entrega">
+                    Correções
+                  </TableHeadCell>
                   <TableHeadCell>Banca</TableHeadCell>
                   <TableHeadCell>Entrega</TableHeadCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {projeto.escopos.map((escopo) => {
-                  const percentual =
-                    escopo.dias_uteis_vendidos > 0
-                      ? (escopo.consumidos / escopo.dias_uteis_vendidos) * 100
-                      : 0;
+                  // ⭐ A barra mede contra a JANELA (vendidos + ajustados):
+                  // quem ganhou 10 dias tem 10 dias a mais para gastar, senão a
+                  // autorização não teria efeito nenhum na tela.
+                  const janela = escopo.dias_uteis_vendidos + escopo.dias_uteis_ajustados;
+                  const percentual = janela > 0 ? (escopo.consumidos / janela) * 100 : 0;
                   const banca = escopo.banca;
                   return (
                     <TableRow key={escopo.id}>
@@ -399,10 +396,39 @@ function TabelaEscopos() {
                             />
                           </ProgressoTrilha>
                           <ProgressoTexto $estourou={escopo.estourou}>
-                            {escopo.consumidos}/{escopo.dias_uteis_vendidos}
+                            {escopo.consumidos}/{janela}
                             {escopo.estourou && ` (+${Math.abs(escopo.restantes)})`}
                           </ProgressoTexto>
+                          {/* ⚠ Vendidos e ajustados NUNCA aparecem somados num
+                              número só: a diferença entre ter vendido 30 e ter
+                              vendido 20 e precisado de mais 10 é a informação
+                              inteira. A barra usa a soma; o texto, a separação. */}
+                          <small>
+                            {escopo.dias_uteis_vendidos} vendidos
+                            {escopo.dias_uteis_ajustados > 0 &&
+                              ` · ${escopo.dias_uteis_ajustados} ajustados`}
+                          </small>
                         </ProgressoWrap>
+                      </TableCell>
+
+                      <TableCell>
+                        {escopo.atraso > 0 ? (
+                          <PageBadge $tone="danger">
+                            {escopo.atraso} {escopo.atraso === 1 ? "dia" : "dias"}
+                          </PageBadge>
+                        ) : (
+                          <EmptyText>—</EmptyText>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        {escopo.correcoes > 0 ? (
+                          <PageBadge $tone="muted">
+                            {escopo.correcoes} {escopo.correcoes === 1 ? "dia" : "dias"}
+                          </PageBadge>
+                        ) : (
+                          <EmptyText>—</EmptyText>
+                        )}
                       </TableCell>
 
                       <TableCell>
@@ -421,21 +447,16 @@ function TabelaEscopos() {
                           formatarData(escopo.data_entrega_real)
                         ) : escopo.entrega_liberada ? (
                           podeConduzir ? (
+                            /* Leva para o calendário em vez de gravar HOJE
+                               em silêncio: a entrega quase nunca é no dia em
+                               que alguém lembra de registrá-la, e a data certa
+                               é escolhida onde ela é vista — no Cronograma. */
                             <PageButtonSm
-                              type="button"
+                              as={Link}
+                              to={`/projetos/${projeto.id}/cronograma`}
                               $variant="outline"
-                              disabled={ocupado === escopo.id}
-                              onClick={() =>
-                                agir(escopo.id, () =>
-                                  marcarEntregaEscopo(
-                                    escopo.id,
-                                    new Date().toISOString().slice(0, 10),
-                                    token!,
-                                  ),
-                                )
-                              }
                             >
-                              Marcar entrega
+                              Marcar no Cronograma
                             </PageButtonSm>
                           ) : (
                             <EmptyText>liberada</EmptyText>
@@ -453,7 +474,14 @@ function TabelaEscopos() {
               </TableBody>
             </DataTable>
 
-            {erro && <FormErrorText>{erro}</FormErrorText>}
+            <LegendaTabela>
+              🔒 A entrega fica travada até a banca do escopo ser realizada. Os dias correm apenas
+              enquanto o escopo está iniciado e não entregue — feriados, provas e recessos do
+              calendário do Insper não contam, e o escopo entregue para de consumir.
+              <br />▶ Um escopo começa a contar na <strong>reunião inicial</strong> dele: marque-a
+              no <strong>Cronograma</strong>, escolhendo o escopo e clicando no dia. A banca não
+              precisa estar marcada antes — é ela que precisa caber na janela que a reunião abre.
+            </LegendaTabela>
           </>
         )}
       </PageCardContent>
@@ -478,9 +506,8 @@ function TabelaEscopos() {
  * cadastrou o escopo dela.
  */
 function BancasPorFrente() {
-  const { projeto, frentes, recarregar } = useProjeto();
-  const { usuario, token } = useAuth();
-  const [marcando, setMarcando] = useState<EscopoVendido | null>(null);
+  const { projeto, frentes } = useProjeto();
+  const { usuario } = useAuth();
 
   const nomeFrente = (id: number) => frentes.find((f) => f.id === id)?.nome ?? `Frente ${id}`;
 
@@ -562,12 +589,15 @@ function BancasPorFrente() {
                         <PageBadge $tone="muted">não marcada</PageBadge>
                       )}
                       {podeMarcar && (
+                        /* A data da banca é agendada no Cronograma, onde dá
+                           para ver se ela cai dentro da janela do escopo —
+                           que é a regra que a governa (§5.5). */
                         <PageButtonSm
-                          type="button"
+                          as={Link}
+                          to={`/projetos/${projeto.id}/cronograma`}
                           $variant="outline"
-                          onClick={() => setMarcando(escopo)}
                         >
-                          {escopo.banca ? "Remarcar" : "Marcar banca"}
+                          {escopo.banca ? "Remarcar no Cronograma" : "Marcar no Cronograma"}
                         </PageButtonSm>
                       )}
                     </BancaLinha>
@@ -580,230 +610,48 @@ function BancasPorFrente() {
 
         <LegendaTabela>
           Cada escopo tem no máximo uma banca, mas uma banca pode avaliar vários escopos do
-          projeto — quem marca escolhe quais. A banca herda as frentes dos escopos que cobre, e são
-          elas que definem a composição exigida e quem pode ser escalado. A data é a mesma que
-          aparece em Bancas e no cronograma: um registro só, lido de três lugares.
+          projeto — quem marca escolhe quais, no <strong>Cronograma</strong>. A banca herda as
+          frentes dos escopos que cobre, e são elas que definem a composição exigida e quem pode ser
+          escalado. A data é a mesma que aparece em Bancas e no cronograma: um registro só, lido de
+          três lugares.
         </LegendaTabela>
       </PageCardContent>
-
-      {marcando && token && (
-        <MarcarBancaModal
-          escopo={marcando}
-          escoposDoProjeto={projeto.escopos}
-          nomeFrente={nomeFrente}
-          ehDiretor={usuario?.posicao === "diretor"}
-          token={token}
-          onClose={() => setMarcando(null)}
-          onSalvo={async () => {
-            setMarcando(null);
-            await recarregar();
-          }}
-        />
-      )}
     </PageCard>
-  );
-}
-
-/**
- * Marcar ou remarcar a banca de um escopo — e escolher que outros escopos do
- * projeto entram nela.
- *
- * 🔒 Remarcar exige justificativa e é só da diretoria (§5.6) — o backend
- * recusa com 422 e a mensagem aparece aqui. O campo só é pedido quando já
- * existe data, que é quando a regra vale.
- *
- * Escopo que já tem banca própria aparece bloqueado: juntá-lo aqui apagaria
- * em silêncio a data marcada nele. Para juntar os dois é preciso desmarcar a
- * banca do outro antes — o backend recusa do mesmo jeito, a lista só antecipa
- * a recusa.
- */
-function MarcarBancaModal({
-  escopo,
-  escoposDoProjeto,
-  nomeFrente,
-  ehDiretor,
-  token,
-  onClose,
-  onSalvo,
-}: {
-  escopo: EscopoVendido;
-  escoposDoProjeto: EscopoVendido[];
-  nomeFrente: (id: number) => string;
-  ehDiretor: boolean;
-  token: string;
-  onClose: () => void;
-  onSalvo: () => void;
-}) {
-  const remarcacao = Boolean(escopo.banca?.data_hora);
-  const [dataHora, setDataHora] = useState(escopo.banca?.data_hora?.slice(0, 16) ?? "");
-  const [justificativa, setJustificativa] = useState("");
-  const [selecionados, setSelecionados] = useState<number[]>(
-    escopo.banca?.escopo_ids ?? [escopo.id],
-  );
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState("");
-
-  // Cancelado não tem por que entrar em banca; o resto do projeto é elegível.
-  const candidatos = escoposDoProjeto.filter(
-    (e) => e.id === escopo.id || e.status !== "cancelado",
-  );
-  // A banca deste escopo é a "nossa": os escopos que ela já cobre continuam
-  // marcáveis; os presos a OUTRA banca, não.
-  const bloqueado = (e: EscopoVendido) =>
-    e.id !== escopo.id && Boolean(e.banca) && e.banca!.id !== escopo.banca?.id;
-
-  const frentesEnvolvidas = [
-    ...new Set(
-      candidatos.filter((e) => selecionados.includes(e.id)).map((e) => e.frente_id),
-    ),
-  ];
-
-  function alternar(id: number) {
-    setSelecionados((atuais) =>
-      atuais.includes(id) ? atuais.filter((x) => x !== id) : [...atuais, id],
-    );
-  }
-
-  async function salvar(e: React.FormEvent) {
-    e.preventDefault();
-    setSalvando(true);
-    setErro("");
-    try {
-      await marcarBancaDoEscopo(
-        escopo.id,
-        dataHora,
-        token,
-        justificativa.trim() || undefined,
-        [...new Set([escopo.id, ...selecionados])],
-      );
-      onSalvo();
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao marcar a banca");
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  return (
-    <ModalOverlay onClick={onClose} role="presentation">
-      <WideModalContent
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="marcar-banca"
-      >
-        <ModalHeader>
-          <ModalTitle id="marcar-banca">
-            {remarcacao ? "Remarcar banca" : "Marcar banca"} · {escopo.nome}
-          </ModalTitle>
-          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
-            <X size={18} />
-          </ModalClose>
-        </ModalHeader>
-        <form onSubmit={salvar}>
-          <ModalBody>
-            <DataRow>
-              <DataLabel>Escopos nesta banca</DataLabel>
-              <EscopoPicker>
-                {candidatos.map((e) => {
-                  const travado = bloqueado(e);
-                  return (
-                    <EscopoOpcao key={e.id} $bloqueado={travado}>
-                      <input
-                        type="checkbox"
-                        checked={e.id === escopo.id || selecionados.includes(e.id)}
-                        // O escopo de onde a banca está sendo marcada entra
-                        // sempre — desmarcá-lo deixaria a ação sem sentido.
-                        disabled={travado || e.id === escopo.id}
-                        onChange={() => alternar(e.id)}
-                      />
-                      <span>{e.nome}</span>
-                      <small>
-                        {travado ? "já tem banca própria" : nomeFrente(e.frente_id)}
-                      </small>
-                    </EscopoOpcao>
-                  );
-                })}
-              </EscopoPicker>
-            </DataRow>
-            {frentesEnvolvidas.length > 1 && (
-              <EmptyText>
-                Esta banca vai cobrir {frentesEnvolvidas.map(nomeFrente).join(" e ")} — a composição
-                exigida passa a somar as duas frentes.
-              </EmptyText>
-            )}
-            <DataRow>
-              <DataLabel>Data e hora</DataLabel>
-              <FieldInput
-                type="datetime-local"
-                value={dataHora}
-                onChange={(e) => setDataHora(e.target.value)}
-                aria-label="Data e hora da banca"
-                required
-              />
-            </DataRow>
-            {remarcacao && (
-              <>
-                <DataRow>
-                  <DataLabel>Justificativa</DataLabel>
-                  <FieldInput
-                    value={justificativa}
-                    onChange={(e) => setJustificativa(e.target.value)}
-                    placeholder="Por que a data mudou"
-                    aria-label="Justificativa da remarcação"
-                    required
-                  />
-                </DataRow>
-                {!ehDiretor && (
-                  <EmptyText>
-                    Remarcar uma banca que já tem data é decisão da diretoria — o servidor vai
-                    recusar.
-                  </EmptyText>
-                )}
-              </>
-            )}
-            <EmptyText>
-              O sistema recusa duas bancas no mesmo horário; só a diretoria libera a exceção.
-            </EmptyText>
-            {erro && <FormErrorText>{erro}</FormErrorText>}
-          </ModalBody>
-          <ModalFooter>
-            <PageButton type="button" $variant="outline" onClick={onClose}>
-              Cancelar
-            </PageButton>
-            <PageButton type="submit" disabled={salvando || !dataHora}>
-              {salvando ? "Salvando…" : remarcacao ? "Remarcar" : "Marcar"}
-            </PageButton>
-          </ModalFooter>
-        </form>
-      </WideModalContent>
-    </ModalOverlay>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
-function DataEditavel({
-  rotulo,
-  valor,
+/* O MarcarBancaModal que morava aqui virou `./MarcarBancaModal.tsx`, usado
+   pelo Cronograma: a banca passou a ser marcada clicando no dia, onde dá para
+   ver se ela cai dentro da janela do escopo. Esta tela só a exibe. */
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * O kickoff — editável aqui **e** marcável no calendário.
+ *
+ * A exceção às outras datas do projeto: sem janela para respeitar, sem
+ * justificativa, sem gate de diretoria. Digitar direto é o caminho curto de
+ * quem só quer corrigir um dia; o calendário continua sendo o caminho de quem
+ * está montando o cronograma e quer ver a ambientação nascer dali.
+ */
+function DataEditavelKickoff({
   projeto,
   token,
   recarregar,
-  tipo,
 }: {
-  rotulo: string;
-  valor: string | null;
   projeto: ProjetoCompleto;
   token: string | null;
   recarregar: () => Promise<void>;
-  tipo: "kickoff" | "entrega";
 }) {
   const { usuario } = useAuth();
   // Mesma permissão do backend (`require_pode_marcar_kickoff` em
-  // `routers/projetos.py`) — sem esse gate o botão aparecia pra qualquer
-  // um, que só descobria que não podia depois de preencher e salvar (403).
+  // `routers/projetos.py`) — sem esse gate o botão aparecia pra qualquer um,
+  // que só descobria que não podia depois de preencher e salvar (403).
   const podeEditar = !!usuario?.cargo.pode_marcar_kickoff;
   const [editando, setEditando] = useState(false);
-  const [data, setData] = useState(valor?.slice(0, 10) ?? "");
+  const [data, setData] = useState(projeto.data_kickoff?.slice(0, 10) ?? "");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -812,8 +660,7 @@ function DataEditavel({
     setSalvando(true);
     setErro("");
     try {
-      if (tipo === "kickoff") await marcarKickoff(projeto.id, data, token);
-      else await marcarEntregaCliente(projeto.id, data, token);
+      await marcarKickoff(projeto.id, data, token);
       setEditando(false);
       await recarregar();
     } catch (err) {
@@ -825,7 +672,7 @@ function DataEditavel({
 
   return (
     <DataItem>
-      <DataItemLabel>{rotulo}</DataItemLabel>
+      <DataItemLabel>Kickoff</DataItemLabel>
       <DataItemValor>
         {editando ? (
           <>
@@ -833,7 +680,7 @@ function DataEditavel({
               type="date"
               value={data}
               onChange={(e) => setData(e.target.value)}
-              aria-label={rotulo}
+              aria-label="Kickoff"
             />
             <PageButtonSm type="button" disabled={salvando || !data} onClick={salvar}>
               {salvando ? "Salvando…" : "Salvar"}
@@ -843,7 +690,7 @@ function DataEditavel({
               $variant="ghost"
               onClick={() => {
                 setEditando(false);
-                setData(valor?.slice(0, 10) ?? "");
+                setData(projeto.data_kickoff?.slice(0, 10) ?? "");
                 setErro("");
               }}
             >
@@ -852,15 +699,21 @@ function DataEditavel({
           </>
         ) : (
           <>
-            <span>{formatarData(valor)}</span>
+            <span>{formatarData(projeto.data_kickoff)}</span>
             {podeEditar && (
               <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
-                {valor ? "Alterar" : "Marcar"}
+                {projeto.data_kickoff ? "Alterar" : "Marcar"}
               </PageButtonSm>
             )}
           </>
         )}
       </DataItemValor>
+      {!editando && (
+        <DataItemNota>
+          Ou marque no calendário, em <strong>Kickoff</strong>, na aba Cronograma. É dele que a
+          ambientação conta.
+        </DataItemNota>
+      )}
       {erro && <FormErrorText>{erro}</FormErrorText>}
     </DataItem>
   );
