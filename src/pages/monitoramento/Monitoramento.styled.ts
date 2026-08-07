@@ -60,7 +60,7 @@ export const DataTable = styled(DataTableBase)`
  * ponto em que a tabela ainda é legível; abaixo dele, rolar é melhor do que
  * encolher.
  *
- * ⚠ **As duas rolagens moram no MESMO elemento, de propósito.**
+ * **As duas rolagens moram no MESMO elemento, de propósito.**
  *
  * A tentação é aninhar: um container para a horizontal, outro por fora para a
  * vertical. Não funciona. `overflow-x: auto` faz o `overflow-y` computar para
@@ -72,7 +72,7 @@ export const DataTable = styled(DataTableBase)`
  * Com `$max`, a tabela ganha rolagem vertical e o cabeçalho gruda no topo. Sem
  * ele, o comportamento é o de antes: só horizontal, altura livre.
  *
- * ⭐ Rolagem aqui, e páginas nos cards de alerta (ver `usePaginacao`): nestas
+ * Rolagem aqui, e páginas nos cards de alerta (ver `usePaginacao`): nestas
  * tabelas a pessoa procura ALGUÉM ESPECÍFICO, e mandá-la adivinhar em qual
  * página está o colega seria pior do que rolar.
  */
@@ -98,6 +98,172 @@ export const TabelaRolagem = styled.div<{ $min?: string; $max?: string }>`
 
   table {
     min-width: ${({ $min = "38rem" }) => $min};
+  }
+`;
+
+/* ─── Linha de card com destaque à esquerda ──────────────────────────────── */
+
+/**
+ * Uma linha clicável com um valor em destaque à esquerda, duas linhas de texto
+ * e a seta. Usada pelos cards de **bancas próximas** e **tempo parado**.
+ *
+ * A linha INTEIRA é o link: o alvo útil é o item todo, e um trecho clicável no
+ * meio do texto é difícil de acertar — ainda mais no celular.
+ */
+export const LinhaItem = styled(RouterLink)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: 0.4rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: ${theme.borderRadius.md};
+  color: ${theme.colors.mutedForeground};
+  text-decoration: none;
+
+  &:hover {
+    background: ${theme.colors.muted};
+    color: ${theme.colors.foreground};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: -2px;
+  }
+`;
+
+/** A coluna da esquerda: dois valores empilhados, largura fixa. É ela que
+ *  alinha as linhas umas sob as outras e deixa a lista ser lida na vertical —
+ *  "seg 11 / 14:00" nas bancas, "145 / dias" no tempo parado. */
+export const ItemDestaque = styled.span`
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 3.25rem;
+  line-height: 1.2;
+
+  strong {
+    font-size: ${theme.fontSize.xs};
+    font-weight: ${theme.fontWeight.semibold};
+    text-transform: capitalize;
+    color: ${theme.colors.foreground};
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    font-variant-numeric: tabular-nums;
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+export const ItemTexto = styled.span`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+
+  /* Projeto e escopo em duas linhas, cada um truncando sozinho: juntos numa
+     linha só, o escopo empurrava o nome do projeto para fora. */
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: ${theme.fontSize.sm};
+    font-weight: ${theme.fontWeight.medium};
+    color: ${theme.colors.foreground};
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/** O contexto do pior caso na tabela por coordenador: projeto em cima, motivo
+ *  embaixo. Largura limitada e truncando, senão a descrição do motivo — que é
+ *  frase inteira — estica a coluna e espreme as outras quatro. */
+export const PiorCaso = styled.span`
+  display: flex;
+  flex-direction: column;
+  max-width: 20rem;
+  line-height: 1.3;
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: ${theme.fontSize.sm};
+    font-weight: ${theme.fontWeight.medium};
+    color: ${theme.colors.foreground};
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/** O campo de busca por projeto, na aba de Tarefas.
+ *
+ *  Largura contida: é filtro de uma coluna, não busca global da plataforma —
+ *  esticado na largura toda ele prometeria procurar em tudo. */
+export const BarraBusca = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  max-width: 22rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.card};
+  color: ${theme.colors.mutedForeground};
+
+  &:focus-within {
+    border-color: ${theme.colors.ring};
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: ${theme.fontSize.sm};
+    color: ${theme.colors.foreground};
+
+    /* O anel de foco fica na barra inteira, via focus-within, e não no input:
+       dois anéis concêntricos poluem. */
+    &:focus {
+      outline: none;
+    }
+  }
+`;
+
+export const BotaoLimparBusca = styled.button`
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: ${theme.colors.mutedForeground};
+  cursor: pointer;
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+    border-radius: ${theme.borderRadius.sm};
   }
 `;
 
@@ -409,7 +575,7 @@ export const ItemLista = styled.li`
  *
  * O `theme.colors.destructive` é a MESMA cor do `primary`, o vermelho
  * institucional. Usar só ele para atraso faz o urgente se confundir com a
- * navegação e os links, e nada se destaca. A rampa abaixo abre âmbar → vermelho
+ * navegação e os links, e nada se destaca. A rampa abaixo abre âmbar vermelho
  * profundo para que a gravidade seja legível pela cor, e não só pelo número.
  * Em OKLCH porque a luminosidade fica perceptualmente uniforme entre os três
  * degraus, coisa que HSL não garante.
@@ -431,7 +597,7 @@ export type NivelSeveridade = keyof typeof SEVERIDADE;
  * sobre branco, quando o mínimo é 4.5:1, e some para quem lê em tela clara.
  *
  * Descer a luminosidade para a faixa 0.48–0.55 preserva a identidade de matiz
- * (âmbar → laranja → vermelho) e devolve a legibilidade. É o mesmo raciocínio
+ * (âmbar laranja vermelho) e devolve a legibilidade. É o mesmo raciocínio
  * já aplicado no `TEXTO_PILULA.atencao`, que escurece o warning pelo mesmo
  * motivo.
  */
@@ -506,57 +672,6 @@ export const ItemAtencao = styled.li<{ $nivel?: NivelSeveridade }>`
     font-size: ${theme.fontSize.xs};
     color: ${theme.colors.mutedForeground};
   }
-`;
-
-/** A tendência de entregas — barras simples, sem lib de gráfico nova. */
-export const GraficoTendencia = styled.div`
-  margin-top: ${theme.spacing.md};
-  padding-top: ${theme.spacing.md};
-  border-top: 1px solid ${theme.colors.border};
-`;
-
-export const Sparkline = styled.div`
-  display: flex;
-  align-items: flex-end;
-  gap: 0.25rem;
-  height: 3.5rem;
-  padding-top: ${theme.spacing.sm};
-`;
-
-/** A coluna inteira é a área de hover, não a barra. Uma barra de 2px de altura
- *  numa semana sem entrega praticamente não recebe o mouse, e aí o `title` com
- *  o total nunca aparece justamente na semana que interessa explicar. */
-export const SparkColuna = styled.div`
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  height: 100%;
-  border-radius: ${theme.borderRadius.sm};
-
-  &:hover > div {
-    background: color-mix(in srgb, ${theme.colors.success} 80%, black);
-  }
-`;
-
-export const SparkBarra = styled.div<{ $altura: number }>`
-  width: 100%;
-  min-height: 2px;
-  height: ${({ $altura }) => Math.max(2, $altura)}%;
-  border-radius: ${theme.borderRadius.sm} ${theme.borderRadius.sm} 0 0;
-  background: ${theme.colors.success};
-  transition: background ${theme.transitions.fast};
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
-  }
-`;
-
-export const SparkRotulos = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.35rem;
-  font-size: ${theme.fontSize.xs};
-  color: ${theme.colors.mutedForeground};
 `;
 
 /** `atencao` (âmbar) fica entre `ok` e `alerta`: sinaliza o que merece olhada
@@ -1193,11 +1308,46 @@ export const AvisoSomenteLeitura = styled.p`
  * projeto: é o que deixa a coluna "Validação" do projeto A alinhada com a
  * "Validação" do projeto B, faixa embaixo da outra.
  */
-export const SwimGrid = styled.div<{ $colunas: number }>`
+/** As colunas do quadro, na mesma medida no cabeçalho e no corpo — é o que
+ *  mantém a pílula alinhada com os cards dela. */
+const colunasDoQuadro = css<{ $colunas: number }>`
   display: grid;
-  grid-template-columns: 10rem repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(11rem, 1fr));
-  row-gap: ${theme.spacing.xl};
+  grid-template-columns: repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(11rem, 1fr));
   column-gap: ${theme.spacing.md};
+`;
+
+/**
+ * O cabeçalho do quadro: GRUDA no topo da página enquanto se percorre a lista.
+ *
+ * **Fica fora do container que rola na horizontal, de propósito.**
+ * `position: sticky` se ancora no ancestral que rola, e o corpo do quadro tem
+ * `overflow-x: auto` — dentro dele o cabeçalho grudaria no quadro, não na
+ * página. Já foi tentado limitar a altura do quadro para ele virar a própria
+ * janela: funciona, mas cria uma caixa de rolagem dentro da página, e aí a
+ * lista deixa de acompanhar o resto da tela.
+ *
+ * Separado, o alinhamento com as colunas passa a ser responsabilidade do JS,
+ * que espelha o `scrollLeft` do corpo aqui — ver `TarefasGeraisAba`.
+ */
+export const CabecalhoQuadro = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  overflow: hidden;
+  padding: ${theme.spacing.sm} 0;
+  border-bottom: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+`;
+
+export const LinhaColunas = styled.div<{ $colunas: number }>`
+  ${colunasDoQuadro}
+`;
+
+/** O corpo: uma faixa por projeto. Rola só na horizontal — a vertical é a da
+ *  página, para o quadro não virar uma janela dentro de outra. */
+export const SwimGrid = styled.div<{ $colunas: number }>`
+  ${colunasDoQuadro}
+  row-gap: ${theme.spacing.md};
   overflow-x: auto;
   padding-bottom: ${theme.spacing.sm};
   align-items: start;
@@ -1223,19 +1373,16 @@ export const SwimGrid = styled.div<{ $colunas: number }>`
   }
 `;
 
+/** Uma célula do cabeçalho. Sem posicionamento próprio — quem gruda é a
+ *  `CabecalhoQuadro` inteira. */
 export const SwimHeaderCell = styled.div`
   display: flex;
   align-items: center;
-`;
-
-/** A linha entre uma faixa de projeto e a próxima — mesmo cinza neutro dos
- *  outros divisores da tela (Atrasos, Alocação), sem cor de destaque: aqui é
- *  só separação visual, a cor de alerta fica reservada pra quando algo
- *  realmente precisa de atenção. */
-export const SwimDivisor = styled.div`
-  grid-column: 1 / -1;
-  height: 1px;
-  background: ${theme.colors.border};
+  /* A pílula tem a largura do texto, e a coluna de cards embaixo é bem mais
+     larga: encostada à esquerda ela não parece o título daquela coluna, parece
+     estar sobrando entre duas. Centralizada, cada card fica claramente sob o
+     seu rótulo. */
+  justify-content: center;
 `;
 
 /**
@@ -1245,41 +1392,70 @@ export const SwimDivisor = styled.div`
  * `$cor` é a identidade fixa do projeto: uma barra fininha que não muda
  * mesmo se a ordem das linhas mudar ou a etiqueta sair da tela ao rolar.
  */
+/**
+ * O nome do projeto: uma FAIXA de seção, largura toda, abrindo o grupo de
+ * cards dele.
+ *
+ * Já foi coluna congelada à esquerda e não podia continuar sendo: com
+ * `position: sticky`, os cards passam POR BAIXO ao rolar para o lado — é o que
+ * o recurso faz, não um defeito de estilo, e nenhuma sombra conserta.
+ *
+ * Como linha SEM fundo, porém, ela se lia como conteúdo da primeira coluna:
+ * o nome aparecia logo abaixo de "A fazer" e parecia pertencer a ela. Aqui a
+ * faixa tem fundo, altura própria e uma barra colorida na ponta — a leitura
+ * passa a ser "começou um projeto novo", que é a de um cabeçalho de grupo.
+ * É ela que separa uma faixa da outra, então não há mais divisor.
+ */
 export const SwimLabelCell = styled.div<{ $cor?: string }>`
-  position: sticky;
-  left: 0;
-  z-index: 1;
+  grid-column: 1 / -1;
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  padding: ${theme.spacing.sm};
-  padding-left: 1rem;
-  border-radius: ${theme.borderRadius.lg};
-  border: 1px solid transparent;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.md};
+  padding: 0.4rem ${theme.spacing.md} 0.4rem 0.75rem;
+  border-radius: ${theme.borderRadius.md};
   background: ${theme.colors.muted};
   cursor: pointer;
-  transition: border-color ${theme.transitions.fast}, box-shadow ${theme.transitions.fast};
+  transition: background ${theme.transitions.fast};
 
+  /* A cor do projeto na ponta, a mesma dos cards dele — é o fio que liga o
+     cabeçalho do grupo ao conteúdo abaixo. */
   &::before {
     content: "";
     position: absolute;
-    left: 0.375rem;
-    top: 0.375rem;
-    bottom: 0.375rem;
+    left: 0;
+    top: 0.3rem;
+    bottom: 0.3rem;
     width: 3px;
     border-radius: ${theme.borderRadius.full};
     background: ${({ $cor }) => $cor ?? "transparent"};
   }
 
   &:hover {
-    border-color: ${theme.colors.ring};
-    box-shadow: ${theme.shadows.md};
+    background: ${theme.alpha(theme.colors.foreground, 0.07)};
   }
 
   &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 30%, transparent);
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/** O texto do rótulo gruda à esquerda enquanto a linha rola — assim o nome
+ *  continua legível com o quadro deslocado, e como a linha está vazia não há
+ *  card nenhum para ele tapar. */
+export const SwimLabelTexto = styled.span`
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: baseline;
+  gap: ${theme.spacing.sm};
+  min-width: 0;
 `;
 
 export const SwimLabelNome = styled.span`
@@ -1288,9 +1464,18 @@ export const SwimLabelNome = styled.span`
   color: ${theme.colors.foreground};
 `;
 
+/** O cliente vem depois do nome, na mesma linha, precedido de um separador.
+ *  Empilhado ele dobrava a altura de cada faixa de projeto — e agora que o
+ *  rótulo é uma linha inteira, sobra largura de sobra. */
 export const SwimLabelCliente = styled.span`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
+  white-space: nowrap;
+
+  &::before {
+    content: "";
+    margin-right: ${theme.spacing.sm};
+  }
 `;
 
 export const SwimCell = styled.div`
@@ -1316,7 +1501,7 @@ export const SwimCellVazia = styled.p`
 /**
  * A cor de cada etapa do ciclo, na pizza da Visão geral.
  *
- * ⭐ **Sai da `PALETA` do cronograma, não de uma rampa própria.** Aquela paleta
+ * **Sai da `PALETA` do cronograma, não de uma rampa própria.** Aquela paleta
  * já resolve o mesmo problema — dar cor a etapa — e já foi calibrada: 8 matizes
  * com a MESMA saturação e a MESMA luminosidade, só a matiz girando. É isso que
  * mantém as fatias com o mesmo peso visual; numa paleta ingênua o amarelo pula
@@ -1333,7 +1518,7 @@ export const SwimCellVazia = styled.p`
  * O índice é fixo por status, e não pela ordem de chegada: "Em andamento" tem
  * que ser a mesma cor toda vez que a tela abre.
  *
- * ⚠ Cor sozinha não é informação: a legenda escreve nome e número de cada
+ * Cor sozinha não é informação: a legenda escreve nome e número de cada
  * etapa, então quem não distingue os matizes continua lendo o gráfico inteiro.
  */
 export const COR_ETAPA: Record<string, string> = Object.fromEntries(
@@ -1488,7 +1673,7 @@ export const BotaoAlternativa = styled.button<{ $ativo: boolean }>`
   }
 `;
 
-/** ⚠ O aviso de filtro ativo. Sem ele o gráfico mostra números menores que a
+/** O aviso de filtro ativo. Sem ele o gráfico mostra números menores que a
  *  tabela logo abaixo e parece bug — o filtro fica escondido num `select` que
  *  ninguém relê depois de escolher. */
 export const FiltroAtivo = styled.span`

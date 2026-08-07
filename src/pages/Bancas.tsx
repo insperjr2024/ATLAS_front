@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { RealizarBancaModal } from "./RealizarBancaModal";
 import { AlocarPessoasModal } from "./AlocarPessoasModal";
 import { Plus, X } from "lucide-react";
@@ -161,8 +162,22 @@ interface Contexto {
 }
 
 export function Bancas() {
+  /* Chegada pelo card "bancas nos próximos 7 dias" do monitoramento
+     (/bancas?banca=123): a lista aqui é longa, então rola até a banca e a
+     destaca. Sem isso o clique de lá só abriria a página e a pessoa teria de
+     procurar de novo a banca em que acabou de clicar. */
+  const [searchParams] = useSearchParams();
+  const bancaDestacada = Number(searchParams.get("banca")) || null;
+  const refDestacada = useRef<HTMLDivElement>(null);
+
   const { usuario, token } = useAuth();
   const [bancas, setBancas] = useState<Banca[]>([]);
+
+  // Depois que as bancas chegam, e não na montagem: no primeiro render a lista
+  // ainda está vazia e não existe elemento para rolar até.
+  useEffect(() => {
+    refDestacada.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [bancaDestacada, bancas]);
   const [candidaturas, setCandidaturas] = useState<Candidatura[]>([]);
   const [paraAvaliar, setParaAvaliar] = useState<Banca[]>([]);
   const [jaAvaliadas, setJaAvaliadas] = useState<Banca[]>([]);
@@ -439,6 +454,8 @@ export function Bancas() {
 
       {aba === "meus" && mostrarMeusProjetos && (
         <SecaoBancas
+          bancaDestacada={bancaDestacada}
+          refDestacada={refDestacada}
           titulo="Bancas dos meus projetos"
           bancas={bancasDoProjeto}
           contexto={contexto}
@@ -457,6 +474,8 @@ export function Bancas() {
       {aba === "alocacao" && (
         <SectionGroup>
           <SecaoBancas
+          bancaDestacada={bancaDestacada}
+          refDestacada={refDestacada}
             titulo="Já alocado"
             bancas={jaAlocado}
             contexto={contexto}
@@ -473,6 +492,8 @@ export function Bancas() {
             onVerMais={setBancaDetalhe}
           />
           <SecaoBancas
+          bancaDestacada={bancaDestacada}
+          refDestacada={refDestacada}
             titulo="Disponíveis para alocação"
             bancas={disponiveisParaAlocacao}
             contexto={contexto}
@@ -486,6 +507,8 @@ export function Bancas() {
             onVerMais={setBancaDetalhe}
           />
           <SecaoBancas
+          bancaDestacada={bancaDestacada}
+          refDestacada={refDestacada}
             titulo="Com alocação máxima"
             bancas={lotadas}
             contexto={contexto}
@@ -510,6 +533,8 @@ export function Bancas() {
       {aba === "avaliacao" && (
         <SectionGroup>
           <SecaoBancas
+          bancaDestacada={bancaDestacada}
+          refDestacada={refDestacada}
             titulo="Com avaliação pendente"
             bancas={paraAvaliar}
             contexto={contexto}
@@ -522,6 +547,8 @@ export function Bancas() {
             onVerMais={setBancaDetalhe}
           />
           <SecaoBancas
+          bancaDestacada={bancaDestacada}
+          refDestacada={refDestacada}
             titulo="Avaliadas"
             bancas={jaAvaliadas}
             contexto={contexto}
@@ -650,10 +677,15 @@ function SecaoBancas({
   onPedirTroca,
   onConvidar,
   onCancelarTroca,
+  bancaDestacada,
+  refDestacada,
 }: {
   titulo: string;
   bancas: Banca[];
   contexto: Contexto;
+  /* Vem de /bancas?banca=123, o link do card do monitoramento. */
+  bancaDestacada?: number | null;
+  refDestacada?: React.Ref<HTMLDivElement>;
   acao: "nenhuma" | "alocar" | "deslocar" | "avaliar";
   onAcao?: (bancaId: number) => void;
   onVerMais: (banca: Banca) => void;
@@ -712,7 +744,11 @@ function SecaoBancas({
               const prazoExpirado = !!prazo?.prazoExpirado;
 
               return (
-                <BancaLinha key={banca.id}>
+                <BancaLinha
+                  key={banca.id}
+                  $destacada={banca.id === bancaDestacada}
+                  ref={banca.id === bancaDestacada ? refDestacada : undefined}
+                >
                   <BancaData>
                     <BancaDataDiaSemana>{diaSemana}</BancaDataDiaSemana>
                     <BancaDataDia>{dataHora.getDate()}</BancaDataDia>

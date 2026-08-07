@@ -105,6 +105,7 @@ import {
   DetailRow,
   DetailTerm,
   DetailValue,
+  FormularioModalContent,
 } from "./Avaliacoes.styled";
 
 function formatNota(nota: number | null | undefined): string {
@@ -703,7 +704,11 @@ function EditarFormularioModal({
 
   return (
     <ModalOverlay onClick={onClose} role="presentation">
-      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="editar-form-titulo">
+      <FormularioModalContent
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="editar-form-titulo"
+      >
         <ModalHeader>
           <ModalTitle id="editar-form-titulo">Editar formulário padrão</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
@@ -757,7 +762,7 @@ function EditarFormularioModal({
             </PageButton>
           </ModalFooter>
         </FormStack>
-      </WideModalContent>
+      </FormularioModalContent>
     </ModalOverlay>
   );
 }

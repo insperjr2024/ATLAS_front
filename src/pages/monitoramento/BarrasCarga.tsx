@@ -19,12 +19,10 @@ const BARRAS_POR_PAGINA = 15;
 import type { StatusProjeto } from "@/types/projeto";
 import { EmptyText } from "@/styles/page.styled";
 import {
-  BotaoAlternativa,
   CaixaGrafico,
   ControlesGrafico,
   FieldSelect,
   FiltroAtivo,
-  GrupoBotoes,
 } from "./Monitoramento.styled";
 import { theme } from "@/styles/theme";
 
@@ -55,17 +53,9 @@ function etapasPresentes(linhas: LinhaCarga[]): StatusProjeto[] {
  * monitoramento. Dois seletores de frente na mesma tela podem discordar, e aí a
  * tela passa a dizer duas coisas ao mesmo tempo.
  */
-export function BarrasCarga({
-  coordenadores,
-  consultores,
-}: {
-  coordenadores: LinhaCarga[];
-  consultores: LinhaCarga[];
-}) {
-  const [papel, setPapel] = useState<Papel>("consultor");
+export function BarrasCarga({ papel, linhas }: { papel: Papel; linhas: LinhaCarga[] }) {
   const [etapa, setEtapa] = useState<StatusProjeto | "">("");
 
-  const linhas = papel === "consultor" ? consultores : coordenadores;
   const etapas = useMemo(() => etapasPresentes(linhas), [linhas]);
 
   const todos = useMemo(() => {
@@ -111,26 +101,11 @@ export function BarrasCarga({
 
   return (
     <div>
+      {/* O toggle de papel saiu daqui: agora é um só, no topo da aba, e vale
+          para o gráfico, a tabela e o card de demanda alta. Três toggles
+          independentes deixavam o gráfico em "Consultores" e a tabela em
+          "Coordenadores" ao mesmo tempo. */}
       <ControlesGrafico>
-        <GrupoBotoes role="group" aria-label="Papel">
-          <BotaoAlternativa
-            type="button"
-            $ativo={papel === "consultor"}
-            aria-pressed={papel === "consultor"}
-            onClick={() => setPapel("consultor")}
-          >
-            Consultores
-          </BotaoAlternativa>
-          <BotaoAlternativa
-            type="button"
-            $ativo={papel === "coordenador"}
-            aria-pressed={papel === "coordenador"}
-            onClick={() => setPapel("coordenador")}
-          >
-            Coordenadores
-          </BotaoAlternativa>
-        </GrupoBotoes>
-
         <FieldSelect
           value={etapa}
           onChange={(e) => setEtapa(e.target.value as StatusProjeto | "")}
