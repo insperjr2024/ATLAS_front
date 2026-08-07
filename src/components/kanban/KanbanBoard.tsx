@@ -16,6 +16,7 @@ import {
 import { SINAL_URGENCIA } from "@/lib/tarefas";
 import { tonsDaColuna, type ColunaTarefa, type TonsColuna } from "@/lib/colunas-tarefa";
 import type { Tarefa } from "@/types/tarefa";
+import { StatusPilula } from "@/pages/projetos/Projetos.styled";
 import {
   Board,
   Card,
@@ -23,7 +24,6 @@ import {
   CardTitulo,
   CardTopo,
   Coluna,
-  ColunaPilula,
   ColunaRotuloTexto,
   ColunaTitulo,
   ColunaVazia,
@@ -145,7 +145,7 @@ function ColunaDrop({
   return (
     <Coluna ref={setNodeRef} $sobre={isOver} $cor={tons}>
       <ColunaTitulo>
-        <ColunaPilula
+        <StatusPilula
           $cor={tons}
           title={
             coluna.encerra_tarefa
@@ -155,7 +155,7 @@ function ColunaDrop({
         >
           <Ponto $cor={tons.ponto} />
           <ColunaRotuloTexto>{coluna.nome}</ColunaRotuloTexto>
-        </ColunaPilula>
+        </StatusPilula>
         <Contador>{tarefas.length}</Contador>
         {vencidas > 0 && (
           <ContadorVencidas>

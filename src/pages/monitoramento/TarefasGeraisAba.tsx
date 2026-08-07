@@ -14,7 +14,8 @@ import {
   PageButton,
   EmptyText,
 } from "@/styles/page.styled";
-import { Card, CardMeta, CardTitulo, CardTopo, ColunaPilula, Ponto } from "@/components/kanban/Kanban.styled";
+import { Card, CardMeta, CardTitulo, CardTopo, Ponto } from "@/components/kanban/Kanban.styled";
+import { StatusPilula } from "@/pages/projetos/Projetos.styled";
 import {
   AvisoSomenteLeitura,
   SwimCell,
@@ -174,10 +175,10 @@ export function TarefasGeraisAba() {
               const tons = tonsDaColuna(coluna.cor);
               return (
                 <SwimHeaderCell key={coluna.chave}>
-                  <ColunaPilula $cor={tons}>
+                  <StatusPilula $cor={tons}>
                     <Ponto $cor={tons.ponto} />
                     {coluna.nome}
-                  </ColunaPilula>
+                  </StatusPilula>
                 </SwimHeaderCell>
               );
             })}

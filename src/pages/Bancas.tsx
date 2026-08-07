@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RealizarBancaModal } from "./RealizarBancaModal";
 import { AlocarPessoasModal } from "./AlocarPessoasModal";
-import { Plus, X } from "lucide-react";
+import { Clock, Plus, User, Users, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   alocar,
@@ -140,6 +140,9 @@ import {
   BancaNomeLinha,
   BancaNome,
   BancaMeta,
+  BancaStatusBadges,
+  BancaMetaLinha,
+  BancaMetaItem,
   BancaAcoes,
 } from "./Bancas.styled";
 
@@ -781,32 +784,47 @@ function SecaoBancas({
                           {nome}
                         </PageBadge>
                       ))}
-                      {acao === "avaliar" && (
-                        <PageBadge $tone={prazoExpirado ? "danger" : "warning"}>
-                          {prazoExpirado
-                            ? "Prazo esgotado"
-                            : prazo
-                              ? `Prazo: ${new Date(prazo.prazoAvaliacao).toLocaleDateString("pt-BR")}`
-                              : "Pendente"}
-                        </PageBadge>
-                      )}
-                      {acao === "deslocar" && <PageBadge $tone="default">Inscrito</PageBadge>}
-                      {acao === "alocar" &&
-                        (lotada ? (
-                          <PageBadge $tone="danger">Lotada</PageBadge>
-                        ) : (
-                          <PageBadge $tone="success">{banca.vagas - banca.alocados} vaga(s)</PageBadge>
-                        ))}
-                      {acao === "nenhuma" && (
-                        <PageBadge $tone={tomDoStatusBanca(banca.status)}>
-                          {ROTULO_STATUS_BANCA[banca.status]}
-                        </PageBadge>
-                      )}
+                      {/* O selo de ESTADO (Inscrito, vaga(s), prazo) fica à
+                          direita — separado do que a banca É (nome, escopo)
+                          por alinhamento, não só por ser outra cor de badge. */}
+                      <BancaStatusBadges>
+                        {acao === "avaliar" && (
+                          <PageBadge $tone={prazoExpirado ? "danger" : "warning"}>
+                            {prazoExpirado
+                              ? "Prazo esgotado"
+                              : prazo
+                                ? `Prazo: ${new Date(prazo.prazoAvaliacao).toLocaleDateString("pt-BR")}`
+                                : "Pendente"}
+                          </PageBadge>
+                        )}
+                        {acao === "deslocar" && <PageBadge $tone="default">Inscrito</PageBadge>}
+                        {acao === "alocar" &&
+                          (lotada ? (
+                            <PageBadge $tone="danger">Lotada</PageBadge>
+                          ) : (
+                            <PageBadge $tone="success">{banca.vagas - banca.alocados} vaga(s)</PageBadge>
+                          ))}
+                        {acao === "nenhuma" && (
+                          <PageBadge $tone={tomDoStatusBanca(banca.status)}>
+                            {ROTULO_STATUS_BANCA[banca.status]}
+                          </PageBadge>
+                        )}
+                      </BancaStatusBadges>
                     </BancaNomeLinha>
-                    <BancaMeta>
-                      {hora} · {nomeUsuario(contexto.usuarios, banca.coordenador_id)} ·{" "}
-                      {banca.alocados}/{banca.vagas} alocados
-                    </BancaMeta>
+                    <BancaMetaLinha>
+                      <BancaMetaItem>
+                        <Clock size={12} />
+                        {hora}
+                      </BancaMetaItem>
+                      <BancaMetaItem>
+                        <User size={12} />
+                        {nomeUsuario(contexto.usuarios, banca.coordenador_id)}
+                      </BancaMetaItem>
+                      <BancaMetaItem>
+                        <Users size={12} />
+                        {banca.alocados}/{banca.vagas} alocados
+                      </BancaMetaItem>
+                    </BancaMetaLinha>
                   </BancaInfo>
 
                   <BancaCardFooter>

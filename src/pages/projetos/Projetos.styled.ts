@@ -120,16 +120,17 @@ export const FrenteTag = styled.span`
 `;
 
 /**
- * A pílula de status no card da lista de projetos — mesma borda arredondada
- * e tamanho de fonte da `FrenteTag` ao lado dela. `ColunaPilula` (kanban)
- * usa `borderRadius.md`, não `full`, porque lá ela é cabeçalho de coluna,
- * não uma tag dentro de um card — não dá pra reaproveitar sem herdar essa
- * diferença de formato.
+ * A pílula de status/etapa — mesma borda arredondada e tamanho de fonte da
+ * `FrenteTag`, em QUALQUER lugar que mostre uma cor de status: card da lista
+ * de projetos, cabeçalho de coluna do kanban (de projeto ou de tarefa),
+ * timeline do histórico, seletor de etapa. Um formato só, pra cor de status
+ * nunca parecer um controle diferente dependendo de onde aparece.
  */
 export const StatusPilula = styled.span<{ $cor: TonsColuna }>`
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  min-width: 0;
   padding: 0.125rem 0.5rem;
   border-radius: ${theme.borderRadius.full};
   border: 1px solid ${({ $cor }) => $cor.borda};
@@ -463,30 +464,39 @@ export const DataItemLabel = styled.span`
 `;
 
 /**
- * Troca de etapa como lista, não como botõezinhos de avançar/voltar — a
- * pílula colorida é a MESMA paleta do kanban de projetos (`CORES_STATUS`),
- * pra escolher a fase aqui não parecer um controle diferente do kanban.
+ * Troca de etapa como lista, não como botõezinhos de avançar/voltar. A cor
+ * mora só na `StatusPilula` (a MESMA pílula do card de Projetos, do kanban e
+ * da timeline) — o botão e as linhas do menu em volta dela são neutros. Pintar
+ * o CONTROLE inteiro da cor da etapa (fundo colorido de ponta a ponta) era o
+ * que destoava do resto do site, onde a cor sempre fica presa numa pílula
+ * pequena sobre uma superfície neutra, nunca vaza pro contêiner inteiro.
  */
 export const EtapaSeletorWrap = styled.div`
   position: relative;
 `;
 
-export const EtapaBotaoAtual = styled.button<{ $cor: TonsColuna }>`
+export const EtapaBotaoAtual = styled.button`
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.3rem 0.7rem;
-  border: 1px solid ${({ $cor }) => $cor.borda};
-  border-radius: ${theme.borderRadius.md};
-  background: ${({ $cor }) => $cor.fundo};
-  color: ${({ $cor }) => $cor.texto};
+  gap: 0.5rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid ${theme.colors.input};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.background};
+  color: ${theme.colors.foreground};
   font-size: ${theme.fontSize.sm};
-  font-weight: ${theme.fontWeight.medium};
   cursor: pointer;
 
   &:disabled {
     cursor: default;
     opacity: 0.7;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: ${theme.colors.ring};
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 25%, transparent);
   }
 `;
 
@@ -497,7 +507,7 @@ export const EtapaMenu = styled.div`
   z-index: 20;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.125rem;
   padding: ${theme.spacing.xs};
   min-width: 15rem;
   border-radius: ${theme.borderRadius.lg};
@@ -506,22 +516,20 @@ export const EtapaMenu = styled.div`
   box-shadow: ${theme.shadows.lg};
 `;
 
-export const EtapaOpcaoBotao = styled.button<{ $cor: TonsColuna | null }>`
+export const EtapaOpcaoBotao = styled.button`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   padding: 0.5rem 0.625rem;
   border: none;
   border-radius: ${theme.borderRadius.md};
-  background: ${({ $cor }) => $cor?.fundo ?? "transparent"};
-  color: ${({ $cor }) => $cor?.texto ?? theme.colors.foreground};
+  background: transparent;
+  color: ${theme.colors.foreground};
   font-size: ${theme.fontSize.sm};
-  font-weight: ${theme.fontWeight.medium};
   text-align: left;
   cursor: pointer;
 
   &:hover {
-    filter: brightness(0.96);
+    background: ${theme.colors.muted};
   }
 `;
 
@@ -725,15 +733,22 @@ export const HistoricoResumoBarraFill = styled.div<{ $percent: number; $cor: str
   transition: width ${theme.transitions.normal};
 `;
 
-export const HistoricoFiltrosCard = styled.div`
+/**
+ * Uma linha de filtros dentro do card "Filtros" do histórico — Etapa sozinha
+ * numa linha (pode ter muitas pílulas), Quem alterou/Período/De/Até juntos
+ * na linha de baixo, separadas por `FrenteFilterDivisor`. Duas linhas com
+ * propósito claro, em vez de tudo espremido junto sem agrupamento.
+ */
+export const HistoricoFiltroLinha = styled.div`
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: ${theme.spacing.md};
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  border-radius: ${theme.borderRadius.xl};
-  border: 1px solid ${theme.colors.border};
-  background: ${theme.colors.card};
+  margin-bottom: ${theme.spacing.md};
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `;
 
 export const HistoricoFiltroGrupo = styled.div`
@@ -934,36 +949,32 @@ export const HistoricoNotaCabecalho = styled.div`
   gap: 0.5rem;
 `;
 
+/** Mesma proporção de `StatusPilula`/`FrenteTag` — antes era bem maior e mais
+ *  pesada que as pílulas de etapa ao lado dela na timeline, duas linguagens
+ *  visuais diferentes na mesma lista. */
 export const HistoricoNotaTag = styled.span`
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.65rem;
+  padding: 0.125rem 0.5rem;
   border-radius: ${theme.borderRadius.full};
-  background: color-mix(in srgb, ${theme.colors.destructive} 14%, transparent);
+  border: 1px solid color-mix(in srgb, ${theme.colors.destructive} 35%, transparent);
+  background: color-mix(in srgb, ${theme.colors.destructive} 12%, transparent);
   color: ${theme.colors.destructive};
-  font-size: ${theme.fontSize.sm};
-  font-weight: ${theme.fontWeight.semibold};
-`;
-
-/** O nome do escopo, texto corrido. Pro TIPO do motivo (banca/entrega), ver
- *  `HistoricoNotaMotivoTag` — mesma linguagem visual do `MotivoTag` da aba
- *  Atrasos, pra a nota no histórico parecer a mesma coisa que gerou ela. */
-export const HistoricoNotaMotivo = styled.span`
-  font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.mutedForeground};
-`;
-
-export const HistoricoNotaMotivoTag = styled.span`
-  display: inline-flex;
-  align-items: center;
-  padding: 0.15rem 0.55rem;
-  border-radius: ${theme.borderRadius.md};
-  background: color-mix(in srgb, ${theme.colors.foreground} 8%, transparent);
-  color: ${theme.colors.foreground};
   font-size: ${theme.fontSize.xs};
-  font-weight: ${theme.fontWeight.semibold};
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: ${theme.fontWeight.medium};
+`;
+
+/**
+ * O contexto da nota (tipo do motivo + escopo), texto corrido separado por
+ * "·" — não uma segunda pílula ao lado de `HistoricoNotaTag`. Duas caixas e
+ * um texto solto na mesma linha (o formato antigo) misturava linguagens
+ * visuais diferentes pro mesmo tipo de informação; "Remarcação de Banca" já
+ * mostrava o escopo assim, isto só alinha "Justificativa de Atraso" ao
+ * mesmo padrão.
+ */
+export const HistoricoNotaMotivo = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
 `;
 
 export const HistoricoNotaTexto = styled.p`
