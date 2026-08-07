@@ -103,7 +103,7 @@ export function ProjetosList() {
   const filtroRef = useRef<HTMLDivElement>(null);
 
   const podeFiltrar = pode(usuario, "filtrar_por_frente");
-  const podeCriar = !!usuario?.cargo.pode_criar_projeto;
+  const podeCriar = !!usuario?.permissoes.pode_criar_projeto;
   const podeArrastarKanban = pode(usuario, "mover_projeto_kanban");
   const podeArquivar = pode(usuario, "arquivar_projeto");
 

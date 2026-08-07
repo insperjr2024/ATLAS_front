@@ -36,10 +36,10 @@ interface NavItemConfig {
   section?: "admin";
   /** Marca o item como ativo também nas sub-rotas (ex.: /projetos/42/tarefas). */
   prefixo?: boolean;
-  /** Visibilidade por CARGO — as 3 flags do módulo de bancas. */
-  visible?: (cargo: UsuarioLogado["cargo"]) => boolean;
-  /** Visibilidade por POSIÇÃO (§3) — dimensão diferente do cargo. É o que o
-   *  item de Monitoramento precisa, e o mecanismo antigo não cobria. */
+  /** Visibilidade por PERMISSÃO (da posição — ver `types/auth.ts`). */
+  visible?: (permissoes: UsuarioLogado["permissoes"]) => boolean;
+  /** Visibilidade por POSIÇÃO (§3) direto — pra regra que não é uma caixa
+   *  de permissão, como o item de Monitoramento restrito a certas posições. */
   visiblePorPosicao?: (usuario: UsuarioLogado) => boolean;
 }
 
@@ -168,8 +168,8 @@ export function Sidebar() {
       return !!usuario && item.visiblePorPosicao(usuario);
     }
     if (!item.visible) return true;
-    if (!usuario?.cargo) return false;
-    return item.visible(usuario.cargo);
+    if (!usuario?.permissoes) return false;
+    return item.visible(usuario.permissoes);
   });
 
   // Dois itens de prefixo podem casar com a mesma rota (ex.: "Avaliação de

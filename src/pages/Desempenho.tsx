@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { getAvaliacoes, getAvaliacoesNotas, getPerguntas, isPerguntaNota } from "@/lib/avaliacoes";
 import { getBancas, getBancasFrentes, getFrentes } from "@/lib/bancas";
+import { paraDataUtc } from "@/lib/projetos";
 import type {
   Avaliacao,
   AvaliacaoNota,
@@ -209,7 +210,7 @@ export function Desempenho() {
                       <RowDot aria-hidden />
                       <RowLabel>{banca.nome_projeto}</RowLabel>
                     </RowGroup>
-                    <RowMeta>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
+                    <RowMeta>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
                   </HistoricoRow>
                 ))}
               </ListScrollWrap>
@@ -235,7 +236,7 @@ export function Desempenho() {
                 >
                   <RowGroup>
                     <RowDot aria-hidden />
-                    <RowMeta>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
+                    <RowMeta>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
                     <RowLabel>{banca.nome_projeto}</RowLabel>
                   </RowGroup>
                   <HistoricoVerLabel>Ver respostas</HistoricoVerLabel>
@@ -296,7 +297,7 @@ function VerMinhaAvaliacaoModal({
             </DetailRow>
             <DetailRow>
               <DetailTerm>Data da banca</DetailTerm>
-              <DetailValue>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
+              <DetailValue>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
             </DetailRow>
             {avaliacao.submetida_em && (
               <DetailRow>

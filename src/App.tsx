@@ -79,12 +79,16 @@ export default function App() {
               <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
-              {/* Criar projeto é de diretor e gerente — guard por POSIÇÃO,
-                  que é dimensão diferente do cargo do AdminRoute. "Arquivados"
-                  não é rota própria — é só a mesma <ProjetosList /> com outro
-                  recorte de conteúdo (?modo=arquivados), travada por dentro
-                  com a mesma permissão `arquivar_projeto`. */}
-              <Route element={<RequirePosicao posicoes={["diretor", "gerente"]} />}>
+              {/* Criar projeto é a caixa de permissão `pode_criar_projeto` —
+                  a mesma que decide o botão em `ProjetosList` e que o backend
+                  já checava (`require_pode_criar_projeto`). Guard por posição
+                  aqui travava quem tinha a caixa delegada sem ser
+                  diretor/gerente: via o botão, clicava, e caía numa rota que
+                  não deixava entrar. "Arquivados" não é rota própria — é só a
+                  mesma <ProjetosList /> com outro recorte de conteúdo
+                  (?modo=arquivados), travada por dentro com a permissão
+                  `arquivar_projeto`. */}
+              <Route element={<AdminRoute permissao="pode_criar_projeto" />}>
                 <Route path="/projetos/novo" element={<ProjetoNovo />} />
               </Route>
               {/* Abas como sub-rotas: é o que deixa uma notificação abrir
@@ -155,9 +159,10 @@ export default function App() {
               <Route element={<FormularioRoute />}>
                 <Route path="/avaliacoes" element={<Avaliacoes />} />
               </Route>
-              {/* Config edita cargos — inclusive quem tem esta mesma caixa —
-                  então é a mais sensível das 4 estendidas. Calendários base
-                  entrou junto por já viver na mesma trava antes. */}
+              {/* Config edita as permissões de qualquer posição — inclusive
+                  esta mesma caixa —, então é a mais sensível das 4
+                  estendidas. Calendários base entrou junto por já viver na
+                  mesma trava antes. */}
               <Route element={<AdminRoute permissao="pode_administrar_configuracoes" />}>
                 <Route path="/config" element={<Config />} />
                 <Route path="/calendarios-base" element={<CalendariosBase />} />

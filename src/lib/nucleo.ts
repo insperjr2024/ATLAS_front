@@ -1,31 +1,8 @@
 import type { BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente } from "@/types/banca";
-import type { Cargo, UsuarioFrente, UsuarioResumo } from "@/types/auth";
+import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 
-/**
- * Um cargo é de consultor quando não tem nenhuma das permissões que só a
- * liderança recebe. Kickoff, tarefas e ver os próprios projetos ficam de fora
- * da checagem de propósito: o consultor também as tem por padrão, então
- * incluí-las faria todo cargo parecer administrativo.
- */
-const PERMISSOES_DE_LIDERANCA = [
-  "pode_criar_projeto",
-  "pode_editar_equipe",
-  "pode_gerir_membros",
-  "pode_definir_cronograma",
-  "pode_ver_monitoramento",
-] as const;
-
-function semNenhumaPermissao(cargo: Cargo): boolean {
-  return PERMISSOES_DE_LIDERANCA.every((campo) => !cargo[campo]);
-}
-
-export function consultoresDoNucleo(usuarios: UsuarioResumo[], cargos: Cargo[]): UsuarioResumo[] {
-  const idsConsultor = new Set(
-    cargos
-      .filter((c) => c.nome.toLowerCase().includes("consultor") || semNenhumaPermissao(c))
-      .map((c) => c.id),
-  );
-  return usuarios.filter((u) => u.ativo && idsConsultor.has(u.cargo_id));
+export function consultoresDoNucleo(usuarios: UsuarioResumo[]): UsuarioResumo[] {
+  return usuarios.filter((u) => u.ativo && u.posicao === "consultor");
 }
 
 export function nomeUsuario(usuarios: UsuarioResumo[], id: number): string {
@@ -36,10 +13,6 @@ export function nomeUsuario(usuarios: UsuarioResumo[], id: number): string {
 export function nomeEscopo(escopos: Escopo[], id: number | null): string {
   if (id == null) return "Outro";
   return escopos.find((e) => e.id === id)?.nome ?? "—";
-}
-
-export function nomeCargo(cargos: Cargo[], id: number): string {
-  return cargos.find((c) => c.id === id)?.nome ?? "—";
 }
 
 /** Remove acentos e normaliza para comparação em buscas. */

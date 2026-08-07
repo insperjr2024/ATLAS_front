@@ -58,11 +58,12 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   // Todo mundo (a regra de herança do §3 já está refletida aqui)
   registrar_reuniao: ["diretor", "gerente", "coordenador", "consultor"],
 
-  // As 10 ações da tabela do §3 saíram desta matriz: viraram caixas de CARGO,
-  // editáveis na tela de Cargos (a posição agora só define o padrão com que o
-  // cargo nasce). Deixá-las aqui criaria uma segunda fonte de verdade
-  // divergindo do backend — foi o que já aconteceu uma vez.
-  // O que sobrou aqui é o que ficou FORA da tabela e segue travado por posição.
+  // As 13 ações de `Permissoes` (types/auth.ts) saíram desta matriz: são
+  // editáveis por posição em Configurações (`GET /posicoes-permissoes`).
+  // Deixá-las aqui criaria uma segunda fonte de verdade divergindo do
+  // backend — foi o que já aconteceu uma vez.
+  // O que sobrou aqui é o que nunca virou caixa e segue travado por posição
+  // pura (identidade organizacional, não permissão delegável).
 };
 
 export function pode(usuario: Usuario | null | undefined, acao: Acao): boolean {

@@ -28,7 +28,6 @@ import {
   tomDoStatusBanca,
   updateBanca,
 } from "@/lib/bancas";
-import { getCargos } from "@/lib/cargos";
 import { getUsuarios } from "@/lib/usuarios";
 import {
   createAvaliacao,
@@ -50,7 +49,7 @@ import {
   createSolicitacaoTroca,
   getSolicitacoesTroca,
 } from "@/lib/solicitacoes-troca";
-import { getProjetos, getEscoposProjeto, marcarBancaDoEscopo } from "@/lib/projetos";
+import { getProjetos, getEscoposProjeto, marcarBancaDoEscopo, paraDataUtc } from "@/lib/projetos";
 import type { EscopoVendido, ProjetoResumo } from "@/types/projeto";
 import type {
   Banca,
@@ -63,7 +62,7 @@ import type {
   FormularioAtivo,
 } from "@/types/banca";
 import type { SolicitacaoTroca } from "@/types/notificacao";
-import type { Cargo, UsuarioResumo } from "@/types/auth";
+import type { UsuarioResumo } from "@/types/auth";
 import {
   avaliadoresDaBanca,
   consultoresDoNucleo,
@@ -154,7 +153,6 @@ function porDataMaisProxima(a: Banca, b: Banca): number {
 
 interface Contexto {
   usuarios: UsuarioResumo[];
-  cargos: Cargo[];
   escopos: Escopo[];
   escoposVendidos: EscopoVendidoResumo[];
   frentes: Frente[];
@@ -203,7 +201,7 @@ export function Bancas() {
   const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
   const [bancaConvidar, setBancaConvidar] = useState<Banca | null>(null);
 
-  const podeAgendar = !!usuario?.cargo.pode_definir_cronograma;
+  const podeAgendar = !!usuario?.permissoes.pode_definir_cronograma;
   const ehDiretor = usuario?.posicao === "diretor";
 
   async function recarregar() {
@@ -211,14 +209,13 @@ export function Bancas() {
     setCarregando(true);
     setErro("");
     try {
-      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, cargos, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca] =
+      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca] =
         await Promise.all([
           getBancas(token),
           getCandidaturas(token),
           getBancasParaAvaliar(usuario.id, token),
           getAvaliacoes(token),
           getUsuarios(token),
-          getCargos(token),
           getEscopos(token),
           getEscoposVendidos(token),
           getFrentes(token),
@@ -253,7 +250,6 @@ export function Bancas() {
       );
       setContexto({
         usuarios,
-        cargos,
         escopos,
         escoposVendidos,
         frentes,
@@ -727,7 +723,7 @@ function SecaoBancas({
         {bancas.length > 0 && (
           <BancaCardScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
             {bancas.map((banca) => {
-              const dataHora = new Date(banca.data_hora);
+              const dataHora = paraDataUtc(banca.data_hora);
               const diaSemana = dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
               const hora = dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
               const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
@@ -963,7 +959,7 @@ function SecaoTrocas({
 
   function linha(solicitacao: SolicitacaoTroca, propria: boolean) {
     const banca = bancas.find((b) => b.id === solicitacao.banca_id);
-    const dataHora = banca ? new Date(banca.data_hora) : null;
+    const dataHora = banca ? paraDataUtc(banca.data_hora) : null;
     const convitePraMim = !propria && solicitacao.usuario_convidado_id === usuarioId;
     return (
       <BancaLinha key={solicitacao.id}>
@@ -1069,7 +1065,7 @@ function BancaFormModal({
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
-  const consultores = consultoresDoNucleo(contexto.usuarios, contexto.cargos);
+  const consultores = consultoresDoNucleo(contexto.usuarios);
 
   useEffect(() => {
     if (editando) return;
@@ -1290,7 +1286,7 @@ function BancaFormModal({
                               {" "}
                               <EscopoIndisponivel>
                                 {escopo.banca.data_hora
-                                  ? `já tem banca em ${new Date(escopo.banca.data_hora).toLocaleDateString("pt-BR")}`
+                                  ? `já tem banca em ${paraDataUtc(escopo.banca.data_hora).toLocaleDateString("pt-BR")}`
                                   : "já tem banca, sem data"}
                               </EscopoIndisponivel>
                             </>
@@ -1450,12 +1446,12 @@ function VerMaisModal({
           <DetailList>
             <DetailRow>
               <DetailTerm>Data</DetailTerm>
-              <DetailValue>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
+              <DetailValue>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
             </DetailRow>
             <DetailRow>
               <DetailTerm>Horário</DetailTerm>
               <DetailValue>
-                {new Date(banca.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {paraDataUtc(banca.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
               </DetailValue>
             </DetailRow>
             <DetailRow>

@@ -1,4 +1,5 @@
 import { chaveData } from "@/components/calendario/semanas";
+import { paraDataUtc } from "@/lib/projetos";
 import type { CronogramaResposta } from "@/types/cronograma";
 import { COR_AMBIENTACAO, COR_PAUSA, ROTULOS_MARCO } from "./cores";
 import type { DiaNaoUtil, EtapaPintavel, FaixaDerivada, MarcoRenderizavel } from "./PaintedCalendar";
@@ -53,7 +54,7 @@ export function derivarCronogramaGeral(dados: CronogramaResposta): CronogramaGer
   for (const e of dados.escopos) {
     if (e.banca?.data_hora) {
       marcos.push({
-        data: e.banca.data_hora.slice(0, 10),
+        data: chaveData(paraDataUtc(e.banca.data_hora)),
         tipo: "banca",
         rotulo: ROTULOS_MARCO.banca,
         titulo: `Banca de ${e.nome}`,

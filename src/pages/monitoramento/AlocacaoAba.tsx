@@ -58,7 +58,7 @@ const ROTULO_PAPEL: Record<Papel, { singular: string; plural: string }> = {
 export function AlocacaoAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
-  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
     <>
       {seletorFrente}

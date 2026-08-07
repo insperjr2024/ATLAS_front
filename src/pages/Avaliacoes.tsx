@@ -18,6 +18,7 @@ import { getBancas, getBancasFrentes, getCandidaturas } from "@/lib/bancas";
 import { DashboardBancas } from "./DashboardBancas";
 import { nomeEscopo, nomeUsuario } from "@/lib/nucleo";
 import { getSemestres } from "@/lib/semestres";
+import { paraDataUtc } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import type {
   Avaliacao,
@@ -311,7 +312,7 @@ export function Avaliacoes() {
                         </DescricaoIndicador>
                       )}
                     </NameCell>
-                    <TableCell>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</TableCell>
+                    <TableCell>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</TableCell>
                     <TableCell>{nomeUsuario(usuarios, banca.coordenador_id)}</TableCell>
                     <TableCell>{nomeEscopo(escopos, banca.escopo_id)}</TableCell>
                     <TableCell>{banca.semestre_nome ?? "—"}</TableCell>
@@ -435,7 +436,7 @@ function VerAvaliacoesModal({
           <DetailList>
             <DetailRow>
               <DetailTerm>Data</DetailTerm>
-              <DetailValue>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
+              <DetailValue>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
             </DetailRow>
             <DetailRow>
               <DetailTerm>Coordenador</DetailTerm>

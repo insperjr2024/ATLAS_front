@@ -847,7 +847,11 @@ export const LinhaAtraso = styled.li`
  * ("● até 3 · ● 4 a 10 · ● mais de 10") e esta coluna leem literalmente a
  * mesma cor.
  */
-export const AtrasoDias = styled.div`
+// $nivel/$externo chegam do chamador mas não pintam nada aqui de propósito
+// (ver o comentário acima) — quem carrega a gravidade agora é só o
+// `AtrasoDot`. Aceitos e ignorados só para o styled-components não brigar
+// com o TypeScript.
+export const AtrasoDias = styled.div<{ $nivel?: NivelSeveridade; $externo?: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -63,7 +63,7 @@ const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/tarefas", voltarRotulo: "
 export function TarefasGeraisAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
-  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
     <>
       {seletorFrente}

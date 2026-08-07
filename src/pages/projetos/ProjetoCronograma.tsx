@@ -28,6 +28,7 @@ import {
   marcarBancaDoEscopo,
   marcarEntregaEscopo,
   marcarKickoff,
+  paraDataUtc,
 } from "@/lib/projetos";
 import { createReuniao, deleteReuniao, updateReuniao } from "@/lib/tarefas";
 import { chaveData } from "@/components/calendario/semanas";
@@ -219,7 +220,7 @@ export function ProjetoCronograma() {
     trechos: number;
   } | null>(null);
 
-  const podeEditar = !!usuario?.cargo.pode_definir_cronograma;
+  const podeEditar = !!usuario?.permissoes.pode_definir_cronograma;
   const ehDiretor = usuario?.posicao === "diretor";
   /**
    * ⭐ Só o COORDENADOR do projeto pede dias de ajuste (§8), e por isso o botão
@@ -407,7 +408,7 @@ export function ProjetoCronograma() {
       if (!modoGeral && e.id !== escopoSelecionado) continue;
       if (e.banca?.data_hora) {
         lista.push({
-          data: e.banca.data_hora.slice(0, 10),
+          data: chaveData(paraDataUtc(e.banca.data_hora)),
           tipo: "banca",
           rotulo: ROTULOS_MARCO.banca,
           titulo: `Banca — ${e.nome}`,
@@ -1028,7 +1029,7 @@ export function ProjetoCronograma() {
     if (!token || !remarcando) return;
     await marcarBancaDoEscopo(
       remarcando.escopoId,
-      `${remarcando.dia}T${horario}:00`,
+      new Date(`${remarcando.dia}T${horario}:00`).toISOString(),
       token,
       justificativa || undefined,
       escopoIds,

@@ -145,9 +145,7 @@ export function MeuPerfil() {
             <Avatar>{iniciais(usuario.nome)}</Avatar>
             <div>
               <PerfilNome>{usuario.nome}</PerfilNome>
-              <PerfilSubtitulo>
-                {ROTULO_POSICAO[usuario.posicao] ?? usuario.posicao} · {usuario.cargo.nome}
-              </PerfilSubtitulo>
+              <PerfilSubtitulo>{ROTULO_POSICAO[usuario.posicao] ?? usuario.posicao}</PerfilSubtitulo>
             </div>
           </PerfilCabecalho>
 
