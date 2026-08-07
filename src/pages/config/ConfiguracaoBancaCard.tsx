@@ -13,6 +13,7 @@ export function ConfiguracaoBancaCard() {
   const { token } = useAuth();
   const [configuracao, setConfiguracao] = useState<Configuracao | null>(null);
   const [vagas, setVagas] = useState("");
+  const [lideranca, setLideranca] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
@@ -24,6 +25,7 @@ export function ConfiguracaoBancaCard() {
       const resp = await getConfiguracao(token);
       setConfiguracao(resp);
       setVagas(String(resp.vagas_por_banca));
+      setLideranca(String(resp.lideranca_minima_por_frente));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar configurações de banca");
     }
@@ -41,11 +43,19 @@ export function ConfiguracaoBancaCard() {
       setErro("Informe um número de vagas válido.");
       return;
     }
+    const numeroLideranca = Number(lideranca);
+    if (!Number.isFinite(numeroLideranca) || numeroLideranca < 0) {
+      setErro("Informe um mínimo de liderança válido.");
+      return;
+    }
     setSalvando(true);
     setErro("");
     setAviso("");
     try {
-      await updateConfiguracao({ vagas_por_banca: numero }, token);
+      await updateConfiguracao(
+        { vagas_por_banca: numero, lideranca_minima_por_frente: numeroLideranca },
+        token,
+      );
       setAviso("Salvo.");
       await carregar();
     } catch (err) {
@@ -78,6 +88,21 @@ export function ConfiguracaoBancaCard() {
             <EmptyText style={{ fontSize: "0.7rem", marginTop: "0.5rem" }}>
               Número máximo de pessoas que podem se candidatar a uma mesma banca. O mínimo por
               frente é configurado em cada frente, na seção "Frentes" abaixo.
+            </EmptyText>
+            <FieldGroup style={{ marginTop: "0.75rem" }}>
+              <FieldLabel htmlFor="lideranca-minima">Mínimo de liderança por frente</FieldLabel>
+              <FieldInput
+                id="lideranca-minima"
+                type="number"
+                min={0}
+                value={lideranca}
+                onChange={(e) => setLideranca(e.target.value)}
+              />
+            </FieldGroup>
+            <EmptyText style={{ fontSize: "0.7rem", marginTop: "0.5rem" }}>
+              Quantas lideranças (gerente da frente, ou diretor) cada frente vinculada precisa ter
+              na banca, à parte do piso de membros comuns. Se ninguém estiver alocado, a alocação
+              automática puxa alguém para cobrir.
             </EmptyText>
             {erro && <FormErrorText>{erro}</FormErrorText>}
             {aviso && <EmptyText style={{ color: "green" }}>{aviso}</EmptyText>}

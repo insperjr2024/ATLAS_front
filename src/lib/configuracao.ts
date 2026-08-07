@@ -5,7 +5,10 @@ export function getConfiguracao(token: string) {
   return apiFetch<Configuracao>("/configuracao", { token });
 }
 
-export function updateConfiguracao(dados: { vagas_por_banca?: number }, token: string) {
+export function updateConfiguracao(
+  dados: { vagas_por_banca?: number; lideranca_minima_por_frente?: number },
+  token: string,
+) {
   return apiFetch<Configuracao>("/configuracao", {
     method: "PATCH",
     token,
