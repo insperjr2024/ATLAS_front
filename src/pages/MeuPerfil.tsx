@@ -23,12 +23,25 @@ import {
   PageButton,
 } from "@/styles/page.styled";
 import {
+  Avatar,
   DadosGrid,
   DadoItem,
   DadoRotulo,
   DadoValor,
   Explicacao,
+  PerfilCabecalho,
+  PerfilNome,
+  PerfilSubtitulo,
 } from "./MeuPerfil.styled";
+
+/** "Heloisa Nogueira" → "HN". Sem foto ainda, então as iniciais são o que
+ *  identifica a pessoa de relance no topo do card. */
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
 
 /**
  * Meu perfil (§11) — os dados do pré-cadastro e a grade de aulas do semestre.
@@ -128,22 +141,20 @@ export function MeuPerfil() {
           <PageCardTitle>Cadastro</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
+          <PerfilCabecalho>
+            <Avatar>{iniciais(usuario.nome)}</Avatar>
+            <div>
+              <PerfilNome>{usuario.nome}</PerfilNome>
+              <PerfilSubtitulo>
+                {ROTULO_POSICAO[usuario.posicao] ?? usuario.posicao} · {usuario.cargo.nome}
+              </PerfilSubtitulo>
+            </div>
+          </PerfilCabecalho>
+
           <DadosGrid>
-            <DadoItem>
-              <DadoRotulo>Nome</DadoRotulo>
-              <DadoValor>{usuario.nome}</DadoValor>
-            </DadoItem>
             <DadoItem>
               <DadoRotulo>E-mail</DadoRotulo>
               <DadoValor>{usuario.email_insper}</DadoValor>
-            </DadoItem>
-            <DadoItem>
-              <DadoRotulo>Posição</DadoRotulo>
-              <DadoValor>{ROTULO_POSICAO[usuario.posicao] ?? usuario.posicao}</DadoValor>
-            </DadoItem>
-            <DadoItem>
-              <DadoRotulo>Cargo</DadoRotulo>
-              <DadoValor>{usuario.cargo.nome}</DadoValor>
             </DadoItem>
             <DadoItem>
               <DadoRotulo>{nomesFrentes.length === 1 ? "Frente" : "Frentes"}</DadoRotulo>
