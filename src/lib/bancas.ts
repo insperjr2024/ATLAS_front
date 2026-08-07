@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { paraDataUtc } from "@/lib/projetos";
 import type {
   Banca,
   BancaFrente,
@@ -257,13 +258,13 @@ export function podeGerenciarBanca(banca: Banca, usuarioId: number): boolean {
 }
 
 export function toDateInputValue(iso: string): string {
-  const d = new Date(iso);
+  const d = paraDataUtc(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export function toTimeInputValue(iso: string): string {
-  const d = new Date(iso);
+  const d = paraDataUtc(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

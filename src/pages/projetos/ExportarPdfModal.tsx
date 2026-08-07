@@ -129,7 +129,7 @@ export function ExportarPdfModal({
               setEscopo(e.target.value === "geral" ? "geral" : Number(e.target.value))
             }
           >
-            <option value="geral">Geral — todos os escopos</option>
+            <option value="geral">Geral</option>
             {escopos.map((e) => (
               <option key={e.id} value={e.id}>
                 Somente {e.nome}

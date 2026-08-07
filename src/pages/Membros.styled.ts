@@ -95,22 +95,6 @@ export const SearchField = styled(BaseFieldInput)`
   height: 2rem;
 `;
 
-export const FilterSelect = styled.select`
-  height: 2rem;
-  padding: 0 0.625rem;
-  border-radius: ${theme.borderRadius.lg};
-  border: 1px solid ${theme.colors.input};
-  background: ${theme.colors.background};
-  font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.foreground};
-  min-width: 10rem;
-
-  &:focus {
-    outline: none;
-    border-color: ${theme.colors.ring};
-  }
-`;
-
 export const HeaderActions = styled.div`
   display: flex;
   flex-wrap: wrap;

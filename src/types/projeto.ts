@@ -25,7 +25,7 @@ export type PapelProjeto = "coordenador" | "consultor";
 export interface ProjetoResumo {
   id: number;
   nome: string;
-  cliente: string;
+  cliente: string | null;
   criado_em: string;
   status: StatusProjeto;
   frente_ids: number[];
@@ -80,6 +80,9 @@ export interface EscopoVendido {
   /** Já resolvido: o nome do catálogo, ou o digitado quando é um "Outro". */
   nome: string;
   frente_id: number;
+  /** Ordem de exibição na tela do projeto — setinhas trocam este valor
+   *  entre vizinhos, não é a ordem de criação (`id`). */
+  ordem: number;
   dias_uteis_vendidos: number;
   status: StatusEscopo;
   data_inicio: string | null;

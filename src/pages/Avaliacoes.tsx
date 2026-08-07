@@ -63,7 +63,6 @@ import {
   TableScrollWrap,
   LIST_MAX_VISIVEIS,
   FiltersRow,
-  FilterSelect,
   FormHint,
   CardActions,
   ModalOverlay,
@@ -249,38 +248,38 @@ export function Avaliacoes() {
         </PageCardHeader>
         <PageCardContent>
           <FiltersRow>
-            <FilterSelect value={filtroSemestre} onChange={(e) => setFiltroSemestre(e.target.value)}>
+            <FieldSelect value={filtroSemestre} onChange={(e) => setFiltroSemestre(e.target.value)} style={{ width: "10rem" }}>
               <option value="">Todos os semestres</option>
               {semestres.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nome}
                 </option>
               ))}
-            </FilterSelect>
-            <FilterSelect value={filtroCoordenador} onChange={(e) => setFiltroCoordenador(e.target.value)}>
+            </FieldSelect>
+            <FieldSelect value={filtroCoordenador} onChange={(e) => setFiltroCoordenador(e.target.value)} style={{ width: "10rem" }}>
               <option value="">Todos os coordenadores</option>
               {usuarios.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nome}
                 </option>
               ))}
-            </FilterSelect>
-            <FilterSelect value={filtroConsultor} onChange={(e) => setFiltroConsultor(e.target.value)}>
+            </FieldSelect>
+            <FieldSelect value={filtroConsultor} onChange={(e) => setFiltroConsultor(e.target.value)} style={{ width: "10rem" }}>
               <option value="">Todos os avaliadores</option>
               {usuarios.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nome}
                 </option>
               ))}
-            </FilterSelect>
-            <FilterSelect value={filtroEscopo} onChange={(e) => setFiltroEscopo(e.target.value)}>
+            </FieldSelect>
+            <FieldSelect value={filtroEscopo} onChange={(e) => setFiltroEscopo(e.target.value)} style={{ width: "10rem" }}>
               <option value="">Todos os escopos</option>
               {escopos.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.nome}
                 </option>
               ))}
-            </FilterSelect>
+            </FieldSelect>
           </FiltersRow>
 
           {historicoFiltrado.length === 0 && <EmptyText>Nenhuma banca encontrada com os filtros selecionados.</EmptyText>}

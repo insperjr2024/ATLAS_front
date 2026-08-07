@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Archive, CalendarDays, ChevronLeft, ChevronRight, List, Plus, Trash2, Upload } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, List, Plus, Trash2, Upload } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/frentes";
 import {
@@ -9,7 +9,6 @@ import {
   getSemestres,
   lerCalendarioPdf,
   ROTULO_TIPO_DIA,
-  updateSemestre,
   type DiaNaoLetivo,
   type LeituraPdf,
   type TipoDiaNaoLetivo,
@@ -106,7 +105,6 @@ export function CalendariosBase() {
   const [vendoCalendario, setVendoCalendario] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
   const [mesVisivel, setMesVisivel] = useState<Date | null>(null);
-  const [confirmandoArquivamento, setConfirmandoArquivamento] = useState(false);
 
   const carregarBase = useCallback(async () => {
     if (!token) return;
@@ -251,13 +249,6 @@ export function CalendariosBase() {
     await carregarDias();
   }
 
-  async function arquivarGestao() {
-    if (!token || !semestre) return;
-    await updateSemestre(semestre.id, { status: "arquivada" }, token);
-    setConfirmandoArquivamento(false);
-    await carregarBase();
-  }
-
   async function excluir(dia: DiaNaoLetivo) {
     if (!token) return;
     setAviso("");
@@ -299,7 +290,9 @@ export function CalendariosBase() {
       </ErrorBlock>
     );
   }
-  if (!semestre) return <EmptyText>Cadastre um semestre antes de montar os calendários.</EmptyText>;
+  if (!semestre) {
+    return <EmptyText>Nenhum semestre cadastrado — crie um em Configurações.</EmptyText>;
+  }
 
   return (
     <PageStack>
@@ -311,28 +304,7 @@ export function CalendariosBase() {
             dos projetos daquela frente.
           </PageSubheading>
         </PageHeaderText>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-          <PageBadge $tone={semestre.status === "ativa" ? "success" : "muted"}>
-            {semestre.status === "ativa" ? "gestão ativa" : "arquivada"}
-          </PageBadge>
-          {semestre.status === "ativa" && (
-            <PageButtonSm type="button" $variant="outline" onClick={() => setConfirmandoArquivamento(true)}>
-              <Archive size={14} />
-              Arquivar gestão
-            </PageButtonSm>
-          )}
-        </div>
       </PageHeaderRow>
-
-      {confirmandoArquivamento && (
-        <ConfirmarModal
-          titulo="Arquivar gestão"
-          mensagem={`Arquivar a gestão ${semestre.nome}? Os indicadores reiniciam na próxima.`}
-          rotuloConfirmar="Arquivar"
-          onCancelar={() => setConfirmandoArquivamento(false)}
-          onConfirmar={arquivarGestao}
-        />
-      )}
 
       <GrupoVisao role="tablist" aria-label="Frente">
         {frentes.map((f) => (

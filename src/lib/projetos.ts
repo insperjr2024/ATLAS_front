@@ -50,9 +50,17 @@ export function desarquivarProjeto(projetoId: number, token: string) {
   });
 }
 
+/** Sem volta — o backend só aceita se o projeto já estiver arquivado. */
+export function deletarProjetoPermanente(projetoId: number, token: string) {
+  return apiFetch<{ nome: string }>(`/projetos/${projetoId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 export interface CreateProjetoPayload {
   nome: string;
-  cliente: string;
+  cliente?: string | null;
   descricao?: string | null;
   link_proposta?: string | null;
   frente_ids: number[];
@@ -137,12 +145,20 @@ export function mudarStatus(projetoId: number, statusNovo: string, token: string
   );
 }
 
-export function updateDescricao(projetoId: number, descricao: string, token: string) {
-  return apiFetch<{ id: number; descricao: string | null }>(`/projetos/${projetoId}/descricao`, {
-    method: "PATCH",
-    token,
-    body: JSON.stringify({ descricao }),
-  });
+export function updateDescricao(
+  projetoId: number,
+  descricao: string,
+  token: string,
+  nome?: string,
+) {
+  return apiFetch<{ id: number; nome: string; descricao: string | null }>(
+    `/projetos/${projetoId}/descricao`,
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(nome ? { descricao, nome } : { descricao }),
+    },
+  );
 }
 
 /** A resposta traz o `status`: encurtar a ambientação pode encerrá-la agora
@@ -209,6 +225,26 @@ export function createEscopoProjeto(projetoId: number, dados: EscopoVendidoPaylo
 
 export function deleteEscopoProjeto(escopoId: number, token: string) {
   return apiFetch(`/escopos-projeto/${escopoId}`, { method: "DELETE", token });
+}
+
+export interface UpdateEscopoProjetoPayload {
+  nome_customizado?: string | null;
+  dias_uteis_vendidos?: number;
+  data_entrega_planejada?: string | null;
+  /** Trocada pelas setinhas de reordenar na tabela de escopos vendidos. */
+  ordem?: number;
+}
+
+export function updateEscopoProjeto(
+  escopoId: number,
+  dados: UpdateEscopoProjetoPayload,
+  token: string,
+) {
+  return apiFetch<{ id: number }>(`/escopos-projeto/${escopoId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(dados),
+  });
 }
 
 // ⭐ A contagem do §5.4 começa pela REUNIÃO INICIAL, registrada na aba
@@ -368,6 +404,19 @@ export function formatarData(iso: string | null | undefined): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+/**
+ * O backend manda datetime em UTC, mas sem o `Z` na string (datetime "naive"
+ * do Python/Pydantic — ex.: `"2026-08-07T03:16:00"`). Sem fuso marcado,
+ * `new Date(...)` lê a string como hora LOCAL em vez de UTC, e mostra o
+ * relógio de UTC cru como se já fosse horário de Brasília — sempre 3h
+ * adiantado. Não mexe em data pura (`2026-07-14`, sem hora): essa já é
+ * tratada à parte, porque não é um instante pra converter, só um dia.
+ */
+export function paraDataUtc(iso: string): Date {
+  const temFuso = /Z$|[+-]\d{2}:?\d{2}$/.test(iso);
+  return new Date(temFuso ? iso : `${iso}Z`);
+}
+
 export function formatarDataHora(iso: string | null | undefined): string {
   if (!iso) return "—";
   // ⚠ Data pura (`2026-07-14`) não tem hora e NÃO pode passar por `new Date`:
@@ -376,7 +425,7 @@ export function formatarDataHora(iso: string | null | undefined): string {
   // entrega) no mesmo campo, então a distinção é feita aqui.
   if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return formatarData(iso);
 
-  const d = new Date(iso);
+  const d = paraDataUtc(iso);
   if (Number.isNaN(d.getTime())) return formatarData(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
