@@ -12,7 +12,6 @@ import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { MeuPerfil } from "@/pages/MeuPerfil";
-import { Calendario } from "@/pages/Calendario";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Membros } from "@/pages/Membros";
 import { Notificacoes } from "@/pages/Notificacoes";
@@ -68,10 +67,11 @@ export default function App() {
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />
                 <Route path="/meu-perfil" element={<MeuPerfil />} />
-              {/* /calendario agora agrega os 4 tipos (§6.5); a visão
-                  só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
+              {/* /calendario agrega os 4 tipos (§6.5); a página só-de-bancas
+                  foi removida — o filtro "Banca" aqui já cobre o mesmo caso
+                  de uso (§8: "calendário pra não sobrepor horários") sem
+                  duplicar a tela. */}
               <Route path="/calendario" element={<CalendarioGeral />} />
-              <Route path="/bancas/calendario" element={<Calendario />} />
 
               {/* 🔔 §6.6 — sem guard: todo perfil tem notificação. O que muda
                   é o conteúdo, e quem recorta isso é o backend. */}

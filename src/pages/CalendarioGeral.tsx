@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { addMonths, endOfMonth, format, isSameMonth, isToday, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarDays, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   COR_TIPO,
@@ -13,18 +13,9 @@ import {
   type TipoEvento,
 } from "@/lib/calendario";
 import { formatarDataHora } from "@/lib/projetos";
-import {
-  DayCell,
-  DayEvents,
-  DayNumber,
-  MonthGrid,
-  WeekdayCell,
-  WeekdayRow,
-  WeekRow,
-} from "@/components/calendario/CalendarGrid.styled";
+import { DayEvents, DayNumber, WeekdayCell, WeekdayRow } from "@/components/calendario/CalendarGrid.styled";
 import { chaveData, rotulosDiaSemana, semanasDoMes } from "@/components/calendario/semanas";
 import {
-  PageStack,
   PageBadge,
   PageButton,
   PageButtonSm,
@@ -35,6 +26,8 @@ import {
 import {
   Cabecalho,
   Chip,
+  CorpoCalendario,
+  DayCellPreenche,
   DetailList,
   DetailRow,
   DetailTerm,
@@ -49,33 +42,56 @@ import {
   ModalHeader,
   ModalOverlay,
   ModalTitle,
+  MonthGridPreenche,
   NarrowModalContent,
   PageHeaderRow,
   PageHeaderText,
   PageHeading,
   PageSubheading,
+  PaginaCalendario,
   Pilula,
+  PilulaGlifo,
+  PilulaTexto,
+  WeekRowPreenche,
 } from "./CalendarioGeral.styled";
 
 const INICIO_SEMANA = 0;
 const ROTULOS = rotulosDiaSemana(INICIO_SEMANA);
 const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega"];
+/** Reunião é semanal, POR PROJETO — com o portfólio inteiro junto numa grade
+ *  só, ela sozinha lota todos os dias úteis de todas as semanas. Isso é
+ *  exatamente o "tem tudo, mas não faz sentido": marco raro (banca, kickoff,
+ *  entrega) e rotina recorrente (reunião) pesando igual afogam os marcos que
+ *  a pessoa realmente veio procurar. Reunião começa OFF; quem quiser ligar,
+ *  liga no filtro. */
+const TIPOS_PADRAO: TipoEvento[] = TIPOS.filter((t) => t !== "reuniao");
+/** A célula agora tem altura FLEXÍVEL (encolhe pra caber as 5-6 semanas do
+ *  mês na tela, sem empurrar a página) — 3, não 4, porque numa célula mais
+ *  baixa é o que sobra de espaço com folga pro "+N mais" sempre caber
+ *  embaixo, em vez de arriscar cortar o próprio texto do evento. */
 const MAX_PILULAS = 3;
 
 /**
- * O calendário geral do §6.5 — bancas, kickoffs, reuniões e entregas de
- * TODOS os projetos, acessível a todos.
+ * O calendário geral do §6.5 — bancas, kickoffs, reuniões e entregas.
  *
- * 🔓 **Sem recorte de visão**, e é o único lugar do sistema assim (§6.5 é
- * explícito). Consequência: uma pessoa pode ver aqui um evento de projeto
- * que ela não pode abrir. Por isso o clique abre um modal com os dados que a
- * própria listagem já trouxe — navegar direto daria 404.
+ * Recorta por posição, como o resto do site: diretor vê o portfólio
+ * inteiro, gerente só a própria frente, coordenador/consultor só os
+ * projetos em que estão alocados. O §6.5 original pedia "acessível a todos,
+ * sem recorte" — decisão revista depois: só quem já enxerga tudo em toda
+ * tela (a diretoria) tira proveito de ver o portfólio inteiro aqui também;
+ * pra quem está em poucos projetos, o resto vira ruído. O recorte é feito
+ * no backend (`GetEventosCalendarioUseCase`), a página só mostra o que
+ * chega.
  */
 export function CalendarioGeral() {
-  const { token } = useAuth();
+  const { token, usuario } = useAuth();
+  // Só diretor e gerente enxergam o portfólio inteiro (§3/§6.5) — o texto
+  // reflete o que a pessoa está de fato vendo, em vez de prometer "todos os
+  // projetos" pra quem só vê os próprios.
+  const veTudo = usuario?.posicao === "diretor" || usuario?.posicao === "gerente";
   const [mes, setMes] = useState(() => startOfMonth(new Date()));
   const [eventos, setEventos] = useState<EventoCalendario[]>([]);
-  const [tiposAtivos, setTiposAtivos] = useState<TipoEvento[]>(TIPOS);
+  const [tiposAtivos, setTiposAtivos] = useState<TipoEvento[]>(TIPOS_PADRAO);
   const [detalhe, setDetalhe] = useState<EventoCalendario | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -137,21 +153,18 @@ export function CalendarioGeral() {
   );
 
   return (
-    <PageStack>
+    <PaginaCalendario>
       <PageHeaderRow>
         <PageHeaderText>
           <PageHeading>Calendário</PageHeading>
           <PageSubheading>
-            Bancas, kickoffs, reuniões e entregas de todos os projetos · {visiveis.length} neste mês
+            Bancas, kickoffs, reuniões e entregas {veTudo ? "de todos os projetos" : "dos seus projetos"} ·{" "}
+            {visiveis.length} neste mês
           </PageSubheading>
         </PageHeaderText>
-        <PageButtonSm as={Link} to="/bancas/calendario" $variant="outline">
-          <CalendarDays size={14} />
-          Só bancas
-        </PageButtonSm>
       </PageHeaderRow>
 
-      <div>
+      <CorpoCalendario>
         <Cabecalho>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <PageButtonSm type="button" $variant="ghost" onClick={() => setMes((m) => addMonths(m, -1))}>
@@ -185,19 +198,19 @@ export function CalendarioGeral() {
           <PageLoadingBlock />
         ) : (
           <GradeWrap>
-            <MonthGrid>
+            <MonthGridPreenche>
               <WeekdayRow>
                 {ROTULOS.map((r) => (
                   <WeekdayCell key={r}>{r}</WeekdayCell>
                 ))}
               </WeekdayRow>
               {semanasDoMes(mes, INICIO_SEMANA).map((semana) => (
-                <WeekRow key={chaveData(semana[0])}>
+                <WeekRowPreenche key={chaveData(semana[0])}>
                   {semana.map((dia) => {
                     const chave = chaveData(dia);
                     const doDia = porDia.get(chave) ?? [];
                     return (
-                      <DayCell key={chave} $outside={!isSameMonth(dia, mes)}>
+                      <DayCellPreenche key={chave} $outside={!isSameMonth(dia, mes)}>
                         <DayNumber $today={isToday(dia)}>{format(dia, "d")}</DayNumber>
                         <DayEvents>
                           {doDia.slice(0, MAX_PILULAS).map((e, i) => (
@@ -208,25 +221,26 @@ export function CalendarioGeral() {
                               title={e.titulo}
                               onClick={() => setDetalhe(e)}
                             >
-                              {GLIFO_TIPO[e.tipo]} {e.projeto_nome || e.titulo}
+                              <PilulaGlifo>{GLIFO_TIPO[e.tipo]}</PilulaGlifo>
+                              <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
                             </Pilula>
                           ))}
                           {doDia.length > MAX_PILULAS && (
                             <MaisEventos>+{doDia.length - MAX_PILULAS} mais</MaisEventos>
                           )}
                         </DayEvents>
-                      </DayCell>
+                      </DayCellPreenche>
                     );
                   })}
-                </WeekRow>
+                </WeekRowPreenche>
               ))}
-            </MonthGrid>
+            </MonthGridPreenche>
           </GradeWrap>
         )}
-      </div>
+      </CorpoCalendario>
 
       {detalhe && <DetalheModal evento={detalhe} onClose={() => setDetalhe(null)} />}
-    </PageStack>
+    </PaginaCalendario>
   );
 }
 

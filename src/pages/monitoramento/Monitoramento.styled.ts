@@ -3,6 +3,7 @@ import { Link as RouterLink, NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import { PALETA } from "@/components/cronograma-pintado/cores";
 import { DataTable as DataTableBase } from "../Bancas.styled";
+import { PageButtonSm } from "@/styles/page.styled";
 
 export {
   PageHeaderRow,
@@ -806,6 +807,13 @@ export const LinhaAtraso = styled.li`
   border-radius: ${theme.borderRadius.lg};
   transition: background ${theme.transitions.fast};
 
+  /* Zebra bem sutil: cada projeto pode ter 1 ou vários motivos, então a
+     carga visual da lista varia de linha em linha — a faixa alternada marca
+     onde um projeto termina e o outro começa sem depender só do filete. */
+  &:nth-of-type(even) {
+    background: ${theme.alpha(theme.colors.foreground, 0.015)};
+  }
+
   &:hover {
     background: ${theme.alpha(theme.colors.foreground, 0.03)};
   }
@@ -826,55 +834,66 @@ export const LinhaAtraso = styled.li`
   }
 `;
 
-/** O número vem primeiro e grande: é o que ordena a lista e o que a diretoria
- *  lê antes do nome do projeto. Vai dentro de um bloco tingido da própria
- *  gravidade — o texto colorido sozinho, em corpo grande, fica lavado sobre
- *  branco, e o bloco também dá à coluna uma largura fixa contra a qual os
- *  dígitos se alinham.
- *
- *  `$externo` desliga a cor de gravidade. O §7.4 é explícito que a agenda do
- *  cliente não pesa contra o time; um projeto atrasado SÓ por isso pintado de
- *  vermelho cobra do coordenador o que não é dele. O bloco fica cinza e o
- *  motivo, logo ao lado, diz de quem é a espera. */
-export const AtrasoDias = styled.div<{ $nivel: NivelSeveridade; $externo?: boolean }>`
+/**
+ * O número vem primeiro: é o que ordena a lista e o que a diretoria lê antes
+ * do nome do projeto. Mas quem carrega a gravidade agora é só o `AtrasoDot`
+ * — o MESMO ponto de 0.5rem que a `Legenda` usa (`SEVERIDADE[$nivel]`, igual
+ * token, igual tamanho). Antes era um bloco inteiro tingido com o número em
+ * `xl`/bold na cor da gravidade: competia visualmente com o nome do projeto
+ * ao lado e, como usava a cor "cheia" (`SEVERIDADE`) enquanto o resto da
+ * linha (`MotivoDias`) usa a versão escurecida para texto pequeno
+ * (`SEVERIDADE_TEXTO`), a paleta parecia bater diferente em cada lugar. Com
+ * o número em cinza-escuro comum e só o ponto colorido, a legenda no topo
+ * ("● até 3 · ● 4 a 10 · ● mais de 10") e esta coluna leem literalmente a
+ * mesma cor.
+ */
+export const AtrasoDias = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
-  padding: 0.3rem 0.25rem;
-  border-radius: ${theme.borderRadius.lg};
+  gap: 0.15rem;
+  padding-top: 0.2rem;
   line-height: 1;
-  color: ${({ $nivel, $externo }) =>
-    $externo ? theme.colors.mutedForeground : SEVERIDADE[$nivel]};
-  background: ${({ $nivel, $externo }) =>
-    $externo
-      ? theme.colors.muted
-      : `color-mix(in srgb, ${SEVERIDADE[$nivel]} 12%, transparent)`};
-
-  strong {
-    font-size: ${theme.fontSize.xl};
-    font-weight: ${theme.fontWeight.bold};
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-  }
-
-  /* Sem caixa alta: o §4.5 reserva uppercase para label de CATEGORIZAÇÃO, e
-     "dias" é unidade de medida, não categoria. Em caixa baixa também cabe na
-     coluna de 3.75rem sem quebrar em duas linhas. */
-  span {
-    font-size: ${theme.fontSize.xs};
-    color: ${theme.colors.mutedForeground};
-  }
 
   @media (max-width: ${theme.breakpoints.sm}px) {
     flex-direction: row;
     align-items: baseline;
-    justify-content: flex-start;
-    gap: 0.3rem;
-    padding: 0.2rem 0.5rem;
+    gap: 0.4rem;
+    padding-top: 0;
     align-self: flex-start;
   }
+`;
+
+export const AtrasoDiasTopo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  strong {
+    font-size: ${theme.fontSize.base};
+    font-weight: ${theme.fontWeight.semibold};
+    font-variant-numeric: tabular-nums;
+    color: ${theme.colors.foreground};
+  }
+`;
+
+/* Sem caixa alta: o §4.5 reserva uppercase para label de CATEGORIZAÇÃO, e
+   "dias" é unidade de medida, não categoria. */
+export const AtrasoDiasRotulo = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** O único lugar da linha que carrega cor de gravidade — mesmo diâmetro e
+ *  mesma paleta do `LegendaItem::before`, de propósito: são o mesmo sinal. */
+export const AtrasoDot = styled.span<{ $nivel: NivelSeveridade; $externo?: boolean }>`
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $nivel, $externo }) =>
+    $externo ? theme.colors.mutedForeground : SEVERIDADE[$nivel]};
 `;
 
 export const AtrasoCorpo = styled.div`
@@ -892,26 +911,42 @@ export const AtrasoTitulo = styled.div`
   font-size: ${theme.fontSize.sm};
 `;
 
+/** O flag secundário do projeto (hoje só "espera do cliente") — ícone com
+ *  `title` de tooltip, não uma segunda pílula ao lado do status operacional.
+ *  Duas pílulas do mesmo tamanho ao lado do nome competiam por atenção sem
+ *  dizer qual é a principal; o status (`Pilula`) continua sendo a única cor
+ *  "de peso" da linha, o resto é só contexto disponível a quem passar o
+ *  mouse. */
+export const AtrasoFlagIcone = styled.span`
+  display: inline-flex;
+  align-items: center;
+  color: color-mix(in srgb, ${theme.colors.warning} 70%, black);
+  cursor: help;
+`;
+
 export const MotivoLista = styled.ul`
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
   margin: 0;
   padding: 0;
   list-style: none;
 `;
 
-/** Colunas fixas (tag · escopo · dias · data · ação), não `flex-wrap`: com
- *  nome de escopo de tamanho variável, o flex antigo fazia cada linha
- *  quebrar num ponto diferente e nada alinhava verticalmente — a régua de
- *  datas e o botão de ação ficavam impossíveis de escanear de cima a baixo.
- *  Grid fixa a régua por projeto (cada `MotivoLista` é a sua própria grade). */
+/**
+ * Colunas de largura FIXA (tag · escopo · dias · data · ação), não `auto`:
+ * cada `<li>` é a sua própria grade, e `auto` deixava cada coluna do tamanho
+ * do conteúdo DAQUELE motivo específico — a régua de dias/data/ação flutuava
+ * solta à direita, numa posição diferente a cada linha, com bordas
+ * serrilhadas em vez de uma coluna de verdade. Largura fixa é o que faz a
+ * régua inteira (de todo motivo, de todo projeto da lista) alinhar na mesma
+ * posição — só aí "escanear a coluna de baixo pra cima" funciona.
+ */
 export const MotivoItem = styled.li`
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.3rem 0;
+  grid-template-columns: 9.5rem minmax(0, 1fr) 3.75rem 7rem 6.5rem;
+  align-items: baseline;
+  column-gap: 0.6rem;
+  padding: 0.4rem 0;
   font-size: ${theme.fontSize.sm};
   color: ${theme.colors.mutedForeground};
 
@@ -920,60 +955,41 @@ export const MotivoItem = styled.li`
   }
 `;
 
-/** §7.4 — "Justificar" por motivo. Do tamanho do próprio selo "justificado"
- *  ao lado (`MotivoJustificadoBadge`), não do resto da linha (`xs`) — os dois
- *  ocupam o mesmo lugar num estado ou noutro e precisam pesar igual. */
-/** Contorno em vez de texto sublinhado sozinho: `primary` e `destructive`
- *  são a MESMA cor institucional aqui (ver `theme.ts`), então ao lado dos
- *  números vermelhos de atraso um link vermelho sem contorno se perdia no
- *  meio da severidade — parecia mais um aviso do que uma ação. A forma de
- *  pílula (igual ao selo verde "Justificado" ao lado) é o que diferencia
- *  "isto é clicável" quando a cor não pode. */
-export const MotivoJustificarBtn = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
+/**
+ * "Justificar" por motivo: o botão de VERDADE do site (`PageButtonSm`), não
+ * uma pílula contornada inventada só pra esta linha — mesmo componente que
+ * "Cancelar"/"Tentar novamente"/etc. já usam em qualquer outra tela. Largura
+ * mínima igual à de `MotivoJustificadoBadge`, os dois `justify-self: end`
+ * dentro da MESMA coluna fixa da grade: "Justificar" (mais curto) e
+ * "Justificado" (mais longo, com o ✓) paravam em posições diferentes antes,
+ * porque cada botão só tinha a largura do próprio texto.
+ */
+export const MotivoJustificarBtn = styled(PageButtonSm)`
   justify-self: end;
-  padding: 0.2rem 0.6rem;
-  border-radius: ${theme.borderRadius.full};
-  border: 1px solid ${theme.colors.primary};
-  background: transparent;
-  font-size: ${theme.fontSize.sm};
-  font-weight: ${theme.fontWeight.medium};
-  color: ${theme.colors.primary};
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background ${theme.transitions.fast};
-
-  &:hover {
-    background: color-mix(in srgb, ${theme.colors.primary} 10%, transparent);
-  }
+  min-width: 6rem;
 `;
 
-/** O selo "justificado" por motivo — maior que o resto da linha (`xs`) de
- *  propósito: é a prova de que a diretoria já respondeu aquele atraso, não
- *  deveria se perder no meio do texto pequeno da lista.
- *
- *  É um LINK (pra `/projetos/{id}/historico#justificativa-{id}`), não um
- *  selo mudo — de que adianta dizer "já foi respondido" sem levar pra
- *  resposta? `AtrasosAba` decide se renderiza como link ou como span puro
- *  (quando não tem `justificativa_id` pra apontar). */
+/** O "justificado" por motivo — link de texto (não selo cheio), pra
+ *  `/projetos/{id}/historico#justificativa-{id}`. `AtrasosAba` decide se
+ *  renderiza como link ou como span puro (quando não tem `justificativa_id`
+ *  pra apontar). Mesma largura mínima do botão ao lado — ver o comentário em
+ *  `MotivoJustificarBtn`. */
 export const MotivoJustificadoBadge = styled(RouterLink)`
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.3rem;
   justify-self: end;
-  padding: 0.2rem 0.6rem;
-  border-radius: ${theme.borderRadius.full};
-  background: color-mix(in srgb, ${theme.colors.success} 16%, transparent);
-  color: ${theme.colors.success};
+  min-width: 6rem;
   font-size: ${theme.fontSize.sm};
-  font-weight: ${theme.fontWeight.semibold};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.success};
   text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
 
   &:hover {
-    background: color-mix(in srgb, ${theme.colors.success} 26%, transparent);
+    text-decoration: underline;
   }
 
   &::before {
@@ -989,20 +1005,21 @@ export const MotivoData = styled.span`
   color: ${theme.colors.foreground};
 `;
 
-/** Os dias DESTE motivo.
+/**
+ * Os dias DESTE motivo — mesma paleta escurecida (`SEVERIDADE_TEXTO`) que a
+ * legenda referencia pra texto pequeno; o `AtrasoDot` ao lado do nome do
+ * projeto é quem carrega a cor "cheia" (`SEVERIDADE`) da mesma escala.
  *
- *  O número grande da linha é a SOMA de todos os motivos do projeto (é assim
- *  que o backend ordena a lista), e soma não é duração: três escopos com 4
- *  dias cada viram "12" e leem como um atraso de 12 dias, que não existe. Com
- *  o valor de cada motivo à vista a composição fica explícita e ninguém
- *  precisa deduzir. */
+ * O número grande da linha é a SOMA de todos os motivos do projeto (é assim
+ * que o backend ordena a lista), e soma não é duração: três escopos com 4
+ * dias cada viram "12" e leem como um atraso de 12 dias, que não existe. Com
+ * o valor de cada motivo à vista a composição fica explícita e ninguém
+ * precisa deduzir.
+ */
 export const MotivoDias = styled.span<{ $nivel: NivelSeveridade; $externo?: boolean }>`
   font-variant-numeric: tabular-nums;
   font-weight: ${theme.fontWeight.medium};
   white-space: nowrap;
-  /* Alinha "4 dias"/"14 dias" pela direita dentro da coluna — sem isto, o
-     dígito a mais empurrava a coluna de data, que já vem logo depois. */
-  justify-self: end;
   color: ${({ $nivel, $externo }) =>
     $externo ? theme.colors.mutedForeground : SEVERIDADE_TEXTO[$nivel]};
 `;
@@ -1017,32 +1034,28 @@ export const MotivoEscopoNome = styled.span`
   min-width: 0;
 `;
 
-/** Distingue o atraso do TIME (banca, entrega interna) do que veio da agenda
- *  do cliente. O §7.4 é explícito que o externo não pode pesar contra o time,
- *  então ele não pode ter o mesmo peso visual.
+/**
+ * Distingue o atraso do TIME (banca, entrega interna) do que veio da agenda
+ * do cliente. O §7.4 é explícito que o externo não pode pesar contra o time,
+ * então ele não pode ter o mesmo peso visual.
  *
- *  A tag diz QUE TIPO de marco venceu — banca, entrega, agenda do cliente. É
- *  categoria, não gravidade, e por isso saiu da rampa de severidade: antes ela
- *  vinha em `SEVERIDADE.critica` fixo, o que pintava de vermelho-crítico a tag
- *  de uma banca atrasada há 2 dias. Quem carrega a gravidade do motivo é o
- *  `MotivoDias` ao lado, que reage ao número de verdade. O contraste
- *  interno/externo continua, agora por preenchimento: o do time tem fundo, o
- *  do cliente é só contorno. */
+ * Rótulo puro (maiúsculas + espaçamento), sem caixinha nem borda — mesmo
+ * tratamento de `DemandaAltaTitulo`/`TableHeadCell`. A linha já tem o ponto
+ * de gravidade, o status do projeto e os selos de Justificado/Justificar;
+ * mais uma caixa só pra dizer "banca" era badge empilhado em cima de badge.
+ * O contraste interno/externo continua por COR do texto: o do time é
+ * escuro, o do cliente é apagado.
+ */
 export const MotivoTag = styled.span<{ $externo?: boolean }>`
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  padding: 0.15rem 0.55rem;
-  border-radius: ${theme.borderRadius.md};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: ${theme.fontSize.xs};
   font-weight: ${theme.fontWeight.semibold};
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border: 1px solid ${({ $externo }) => ($externo ? theme.colors.border : "transparent")};
-  background: ${({ $externo }) =>
-    $externo ? "transparent" : `color-mix(in srgb, ${theme.colors.foreground} 8%, transparent)`};
-  color: ${({ $externo }) =>
-    $externo ? theme.colors.mutedForeground : theme.colors.foreground};
+  color: ${({ $externo }) => ($externo ? theme.colors.mutedForeground : theme.colors.foreground)};
 `;
 
 /** Barra dentro da célula da tabela — a coluna vira comparação visual sem
