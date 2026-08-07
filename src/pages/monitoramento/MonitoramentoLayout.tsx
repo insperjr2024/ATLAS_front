@@ -44,6 +44,10 @@ export function MonitoramentoLayout() {
   const [escopos, setEscopos] = useState<Escopo[]>([]);
 
   const podeVerTarefasGerais = pode(usuario, "ver_tarefas_gerais");
+  // A fila é DELA: gerente vê o Monitoramento inteiro, mas não decide nada
+  // do que está nesta aba (§3). Mostrar uma lista que a pessoa não pode
+  // responder é só ansiedade.
+  const podeAprovar = usuario?.posicao === "diretor";
   const podeVerCronogramasGerais = pode(usuario, "ver_cronogramas_gerais");
 
   useEffect(() => {
@@ -70,6 +74,7 @@ export function MonitoramentoLayout() {
         <TabLink to="/monitoramento" end>
           Visão geral
         </TabLink>
+        {podeAprovar && <TabLink to="/monitoramento/aprovacoes">Aprovações</TabLink>}
         <TabLink to="/monitoramento/execucao">Execução</TabLink>
         <TabLink to="/monitoramento/alocacao">Alocação</TabLink>
         <TabLink to="/monitoramento/atrasos">Atrasos</TabLink>

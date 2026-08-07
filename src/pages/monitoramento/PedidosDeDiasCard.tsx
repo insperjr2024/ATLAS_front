@@ -31,7 +31,7 @@ import { ItemLista, LinkProjeto, ListaSimples } from "./Monitoramento.styled";
  * que a recusa fica registrada, e é ela que explica depois por que a janela
  * continuou nos dias vendidos.
  */
-export function PedidosDeDiasCard() {
+export function PedidosDeDiasCard({ onDecidiu }: { onDecidiu?: () => void } = {}) {
   const { token, usuario } = useAuth();
   const [pedidos, setPedidos] = useState<PedidoPendente[]>([]);
   const [erro, setErro] = useState("");
@@ -78,6 +78,7 @@ export function PedidosDeDiasCard() {
       setDecidindo(null);
       setJustificativa("");
       await carregar();
+      onDecidiu?.();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Não foi possível responder o pedido");
     } finally {
