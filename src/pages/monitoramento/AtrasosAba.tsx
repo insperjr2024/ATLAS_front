@@ -41,6 +41,7 @@ import {
   MotivoLista,
   MotivoTag,
   Pilula,
+  PiorCaso,
   ResumoItem,
   ResumoRotulo,
   ResumoValor,
@@ -73,13 +74,16 @@ const ROTULO_MOTIVO: Record<string, string> = {
  * seria cobrar tempo em que o time não tinha como trabalhar. Não há mais duas
  * réguas no sistema, então os números das duas abas se comparam.
  *
- * **`dias_totais` é SOMA, não duração.** O backend acumula os dias de todos os
- * motivos do projeto (`AtrasoProjeto.dias_totais`) e ordena a lista por ela.
- * Soma responde "quanto atraso este projeto acumula"; não responde "há quanto
- * tempo ele está atrasado" — três escopos com 4 dias cada somam 12 sem que
- * nada esteja parado há 12 dias. Por isso a tela separa as duas leituras: o
- * número grande é a soma (para bater com a ordem da lista) e a COR vem do pior
- * motivo isolado, que é sobre o que os cortes do `nivel()` foram escritos.
+ * ⭐ **A tela mostra o PIOR CASO, não a soma** — decisão de 2026-08-06.
+ *
+ * `dias_totais` continua existindo e é uma SOMA: três escopos com 4 dias cada
+ * somam 12 sem que nada esteja parado há 12 dias. Serve para volume acumulado,
+ * mas não responde "qual é o maior buraco", que é a pergunta desta aba.
+ *
+ * Antes o número grande era a soma e a COR vinha do pior motivo isolado — dois
+ * elementos do mesmo bloco falando de coisas diferentes. Hoje os dois saem do
+ * pior caso, e a lista é ordenada por ele: o número em destaque é o mesmo que
+ * define a ordem, então ninguém precisa adivinhar o critério.
  */
 export function AtrasosAba() {
   const { token } = useAuth();
@@ -109,33 +113,18 @@ export function AtrasosAba() {
   const projetos = dados?.por_projeto ?? [];
   const coordenadores = dados?.por_coordenador ?? [];
 
-  /* A régua das barras da tabela de coordenadores: o maior acumulado dela.
+  /* A régua das barras da tabela de coordenadores: o maior pior-caso dela.
      Comparar coordenador com coordenador é o ponto — o §7.4 quer padrão
      recorrente, e padrão só aparece na comparação entre pares. */
   const piorCoordenador = useMemo(
-    () => Math.max(1, ...coordenadores.map((c) => c.dias_acumulados)),
+    () => Math.max(1, ...coordenadores.map((c) => c.pior_dias)),
     [coordenadores],
   );
-  const diasAcumulados = useMemo(
-    () => projetos.reduce((soma, p) => soma + p.dias_totais, 0),
-    [projetos],
-  );
 
-  /* O "pior caso" da faixa é o maior atraso ISOLADO da visão, não a maior
-     soma. É o número que a diretoria usa para dizer "o pior que temos hoje é
-     um escopo parado há N dias" — e a maior soma não sustenta essa frase. */
-  const piorMotivo = useMemo(
-    () => Math.max(0, ...projetos.flatMap((p) => p.motivos.map((m) => m.dias))),
-    [projetos],
-  );
-
-  /* Quantos estão atrasados APENAS pela agenda do cliente. O §7.4 tira esses
-     do que se cobra do time, e a faixa precisa dizer isso — senão "8 projetos
-     atrasados" vira cobrança de coisa que o time não controla. */
-  const somenteExterno = useMemo(
-    () => projetos.filter(apenasExterno).length,
-    [projetos],
-  );
+  /* Os números da faixa vêm PRONTOS do backend. A divisão banca/entrega é
+     classificação de motivo, e recontá-la aqui a partir das descrições seria
+     reimplementar no front uma regra que o §7.4 já define no servidor. */
+  const resumo = dados?.resumo;
 
   // Ordenada por gravidade, então o corte esconde a cauda. Antes dos `return`
   // cedo de erro e carregando — hook depois deles seria condicional.
@@ -167,31 +156,34 @@ export function AtrasosAba() {
   return (
     <PageStack>
       {seletor}
-      {projetos.length > 0 && (
+      {resumo && projetos.length > 0 && (
         <FaixaResumo>
           <ResumoItem>
             {/* A contagem fica neutra de propósito. Tingi-la com a gravidade do
                 PIOR projeto diria que os 12 estão críticos quando só um está. */}
-            <ResumoValor>{projetos.length}</ResumoValor>
+            <ResumoValor>{resumo.projetos}</ResumoValor>
             <ResumoRotulo>
-              {projetos.length === 1 ? "projeto atrasado" : "projetos atrasados"}
-              {somenteExterno > 0 &&
-                ` · ${somenteExterno} só por agenda do cliente`}
+              {resumo.projetos === 1 ? "projeto atrasado" : "projetos atrasados"}
             </ResumoRotulo>
           </ResumoItem>
           <ResumoItem>
-            <ResumoValor>
-              {diasAcumulados}
-              <small>dias</small>
-            </ResumoValor>
-            <ResumoRotulo>dias úteis somados</ResumoRotulo>
-          </ResumoItem>
-          <ResumoItem>
-            <ResumoValor $nivel={nivel(piorMotivo)}>
-              {piorMotivo}
+            <ResumoValor $nivel={nivel(resumo.pior_caso)}>
+              {resumo.pior_caso}
               <small>dias</small>
             </ResumoValor>
             <ResumoRotulo>pior atraso isolado</ResumoRotulo>
+          </ResumoItem>
+          {/* 🤝 A entrega travada do lado do CLIENTE.
+              O §7.4 tira isso do que se cobra do time, e por isso ela some das
+              outras leituras — mas é o caso mais delicado do portfólio: é o
+              cliente esperando, e quem resolve é a diretoria falando com ele,
+              não o coordenador trabalhando mais. Sem um número próprio, esses
+              casos ficavam diluídos no total de atrasados. */}
+          <ResumoItem>
+            <ResumoValor $nivel={resumo.com_externo > 0 ? nivel(resumo.pior_externo) : undefined}>
+              {resumo.com_externo}
+            </ResumoValor>
+            <ResumoRotulo>esperando o cliente</ResumoRotulo>
           </ResumoItem>
         </FaixaResumo>
       )}
@@ -238,14 +230,17 @@ export function AtrasosAba() {
                      sobre a soma do projeto. Quando o atraso é todo externo a
                      cor sai de cena: §7.4 não cobra isso do time. */
                   const grau = nivel(pior(p.motivos.filter((m) => !ehExterno(m))));
-                  /* Uma soma só é soma quando há o que somar. Com um motivo só,
-                     "soma" confunde: o número É a duração. */
-                  const somando = p.motivos.length > 1;
                   return (
                     <LinhaAtraso key={p.projeto_id}>
+                      {/* O PIOR motivo isolado, não a soma dos motivos. Três
+                          escopos com 4 dias cada somavam 12 sem que nada
+                          estivesse parado há 12 dias — e a soma aparecia aqui
+                          ao lado de uma COR tirada do pior caso, então o número
+                          e a cor falavam de coisas diferentes. Agora falam do
+                          mesmo, e a lista é ordenada por ele. */}
                       <AtrasoDias $nivel={grau} $externo={externo}>
-                        <strong>{p.dias_totais}</strong>
-                        <span>{somando ? "soma" : "dias"}</span>
+                        <strong>{p.pior_motivo}</strong>
+                        <span>dias</span>
                       </AtrasoDias>
   
                       <AtrasoCorpo>
@@ -307,7 +302,8 @@ export function AtrasosAba() {
                     <TableHeadCell>Coordenador</TableHeadCell>
                     <TableHeadCell>Projetos</TableHeadCell>
                     <TableHeadCell>Atrasados</TableHeadCell>
-                    <TableHeadCell>Dias somados</TableHeadCell>
+                    <TableHeadCell>Pior caso</TableHeadCell>
+                    <TableHeadCell>Qual é</TableHeadCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -325,21 +321,34 @@ export function AtrasosAba() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {c.dias_acumulados === 0 ? (
+                        {c.pior_dias === 0 ? (
                           <SemDado>—</SemDado>
                         ) : (
                           /* A barra é decorativa: o número ao lado já diz o
                              valor, e sem `aria-hidden` o leitor de tela
                              anuncia uma div vazia no meio da célula. */
                           <BarraCelula>
-                            <strong>{c.dias_acumulados}</strong>
+                            <strong>{c.pior_dias}</strong>
                             <BarraCelulaTrilho aria-hidden="true">
                               <BarraCelulaPreenchida
-                                $pct={(c.dias_acumulados / piorCoordenador) * 100}
-                                $nivel={nivel(c.dias_acumulados)}
+                                $pct={(c.pior_dias / piorCoordenador) * 100}
+                                $nivel={nivel(c.pior_dias)}
                               />
                             </BarraCelulaTrilho>
                           </BarraCelula>
+                        )}
+                      </TableCell>
+                      {/* O contexto do pior caso: sem ele o número obriga a
+                          procurar na tabela de cima qual dos projetos dele é o
+                          tal, e o motivo fica sem resposta. */}
+                      <TableCell>
+                        {c.pior_dias === 0 ? (
+                          <SemDado>—</SemDado>
+                        ) : (
+                          <PiorCaso>
+                            <strong>{c.pior_projeto}</strong>
+                            <span>{c.pior_motivo}</span>
+                          </PiorCaso>
                         )}
                       </TableCell>
                     </TableRow>
