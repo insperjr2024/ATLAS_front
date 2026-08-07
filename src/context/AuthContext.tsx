@@ -45,7 +45,6 @@ const CARGO_PLACEHOLDER: Cargo = {
   pode_gerir_membros: false,
   pode_marcar_kickoff: false,
   pode_definir_cronograma: false,
-  pode_aprovar_reajuste: false,
   pode_criar_tarefa: false,
   pode_mover_editar_tarefa: false,
   pode_ver_proprios_projetos: false,

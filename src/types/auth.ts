@@ -20,10 +20,9 @@ export interface Cargo {
   pode_marcar_kickoff: boolean;
   /** 5. Definir cronograma por escopo (etapas, banca) */
   pode_definir_cronograma: boolean;
-  /** 6. Aprovar reajuste de cronograma — decidir os pedidos de dias de ajuste
-   *  (§8), no banner do cronograma do projeto e no card da Visão geral do
-   *  Monitoramento. */
-  pode_aprovar_reajuste: boolean;
+  // ⚠ `pode_aprovar_reajuste` foi removido: decidir os pedidos de dias (§8) é
+  // da POSIÇÃO diretor, não de uma caixa de cargo. O backend derrubou a coluna
+  // na migration 1556cc590a06, e a rota cobra `require_diretor`.
   /** 7. Criar tarefa */
   pode_criar_tarefa: boolean;
   /** 8. Mover e editar tarefa */

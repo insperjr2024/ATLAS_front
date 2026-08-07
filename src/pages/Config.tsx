@@ -94,14 +94,6 @@ const PERMISSOES = [
       "Criar e mover etapas e marcos, definir o cronograma de um escopo e agendar as bancas.",
   },
   {
-    // Caixa separada de `pode_definir_cronograma` de propósito: quem monta o
-    // cronograma é quem pede os dias; quem decide o pedido é outra pessoa.
-    campo: "pode_aprovar_reajuste" as const,
-    titulo: "Aprovar reajuste de cronograma",
-    descricao:
-      "Decidir os pedidos de dias de ajuste dos escopos, no card de pedidos da Visão geral do Monitoramento.",
-  },
-  {
     campo: "pode_criar_tarefa" as const,
     titulo: "Criar tarefa",
     descricao: "Abrir tarefas novas no quadro de um projeto.",

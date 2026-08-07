@@ -307,13 +307,15 @@ export function ProjetoPage() {
         </AvisoBanner>
       )}
 
-      {/* Kickoff já marcado, mas o projeto continua Vendido — cadastrado
-          agora com início planejado pra mais adiante. Não é alerta: é só
-          informação até alguém confirmar Ambientação no seletor de etapa. */}
+      {/* ⚠ Estado que o §4 não prevê mais: marcar o kickoff JÁ move para
+          Ambientação. Sobra só quem foi marcado antes dessa regra existir —
+          por isso o texto explica o que fazer, em vez de descrever um passo
+          normal do fluxo. */}
       {projeto.status === "vendido" && projeto.data_kickoff && (
         <AvisoBanner>
-          🗓 Kickoff planejado para {formatarData(projeto.data_kickoff)} — o projeto continua Vendido até alguém
-          confirmar o início escolhendo "Ambientação" ali em cima.
+          🗓 Kickoff marcado para {formatarData(projeto.data_kickoff)}, mas o projeto ainda está em
+          Vendido — marcações feitas antes da regra atual pararam aqui. Escolha "Ambientação" no
+          seletor de etapa para acertar.
         </AvisoBanner>
       )}
 

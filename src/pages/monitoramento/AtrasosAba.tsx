@@ -482,7 +482,7 @@ function JustificarAtrasoModal({
         motivo.projeto_escopo_id ?? undefined,
         motivo.tipo,
       );
-      onSalvo(criada.id);
+      onSalvo(Number(criada.id));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao registrar a justificativa");
     } finally {
