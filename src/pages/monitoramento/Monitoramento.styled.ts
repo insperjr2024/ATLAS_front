@@ -515,7 +515,7 @@ export const ValorDeHoje = styled.span`
   color: ${theme.colors.mutedForeground};
 
   &::after {
-    content: "hoje";
+    content: "Hoje";
     margin-left: 0.3rem;
     padding: 0.05rem 0.3rem;
     border-radius: ${theme.borderRadius.sm};

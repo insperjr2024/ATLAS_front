@@ -338,9 +338,49 @@ export const BancaNome = styled.span`
   white-space: nowrap;
 `;
 
+/** A linha de metadado simples (picker do `AlocarPessoasModal`, linhas de
+ *  `SecaoTrocas`) — sem ícone, é só texto corrido curto. Pro card cheio da
+ *  lista principal ver `BancaMetaLinha`/`BancaMetaItem`, que têm mais fatos
+ *  pra separar. */
 export const BancaMeta = styled.span`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
+`;
+
+/** O(s) selo(s) de ESTADO da banca (Inscrito, N vaga(s), Lotada, prazo de
+ *  avaliação) — empurrados pro canto direito da linha do título, longe do
+ *  nome e do escopo. Separar por ALINHAMENTO, não só por serem badges
+ *  diferentes: título+escopo dizem "o que é", o selo diz "como está", e os
+ *  dois lados coexistindo na mesma corrida de texto era o que misturava as
+ *  duas coisas. */
+export const BancaStatusBadges = styled.span`
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.375rem;
+  margin-left: auto;
+`;
+
+/** Cada fato da linha de metadado (horário, coordenador, alocados) com o
+ *  próprio ícone — "09:00 · Duda Lima · 2/5 alocados" corrido, sem nada
+ *  diferenciando as três informações, lia como um bloco só de texto cinza. */
+export const BancaMetaLinha = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const BancaMetaItem = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  svg {
+    flex-shrink: 0;
+  }
 `;
 
 export const BancaAcoes = styled.div`

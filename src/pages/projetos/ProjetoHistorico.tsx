@@ -36,26 +36,26 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
-import { Ponto, ColunaPilula } from "@/components/kanban/Kanban.styled";
+import { Ponto } from "@/components/kanban/Kanban.styled";
 import { FieldSelect } from "@/pages/Bancas.styled";
 import {
   AvisoBanner,
   FieldInput,
-  HeaderAcoes,
+  FrenteFilterDivisor,
+  StatusPilula,
   HistoricoAutorChip,
   HistoricoCarregarMais,
   HistoricoExcluirBtn,
   HistoricoFiltroGrupo,
   HistoricoFiltroLabel,
+  HistoricoFiltroLinha,
   HistoricoFiltroPill,
   HistoricoFiltroPills,
-  HistoricoFiltrosCard,
   HistoricoGrid,
   HistoricoLimparFiltros,
   HistoricoNotaCabecalho,
   HistoricoNotaLinha,
   HistoricoNotaMotivo,
-  HistoricoNotaMotivoTag,
   HistoricoNotaTag,
   HistoricoNotaTexto,
   HistoricoPeriodoPills,
@@ -353,7 +353,7 @@ export function ProjetoHistorico() {
           <PageCardContent>
             <EmptyText>
               {projeto.historico_oculto_ate
-                ? "Está tudo oculto no momento — use \"Mostrar tudo\" acima pra ver de novo."
+                ? "Está tudo oculto no momento. Use \"Mostrar tudo\" acima pra ver de novo."
                 : "Nenhuma mudança registrada."}
             </EmptyText>
           </PageCardContent>
@@ -372,12 +372,6 @@ export function ProjetoHistorico() {
           </PageButton>
         </AvisoBanner>
       )}
-
-      <HeaderAcoes style={{ justifyContent: "flex-end" }}>
-        <PageButton type="button" $variant="outline" onClick={() => setConfirmandoLimpar(true)}>
-          Limpar histórico
-        </PageButton>
-      </HeaderAcoes>
 
       <HistoricoGrid>
         <PageCard>
@@ -408,84 +402,98 @@ export function ProjetoHistorico() {
         </PageCard>
 
         <PageStack>
-          <HistoricoFiltrosCard>
-            <HistoricoFiltroGrupo style={{ flex: 1 }}>
-              <HistoricoFiltroLabel>Etapa</HistoricoFiltroLabel>
-              <HistoricoFiltroPills>
-                {statusPresentes.map((status) => {
-                  const tons = tonsDaColuna(CORES_STATUS[status]);
-                  return (
-                    <HistoricoFiltroPill
-                      key={status}
-                      type="button"
-                      $ativo={statusFiltro.has(status)}
-                      $cor={tons.ponto}
-                      onClick={() => alternarStatusFiltro(status)}
-                    >
-                      <Ponto $cor={tons.ponto} />
-                      {ROTULO_STATUS[status]}
-                    </HistoricoFiltroPill>
-                  );
-                })}
-              </HistoricoFiltroPills>
-            </HistoricoFiltroGrupo>
+          <PageCard>
+            <PageCardHeader>
+              <PageCardTitle>Filtros</PageCardTitle>
+              <PageButton type="button" $variant="outline" onClick={() => setConfirmandoLimpar(true)}>
+                Limpar histórico
+              </PageButton>
+            </PageCardHeader>
+            <PageCardContent>
+              <HistoricoFiltroLinha>
+                <HistoricoFiltroGrupo style={{ flex: 1 }}>
+                  <HistoricoFiltroLabel>Etapa</HistoricoFiltroLabel>
+                  <HistoricoFiltroPills>
+                    {statusPresentes.map((status) => {
+                      const tons = tonsDaColuna(CORES_STATUS[status]);
+                      return (
+                        <HistoricoFiltroPill
+                          key={status}
+                          type="button"
+                          $ativo={statusFiltro.has(status)}
+                          $cor={tons.ponto}
+                          onClick={() => alternarStatusFiltro(status)}
+                        >
+                          <Ponto $cor={tons.ponto} />
+                          {ROTULO_STATUS[status]}
+                        </HistoricoFiltroPill>
+                      );
+                    })}
+                  </HistoricoFiltroPills>
+                </HistoricoFiltroGrupo>
+              </HistoricoFiltroLinha>
 
-            <HistoricoFiltroGrupo>
-              <HistoricoFiltroLabel htmlFor="historico-autor">Quem alterou</HistoricoFiltroLabel>
-              <FieldSelect id="historico-autor" value={autorFiltro} onChange={(e) => setAutorFiltro(e.target.value)}>
-                <option value="">Todo mundo</option>
-                {autoresPresentes.map((id) => (
-                  <option key={id} value={id}>
-                    {nomeUsuario(id)}
-                  </option>
-                ))}
-                {temAutomatico && <option value="automatico">🤖 Automático</option>}
-              </FieldSelect>
-            </HistoricoFiltroGrupo>
+              <FrenteFilterDivisor />
 
-            <HistoricoFiltroGrupo>
-              <HistoricoFiltroLabel>Período</HistoricoFiltroLabel>
-              <HistoricoPeriodoPills>
-                {[7, 30, 90].map((dias) => (
-                  <HistoricoFiltroPill
-                    key={dias}
-                    type="button"
-                    $ativo={periodoRapido === dias}
-                    $cor={theme.colors.primary}
-                    onClick={() => aplicarPeriodoRapido(dias)}
-                  >
-                    {dias} dias
-                  </HistoricoFiltroPill>
-                ))}
-              </HistoricoPeriodoPills>
-            </HistoricoFiltroGrupo>
+              <HistoricoFiltroLinha>
+                <HistoricoFiltroGrupo>
+                  <HistoricoFiltroLabel htmlFor="historico-autor">Quem alterou</HistoricoFiltroLabel>
+                  <FieldSelect id="historico-autor" value={autorFiltro} onChange={(e) => setAutorFiltro(e.target.value)}>
+                    <option value="">Todo mundo</option>
+                    {autoresPresentes.map((id) => (
+                      <option key={id} value={id}>
+                        {nomeUsuario(id)}
+                      </option>
+                    ))}
+                    {temAutomatico && <option value="automatico">Automático</option>}
+                  </FieldSelect>
+                </HistoricoFiltroGrupo>
 
-            <HistoricoFiltroGrupo>
-              <HistoricoFiltroLabel htmlFor="historico-data-inicio">De</HistoricoFiltroLabel>
-              <FieldInput
-                id="historico-data-inicio"
-                type="date"
-                value={dataInicio}
-                onChange={(e) => editarDataManual("inicio", e.target.value)}
-              />
-            </HistoricoFiltroGrupo>
+                <HistoricoFiltroGrupo>
+                  <HistoricoFiltroLabel>Período</HistoricoFiltroLabel>
+                  <HistoricoPeriodoPills>
+                    {[7, 30, 90].map((dias) => (
+                      <HistoricoFiltroPill
+                        key={dias}
+                        type="button"
+                        $ativo={periodoRapido === dias}
+                        $cor={theme.colors.primary}
+                        onClick={() => aplicarPeriodoRapido(dias)}
+                      >
+                        {dias} dias
+                      </HistoricoFiltroPill>
+                    ))}
+                  </HistoricoPeriodoPills>
+                </HistoricoFiltroGrupo>
 
-            <HistoricoFiltroGrupo>
-              <HistoricoFiltroLabel htmlFor="historico-data-fim">Até</HistoricoFiltroLabel>
-              <FieldInput
-                id="historico-data-fim"
-                type="date"
-                value={dataFim}
-                onChange={(e) => editarDataManual("fim", e.target.value)}
-              />
-            </HistoricoFiltroGrupo>
+                <HistoricoFiltroGrupo>
+                  <HistoricoFiltroLabel htmlFor="historico-data-inicio">De</HistoricoFiltroLabel>
+                  <FieldInput
+                    id="historico-data-inicio"
+                    type="date"
+                    value={dataInicio}
+                    onChange={(e) => editarDataManual("inicio", e.target.value)}
+                  />
+                </HistoricoFiltroGrupo>
 
-            {filtroAtivo && (
-              <HistoricoLimparFiltros type="button" onClick={limparFiltros}>
-                Limpar filtros
-              </HistoricoLimparFiltros>
-            )}
-          </HistoricoFiltrosCard>
+                <HistoricoFiltroGrupo>
+                  <HistoricoFiltroLabel htmlFor="historico-data-fim">Até</HistoricoFiltroLabel>
+                  <FieldInput
+                    id="historico-data-fim"
+                    type="date"
+                    value={dataFim}
+                    onChange={(e) => editarDataManual("fim", e.target.value)}
+                  />
+                </HistoricoFiltroGrupo>
+
+                {filtroAtivo && (
+                  <HistoricoLimparFiltros type="button" onClick={limparFiltros}>
+                    Limpar filtros
+                  </HistoricoLimparFiltros>
+                )}
+              </HistoricoFiltroLinha>
+            </PageCardContent>
+          </PageCard>
 
           {historicoFiltrado.length === 0 ? (
             <PageCard>
@@ -520,12 +528,18 @@ export function ProjetoHistorico() {
                             <HistoricoNotaLinha>
                               <HistoricoNotaCabecalho>
                                 <HistoricoNotaTag>Justificativa de Atraso</HistoricoNotaTag>
-                                {linha.motivo_tipo && (
-                                  <HistoricoNotaMotivoTag>
-                                    {ROTULO_MOTIVO_ATRASO[linha.motivo_tipo] ?? linha.motivo_tipo}
-                                  </HistoricoNotaMotivoTag>
+                                {(linha.motivo_tipo || escopo) && (
+                                  <HistoricoNotaMotivo>
+                                    {[
+                                      linha.motivo_tipo
+                                        ? (ROTULO_MOTIVO_ATRASO[linha.motivo_tipo] ?? linha.motivo_tipo)
+                                        : null,
+                                      escopo?.nome ?? null,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  </HistoricoNotaMotivo>
                                 )}
-                                {escopo && <HistoricoNotaMotivo>{escopo.nome}</HistoricoNotaMotivo>}
                               </HistoricoNotaCabecalho>
                               <HistoricoNotaTexto>{linha.texto}</HistoricoNotaTexto>
                             </HistoricoNotaLinha>
@@ -559,9 +573,13 @@ export function ProjetoHistorico() {
                             <HistoricoNotaLinha>
                               <HistoricoNotaCabecalho>
                                 <HistoricoNotaTag>Remarcação de Banca</HistoricoNotaTag>
-                                {escopo && <HistoricoNotaMotivo>{escopo.nome}</HistoricoNotaMotivo>}
                                 <HistoricoNotaMotivo>
-                                  {formatarDataHora(linha.data_anterior)} → {formatarDataHora(linha.data_nova)}
+                                  {[
+                                    escopo?.nome ?? null,
+                                    `${formatarDataHora(linha.data_anterior)} → ${formatarDataHora(linha.data_nova)}`,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
                                 </HistoricoNotaMotivo>
                               </HistoricoNotaCabecalho>
                               <HistoricoNotaTexto>{linha.justificativa}</HistoricoNotaTexto>
@@ -590,22 +608,22 @@ export function ProjetoHistorico() {
                           <HistoricoTimelineTransicao>
                             {linha.status_anterior && (
                               <>
-                                <ColunaPilula $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior])}>
+                                <StatusPilula $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior])}>
                                   <Ponto $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior]).ponto} />
                                   {ROTULO_STATUS[linha.status_anterior]}
-                                </ColunaPilula>
+                                </StatusPilula>
                                 <span>→</span>
                               </>
                             )}
-                            <ColunaPilula $cor={tonsNovo}>
+                            <StatusPilula $cor={tonsNovo}>
                               <Ponto $cor={tonsNovo.ponto} />
                               {ROTULO_STATUS[linha.status_novo]}
-                            </ColunaPilula>
+                            </StatusPilula>
                             {!linha.status_anterior && <span>· projeto criado</span>}
                           </HistoricoTimelineTransicao>
                           <HistoricoTimelineMeta>
                             <HistoricoAutorChip>
-                              {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "🤖 automático"}
+                              {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "Automático"}
                             </HistoricoAutorChip>
                             <span>{formatarDataHora(linha.alterado_em)}</span>
                           </HistoricoTimelineMeta>
@@ -642,7 +660,7 @@ export function ProjetoHistorico() {
           titulo="Limpar histórico"
           mensagem={
             <>
-              As mudanças de status de até agora saem da timeline. Nada é apagado de verdade — elas
+              As mudanças de status de até agora saem da timeline. Nada é apagado de verdade: elas
               continuam contando pros dias já usados pelos escopos deste projeto, só não aparecem mais
               aqui. Dá pra trazer tudo de volta depois, em "Mostrar tudo".
             </>

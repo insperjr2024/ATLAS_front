@@ -50,6 +50,7 @@ import {
   EtapaBotaoAtual,
   EtapaMenu,
   EtapaOpcaoBotao,
+  StatusPilula,
 } from "./Projetos.styled";
 
 /** O que o shell entrega para as abas. */
@@ -400,14 +401,15 @@ function EtapaSeletor({
     <EtapaSeletorWrap ref={ref}>
       <EtapaBotaoAtual
         type="button"
-        $cor={tonsAtual}
         disabled={ocupado || semOpcoes}
         aria-expanded={aberto}
         aria-haspopup="menu"
         onClick={() => setAberto((v) => !v)}
       >
-        <Ponto $cor={tonsAtual.ponto} />
-        {rotuloAtual}
+        <StatusPilula $cor={tonsAtual}>
+          <Ponto $cor={tonsAtual.ponto} />
+          {rotuloAtual}
+        </StatusPilula>
         {!semOpcoes && <ChevronDown size={14} />}
       </EtapaBotaoAtual>
       {aberto && !semOpcoes && (
@@ -419,14 +421,19 @@ function EtapaSeletor({
                 key={opcao.chave}
                 type="button"
                 role="menuitem"
-                $cor={tons}
                 onClick={() => {
                   setAberto(false);
                   onSelecionar(opcao.chave);
                 }}
               >
-                {tons && <Ponto $cor={tons.ponto} />}
-                {opcao.rotulo}
+                {tons ? (
+                  <StatusPilula $cor={tons}>
+                    <Ponto $cor={tons.ponto} />
+                    {opcao.rotulo}
+                  </StatusPilula>
+                ) : (
+                  opcao.rotulo
+                )}
               </EtapaOpcaoBotao>
             );
           })}

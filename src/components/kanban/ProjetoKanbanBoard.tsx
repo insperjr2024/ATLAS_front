@@ -15,6 +15,7 @@ import {
 import { AlertTriangle } from "lucide-react";
 import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
 import { CORES_STATUS, destinosValidos, formatarDataHoraBanca, podePausar, ROTULO_STATUS } from "@/lib/projetos";
+import { StatusPilula } from "@/pages/projetos/Projetos.styled";
 import type { ProjetoResumo, StatusProjeto } from "@/types/projeto";
 import {
   AlertaKickoff,
@@ -27,7 +28,6 @@ import {
   CardTitulo,
   CardTopo,
   Coluna,
-  ColunaPilula,
   ColunaRotuloTexto,
   ColunaTitulo,
   ColunaVazia,
@@ -135,10 +135,10 @@ function ColunaDrop({
   return (
     <Coluna ref={setNodeRef} $sobre={isOver} $cor={tons}>
       <ColunaTitulo>
-        <ColunaPilula $cor={tons}>
+        <StatusPilula $cor={tons}>
           <Ponto $cor={tons.ponto} />
           <ColunaRotuloTexto>{rotulo}</ColunaRotuloTexto>
-        </ColunaPilula>
+        </StatusPilula>
         <Contador>{projetos.length}</Contador>
       </ColunaTitulo>
 
