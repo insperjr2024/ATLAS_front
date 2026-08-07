@@ -60,7 +60,7 @@ export const DataTable = styled(DataTableBase)`
  * ponto em que a tabela ainda é legível; abaixo dele, rolar é melhor do que
  * encolher.
  *
- * ⚠ **As duas rolagens moram no MESMO elemento, de propósito.**
+ * **As duas rolagens moram no MESMO elemento, de propósito.**
  *
  * A tentação é aninhar: um container para a horizontal, outro por fora para a
  * vertical. Não funciona. `overflow-x: auto` faz o `overflow-y` computar para
@@ -72,7 +72,7 @@ export const DataTable = styled(DataTableBase)`
  * Com `$max`, a tabela ganha rolagem vertical e o cabeçalho gruda no topo. Sem
  * ele, o comportamento é o de antes: só horizontal, altura livre.
  *
- * ⭐ Rolagem aqui, e páginas nos cards de alerta (ver `usePaginacao`): nestas
+ * Rolagem aqui, e páginas nos cards de alerta (ver `usePaginacao`): nestas
  * tabelas a pessoa procura ALGUÉM ESPECÍFICO, e mandá-la adivinhar em qual
  * página está o colega seria pior do que rolar.
  */
@@ -575,7 +575,7 @@ export const ItemLista = styled.li`
  *
  * O `theme.colors.destructive` é a MESMA cor do `primary`, o vermelho
  * institucional. Usar só ele para atraso faz o urgente se confundir com a
- * navegação e os links, e nada se destaca. A rampa abaixo abre âmbar → vermelho
+ * navegação e os links, e nada se destaca. A rampa abaixo abre âmbar vermelho
  * profundo para que a gravidade seja legível pela cor, e não só pelo número.
  * Em OKLCH porque a luminosidade fica perceptualmente uniforme entre os três
  * degraus, coisa que HSL não garante.
@@ -597,7 +597,7 @@ export type NivelSeveridade = keyof typeof SEVERIDADE;
  * sobre branco, quando o mínimo é 4.5:1, e some para quem lê em tela clara.
  *
  * Descer a luminosidade para a faixa 0.48–0.55 preserva a identidade de matiz
- * (âmbar → laranja → vermelho) e devolve a legibilidade. É o mesmo raciocínio
+ * (âmbar laranja vermelho) e devolve a legibilidade. É o mesmo raciocínio
  * já aplicado no `TEXTO_PILULA.atencao`, que escurece o warning pelo mesmo
  * motivo.
  */
@@ -1221,11 +1221,46 @@ export const AvisoSomenteLeitura = styled.p`
  * projeto: é o que deixa a coluna "Validação" do projeto A alinhada com a
  * "Validação" do projeto B, faixa embaixo da outra.
  */
-export const SwimGrid = styled.div<{ $colunas: number }>`
+/** As colunas do quadro, na mesma medida no cabeçalho e no corpo — é o que
+ *  mantém a pílula alinhada com os cards dela. */
+const colunasDoQuadro = css<{ $colunas: number }>`
   display: grid;
-  grid-template-columns: 10rem repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(11rem, 1fr));
-  row-gap: ${theme.spacing.xl};
+  grid-template-columns: repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(11rem, 1fr));
   column-gap: ${theme.spacing.md};
+`;
+
+/**
+ * O cabeçalho do quadro: GRUDA no topo da página enquanto se percorre a lista.
+ *
+ * **Fica fora do container que rola na horizontal, de propósito.**
+ * `position: sticky` se ancora no ancestral que rola, e o corpo do quadro tem
+ * `overflow-x: auto` — dentro dele o cabeçalho grudaria no quadro, não na
+ * página. Já foi tentado limitar a altura do quadro para ele virar a própria
+ * janela: funciona, mas cria uma caixa de rolagem dentro da página, e aí a
+ * lista deixa de acompanhar o resto da tela.
+ *
+ * Separado, o alinhamento com as colunas passa a ser responsabilidade do JS,
+ * que espelha o `scrollLeft` do corpo aqui — ver `TarefasGeraisAba`.
+ */
+export const CabecalhoQuadro = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  overflow: hidden;
+  padding: ${theme.spacing.sm} 0;
+  border-bottom: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+`;
+
+export const LinhaColunas = styled.div<{ $colunas: number }>`
+  ${colunasDoQuadro}
+`;
+
+/** O corpo: uma faixa por projeto. Rola só na horizontal — a vertical é a da
+ *  página, para o quadro não virar uma janela dentro de outra. */
+export const SwimGrid = styled.div<{ $colunas: number }>`
+  ${colunasDoQuadro}
+  row-gap: ${theme.spacing.md};
   overflow-x: auto;
   padding-bottom: ${theme.spacing.sm};
   align-items: start;
@@ -1251,34 +1286,16 @@ export const SwimGrid = styled.div<{ $colunas: number }>`
   }
 `;
 
-/** O cabeçalho de uma coluna do quadro.
- *
- *  ⚠ `$fixa` para a PRIMEIRA célula, a que fica sobre a coluna de projetos.
- *  Sem isso ela rola junto com as colunas de tarefa enquanto a coluna de
- *  projetos (que é sticky) fica parada — o cabeçalho deixa de casar com o
- *  corpo, e a leitura é de que o título do projeto "andou junto". */
-export const SwimHeaderCell = styled.div<{ $fixa?: boolean }>`
+/** Uma célula do cabeçalho. Sem posicionamento próprio — quem gruda é a
+ *  `CabecalhoQuadro` inteira. */
+export const SwimHeaderCell = styled.div`
   display: flex;
   align-items: center;
-
-  ${({ $fixa }) =>
-    $fixa &&
-    css`
-      position: sticky;
-      left: 0;
-      z-index: 2;
-      background: ${theme.colors.card};
-    `}
-`;
-
-/** A linha entre uma faixa de projeto e a próxima — mesmo cinza neutro dos
- *  outros divisores da tela (Atrasos, Alocação), sem cor de destaque: aqui é
- *  só separação visual, a cor de alerta fica reservada pra quando algo
- *  realmente precisa de atenção. */
-export const SwimDivisor = styled.div`
-  grid-column: 1 / -1;
-  height: 1px;
-  background: ${theme.colors.border};
+  /* A pílula tem a largura do texto, e a coluna de cards embaixo é bem mais
+     larga: encostada à esquerda ela não parece o título daquela coluna, parece
+     estar sobrando entre duas. Centralizada, cada card fica claramente sob o
+     seu rótulo. */
+  justify-content: center;
 `;
 
 /**
@@ -1289,51 +1306,69 @@ export const SwimDivisor = styled.div`
  * mesmo se a ordem das linhas mudar ou a etiqueta sair da tela ao rolar.
  */
 /**
- * O nome do projeto na ponta esquerda da faixa.
+ * O nome do projeto: uma FAIXA de seção, largura toda, abrindo o grupo de
+ * cards dele.
  *
- * ⭐ **Não é um card, e não pode parecer um.** Ele tinha `border-radius`,
- * borda e fundo tingido — a mesma forma dos cards de tarefa que ficam ao lado
- * —, e com isso se lia como se fosse mais uma tarefa daquela linha. Aqui ele
- * vira um RÓTULO DE LINHA: canto reto, sem moldura, e um divisor à direita
- * separando a coluna de identificação do quadro em si.
+ * Já foi coluna congelada à esquerda e não podia continuar sendo: com
+ * `position: sticky`, os cards passam POR BAIXO ao rolar para o lado — é o que
+ * o recurso faz, não um defeito de estilo, e nenhuma sombra conserta.
  *
- * Continua `sticky` para não sumir ao rolar o quadro na horizontal, e o fundo
- * precisa ser OPACO — é ele que fica por cima dos cards enquanto passam por
- * baixo.
+ * Como linha SEM fundo, porém, ela se lia como conteúdo da primeira coluna:
+ * o nome aparecia logo abaixo de "A fazer" e parecia pertencer a ela. Aqui a
+ * faixa tem fundo, altura própria e uma barra colorida na ponta — a leitura
+ * passa a ser "começou um projeto novo", que é a de um cabeçalho de grupo.
+ * É ela que separa uma faixa da outra, então não há mais divisor.
  */
 export const SwimLabelCell = styled.div<{ $cor?: string }>`
-  position: sticky;
-  left: 0;
-  z-index: 1;
+  grid-column: 1 / -1;
+  position: relative;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.125rem;
-  padding: ${theme.spacing.sm} ${theme.spacing.md} ${theme.spacing.sm} 1rem;
-  border-right: 1px solid ${theme.colors.border};
-  background: ${theme.colors.card};
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.md};
+  padding: 0.4rem ${theme.spacing.md} 0.4rem 0.75rem;
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.muted};
   cursor: pointer;
   transition: background ${theme.transitions.fast};
 
+  /* A cor do projeto na ponta, a mesma dos cards dele — é o fio que liga o
+     cabeçalho do grupo ao conteúdo abaixo. */
   &::before {
     content: "";
     position: absolute;
-    left: 0.375rem;
-    top: 0.375rem;
-    bottom: 0.375rem;
+    left: 0;
+    top: 0.3rem;
+    bottom: 0.3rem;
     width: 3px;
     border-radius: ${theme.borderRadius.full};
     background: ${({ $cor }) => $cor ?? "transparent"};
   }
 
   &:hover {
-    background: ${theme.colors.muted};
+    background: ${theme.alpha(theme.colors.foreground, 0.07)};
   }
 
   &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 30%, transparent);
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/** O texto do rótulo gruda à esquerda enquanto a linha rola — assim o nome
+ *  continua legível com o quadro deslocado, e como a linha está vazia não há
+ *  card nenhum para ele tapar. */
+export const SwimLabelTexto = styled.span`
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: baseline;
+  gap: ${theme.spacing.sm};
+  min-width: 0;
 `;
 
 export const SwimLabelNome = styled.span`
@@ -1342,9 +1377,18 @@ export const SwimLabelNome = styled.span`
   color: ${theme.colors.foreground};
 `;
 
+/** O cliente vem depois do nome, na mesma linha, precedido de um separador.
+ *  Empilhado ele dobrava a altura de cada faixa de projeto — e agora que o
+ *  rótulo é uma linha inteira, sobra largura de sobra. */
 export const SwimLabelCliente = styled.span`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
+  white-space: nowrap;
+
+  &::before {
+    content: "";
+    margin-right: ${theme.spacing.sm};
+  }
 `;
 
 export const SwimCell = styled.div`
@@ -1370,7 +1414,7 @@ export const SwimCellVazia = styled.p`
 /**
  * A cor de cada etapa do ciclo, na pizza da Visão geral.
  *
- * ⭐ **Sai da `PALETA` do cronograma, não de uma rampa própria.** Aquela paleta
+ * **Sai da `PALETA` do cronograma, não de uma rampa própria.** Aquela paleta
  * já resolve o mesmo problema — dar cor a etapa — e já foi calibrada: 8 matizes
  * com a MESMA saturação e a MESMA luminosidade, só a matiz girando. É isso que
  * mantém as fatias com o mesmo peso visual; numa paleta ingênua o amarelo pula
@@ -1387,7 +1431,7 @@ export const SwimCellVazia = styled.p`
  * O índice é fixo por status, e não pela ordem de chegada: "Em andamento" tem
  * que ser a mesma cor toda vez que a tela abre.
  *
- * ⚠ Cor sozinha não é informação: a legenda escreve nome e número de cada
+ * Cor sozinha não é informação: a legenda escreve nome e número de cada
  * etapa, então quem não distingue os matizes continua lendo o gráfico inteiro.
  */
 export const COR_ETAPA: Record<string, string> = Object.fromEntries(
@@ -1542,7 +1586,7 @@ export const BotaoAlternativa = styled.button<{ $ativo: boolean }>`
   }
 `;
 
-/** ⚠ O aviso de filtro ativo. Sem ele o gráfico mostra números menores que a
+/** O aviso de filtro ativo. Sem ele o gráfico mostra números menores que a
  *  tabela logo abaixo e parece bug — o filtro fica escondido num `select` que
  *  ninguém relê depois de escolher. */
 export const FiltroAtivo = styled.span`

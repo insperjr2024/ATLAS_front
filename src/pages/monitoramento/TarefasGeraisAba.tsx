@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -19,14 +19,16 @@ import {
   AvisoSomenteLeitura,
   SwimCell,
   SwimCellVazia,
-  SwimDivisor,
   BarraBusca,
   BotaoLimparBusca,
+  CabecalhoQuadro,
+  LinhaColunas,
   SwimGrid,
   SwimHeaderCell,
   SwimLabelCell,
   SwimLabelCliente,
   SwimLabelNome,
+  SwimLabelTexto,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
 
@@ -60,6 +62,9 @@ export function TarefasGeraisAba() {
   const { token } = useAuth();
   const { frenteId, seletor } = useFiltroFrente();
   const [busca, setBusca] = useState("");
+  /* O cabeçalho é um elemento separado do quadro (ver o JSX); esta referência
+     existe só para manter os dois na mesma posição horizontal. */
+  const refCabecalho = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   function abrirProjeto(projetoId: number) {
@@ -159,79 +164,106 @@ export function TarefasGeraisAba() {
       {projetos.length === 0 ? (
         <EmptyText>Nenhum projeto com "{busca}".</EmptyText>
       ) : (
-      <SwimGrid $colunas={dados.colunas.length}>
-        <SwimHeaderCell $fixa />
-        {dados.colunas.map((coluna) => {
-          const tons = tonsDaColuna(coluna.cor);
-          return (
-            <SwimHeaderCell key={coluna.chave}>
-              <ColunaPilula $cor={tons}>
-                <Ponto $cor={tons.ponto} />
-                {coluna.nome}
-              </ColunaPilula>
-            </SwimHeaderCell>
-          );
-        })}
-
-        {projetos.map((projeto, indice) => (
-          <Fragment key={projeto.id}>
-            {indice > 0 && <SwimDivisor />}
-            <SwimLabelCell
-              $cor={corDoProjeto(projeto.id)}
-              role="button"
-              tabIndex={0}
-              title="Abrir projeto"
-              onClick={() => abrirProjeto(projeto.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") abrirProjeto(projeto.id);
-              }}
-            >
-              <SwimLabelNome>{projeto.nome}</SwimLabelNome>
-              <SwimLabelCliente>{projeto.cliente}</SwimLabelCliente>
-            </SwimLabelCell>
-
+        <>
+        {/* O cabeçalho fica FORA do quadro para poder grudar no topo da página:
+            dentro dele, que rola na horizontal, o sticky se ancoraria no quadro e
+            não na página. O preço é alinhar as colunas na mão, logo abaixo. */}
+        <CabecalhoQuadro ref={refCabecalho}>
+          <LinhaColunas $colunas={dados.colunas.length}>
             {dados.colunas.map((coluna) => {
               const tons = tonsDaColuna(coluna.cor);
-              const tarefas = dados.tarefas.filter(
-                (t) => t.projeto_id === projeto.id && t.grupo_coluna === coluna.chave,
-              );
               return (
-                <SwimCell key={`${projeto.id}-${coluna.chave}`}>
-                  {tarefas.length === 0 && <SwimCellVazia>—</SwimCellVazia>}
-                  {tarefas.map((tarefa) => {
-                    const sinal = SINAL_URGENCIA[tarefa.urgencia];
-                    return (
-                      <Card
-                        key={tarefa.id}
-                        $cor={tons}
-                        style={{ cursor: "pointer" }}
-                        role="button"
-                        tabIndex={0}
-                        title="Abrir no projeto"
-                        onClick={() => abrirProjeto(tarefa.projeto_id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") abrirProjeto(tarefa.projeto_id);
-                        }}
-                      >
-                        <CardTopo>
-                          <CardTitulo>{tarefa.titulo}</CardTitulo>
-                          {sinal && (
-                            <span title={sinal.rotulo(tarefa.dias_para_prazo)}>{sinal.glifo}</span>
-                          )}
-                        </CardTopo>
-                        <CardMeta>
-                          <span>{tarefa.responsavel_nome}</span>
-                          <span>{formatarData(tarefa.prazo)}</span>
-                        </CardMeta>
-                      </Card>
-                    );
-                  })}
-                </SwimCell>
+                <SwimHeaderCell key={coluna.chave}>
+                  <ColunaPilula $cor={tons}>
+                    <Ponto $cor={tons.ponto} />
+                    {coluna.nome}
+                  </ColunaPilula>
+                </SwimHeaderCell>
               );
             })}
-          </Fragment>
-        ))}
-      </SwimGrid>
+          </LinhaColunas>
+        </CabecalhoQuadro>
+
+        <SwimGrid
+          $colunas={dados.colunas.length}
+          onScroll={(e) => {
+            // Espelha a rolagem horizontal no cabeçalho. Sem isto as pílulas
+            // ficariam paradas enquanto os cards andam, e cada card passaria a
+            // ser lido sob a coluna errada.
+            if (refCabecalho.current) {
+              refCabecalho.current.scrollLeft = e.currentTarget.scrollLeft;
+            }
+          }}
+        >
+          {projetos.map((projeto) => (
+            <Fragment key={projeto.id}>
+              {/* Linha PRÓPRIA, ocupando a largura toda — não é mais uma coluna
+                  congelada à esquerda. Como coluna, os cards passavam por baixo
+                  dela ao rolar para o lado, que é o comportamento inerente de
+                  `position: sticky` e não tinha conserto por CSS. Aqui não há
+                  nada embaixo para cobrir. */}
+              <SwimLabelCell
+                $cor={corDoProjeto(projeto.id)}
+                role="button"
+                tabIndex={0}
+                title="Abrir projeto"
+                onClick={() => abrirProjeto(projeto.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") abrirProjeto(projeto.id);
+                }}
+              >
+                {/* O texto é que gruda à esquerda, não a linha: assim o nome
+                    continua legível com o quadro rolado, sem tapar coisa
+                    nenhuma. */}
+                <SwimLabelTexto>
+                  <SwimLabelNome>{projeto.nome}</SwimLabelNome>
+                  <SwimLabelCliente>{projeto.cliente}</SwimLabelCliente>
+                </SwimLabelTexto>
+              </SwimLabelCell>
+
+              {dados.colunas.map((coluna) => {
+                const tons = tonsDaColuna(coluna.cor);
+                const tarefas = dados.tarefas.filter(
+                  (t) => t.projeto_id === projeto.id && t.grupo_coluna === coluna.chave,
+                );
+                return (
+                  <SwimCell key={`${projeto.id}-${coluna.chave}`}>
+                    {tarefas.length === 0 && <SwimCellVazia>—</SwimCellVazia>}
+                    {tarefas.map((tarefa) => {
+                      const sinal = SINAL_URGENCIA[tarefa.urgencia];
+                      return (
+                        <Card
+                          key={tarefa.id}
+                          $cor={tons}
+                          style={{ cursor: "pointer" }}
+                          role="button"
+                          tabIndex={0}
+                          title="Abrir no projeto"
+                          onClick={() => abrirProjeto(tarefa.projeto_id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") abrirProjeto(tarefa.projeto_id);
+                          }}
+                        >
+                          <CardTopo>
+                            <CardTitulo>{tarefa.titulo}</CardTitulo>
+                            {sinal && (
+                              <span title={sinal.rotulo(tarefa.dias_para_prazo)}>{sinal.glifo}</span>
+                            )}
+                          </CardTopo>
+                          <CardMeta>
+                            <span>{tarefa.responsavel_nome}</span>
+                            <span>{formatarData(tarefa.prazo)}</span>
+                          </CardMeta>
+                        </Card>
+                      );
+                    })}
+                  </SwimCell>
+                );
+              })}
+            </Fragment>
+          ))}
+        </SwimGrid>
+        </>
       )}
     </PageStack>
   );
