@@ -87,6 +87,8 @@ export function ProjetoNovo() {
   const [erroAnexo, setErroAnexo] = useState("");
   const [frenteIds, setFrenteIds] = useState<number[]>([]);
   const [diasAmbientacao, setDiasAmbientacao] = useState("5");
+  // 3 é o padrão combinado com o núcleo para o time de consultores.
+  const [maxConsultores, setMaxConsultores] = useState("3");
   const [diaReuniao, setDiaReuniao] = useState("");
   const [equipe, setEquipe] = useState<EquipeSelecionada>({ coordenadorId: null, consultorIds: [] });
   const [escopos, setEscopos] = useState<EscopoEmEdicao[]>([]);
@@ -188,6 +190,7 @@ export function ProjetoNovo() {
             link_proposta: modoProposta === "link" ? linkProposta.trim() || null : null,
             frente_ids: frenteIds,
             dias_ambientacao: Number(diasAmbientacao) || 5,
+            max_consultores: Number(maxConsultores) || 3,
             equipe: montarEquipePayload(equipe),
             dia_reuniao_padrao: diaReuniao ? Number(diaReuniao) : null,
             escopos: montarEscoposPayload(escopos),
@@ -329,6 +332,24 @@ export function ProjetoNovo() {
                   onChange={(e) => setDiasAmbientacao(e.target.value)}
                   required
                 />
+              </FieldGroup>
+
+              <FieldGroup>
+                <FieldLabel htmlFor="projeto-max-consultores">
+                  Máximo de consultores<Required>*</Required>
+                </FieldLabel>
+                <FieldInput
+                  id="projeto-max-consultores"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={maxConsultores}
+                  onChange={(e) => setMaxConsultores(e.target.value)}
+                  required
+                />
+                <EmptyText>
+                  É o que decide se o projeto ainda aparece em Vagas. Não conta o coordenador.
+                </EmptyText>
               </FieldGroup>
 
               <MemberPicker
