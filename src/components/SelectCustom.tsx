@@ -2,7 +2,15 @@ import { Children, isValidElement, useEffect, useLayoutEffect, useRef, useState 
 import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
-import { SelectOption, SelectPanel, SelectTrigger, SelectVazio, SelectWrap } from "./SelectCustom.styled";
+import { normalizarTexto } from "@/lib/nucleo";
+import {
+  SelectBusca,
+  SelectOption,
+  SelectPanel,
+  SelectTrigger,
+  SelectVazio,
+  SelectWrap,
+} from "./SelectCustom.styled";
 
 interface OptionInfo {
   value: string;
@@ -24,6 +32,9 @@ interface Props {
   style?: CSSProperties;
   autoFocus?: boolean;
   "aria-label"?: string;
+  /** Lista longa (pessoas, sobretudo): mostra um campo de busca no topo do
+   *  painel que filtra as opções pelo texto visível. */
+  pesquisavel?: boolean;
 }
 
 /**
@@ -42,9 +53,11 @@ export function SelectCustom({
   style,
   autoFocus,
   "aria-label": ariaLabel,
+  pesquisavel,
 }: Props) {
   const valorTexto = String(value);
   const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
   const [posicao, setPosicao] = useState<{
     top?: number;
     bottom?: number;
@@ -116,7 +129,13 @@ export function SelectCustom({
     return () => document.removeEventListener("mousedown", aoClicarFora);
   }, []);
 
-  const opcoes: OptionInfo[] = Children.toArray(children)
+  // Zera a busca a cada abertura — senão o filtro da vez anterior continua
+  // escondendo opção na próxima vez que a lista é aberta.
+  useEffect(() => {
+    if (aberto) setBusca("");
+  }, [aberto]);
+
+  const opcoesTodas: OptionInfo[] = Children.toArray(children)
     .filter((child): child is ReactElement<any> => isValidElement(child))
     .map((child) => ({
       value: child.props.value !== undefined ? String(child.props.value) : "",
@@ -124,7 +143,12 @@ export function SelectCustom({
       disabled: !!child.props.disabled,
     }));
 
-  const atual = opcoes.find((o) => o.value === valorTexto);
+  const atual = opcoesTodas.find((o) => o.value === valorTexto);
+
+  const termo = normalizarTexto(busca.trim());
+  const opcoes = !pesquisavel || !termo
+    ? opcoesTodas
+    : opcoesTodas.filter((o) => normalizarTexto(typeof o.label === "string" ? o.label : "").includes(termo));
 
   function selecionar(opcao: OptionInfo) {
     if (opcao.disabled) return;
@@ -161,8 +185,18 @@ export function SelectCustom({
               maxHeight: posicao.maxHeight,
             }}
           >
+            {pesquisavel && (
+              <SelectBusca
+                type="text"
+                autoFocus
+                placeholder="Buscar…"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
             {opcoes.length === 0 ? (
-              <SelectVazio>Nenhuma opção disponível</SelectVazio>
+              <SelectVazio>{termo ? "Nenhuma opção encontrada" : "Nenhuma opção disponível"}</SelectVazio>
             ) : (
               opcoes.map((opcao, indice) => (
                 <SelectOption

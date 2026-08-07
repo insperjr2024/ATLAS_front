@@ -10,6 +10,7 @@ import type { Posicao, StatusUsuario, Usuario } from "@/types/auth";
 export type Acao =
   | "arquivar_projeto"
   | "apagar_projeto_permanente"
+  | "apagar_usuario_permanente"
   | "mudar_status_projeto"
   | "mover_projeto_kanban"
   | "remarcar_banca"
@@ -28,6 +29,9 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   // Só a diretoria
   /** Sem volta — mais pesado que arquivar, por isso não é diretor+gerente. */
   apagar_projeto_permanente: ["diretor"],
+  /** Sem volta, e cascata bem maior que a de projeto — só quem já está
+   *  desligado, e só diretoria. */
+  apagar_usuario_permanente: ["diretor"],
   remarcar_banca: ["diretor"],
   liberar_excecao_choque: ["diretor"],
   registrar_justificativa_atraso: ["diretor"],

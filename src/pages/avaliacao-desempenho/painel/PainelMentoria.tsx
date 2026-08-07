@@ -141,7 +141,7 @@ export function PainelMentoria() {
           <FormStack onSubmit={handleCriar}>
             <FieldGroup>
               <FieldLabel htmlFor="mentor">Mentor</FieldLabel>
-              <FieldSelect id="mentor" value={mentorId} onChange={(e) => setMentorId(e.target.value)} required>
+              <FieldSelect id="mentor" value={mentorId} onChange={(e) => setMentorId(e.target.value)} required pesquisavel>
                 <option value="">Selecione...</option>
                 {mentoresElegiveis.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -152,7 +152,7 @@ export function PainelMentoria() {
             </FieldGroup>
             <FieldGroup>
               <FieldLabel htmlFor="mentorado">Mentorado (consultor)</FieldLabel>
-              <FieldSelect id="mentorado" value={mentoradoId} onChange={(e) => setMentoradoId(e.target.value)} required>
+              <FieldSelect id="mentorado" value={mentoradoId} onChange={(e) => setMentoradoId(e.target.value)} required pesquisavel>
                 <option value="">Selecione...</option>
                 {candidatosMentorado.map((c) => (
                   <option key={c.id} value={c.id}>
