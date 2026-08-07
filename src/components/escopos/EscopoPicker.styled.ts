@@ -15,7 +15,42 @@ export const EscopoLinha = styled.div`
   align-items: center;
 
   @media (min-width: ${theme.breakpoints.md}px) {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 6rem 2rem;
+    grid-template-columns: 1.75rem minmax(0, 2fr) minmax(0, 1fr) 6rem 2rem;
+  }
+`;
+
+/** As duas setinhas empilhadas — reordena a lista antes de criar o projeto,
+ *  não depois: mudar a ordem de escopo já salvo é outra tela, outro botão. */
+export const MoverBotoes = styled.div`
+  display: flex;
+  flex-direction: row;
+  gap: 0.125rem;
+
+  @media (min-width: ${theme.breakpoints.md}px) {
+    flex-direction: column;
+  }
+`;
+
+export const MoverBotao = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.1rem;
+  width: 1.75rem;
+  border: none;
+  border-radius: ${theme.borderRadius.sm};
+  background: transparent;
+  color: ${theme.colors.mutedForeground};
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: ${theme.colors.muted};
+    color: ${theme.colors.foreground};
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.3;
   }
 `;
 

@@ -84,7 +84,7 @@ export function EsqueciSenha() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu.email@al.insper.edu.br"
+                    placeholder="seu@email.com"
                     required
                     autoFocus
                   />

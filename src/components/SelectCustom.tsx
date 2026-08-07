@@ -45,7 +45,13 @@ export function SelectCustom({
 }: Props) {
   const valorTexto = String(value);
   const [aberto, setAberto] = useState(false);
-  const [posicao, setPosicao] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [posicao, setPosicao] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const painelRef = useRef<HTMLDivElement>(null);
 
@@ -56,7 +62,40 @@ export function SelectCustom({
     function posicionar() {
       const retangulo = ref.current?.getBoundingClientRect();
       if (!retangulo) return;
-      setPosicao({ top: retangulo.bottom + 4, left: retangulo.left, width: retangulo.width });
+      // Sem isto, um gatilho perto do fim da tela abria o painel pra baixo
+      // do mesmo jeito — e como ele é `position: fixed`, a parte que sobrava
+      // fora da janela ficava simplesmente inalcançável (scroll da página
+      // não move elemento fixo). Abre pro lado com mais espaço, e limita a
+      // altura ao que cabe ali — o `overflow-y: auto` do painel faz o resto.
+      const margem = 8;
+      const alturaPreferida = 256; // mesmo valor do `max-height: 16rem` do CSS
+      const espacoAbaixo = window.innerHeight - retangulo.bottom - margem;
+      const espacoAcima = retangulo.top - margem;
+      const abrePraCima = espacoAbaixo < alturaPreferida && espacoAcima > espacoAbaixo;
+      const alturaDisponivel = Math.max(
+        Math.min(alturaPreferida, abrePraCima ? espacoAcima : espacoAbaixo),
+        80,
+      );
+      // `bottom`, não `top`, pro lado de cima: uma lista curta (3 opções) não
+      // enche a `alturaDisponivel` inteira, e ancorar por `top` supondo que
+      // ela enche deixava um vão entre o painel e o gatilho. Com `bottom` o
+      // painel cresce PRA CIMA a partir da borda de baixo, do tamanho que
+      // for — sem precisar adivinhar a altura antes de renderizar.
+      setPosicao(
+        abrePraCima
+          ? {
+              bottom: window.innerHeight - retangulo.top + 4,
+              left: retangulo.left,
+              width: retangulo.width,
+              maxHeight: alturaDisponivel,
+            }
+          : {
+              top: retangulo.bottom + 4,
+              left: retangulo.left,
+              width: retangulo.width,
+              maxHeight: alturaDisponivel,
+            },
+      );
     }
     posicionar();
     window.addEventListener("scroll", posicionar, true);
@@ -114,7 +153,13 @@ export function SelectCustom({
           <SelectPanel
             ref={painelRef}
             role="listbox"
-            style={{ top: posicao.top, left: posicao.left, width: posicao.width }}
+            style={{
+              top: posicao.top,
+              bottom: posicao.bottom,
+              left: posicao.left,
+              width: posicao.width,
+              maxHeight: posicao.maxHeight,
+            }}
           >
             {opcoes.length === 0 ? (
               <SelectVazio>Nenhuma opção disponível</SelectVazio>

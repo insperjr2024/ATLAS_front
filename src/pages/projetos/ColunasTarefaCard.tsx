@@ -143,13 +143,6 @@ export function ColunasTarefaCard({
         </PageButtonSm>
       </PageCardHeader>
       <PageCardContent>
-        <EmptyText style={{ marginBottom: "0.75rem" }}>
-          Valem só para as tarefas <strong>deste projeto</strong> — outro projeto pode ter um fluxo
-          diferente. Marcar <strong>“encerra a tarefa”</strong> tira as tarefas dessa coluna da conta
-          de vencidas e do trabalho ativo no monitoramento — é o que separa “Concluído” de “Em
-          andamento”.
-        </EmptyText>
-
         {colunas.length === 0 ? (
           <EmptyText>Nenhuma coluna cadastrada.</EmptyText>
         ) : (
@@ -319,8 +312,8 @@ function ColunaModal({
                 Tarefa nesta coluna está <strong>encerrada</strong>
               </CheckboxLabel>
               <EmptyText style={{ fontSize: "0.7rem" }}>
-                Marque em colunas como Concluído, Cancelado ou Arquivado. Tarefas aqui deixam de
-                contar como vencidas e saem do trabalho ativo no monitoramento.
+                Tarefas aqui deixam de contar como vencidas e saem do trabalho ativo no
+                monitoramento.
                 {coluna && " Mudar isto afeta as tarefas que já estão na coluna."}
               </EmptyText>
             </FieldGroup>

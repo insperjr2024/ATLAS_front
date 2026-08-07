@@ -11,7 +11,7 @@ import {
   seguirDatasLote,
   updateLote,
 } from "@/lib/desempenho-lotes";
-import { getProjetos } from "@/lib/projetos";
+import { getProjetos, paraDataUtc } from "@/lib/projetos";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { DesempenhoLote, DesempenhoPendencia, DesempenhoTipo } from "@/types/desempenho";
 import type { ProjetoResumo } from "@/types/projeto";
@@ -52,7 +52,7 @@ import {
 } from "./Painel.styled";
 
 function paraDatetimeLocal(iso: string): string {
-  const data = new Date(iso);
+  const data = paraDataUtc(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}T${pad(data.getHours())}:${pad(data.getMinutes())}`;
 }
@@ -62,7 +62,7 @@ function agoraDatetimeLocal(): string {
 }
 
 function formatarData(iso: string): string {
-  return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return paraDataUtc(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 function statusLote(lote: DesempenhoLote): { rotulo: string; tone: "success" | "muted" | "warning" } {

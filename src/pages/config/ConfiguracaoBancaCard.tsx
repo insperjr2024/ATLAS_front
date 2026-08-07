@@ -86,8 +86,7 @@ export function ConfiguracaoBancaCard() {
               />
             </FieldGroup>
             <EmptyText style={{ fontSize: "0.7rem", marginTop: "0.5rem" }}>
-              Número máximo de pessoas que podem se candidatar a uma mesma banca. O mínimo por
-              frente é configurado em cada frente, na seção "Frentes" abaixo.
+              O mínimo por frente é configurado em cada frente, na seção "Frentes" abaixo.
             </EmptyText>
             <FieldGroup style={{ marginTop: "0.75rem" }}>
               <FieldLabel htmlFor="lideranca-minima">Mínimo de liderança por frente</FieldLabel>

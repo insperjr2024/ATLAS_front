@@ -68,7 +68,6 @@ import {
   ToggleRow,
   FiltersRow,
   SearchField,
-  FilterSelect,
   HeaderActions,
   SenhaProvisoriaCaixa,
   SenhaProvisoriaValor,
@@ -99,9 +98,16 @@ export function Membros() {
   const [filtroCargo, setFiltroCargo] = useState("");
   const [filtroFrente, setFiltroFrente] = useState("");
 
-  async function carregarMembros() {
+  // `mostrarCarregando=false` é pra recarregar em silêncio, sem acionar o
+  // `if (carregando) return <PageLoadingBlock />` lá embaixo — esse early
+  // return troca a PÁGINA INTEIRA pelo esqueleto de carregamento, o que
+  // desmonta qualquer modal aberto por cima. "Adicionar membro" e "Reenviar
+  // senha" recarregam a lista sem fechar o próprio modal (pra mostrar a
+  // senha emitida) — sem o flag, o modal sumia e voltava do zero (sem a
+  // senha) assim que o carregamento terminava.
+  async function carregarMembros(mostrarCarregando = true) {
     if (!token) return;
-    setCarregando(true);
+    if (mostrarCarregando) setCarregando(true);
     setErro("");
     try {
       const [usuariosResp, cargos, frentes, usuariosFrentes] = await Promise.all([
@@ -115,7 +121,7 @@ export function Membros() {
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar membros");
     } finally {
-      setCarregando(false);
+      if (mostrarCarregando) setCarregando(false);
     }
   }
 
@@ -134,7 +140,7 @@ export function Membros() {
     return (
       <ErrorBlock>
         <ErrorText>Não foi possível carregar os membros: {erro}</ErrorText>
-        <PageButton $variant="outline" onClick={carregarMembros}>
+        <PageButton $variant="outline" onClick={() => carregarMembros()}>
           Tentar novamente
         </PageButton>
       </ErrorBlock>
@@ -195,22 +201,32 @@ export function Membros() {
               placeholder="Buscar por nome ou e-mail..."
               aria-label="Buscar membros"
             />
-            <FilterSelect value={filtroCargo} onChange={(e) => setFiltroCargo(e.target.value)} aria-label="Filtrar por cargo">
+            <FieldSelect
+              value={filtroCargo}
+              onChange={(e) => setFiltroCargo(e.target.value)}
+              aria-label="Filtrar por cargo"
+              style={{ width: "10rem" }}
+            >
               <option value="">Todos os cargos</option>
               {contexto.cargos.map((cargo) => (
                 <option key={cargo.id} value={cargo.id}>
                   {cargo.nome}
                 </option>
               ))}
-            </FilterSelect>
-            <FilterSelect value={filtroFrente} onChange={(e) => setFiltroFrente(e.target.value)} aria-label="Filtrar por frente">
+            </FieldSelect>
+            <FieldSelect
+              value={filtroFrente}
+              onChange={(e) => setFiltroFrente(e.target.value)}
+              aria-label="Filtrar por frente"
+              style={{ width: "10rem" }}
+            >
               <option value="">Todas as frentes</option>
               {contexto.frentes.map((frente) => (
                 <option key={frente.id} value={frente.id}>
                   {frente.nome}
                 </option>
               ))}
-            </FilterSelect>
+            </FieldSelect>
           </FiltersRow>
 
           {membros.length === 0 && <EmptyText>Nenhum membro cadastrado.</EmptyText>}
@@ -301,7 +317,7 @@ export function Membros() {
                 .map((m) => (m.id === atualizado.id ? atualizado : m))
                 .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
             );
-            carregarMembros();
+            carregarMembros(false);
           }}
         />
       )}
@@ -313,7 +329,7 @@ export function Membros() {
           onClose={() => setCriandoMembro(false)}
           // Não fecha o modal: quem cadastrou precisa VER a senha provisória
           // antes de sair da tela — ela não existe em mais lugar nenhum.
-          onCriado={carregarMembros}
+          onCriado={() => carregarMembros(false)}
         />
       )}
 
@@ -322,7 +338,7 @@ export function Membros() {
           membro={reenviandoPara}
           token={token}
           onClose={() => setReenviandoPara(null)}
-          onReenviado={carregarMembros}
+          onReenviado={() => carregarMembros(false)}
         />
       )}
 
@@ -834,6 +850,7 @@ function MembroModal({
   onSalvo: (membro: UsuarioResumo) => void;
 }) {
   const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState(membro.nome);
   const [cargoId, setCargoId] = useState(String(membro.cargo_id));
   const [posicao, setPosicao] = useState<Posicao>(membro.posicao);
   const [status, setStatus] = useState<StatusUsuario>(membro.status);
@@ -877,6 +894,7 @@ function MembroModal({
       const atualizado = await updateUsuario(
         membro.id,
         {
+          nome: nome.trim(),
           cargo_id: Number(cargoId),
           posicao,
           status,
@@ -956,6 +974,17 @@ function MembroModal({
             <ModalBody>
               <EditSection>
                 <EditSectionTitle>Editar membro</EditSectionTitle>
+
+                <FieldGroup>
+                  <FieldLabel htmlFor="nome-membro">Nome</FieldLabel>
+                  <FieldInput
+                    id="nome-membro"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    placeholder="Nome completo"
+                    required
+                  />
+                </FieldGroup>
 
                 <FieldGroup>
                   {/* §10: "na troca de gestão, muitos consultores viram

@@ -147,13 +147,14 @@ export function CompatibilidadeHorarios({ consultorIds, usuarios }: Props) {
         </MiniQuadro>
       )}
 
-      {nomesSemGrade.length > 0 && (
+      {/* Ninguém preencheu nenhuma: o `teor_texto` acima já cobre esse caso.
+          Só entra aqui quando é ALGUÉM, não todo mundo — é a parte que o
+          texto genérico não sabe dizer: quem exatamente. */}
+      {nomesSemGrade.length > 0 && nomesSemGrade.length < dados.considerados.length && (
         <Aviso>
-          {nomesSemGrade.length === dados.considerados.length
-            ? "Ninguém preencheu a grade de aulas no perfil."
-            : `${nomesSemGrade.join(", ")} ainda não preencheu a grade — ${
-                nomesSemGrade.length === 1 ? "entrou" : "entraram"
-              } na conta como livre em todos os horários.`}
+          {`${nomesSemGrade.join(", ")} ainda não preencheu a grade — ${
+            nomesSemGrade.length === 1 ? "entrou" : "entraram"
+          } na conta como livre em todos os horários.`}
         </Aviso>
       )}
     </Bloco>

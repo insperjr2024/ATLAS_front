@@ -11,6 +11,7 @@ import {
   getHistoricoProjeto,
   mostrarHistoricoCompleto,
   ocultarHistorico,
+  paraDataUtc,
   ROTULO_MOTIVO_ATRASO,
   ROTULO_STATUS,
 } from "@/lib/projetos";
@@ -85,12 +86,17 @@ function formatarDuracao(ms: number): string {
 }
 
 function rotuloDia(iso: string): string {
-  const data = new Date(iso);
+  const data = paraDataUtc(iso);
   return data.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
 }
 
 function chaveDia(iso: string): string {
-  return iso.slice(0, 10);
+  // Não é `iso.slice(0, 10)`: cortar a string pega a data em UTC, e um evento
+  // entre 21h e meia-noite (horário de Brasília) cai no dia seguinte em UTC —
+  // agruparia na data errada. Precisa passar pelo Date pra pegar o dia local.
+  const d = paraDataUtc(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 function ehStatus(h: HistoricoEntrada): h is StatusHistorico {
