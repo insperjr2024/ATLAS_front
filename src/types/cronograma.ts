@@ -85,4 +85,11 @@ export interface CronogramaResposta {
    * tela até o próximo carregamento.
    */
   reunioes: ReuniaoSemanal[];
+  /**
+   * ⚠ Não procure `reajuste_pendente` aqui: o pedido de dias de ajuste (§8) é
+   * de UM escopo, não do projeto, e por isso mora em `EscopoVendido`
+   * (`escopos[].reajuste_pendente: PedidoDeDias`), que carrega dias
+   * solicitados e motivo. O campo solto que existia neste nível só tinha id e
+   * autor, e sumia de vista quando o projeto tinha duas frentes.
+   */
 }

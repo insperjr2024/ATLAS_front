@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 import type { Posicao, UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { MembroEquipePayload } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
+import { normalizarTexto } from "@/lib/nucleo";
 import { FieldGroup, FieldLabel, Required } from "@/pages/Bancas.styled";
 import {
   AddRow,
@@ -11,6 +13,7 @@ import {
   ChipRemove,
   ChipRow,
   CountHint,
+  DropdownBusca,
   DropdownFiltroFrentes,
   DropdownItem,
   DropdownItemMeta,
@@ -30,19 +33,22 @@ export interface EquipeSelecionada {
 }
 
 /**
- * Cada papel do projeto (§6.3) só é ocupado por quem tem a posição
- * correspondente (§3): coordenador coordena, consultor consulta. Diretoria e
- * gerência acompanham pelo recorte de visão, sem ocupar vaga na equipe.
- * Espelha `POSICAO_EXIGIDA_POR_PAPEL` de `src/utils/validacao_equipe.py`.
+ * Cada papel do projeto (§6.3) exige uma posição mínima (§3): coordenador só
+ * quem É coordenador; consultor é aberto pra quem tem posição igual ou acima
+ * na hierarquia (coordenador, gerente ou diretor também podem entrar como
+ * consultor — o inverso não vale, consultor não vira coordenador sem ser
+ * promovido de posição de verdade, isso é o §10). Espelha
+ * `POSICOES_ELEGIVEIS_CONSULTOR` de `src/utils/validacao_equipe.py`.
  */
 export const POSICAO_COORDENADOR: Posicao = "coordenador";
 export const POSICAO_CONSULTOR: Posicao = "consultor";
+export const POSICOES_ELEGIVEIS_CONSULTOR: Posicao[] = ["consultor", "coordenador", "gerente", "diretor"];
 
 /**
- * A regra do coordenador (§6.3) numa função só, para o formulário de criação
- * e o modal de editar equipe dizerem exatamente a mesma coisa. O backend
- * revalida em `create_projeto.py` e `update_equipe_projeto.py`. Consultores
- * não têm mínimo nem máximo — o projeto pode até não ter nenhum.
+ * A regra do coordenador e do mínimo de consultor (§6.3) numa função só,
+ * para o formulário de criação e o modal de editar equipe dizerem exatamente
+ * a mesma coisa. O backend revalida em `create_projeto.py` e
+ * `update_equipe_projeto.py`. Consultor não tem máximo, só o mínimo de 1.
  *
  * Ninguém tem limite de projetos: a mesma pessoa pode coordenar (ou consultar)
  * vários ao mesmo tempo, por isso não há checagem contra outros projetos.
@@ -52,6 +58,7 @@ export function validarEquipe({ coordenadorId, consultorIds }: EquipeSelecionada
   if (consultorIds.includes(coordenadorId)) {
     return "O coordenador não pode ser também consultor do mesmo projeto.";
   }
+  if (consultorIds.length === 0) return "Escolha pelo menos um consultor.";
   return null;
 }
 
@@ -132,8 +139,8 @@ export function MemberPicker({
     return `${ROTULO_POSICAO[usuario.posicao]} · ${carga}`;
   };
 
-  // O backend recusa quem não tem a posição do papel, então nem oferecemos:
-  // diretoria e gerência não aparecem em nenhuma das duas listas.
+  // O backend recusa quem não tem a posição do papel, então nem oferecemos.
+  // Coordenador é estrito: só quem É coordenador aparece aqui.
   const elegiveisCoordenador = usuarios.filter(
     (u) => u.posicao === POSICAO_COORDENADOR && atendeFiltroFrente(u),
   );
@@ -145,12 +152,16 @@ export function MemberPicker({
   const porCargaCrescente = (a: UsuarioResumo, b: UsuarioResumo) =>
     a.projetos_alocados - b.projetos_alocados || a.nome.localeCompare(b.nome, "pt-BR");
 
-  // Ninguém aparece duas vezes: quem já foi escolhido como consultor sai da
-  // lista de opções. O `.filter` já devolve array novo, então o `.sort` não
-  // mexe na prop `usuarios`.
+  // Consultor aceita posição igual ou acima na hierarquia (coordenador,
+  // gerente e diretor também entram — nunca o contrário). Ninguém aparece
+  // duas vezes: quem já foi escolhido sai da lista de opções. O `.filter` já
+  // devolve array novo, então o `.sort` não mexe na prop `usuarios`.
   const disponiveisParaConsultor = usuarios
     .filter(
-      (u) => u.posicao === POSICAO_CONSULTOR && !consultorIds.includes(u.id) && atendeFiltroFrente(u),
+      (u) =>
+        POSICOES_ELEGIVEIS_CONSULTOR.includes(u.posicao) &&
+        !consultorIds.includes(u.id) &&
+        atendeFiltroFrente(u),
     )
     .sort(porCargaCrescente);
 
@@ -192,18 +203,15 @@ export function MemberPicker({
           frentesFiltro={frentesFiltro}
           onToggleFrente={alternarFrenteFiltro}
         />
-        <CountHint $ok>
-          Só quem tem a posição Coordenador(a) aparece aqui, com os projetos em que já está
-          alocado(a). A mesma pessoa pode coordenar vários.
-          {filtroPorFrenteAtivo && " Filtrado pelas frentes marcadas."}
-        </CountHint>
       </FieldGroup>
 
       <FieldGroup>
-        <FieldLabel htmlFor="equipe-consultor">Consultores</FieldLabel>
+        <FieldLabel htmlFor="equipe-consultor">
+          Consultores<Required>*</Required>
+        </FieldLabel>
         <ChipRow>
           {consultorIds.length === 0 && (
-            <CountHint $ok>Nenhum consultor escolhido ainda.</CountHint>
+            <CountHint $ok={false}>Escolha pelo menos um consultor.</CountHint>
           )}
           {consultorIds.map((id) => (
             <Chip key={id}>
@@ -235,18 +243,6 @@ export function MemberPicker({
             onToggleFrente={alternarFrenteFiltro}
           />
         </AddRow>
-
-        <CountHint $ok>
-          {consultorIds.length > 0 && (
-            <>
-              {consultorIds.length} consultor{consultorIds.length > 1 ? "es" : ""} selecionado
-              {consultorIds.length > 1 ? "s" : ""} ·{" "}
-            </>
-          )}
-          Só quem tem a posição Consultor(a) aparece aqui, do menos alocado para o mais alocado.
-          A mesma pessoa pode atuar em vários.
-          {filtroPorFrenteAtivo && " Filtrado pelas frentes marcadas."}
-        </CountHint>
       </FieldGroup>
     </PickerStack>
   );
@@ -287,15 +283,81 @@ function PessoaDropdown({
   onToggleFrente: (frenteId: number) => void;
 }) {
   const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
+  const [posicao, setPosicao] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const painelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function aoClicarFora(evento: MouseEvent) {
-      if (ref.current && !ref.current.contains(evento.target as Node)) setAberto(false);
+      const alvo = evento.target as Node;
+      if (ref.current?.contains(alvo) || painelRef.current?.contains(alvo)) return;
+      setAberto(false);
     }
     document.addEventListener("mousedown", aoClicarFora);
     return () => document.removeEventListener("mousedown", aoClicarFora);
   }, []);
+
+  // Zera a busca a cada abertura — senão o filtro da vez anterior continua
+  // escondendo gente na próxima vez que a lista é aberta.
+  useEffect(() => {
+    if (aberto) setBusca("");
+  }, [aberto]);
+
+  // O painel vive num portal em `document.body` (ver comentário do
+  // `DropdownPanel`), então precisa recalcular a própria posição — não
+  // segue o layout do gatilho sozinho. Mesma lógica do `SelectCustom`: abre
+  // pro lado com mais espaço e ancora por `bottom` quando é pra cima, pra
+  // não sobrar vão entre o painel e o gatilho quando a lista é curta.
+  useLayoutEffect(() => {
+    if (!aberto) return;
+    function posicionar() {
+      const retangulo = ref.current?.getBoundingClientRect();
+      if (!retangulo) return;
+      const margem = 8;
+      const alturaPreferida = 320; // mesmo valor do `max-height: 20rem` de antes
+      const espacoAbaixo = window.innerHeight - retangulo.bottom - margem;
+      const espacoAcima = retangulo.top - margem;
+      const abrePraCima = espacoAbaixo < alturaPreferida && espacoAcima > espacoAbaixo;
+      const alturaDisponivel = Math.max(
+        Math.min(alturaPreferida, abrePraCima ? espacoAcima : espacoAbaixo),
+        120,
+      );
+      setPosicao(
+        abrePraCima
+          ? {
+              bottom: window.innerHeight - retangulo.top + 4,
+              left: retangulo.left,
+              width: retangulo.width,
+              maxHeight: alturaDisponivel,
+            }
+          : {
+              top: retangulo.bottom + 4,
+              left: retangulo.left,
+              width: retangulo.width,
+              maxHeight: alturaDisponivel,
+            },
+      );
+    }
+    posicionar();
+    window.addEventListener("scroll", posicionar, true);
+    window.addEventListener("resize", posicionar);
+    return () => {
+      window.removeEventListener("scroll", posicionar, true);
+      window.removeEventListener("resize", posicionar);
+    };
+  }, [aberto]);
+
+  const termo = normalizarTexto(busca.trim());
+  const opcoesFiltradas = termo
+    ? opcoes.filter((u) => normalizarTexto(u.nome).includes(termo))
+    : opcoes;
 
   return (
     <DropdownWrap ref={ref}>
@@ -311,8 +373,28 @@ function PessoaDropdown({
         <span>{gatilho}</span>
         <ChevronDown size={16} />
       </DropdownTrigger>
-      {aberto && (
-        <DropdownPanel role="listbox">
+      {aberto &&
+        posicao &&
+        createPortal(
+        <DropdownPanel
+          ref={painelRef}
+          role="listbox"
+          style={{
+            top: posicao.top,
+            bottom: posicao.bottom,
+            left: posicao.left,
+            width: posicao.width,
+            maxHeight: posicao.maxHeight,
+          }}
+        >
+          <DropdownBusca
+            type="text"
+            autoFocus
+            placeholder="Buscar por nome…"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
           {frentes.length > 0 && (
             <DropdownFiltroFrentes>
               {frentes.map((f) => (
@@ -333,10 +415,10 @@ function PessoaDropdown({
                 Remover coordenador
               </DropdownLimpar>
             )}
-            {opcoes.length === 0 ? (
-              <DropdownVazio>{vazio}</DropdownVazio>
+            {opcoesFiltradas.length === 0 ? (
+              <DropdownVazio>{termo ? "Ninguém encontrado" : vazio}</DropdownVazio>
             ) : (
-              opcoes.map((usuario) => (
+              opcoesFiltradas.map((usuario) => (
                 <DropdownItem
                   key={usuario.id}
                   type="button"
@@ -352,7 +434,8 @@ function PessoaDropdown({
               ))
             )}
           </DropdownLista>
-        </DropdownPanel>
+        </DropdownPanel>,
+        document.body,
       )}
     </DropdownWrap>
   );

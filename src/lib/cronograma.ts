@@ -78,12 +78,20 @@ export function definirEntregaPlanejada(
   });
 }
 
+/** §5.3: cravar o cronograma — marco informativo, não trava mais edição. */
+export function oficializarCronograma(escopoId: number, token: string) {
+  return apiFetch(`/escopos-projeto/${escopoId}/oficializar`, { method: "POST", token });
+}
+
 /* ----------------------------------------------- §8 · dias de ajuste */
 
-/* `oficializarCronograma` vivia aqui. O cadeado de cronograma oficializado
-   acabou: ele trancava o calendário inteiro atrás de uma fila de aprovação e
-   transformava em rotina a exceção que o §5.6 pedia que fosse rara. O que
-   sobrou de aprovação é o pedido de DIAS abaixo. */
+/* Os dois fluxos CONVIVEM — não são versões um do outro, apesar de terem se
+   cruzado no merge. `oficializarCronograma` acima só carimba
+   `cronograma_oficializado_em`: virou marco informativo e não tranca mais o
+   calendário atrás de uma fila de aprovação, que era o cadeado que
+   transformava em rotina a exceção que o §5.6 pedia que fosse rara. A janela
+   do escopo NÃO consulta esse carimbo: quem a estica é o pedido de DIAS
+   abaixo, e é só ele que passa por aprovação. */
 
 /**
  * ⭐ O coordenador pede dias extras para o escopo (§8).

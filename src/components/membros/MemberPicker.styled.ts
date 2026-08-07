@@ -102,21 +102,37 @@ export const DropdownTrigger = styled.button<{ $vazio?: boolean }>`
   }
 `;
 
+// \`position: fixed\` + coordenadas por \`style\` inline (calculadas em JS) —
+// não \`absolute\`. Este painel é renderizado num portal em \`document.body\`
+// porque vive dentro de modais: sem isso, a borda do modal (que tem
+// \`overflow\` limitado) cortava a lista pela metade.
 export const DropdownPanel = styled.div`
-  position: absolute;
-  top: calc(100% + 0.25rem);
-  left: 0;
-  right: 0;
-  z-index: 20;
+  position: fixed;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.sm};
-  max-height: 20rem;
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.border};
   background: ${theme.colors.popover};
   box-shadow: ${theme.shadows.lg};
+  overflow-y: auto;
+`;
+
+export const DropdownBusca = styled.input`
+  width: 100%;
+  padding: 0.375rem 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.background};
+  color: ${theme.colors.foreground};
+  font-size: ${theme.fontSize.sm};
+
+  &:focus {
+    outline: none;
+    border-color: ${theme.colors.ring};
+  }
 `;
 
 export const DropdownFiltroFrentes = styled.div`

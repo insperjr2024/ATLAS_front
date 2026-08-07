@@ -18,7 +18,24 @@ import {
 } from "@/styles/page.styled";
 import { FieldGroup, FieldLabel, FieldSelect, FormStack } from "@/pages/Bancas.styled";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
-import { MentoriaGrupo, MentoriaGrupoTitulo, MentoriaLinha } from "./Painel.styled";
+import {
+  MentoriaGrupo,
+  MentoriaCabecalho,
+  MentoriaGrupoTitulo,
+  MentoriaLinha,
+  MentoradosLista,
+  MentorPapel,
+  Iniciais,
+} from "./Painel.styled";
+
+/** "Ana Souza" -> "AS". Duas letras bastam e cabem no círculo. */
+function iniciais(nome: string | null | undefined): string {
+  const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  const primeira = partes[0][0];
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : "";
+  return (primeira + ultima).toUpperCase();
+}
 
 export function PainelMentoria() {
   const { token } = useAuth();
@@ -53,7 +70,11 @@ export function PainelMentoria() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const coordenadores = useMemo(() => usuarios.filter((u) => u.posicao === "coordenador"), [usuarios]);
+  // Mentor pode ser coordenador, gerente ou diretor (2026-08-06) — não só coordenador.
+  const mentoresElegiveis = useMemo(
+    () => usuarios.filter((u) => u.posicao === "coordenador" || u.posicao === "gerente" || u.posicao === "diretor"),
+    [usuarios],
+  );
   const mentoradosJaAlocados = useMemo(() => new Set(mentorias.map((m) => m.mentorado_id)), [mentorias]);
   const candidatosMentorado = useMemo(
     () => usuarios.filter((u) => u.posicao === "consultor" && !mentoradosJaAlocados.has(u.id)),
@@ -119,10 +140,10 @@ export function PainelMentoria() {
         <PageCardContent>
           <FormStack onSubmit={handleCriar}>
             <FieldGroup>
-              <FieldLabel htmlFor="mentor">Mentor (coordenador)</FieldLabel>
+              <FieldLabel htmlFor="mentor">Mentor</FieldLabel>
               <FieldSelect id="mentor" value={mentorId} onChange={(e) => setMentorId(e.target.value)} required>
                 <option value="">Selecione...</option>
-                {coordenadores.map((c) => (
+                {mentoresElegiveis.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nome}
                   </option>
@@ -158,15 +179,29 @@ export function PainelMentoria() {
           ) : (
             porMentor.map((lista) => (
               <MentoriaGrupo key={lista[0].mentor_id}>
-                <MentoriaGrupoTitulo>{lista[0].mentor_nome}</MentoriaGrupoTitulo>
-                {lista.map((m) => (
-                  <MentoriaLinha key={m.id}>
-                    <span>{m.mentorado_nome}</span>
-                    <PageButtonSm $variant="outline" type="button" onClick={() => setParaRemover(m)}>
-                      Remover
-                    </PageButtonSm>
-                  </MentoriaLinha>
-                ))}
+                <MentoriaCabecalho>
+                  <Iniciais $mentor aria-hidden>
+                    {iniciais(lista[0].mentor_nome)}
+                  </Iniciais>
+                  <div>
+                    <MentoriaGrupoTitulo>{lista[0].mentor_nome}</MentoriaGrupoTitulo>
+                    <MentorPapel>
+                      Mentor de {lista.length}{" "}
+                      {lista.length === 1 ? "pessoa" : "pessoas"}
+                    </MentorPapel>
+                  </div>
+                </MentoriaCabecalho>
+                <MentoradosLista>
+                  {lista.map((m) => (
+                    <MentoriaLinha key={m.id}>
+                      <Iniciais aria-hidden>{iniciais(m.mentorado_nome)}</Iniciais>
+                      <span>{m.mentorado_nome}</span>
+                      <PageButtonSm $variant="outline" type="button" onClick={() => setParaRemover(m)}>
+                        Remover
+                      </PageButtonSm>
+                    </MentoriaLinha>
+                  ))}
+                </MentoradosLista>
               </MentoriaGrupo>
             ))
           )}

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAlocacao, type Alocacao, type LinhaCarga } from "@/lib/monitoramento";
 
@@ -20,16 +20,16 @@ import {
 import { ConteudoPaginado, Paginacao, usePaginacao } from "./Paginacao";
 import {
   BarraCarga,
+  BotaoAlternativa,
   BarraCargaPreenchida,
   BarraCargaTrilho,
   ChipProjeto,
   ChipsProjetos,
   DataTable,
-  DemandaAltaGrupo,
   DemandaAltaLista,
   DemandaAltaPessoa,
   DemandaAltaProjetos,
-  DemandaAltaTitulo,
+  GrupoBotoes,
   Pilula,
   SemDado,
   TabelaRolagem,
@@ -42,11 +42,22 @@ import {
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
 
-/** §7.3 — carga por pessoa. "Os coordenadores costumam ser gargalo, então
- *  acompanhar a carga deles é essencial" — por isso vêm primeiro. */
+type Papel = "consultor" | "coordenador";
+
+const ROTULO_PAPEL: Record<Papel, { singular: string; plural: string }> = {
+  consultor: { singular: "consultor", plural: "Consultores" },
+  coordenador: { singular: "coordenador", plural: "Coordenadores" },
+};
+
+/** §7.3 — carga por pessoa.
+ *
+ *  A aba fala de UM papel por vez, escolhido no filtro que aparece no
+ *  cabeçalho de cada card. Antes eram duas tabelas empilhadas mais um toggle
+ *  só do gráfico: a mesma pergunta respondida três vezes. */
 export function AlocacaoAba() {
   const { token } = useAuth();
   const { frenteId, seletor } = useFiltroFrente();
+  const [papel, setPapel] = useState<Papel>("consultor");
   const [dados, setDados] = useState<Alocacao | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -95,58 +106,79 @@ export function AlocacaoAba() {
     );
   }
 
-  const { demanda_alta } = dados;
-  const total = demanda_alta.coordenadores.length + demanda_alta.consultores.length;
+  const linhas = papel === "consultor" ? dados.consultores : dados.coordenadores;
+  const destacados =
+    papel === "consultor" ? dados.demanda_alta.consultores : dados.demanda_alta.coordenadores;
+  const rotulo = ROTULO_PAPEL[papel];
+
+  /* ⭐ O controle aparece DENTRO de cada card, mas o estado é UM só.
+     Três estados independentes deixariam o gráfico em "Consultores" e a tabela
+     em "Coordenadores" ao mesmo tempo — três recortes da mesma pergunta se
+     contradizendo na mesma tela. Assim ele fica à mão em qualquer ponto da
+     página e os cards nunca discordam. */
+  const filtro = (
+    <GrupoBotoes role="group" aria-label="Papel">
+      <BotaoAlternativa
+        type="button"
+        $ativo={papel === "consultor"}
+        aria-pressed={papel === "consultor"}
+        onClick={() => setPapel("consultor")}
+      >
+        Consultores
+      </BotaoAlternativa>
+      <BotaoAlternativa
+        type="button"
+        $ativo={papel === "coordenador"}
+        aria-pressed={papel === "coordenador"}
+        onClick={() => setPapel("coordenador")}
+      >
+        Coordenadores
+      </BotaoAlternativa>
+    </GrupoBotoes>
+  );
 
   return (
     <PageStack>
       {seletor}
-      {/* Abre a aba: leitura de relance, e é o único lugar que responde "quem
-          está cheio DE PROJETO EM TAL ETAPA" — as tabelas mostram só a carga
-          inteira. Depois vêm elas, com o detalhe, e o card de demanda alta
-          fecha. */}
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>Carga por pessoa</PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          <Suspense fallback={<PageLoadingBlock />}>
-            <BarrasCarga coordenadores={dados.coordenadores} consultores={dados.consultores} />
-          </Suspense>
-        </PageCardContent>
-      </PageCard>
-
-      <CapacidadePorFrente capacidade={dados.capacidade} />
-
+      {/* Quem são as pessoas — a lista completa abre a aba. */}
       <TabelaCarga
-        titulo="Coordenadores"
-        linhas={dados.coordenadores}
-        vazio="Nenhum coordenador na sua visão."
+        titulo={rotulo.plural}
+        linhas={linhas}
+        vazio={`Nenhum ${rotulo.singular} na sua visão.`}
+        filtro={filtro}
       />
-      <TabelaCarga
-        titulo="Consultores"
-        linhas={dados.consultores}
-        vazio="Nenhum consultor na sua visão."
-      />
-      {/* Fecha a aba porque é a conclusão dela: as tabelas acima ordenam do
-          menos carregado para o mais, então quem está sobrecarregado cai no
-          fim das duas. Este card é onde ele aparece junto — sem isso, inverter
-          a ordem das tabelas teria escondido o gargalo do §7.3. */}
+
+      {/* Quem dentro dessa lista precisa de atenção. Vem logo depois porque é
+          o recorte do card acima, não um assunto novo. */}
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>
-            Consultores e coordenadores com demanda alta{total > 0 && ` (${total})`}
+            {rotulo.plural} com demanda alta{destacados.length > 0 && ` (${destacados.length})`}
           </PageCardTitle>
+          {filtro}
         </PageCardHeader>
         <PageCardContent>
-          {total === 0 ? (
+          {destacados.length === 0 ? (
             <EmptyText>Ninguém na faixa mais alta da escala.</EmptyText>
           ) : (
-            <DemandaAltaGrupo>
-              <ColunaDemandaAlta papel="Consultores" linhas={demanda_alta.consultores} />
-              <ColunaDemandaAlta papel="Coordenadores" linhas={demanda_alta.coordenadores} />
-            </DemandaAltaGrupo>
+            <ColunaDemandaAlta linhas={destacados} />
           )}
+        </PageCardContent>
+      </PageCard>
+
+      {/* Sem filtro de papel: as duas colunas são os DOIS papéis lado a lado, e
+          é essa comparação que responde "de qual deles falta gente". */}
+      <CapacidadePorFrente capacidade={dados.capacidade} />
+
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Carga por {rotulo.singular}</PageCardTitle>
+          {filtro}
+        </PageCardHeader>
+        <PageCardContent>
+          <Suspense fallback={<PageLoadingBlock />}>
+            <BarrasCarga papel={papel} linhas={linhas} />
+          </Suspense>
         </PageCardContent>
       </PageCard>
     </PageStack>
@@ -238,12 +270,11 @@ function CapacidadePorFrente({ capacidade }: { capacidade: Alocacao["capacidade"
  *  POSIÇÃO da faixa na escala — não pelo nome nem pela cor, que a diretoria
  *  edita à vontade. Se a tela procurasse por "Carga alta" ou por vermelho, uma
  *  renomeada esvaziaria o card sem ninguém perceber. */
-function ColunaDemandaAlta({ papel, linhas }: { papel: string; linhas: LinhaCarga[] }) {
+function ColunaDemandaAlta({ linhas }: { linhas: LinhaCarga[] }) {
   const lista = usePaginacao(linhas);
 
   return (
     <div>
-      <DemandaAltaTitulo>{papel}</DemandaAltaTitulo>
       {linhas.length === 0 ? (
         <EmptyText>Ninguém com demanda alta.</EmptyText>
       ) : (
@@ -286,10 +317,13 @@ function TabelaCarga({
   titulo,
   linhas,
   vazio,
+  filtro,
 }: {
   titulo: string;
   linhas: LinhaCarga[];
   vazio: string;
+  /** O seletor de papel, renderizado à direita do título. */
+  filtro?: ReactNode;
 }) {
   /* A escala é POR TABELA, não global: coordenador e consultor carregam
      volumes diferentes por natureza, e uma régua só faria a tabela dos
@@ -300,6 +334,7 @@ function TabelaCarga({
     <PageCard>
       <PageCardHeader>
         <PageCardTitle>{titulo}</PageCardTitle>
+        {filtro}
       </PageCardHeader>
       <PageCardContent>
         {linhas.length === 0 ? (

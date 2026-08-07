@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   DndContext,
   DragOverlay,
@@ -13,12 +14,15 @@ import {
 } from "@dnd-kit/core";
 import { AlertTriangle } from "lucide-react";
 import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
-import { CORES_STATUS, destinosValidos, podePausar, ROTULO_STATUS } from "@/lib/projetos";
+import { CORES_STATUS, destinosValidos, formatarDataHoraBanca, podePausar, ROTULO_STATUS } from "@/lib/projetos";
 import type { ProjetoResumo, StatusProjeto } from "@/types/projeto";
 import {
   AlertaKickoff,
   Board,
   Card,
+  CardBanca,
+  CardFrentes,
+  CardFrenteTag,
   CardMeta,
   CardTitulo,
   CardTopo,
@@ -168,6 +172,7 @@ function CardArrastavel({
     id: projeto.id,
     disabled: !arrastavel,
   });
+  const navigate = useNavigate();
 
   return (
     <Card
@@ -177,6 +182,22 @@ function CardArrastavel({
       $bloqueada={!arrastavel}
       {...(arrastavel ? listeners : {})}
       {...(arrastavel ? attributes : {})}
+      // Depois do spread de propósito: `attributes` do dnd-kit já traz
+      // role/tabIndex quando arrastável, e espalhar por último sobrescreveria
+      // os nossos. O clique abre o projeto; o arrasto só começa depois de 5px
+      // de movimento (activationConstraint), então os dois gestos convivem.
+      // `tabIndex` fica explícito pra continuar navegável por teclado mesmo
+      // quando o card não é arrastável (aí `attributes` não traz nenhum).
+      role="button"
+      tabIndex={0}
+      title="Clique para abrir o projeto"
+      onClick={() => navigate(`/projetos/${projeto.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          navigate(`/projetos/${projeto.id}`);
+        }
+      }}
     >
       <CardTopo>
         <CardTitulo>{projeto.nome}</CardTitulo>
@@ -186,10 +207,19 @@ function CardArrastavel({
           </AlertaKickoff>
         )}
       </CardTopo>
-      <CardMeta>
-        <span>{projeto.cliente}</span>
-        <span>{projeto.frente_ids.map(nomeFrente).join(" · ")}</span>
-      </CardMeta>
+      <CardMeta title={projeto.cliente ?? undefined}>{projeto.cliente}</CardMeta>
+      <CardFrentes>
+        {projeto.frente_ids.map((id) => (
+          <CardFrenteTag key={id} title={nomeFrente(id)}>
+            {nomeFrente(id)}
+          </CardFrenteTag>
+        ))}
+      </CardFrentes>
+      {projeto.proxima_banca && (
+        <CardBanca title={`Banca: ${formatarDataHoraBanca(projeto.proxima_banca)}`}>
+          Banca: {formatarDataHoraBanca(projeto.proxima_banca)}
+        </CardBanca>
+      )}
     </Card>
   );
 }

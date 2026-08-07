@@ -5,11 +5,23 @@ export function getSolicitacoesTroca(token: string) {
   return apiFetch<SolicitacaoTroca[]>("/solicitacoes-troca", { token });
 }
 
-export function createSolicitacaoTroca(candidaturaId: number, token: string) {
+/**
+ * `usuarioConvidadoId` — nulo abre pro pool de elegíveis (comportamento de
+ * sempre); preenchido manda um convite direto pra essa pessoa, e só ela
+ * pode confirmar (o backend garante isso, ver `confirmar_solicitacao_troca`).
+ */
+export function createSolicitacaoTroca(
+  candidaturaId: number,
+  token: string,
+  usuarioConvidadoId?: number,
+) {
   return apiFetch<SolicitacaoTroca>("/solicitacoes-troca", {
     method: "POST",
     token,
-    body: JSON.stringify({ candidatura_id: candidaturaId }),
+    body: JSON.stringify({
+      candidatura_id: candidaturaId,
+      usuario_convidado_id: usuarioConvidadoId ?? null,
+    }),
   });
 }
 

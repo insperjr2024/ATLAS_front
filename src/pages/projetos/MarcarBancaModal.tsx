@@ -216,7 +216,7 @@ export function MarcarBancaModal({
           {frentesEnvolvidas.length > 1 && (
             <p>
               Esta banca vai cobrir {frentesEnvolvidas.map(nomeFrente).join(" e ")} — a composição
-              exigida passa a somar as duas frentes (§8).
+              exigida passa a somar as duas frentes.
             </p>
           )}
 

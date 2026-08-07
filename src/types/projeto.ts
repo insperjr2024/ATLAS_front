@@ -25,7 +25,7 @@ export type PapelProjeto = "coordenador" | "consultor";
 export interface ProjetoResumo {
   id: number;
   nome: string;
-  cliente: string;
+  cliente: string | null;
   criado_em: string;
   status: StatusProjeto;
   frente_ids: number[];
@@ -37,6 +37,13 @@ export interface ProjetoResumo {
   kickoff_pendente: boolean;
   /** Arquivar não é excluir — só some das listagens normais (§6.2). */
   arquivado_em: string | null;
+  /** A banca ainda não realizada mais próxima, de qualquer escopo deste
+   *  projeto. `null` se nenhuma estiver marcada ou todas já aconteceram. */
+  proxima_banca: string | null;
+  /** "Limpar histórico": corte de exibição da timeline (aba Histórico) —
+   *  não apaga nada, as linhas anteriores continuam usadas na contagem de
+   *  dias (§5.4). `null` = nada oculto, mostra a timeline inteira. */
+  historico_oculto_ate: string | null;
 }
 
 export interface MembroProjeto {
@@ -73,6 +80,9 @@ export interface EscopoVendido {
   /** Já resolvido: o nome do catálogo, ou o digitado quando é um "Outro". */
   nome: string;
   frente_id: number;
+  /** Ordem de exibição na tela do projeto — setinhas trocam este valor
+   *  entre vizinhos, não é a ordem de criação (`id`). */
+  ordem: number;
   /** ⭐ Imutável — o registro comercial. Nunca vira "vendidos + ajustados". */
   dias_uteis_vendidos: number;
   /** Dias extras autorizados pela diretoria (§8). Somam com os vendidos para
@@ -85,6 +95,17 @@ export interface EscopoVendido {
   data_entrega_planejada: string | null;
   data_entrega_real: string | null;
   tipo_atraso_entrega: "interno" | "externo" | null;
+  /**
+   * Carimbo do `POST /escopos-projeto/{id}/oficializar` (§5.3) — informativo,
+   * só alimenta o banner "Cronograma oficializado em …".
+   *
+   * ⚠️ Não confundir com a JANELA do escopo (`data_inicio` → `fim_janela`):
+   * são conceitos que convivem e não se consultam. A janela abre na reunião
+   * inicial e não pergunta se o cronograma foi oficializado; oficializar não
+   * mexe em dia nenhum da contagem. O merge do reajuste apagou este campo sem
+   * querer — ele fica, o backend manteve a coluna e a rota.
+   */
+  cronograma_oficializado_em: string | null;
   consumidos: number;
   /** Pode ser negativo — é o "estourou em N dias". Medido contra
    *  *vendidos + ajustados*. */
@@ -154,12 +175,44 @@ export interface ProjetoCompleto extends ProjetoResumo {
  * mudou sozinho (o kickoff, por exemplo), não uma pessoa clicando.
  */
 export interface StatusHistorico {
+  tipo: "status";
   id: number;
   status_anterior: StatusProjeto | null;
   status_novo: StatusProjeto;
   alterado_por: number | null;
   alterado_em: string;
 }
+
+/**
+ * A nota de atraso da diretoria (§7.4) — `projeto_justificativa_atraso`, na
+ * mesma linha do tempo do histórico de status. `alterado_em` aqui é quando a
+ * nota foi registrada, não uma "mudança" — o nome é o mesmo do status pra dar
+ * uma chave só pra ordenar/agrupar por dia.
+ */
+export interface JustificativaAtrasoHistorico {
+  tipo: "justificativa_atraso";
+  id: number;
+  projeto_escopo_id: number | null;
+  /** "banca" | "entrega_interna" | "entrega_externa" | null (nota geral). */
+  motivo_tipo: string | null;
+  texto: string;
+  registrado_por: number;
+  alterado_em: string;
+}
+
+/** A remarcação de uma banca já vencida (§5.6) — `projeto_remarcacao_banca`. */
+export interface RemarcacaoBancaHistorico {
+  tipo: "remarcacao_banca";
+  id: number;
+  projeto_escopo_id: number | null;
+  data_anterior: string;
+  data_nova: string;
+  justificativa: string;
+  registrado_por: number;
+  alterado_em: string;
+}
+
+export type HistoricoEntrada = StatusHistorico | JustificativaAtrasoHistorico | RemarcacaoBancaHistorico;
 
 /** O que o formulário de equipe manda de volta — sem `entrou_em`, que é do backend. */
 export interface MembroEquipePayload {

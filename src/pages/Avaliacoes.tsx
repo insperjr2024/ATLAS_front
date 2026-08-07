@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Plus, X } from "lucide-react";
+import { NotebookPen, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   createNovaVersaoFormulario,
@@ -11,6 +11,7 @@ import {
   isPerguntaNota,
 } from "@/lib/avaliacoes";
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
+import { DescricaoQuote } from "@/styles/shared.styled";
 import { getEscopos, getFrentes } from "@/lib/bancas";
 import { getHistoricoBancas } from "@/lib/historico";
 import { getBancas, getBancasFrentes, getCandidaturas } from "@/lib/bancas";
@@ -63,7 +64,6 @@ import {
   TableScrollWrap,
   LIST_MAX_VISIVEIS,
   FiltersRow,
-  FilterSelect,
   FormHint,
   CardActions,
   ModalOverlay,
@@ -96,6 +96,7 @@ import {
   PreviewToggleRow,
   SectionTitle,
   NotaFinalDestaque,
+  DescricaoIndicador,
   AvaliacaoBlock,
   AvaliacaoTitulo,
   AvaliacaoMeta,
@@ -103,6 +104,7 @@ import {
   DetailRow,
   DetailTerm,
   DetailValue,
+  FormularioModalContent,
 } from "./Avaliacoes.styled";
 
 function formatNota(nota: number | null | undefined): string {
@@ -249,38 +251,38 @@ export function Avaliacoes() {
         </PageCardHeader>
         <PageCardContent>
           <FiltersRow>
-            <FilterSelect value={filtroSemestre} onChange={(e) => setFiltroSemestre(e.target.value)}>
+            <FieldSelect value={filtroSemestre} onChange={(e) => setFiltroSemestre(e.target.value)} style={{ width: "10rem" }}>
               <option value="">Todos os semestres</option>
               {semestres.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nome}
                 </option>
               ))}
-            </FilterSelect>
-            <FilterSelect value={filtroCoordenador} onChange={(e) => setFiltroCoordenador(e.target.value)}>
+            </FieldSelect>
+            <FieldSelect value={filtroCoordenador} onChange={(e) => setFiltroCoordenador(e.target.value)} style={{ width: "10rem" }}>
               <option value="">Todos os coordenadores</option>
               {usuarios.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nome}
                 </option>
               ))}
-            </FilterSelect>
-            <FilterSelect value={filtroConsultor} onChange={(e) => setFiltroConsultor(e.target.value)}>
+            </FieldSelect>
+            <FieldSelect value={filtroConsultor} onChange={(e) => setFiltroConsultor(e.target.value)} style={{ width: "10rem" }}>
               <option value="">Todos os avaliadores</option>
               {usuarios.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nome}
                 </option>
               ))}
-            </FilterSelect>
-            <FilterSelect value={filtroEscopo} onChange={(e) => setFiltroEscopo(e.target.value)}>
+            </FieldSelect>
+            <FieldSelect value={filtroEscopo} onChange={(e) => setFiltroEscopo(e.target.value)} style={{ width: "10rem" }}>
               <option value="">Todos os escopos</option>
               {escopos.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.nome}
                 </option>
               ))}
-            </FilterSelect>
+            </FieldSelect>
           </FiltersRow>
 
           {historicoFiltrado.length === 0 && <EmptyText>Nenhuma banca encontrada com os filtros selecionados.</EmptyText>}
@@ -301,7 +303,14 @@ export function Avaliacoes() {
               <TableBody>
                 {historicoFiltrado.map((banca) => (
                   <TableRow key={banca.id}>
-                    <NameCell>{banca.nome_projeto}</NameCell>
+                    <NameCell>
+                      {banca.nome_projeto}
+                      {banca.descricao_coordenador && (
+                        <DescricaoIndicador title="Coordenador registrou descrição">
+                          <NotebookPen size={13} aria-hidden="true" />
+                        </DescricaoIndicador>
+                      )}
+                    </NameCell>
                     <TableCell>{new Date(banca.data_hora).toLocaleDateString("pt-BR")}</TableCell>
                     <TableCell>{nomeUsuario(usuarios, banca.coordenador_id)}</TableCell>
                     <TableCell>{nomeEscopo(escopos, banca.escopo_id)}</TableCell>
@@ -441,6 +450,13 @@ function VerAvaliacoesModal({
           <NotaFinalDestaque>
             Nota final: <strong>{formatNota(banca.nota_final)}</strong>
           </NotaFinalDestaque>
+
+          <SectionTitle>Descrição do coordenador</SectionTitle>
+          {banca.descricao_coordenador ? (
+            <DescricaoQuote>{banca.descricao_coordenador}</DescricaoQuote>
+          ) : (
+            <EmptyText>O coordenador ainda não registrou uma descrição desta banca.</EmptyText>
+          )}
 
           <SectionTitle>Médias por critério</SectionTitle>
           {carregando && <EmptyText>Carregando médias...</EmptyText>}
@@ -687,7 +703,11 @@ function EditarFormularioModal({
 
   return (
     <ModalOverlay onClick={onClose} role="presentation">
-      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="editar-form-titulo">
+      <FormularioModalContent
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="editar-form-titulo"
+      >
         <ModalHeader>
           <ModalTitle id="editar-form-titulo">Editar formulário padrão</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
@@ -741,7 +761,7 @@ function EditarFormularioModal({
             </PageButton>
           </ModalFooter>
         </FormStack>
-      </WideModalContent>
+      </FormularioModalContent>
     </ModalOverlay>
   );
 }

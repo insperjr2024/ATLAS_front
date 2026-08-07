@@ -23,6 +23,7 @@ import {
   validarEquipe,
   type EquipeSelecionada,
 } from "@/components/membros/MemberPicker";
+import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { ProjetoCompleto } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
@@ -38,10 +39,13 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  FieldGroup,
   FieldInput,
+  FieldLabel,
   FieldSelect,
   FieldTextarea,
   FormErrorText,
+  Required,
   ModalOverlay,
   ModalHeader,
   ModalTitle,
@@ -89,6 +93,7 @@ export function ProjetoVisaoGeral() {
   const [baixandoAnexo, setBaixandoAnexo] = useState(false);
   const [erroAnexo, setErroAnexo] = useState("");
   const [editandoDescricao, setEditandoDescricao] = useState(false);
+  const [nome, setNome] = useState(projeto.nome);
   const [descricao, setDescricao] = useState(projeto.descricao ?? "");
   const [salvandoDescricao, setSalvandoDescricao] = useState(false);
   const [erroDescricao, setErroDescricao] = useState("");
@@ -98,14 +103,18 @@ export function ProjetoVisaoGeral() {
 
   async function handleSalvarDescricao() {
     if (!token) return;
+    if (!nome.trim()) {
+      setErroDescricao("O nome do projeto não pode ficar vazio.");
+      return;
+    }
     setSalvandoDescricao(true);
     setErroDescricao("");
     try {
-      await updateDescricao(projeto.id, descricao, token);
+      await updateDescricao(projeto.id, descricao, token, nome.trim());
       setEditandoDescricao(false);
       await recarregar();
     } catch (err) {
-      setErroDescricao(err instanceof Error ? err.message : "Erro ao salvar a descrição");
+      setErroDescricao(err instanceof Error ? err.message : "Erro ao salvar");
     } finally {
       setSalvandoDescricao(false);
     }
@@ -147,6 +156,7 @@ export function ProjetoVisaoGeral() {
                 type="button"
                 $variant="outline"
                 onClick={() => {
+                  setNome(projeto.nome);
                   setDescricao(projeto.descricao ?? "");
                   setEditandoDescricao(true);
                 }}
@@ -158,6 +168,16 @@ export function ProjetoVisaoGeral() {
           <PageCardContent>
             {editandoDescricao ? (
               <>
+                <FieldGroup>
+                  <FieldLabel htmlFor="projeto-nome-editar">
+                    Nome do projeto<Required>*</Required>
+                  </FieldLabel>
+                  <FieldInput
+                    id="projeto-nome-editar"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                  />
+                </FieldGroup>
                 <FieldTextarea
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
@@ -304,6 +324,7 @@ function TabelaEscopos() {
   // ⚠️ Nenhuma escrita aqui: esta tabela só LÊ. Datas de escopo — banca e
   // entrega — são agendadas no Cronograma, que é onde dá para ver o dia contra
   // a janela do escopo e o calendário do Insper.
+  // (E por isso não existe estado de erro nesta função: não há o que falhar.)
 
   return (
     <PageCard>
@@ -321,8 +342,12 @@ function TabelaEscopos() {
                   <TableHeadCell>Escopo</TableHeadCell>
                   <TableHeadCell>Status</TableHeadCell>
                   <TableHeadCell>Dias usados</TableHeadCell>
-                  <TableHeadCell title="Dias úteis além da janela (§10)">Atraso</TableHeadCell>
-                  <TableHeadCell title="Dias úteis pintados depois da entrega (§11)">
+                  {/* Atraso é o §10 (dias úteis além da janela) e Correções é o
+                      §11 (dias pintados depois da banca). O número da seção
+                      fica aqui, no comentário: texto que o usuário lê não cita
+                      parágrafo de documento interno. */}
+                  <TableHeadCell title="Dias úteis além da janela">Atraso</TableHeadCell>
+                  <TableHeadCell title="Dias úteis pintados depois da entrega">
                     Correções
                   </TableHeadCell>
                   <TableHeadCell>Banca</TableHeadCell>
@@ -437,7 +462,7 @@ function TabelaEscopos() {
                             <EmptyText>liberada</EmptyText>
                           )
                         ) : (
-                          <Cadeado title="A entrega só é liberada depois da banca do escopo ser aprovada (§5.5)">
+                          <Cadeado title="A entrega só é liberada depois da banca do escopo ser aprovada">
                             <Lock size={12} />
                             travada
                           </Cadeado>
@@ -457,7 +482,6 @@ function TabelaEscopos() {
               no <strong>Cronograma</strong>, escolhendo o escopo e clicando no dia. A banca não
               precisa estar marcada antes — é ela que precisa caber na janela que a reunião abre.
             </LegendaTabela>
-
           </>
         )}
       </PageCardContent>
@@ -585,19 +609,22 @@ function BancasPorFrente() {
         )}
 
         <LegendaTabela>
-          Cada escopo tem no máximo uma banca (§5.5), mas uma banca pode avaliar vários escopos do
+          Cada escopo tem no máximo uma banca, mas uma banca pode avaliar vários escopos do
           projeto — quem marca escolhe quais, no <strong>Cronograma</strong>. A banca herda as
           frentes dos escopos que cobre, e são elas que definem a composição exigida e quem pode ser
           escalado. A data é a mesma que aparece em Bancas e no cronograma: um registro só, lido de
           três lugares.
         </LegendaTabela>
       </PageCardContent>
-
     </PageCard>
   );
 }
 
 /* ------------------------------------------------------------------ */
+
+/* O MarcarBancaModal que morava aqui virou `./MarcarBancaModal.tsx`, usado
+   pelo Cronograma: a banca passou a ser marcada clicando no dia, onde dá para
+   ver se ela cai dentro da janela do escopo. Esta tela só a exibe. */
 
 /* ------------------------------------------------------------------ */
 
@@ -940,10 +967,11 @@ function EditarEquipeModal({
               frentes={frentes}
               frenteIdsProjeto={projeto.frente_ids}
             />
-            <EmptyText>
-              Trocar alguém não apaga o passado: a linha antiga é fechada e uma nova é aberta, para o
-              histórico de quem participou continuar de pé.
-            </EmptyText>
+
+            {/* Mesma leitura de quando o projeto nasceu: trocar alguém pode
+                fechar a única janela em que o time se reunia. */}
+            <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={ativos} />
+
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>
           <ModalFooter>

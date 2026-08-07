@@ -33,6 +33,28 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+/** Cargo de mentira, todas as caixas desmarcadas — só pra existir enquanto
+ *  `senha_provisoria` for true. O PrivateRoute não deixa nada além de
+ *  /definir-senha acontecer nesse estado, então nenhuma dessas permissões
+ *  chega a ser lida de verdade. */
+const CARGO_PLACEHOLDER: Cargo = {
+  id: 0,
+  nome: "",
+  pode_criar_projeto: false,
+  pode_editar_equipe: false,
+  pode_gerir_membros: false,
+  pode_marcar_kickoff: false,
+  pode_definir_cronograma: false,
+  pode_aprovar_reajuste: false,
+  pode_criar_tarefa: false,
+  pode_mover_editar_tarefa: false,
+  pode_ver_proprios_projetos: false,
+  pode_ver_monitoramento: false,
+  pode_administrar_desempenho: false,
+  pode_editar_formularios_desempenho: false,
+  pode_administrar_configuracoes: false,
+};
+
 /**
  * ⭐ Estende a sessão: pede um token novo, com o prazo cheio, e guarda no
  * lugar do atual. Quem abre o ATLAS toda semana nunca precisa relogar.
@@ -63,7 +85,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const dados = await apiFetch<UsuarioResponse>("/auth/me", { token });
-      const cargo = await apiFetch<Cargo>(`/cargos/${dados.cargo_id}`, { token });
+      // Com senha provisória o backend trava QUALQUER rota fora das 3 do
+      // primeiro acesso — /cargos/{id} não é uma delas, e 403 caía no catch
+      // abaixo, que desloga. O cargo de verdade não faz falta agora: o
+      // PrivateRoute só deixa passar pra /definir-senha até isso resolver, e
+      // recarregarUsuario() busca o cargo real depois, quando já não trava.
+      const cargo = dados.senha_provisoria
+        ? CARGO_PLACEHOLDER
+        : await apiFetch<Cargo>(`/cargos/${dados.cargo_id}`, { token });
       setUsuario({ ...dados, cargo });
       renovarSessao(token);
     } catch {

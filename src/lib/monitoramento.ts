@@ -5,6 +5,29 @@ import type { CronogramaResposta } from "@/types/cronograma";
 
 /* Os tipos espelham `use_cases/monitoramento/monitoramento.py`. */
 
+/** O que faz um projeto pedir atenção (§7.1).
+ *
+ *  `entrega_interna` e `entrega_externa` são separadas porque o §7.4 as trata
+ *  diferente — a externa depende da agenda do cliente e não se cobra do time. */
+export type TipoAtencao =
+  | "kickoff"
+  | "banca"
+  | "entrega_interna"
+  | "entrega_externa"
+  | "reuniao"
+  | "tarefa";
+
+/** Os rótulos do filtro, na ordem em que aparecem. A ordem é do que o time
+ *  controla (tarefa, reunião) para o que depende de terceiro (cliente). */
+export const ROTULO_ATENCAO: Record<TipoAtencao, string> = {
+  tarefa: "Tarefas",
+  reuniao: "Reuniões",
+  banca: "Bancas",
+  entrega_interna: "Entregas",
+  entrega_externa: "Entregas (cliente)",
+  kickoff: "Kickoff",
+};
+
 /** Uma etapa do ciclo de vida e os projetos parados nela.
  *
  *  Vem em LISTA, não em objeto indexado por status: a ordem é o dado. A pizza
@@ -41,18 +64,19 @@ export interface VisaoGeral {
    *  os rótulos precisam dizer o que cada um mede. */
   atrasados_gestao: { percentual: number; atrasados: number; total_ativos: number };
   entregas: {
+    /** Escopos entregues NA GESTÃO ATUAL — o assunto do card.
+     *
+     *  ⚠ Não bate com a soma da `tendencia`: ela abre 6 meses e ignora o
+     *  semestre, senão viriam quatro meses zerados (a gestão começou em
+     *  julho). São duas leituras no mesmo card, de propósito. */
     total_escopos: number;
-    projetos_finalizados: number;
-    recentes: {
-      projeto_id: number;
-      projeto_nome: string;
-      escopo: string;
-      data: string;
-      no_prazo: boolean;
-    }[];
+    /** Entregas por mês nos últimos 6, do mais antigo ao mais novo. O mês
+     *  corrente entra incompleto — é "o que saiu até agora", não previsão. */
     tendencia: { inicio: string; total: number }[];
   };
   bancas_proximas: {
+    /** O id da banca, para a linha do card levar até ela em /bancas. */
+    banca_id: number;
     projeto_id: number | null;
     projeto_nome: string;
     escopo: string;
@@ -68,6 +92,10 @@ export interface VisaoGeral {
   atencao_agora: {
     projeto_id: number;
     projeto_nome: string;
+    /** A categoria, para a tela filtrar. Vem separada do `motivo` porque
+     *  aquele é frase escrita para humano e muda de redação — agrupar por ela
+     *  seria agrupar por string livre. */
+    tipo: TipoAtencao;
     motivo: string;
     dias: number | null;
   }[];
@@ -231,7 +259,13 @@ export interface Atrasos {
     projeto_id: number;
     projeto_nome: string;
     status: string;
+    /** A SOMA dos dias de todos os motivos. Serve para volume acumulado, não
+     *  para "há quanto tempo está parado" — três escopos com 4 dias cada somam
+     *  12 sem que nada esteja parado há 12 dias. */
     dias_totais: number;
+    /** O PIOR motivo isolado. É o número em destaque na tela, e o que ordena
+     *  a lista — responde "qual é o maior buraco deste projeto". */
+    pior_motivo: number;
     motivos: {
       tipo: string;
       descricao: string;
@@ -240,6 +274,14 @@ export interface Atrasos {
       projeto_escopo_id: number | null;
       /** A data que venceu: a banca não realizada ou a entrega planejada. */
       data_referencia: string | null;
+      /** §7.4 — já tem justificativa da diretoria cobrindo ESTE motivo (o
+       *  mesmo escopo pode estar atrasado em banca e entrega ao mesmo tempo;
+       *  uma nota de uma rodada de atraso anterior, já resolvida, não conta).
+       *  O motivo continua na lista mesmo justificado: o alerta é automático. */
+      justificado: boolean;
+      /** Qual nota justifica — pra o selo "justificado" levar direto pra ela
+       *  no histórico do projeto. `null` quando `justificado` é `false`. */
+      justificativa_id: number | null;
     }[];
   }[];
   por_coordenador: {
@@ -247,8 +289,26 @@ export interface Atrasos {
     nome: string;
     projetos: number;
     atrasados: number;
-    dias_acumulados: number;
+    /** O maior atraso isolado entre os projetos dele, com o contexto junto.
+     *
+     *  Substituiu o acumulado: "40 dias somados" não diz se são quatro atrasos
+     *  de 10 ou um de 40, e a ação é diferente em cada caso. */
+    pior_dias: number;
+    pior_projeto: string;
+    pior_motivo: string;
   }[];
+  /** Os números da faixa do topo, calculados no backend — a divisão
+   *  banca/entrega decide a leitura do §7.4 e o front recontar isso a partir
+   *  das descrições seria reimplementar a classificação. */
+  resumo: {
+    projetos: number;
+    pior_caso: number;
+    /** Projetos com entrega travada do lado do CLIENTE. O §7.4 tira isso do
+     *  que se cobra do time, mas é o caso mais delicado do portfólio — quem
+     *  resolve é a diretoria falando com o cliente. */
+    com_externo: number;
+    pior_externo: number;
+  };
 }
 
 /** Espelha `Urgencia` de `types/tarefa.ts` — mesma gradação, backend igual. */

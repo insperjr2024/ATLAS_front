@@ -13,6 +13,7 @@ import {
   validarEquipe,
   type EquipeSelecionada,
 } from "@/components/membros/MemberPicker";
+import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
 import {
   EscopoPicker,
   montarEscoposPayload,
@@ -182,7 +183,7 @@ export function ProjetoNovo() {
         const projeto = await createProjeto(
           {
             nome: nome.trim(),
-            cliente: cliente.trim(),
+            cliente: cliente.trim() || null,
             descricao: descricao.trim() || null,
             link_proposta: modoProposta === "link" ? linkProposta.trim() || null : null,
             frente_ids: frenteIds,
@@ -239,10 +240,6 @@ export function ProjetoNovo() {
             Voltar para projetos
           </VoltarLink>
           <PageHeading>Criar projeto</PageHeading>
-          <PageSubheading>
-            O projeto nasce como <strong>Vendido</strong>. O kickoff é marcado depois, na página do
-            projeto — é ele que move o status para Ambientação.
-          </PageSubheading>
         </PageHeaderText>
       </PageHeaderRow>
 
@@ -267,15 +264,12 @@ export function ProjetoNovo() {
               </FieldGroup>
 
               <FieldGroup>
-                <FieldLabel htmlFor="projeto-cliente">
-                  Cliente<Required>*</Required>
-                </FieldLabel>
+                <FieldLabel htmlFor="projeto-cliente">Cliente</FieldLabel>
                 <FieldInput
                   id="projeto-cliente"
                   value={cliente}
                   onChange={(e) => setCliente(e.target.value)}
                   placeholder="Padaria do Zé"
-                  required
                 />
               </FieldGroup>
 
@@ -299,19 +293,13 @@ export function ProjetoNovo() {
                     );
                   })}
                 </CheckboxGrid>
+                {/* O texto acompanha a regra nova: sem teto de frentes, "sinérgico"
+                    passa a ser ">= 2" em vez de "exatamente 2". */}
                 <PageSubheading>
                   {sinergico
                     ? `🔗 ${frenteIds.length} frentes marcadas: o projeto é sinérgico e aparece para os gerentes de todas elas.`
                     : "Marque quantas frentes o projeto tiver. Duas ou mais = projeto sinérgico."}
                 </PageSubheading>
-                {frenteIds.length > 0 && (
-                  <PageSubheading>
-                    📅 O cronograma já nasce marcando de cinza os dias não úteis do calendário base{" "}
-                    {frenteIds.length > 1 ? "dessas frentes" : "dessa frente"} (
-                    {frenteIds.map((id) => frentes.find((f) => f.id === id)?.nome ?? id).join(", ")}) —
-                    configurável em Calendários base.
-                  </PageSubheading>
-                )}
               </FieldGroup>
 
               <FieldGroup>
@@ -326,10 +314,6 @@ export function ProjetoNovo() {
                   onChange={setEscopos}
                   desabilitado={salvando}
                 />
-                <PageSubheading>
-                  Cada escopo tem os seus próprios dias úteis vendidos, banca e entrega. A contagem
-                  só começa quando o escopo é iniciado, na página do projeto.
-                </PageSubheading>
               </FieldGroup>
 
               <FieldGroup>
@@ -355,6 +339,13 @@ export function ProjetoNovo() {
                 usuariosFrentes={usuariosFrentes}
                 frentes={frentes}
                 frenteIdsProjeto={frenteIds}
+              />
+
+              {/* Logo abaixo da escolha: serve para rever o time ANTES de
+                  fechar, não para descobrir o problema depois. */}
+              <CompatibilidadeHorarios
+                consultorIds={equipe.consultorIds}
+                usuarios={usuarios}
               />
 
               <FieldGroup>
@@ -418,7 +409,6 @@ export function ProjetoNovo() {
                     {erroAnexo && <FormErrorText>{erroAnexo}</FormErrorText>}
                   </>
                 )}
-                <PageSubheading>Um ou outro — link para a proposta, ou o PDF anexado.</PageSubheading>
               </FieldGroup>
 
               <FieldGroup>

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Outlet, useLocation, useOutletContext, useParams } from "react-router-dom";
-import { Archive, ArchiveRestore, ArrowLeft, ChevronDown } from "lucide-react";
+import { Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { Archive, ArchiveRestore, ArrowLeft, ChevronDown, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
 import {
   arquivarProjeto,
   CORES_STATUS,
+  deletarProjetoPermanente,
   desarquivarProjeto,
   destinosValidos,
   formatarData,
@@ -96,6 +97,7 @@ function voltarDoLocation(state: unknown): { to: string; rotulo: string } {
 export function ProjetoPage() {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { usuario, token } = useAuth();
   const projetoId = Number(id);
   /**
@@ -119,6 +121,8 @@ export function ProjetoPage() {
   const [mudandoStatus, setMudandoStatus] = useState(false);
   const [arquivando, setArquivando] = useState(false);
   const [confirmandoArquivamento, setConfirmandoArquivamento] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!token || !projetoId) return;
@@ -183,6 +187,18 @@ export function ProjetoPage() {
     }
   }
 
+  async function confirmarExclusao() {
+    if (!token || !projeto) return;
+    setExcluindo(true);
+    try {
+      await deletarProjetoPermanente(projeto.id, token);
+      navigate("/projetos", { replace: true });
+    } catch (err) {
+      setExcluindo(false);
+      throw err;
+    }
+  }
+
   if (erro) {
     return (
       <ErrorBlock>
@@ -201,6 +217,7 @@ export function ProjetoPage() {
 
   const podeMudarStatus = pode(usuario, "mudar_status_projeto");
   const podeArquivar = pode(usuario, "arquivar_projeto");
+  const podeExcluir = pode(usuario, "apagar_projeto_permanente");
   const temKickoff = !!projeto.data_kickoff;
 
   // ✋ Livre entre as etapas ativas, nos dois sentidos — não só a vizinha.
@@ -263,6 +280,17 @@ export function ProjetoPage() {
               {projeto.arquivado_em ? "Desarquivar" : "Arquivar"}
             </PageButtonSm>
           )}
+          {podeExcluir && projeto.arquivado_em && (
+            <PageButtonSm
+              type="button"
+              $variant="outline"
+              disabled={excluindo}
+              onClick={() => setConfirmandoExclusao(true)}
+            >
+              <Trash2 size={14} />
+              Apagar para sempre
+            </PageButtonSm>
+          )}
         </StatusRow>
       </ShellHeader>
 
@@ -310,6 +338,16 @@ export function ProjetoPage() {
           rotuloConfirmar={projeto.arquivado_em ? "Desarquivar" : "Arquivar"}
           onCancelar={() => setConfirmandoArquivamento(false)}
           onConfirmar={confirmarArquivamento}
+        />
+      )}
+
+      {confirmandoExclusao && (
+        <ConfirmarModal
+          titulo="Apagar projeto para sempre"
+          mensagem={`Apagar "${projeto.nome}" para sempre? Tarefas, bancas, avaliações, cronograma e histórico do projeto são todos apagados junto. Essa ação não pode ser desfeita.`}
+          rotuloConfirmar="Apagar para sempre"
+          onCancelar={() => setConfirmandoExclusao(false)}
+          onConfirmar={confirmarExclusao}
         />
       )}
     </ProjetoShell>

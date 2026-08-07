@@ -41,7 +41,7 @@ function equatorPoints(n: number): Point[] {
  *  nome que colidisse com o do polo norte (José) durante a rotação some
  *  sozinho pelo sistema de colisão abaixo (prioridade + fade), então não
  *  precisa mais ficar de fora daqui por causa disso. */
-const NOMES_FIXOS = ["Heloísa N.", "Henrique M.", "João B.", "Enzo P.", "Mateus L."];
+const NOMES_FIXOS = ["Heloísa N.", "Henrique M.", "João V.", "Enzo P.", "Mateus L."];
 
 /** Fixo no polo norte, fora da linha do equador dos outros fundadores. */
 const NOME_POLO_NORTE = "José S.";

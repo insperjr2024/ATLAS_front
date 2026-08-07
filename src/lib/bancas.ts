@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { paraDataUtc } from "@/lib/projetos";
 import type {
   Banca,
   BancaFrente,
@@ -52,6 +53,21 @@ export function registrarResultado(
   });
 }
 
+
+/**
+ * O relato do coordenador do projeto sobre a banca — ele não é avaliador
+ * dela (ver §8: "ninguém avalia o próprio grupo"), então isto substitui o
+ * formulário de avaliação/notas pra ele, não se soma a ele. Só aceito depois
+ * de `realizado_em` e só pelo próprio `banca.coordenador_id` (o backend
+ * confere os dois).
+ */
+export function registrarDescricaoCoordenador(bancaId: number, descricao: string, token: string) {
+  return apiFetch(`/bancas/${bancaId}/descricao-coordenador`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ descricao }),
+  });
+}
 
 /**
  * A escalação automática do §8: uma semana antes, preenche as bancas que ainda
@@ -257,13 +273,13 @@ export function podeGerenciarBanca(banca: Banca, usuarioId: number): boolean {
 }
 
 export function toDateInputValue(iso: string): string {
-  const d = new Date(iso);
+  const d = paraDataUtc(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 export function toTimeInputValue(iso: string): string {
-  const d = new Date(iso);
+  const d = paraDataUtc(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

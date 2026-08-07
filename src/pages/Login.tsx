@@ -106,7 +106,7 @@ export function Login() {
               <LoginBrandLogo src={insperJrLogo} alt="Insper Jr." />
             </LoginFormLogoWrap>
             <LoginFormSubtitle>
-              Entre com seu e-mail Insper Jr para acessar a plataforma de projetos.
+              Entre com sua conta para acessar a plataforma de projetos.
             </LoginFormSubtitle>
           </LoginHeaderBlock>
 
@@ -123,7 +123,7 @@ export function Login() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu.email@al.insper.edu.br"
+                  placeholder="seu@email.com"
                   required
                 />
               </LoginInputWrapper>

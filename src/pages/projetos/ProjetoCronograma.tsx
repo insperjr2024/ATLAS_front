@@ -5,17 +5,22 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Lock,
   Plus,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+// ⚠️ `oficializarCronograma` e `pedirDiasDeAjuste` CONVIVEM, apesar de terem se
+// cruzado no merge: o primeiro só carimba a data (§5.3, informativo) e o
+// segundo estica a janela (§8, passa pela diretoria). Nenhum consulta o outro.
 import {
   createEtapa,
   definirEntregaPlanejada,
   deleteEtapa,
   getCronograma,
   moverEtapa,
+  oficializarCronograma,
   pedirDiasDeAjuste,
 } from "@/lib/cronograma";
 import {
@@ -33,7 +38,7 @@ import {
   COR_PAUSA,
   ROTULOS_MARCO,
 } from "@/components/cronograma-pintado/cores";
-import { exportarPDF } from "@/components/cronograma-pintado/exportar";
+import { exportarPDF, exportarPNG } from "@/components/cronograma-pintado/exportar";
 import {
   diasDoIntervalo,
   PaintedCalendar,
@@ -168,6 +173,7 @@ export function ProjetoCronograma() {
   const [visao, setVisao] = useState<Visao>("mes");
   const [referencia, setReferencia] = useState<Date | null>(null);
   const [criandoEtapa, setCriandoEtapa] = useState(false);
+  const [confirmandoOficializacao, setConfirmandoOficializacao] = useState(false);
   const [pedindoDias, setPedindoDias] = useState(false);
   /**
    * ⭐ O modo de marcação ativo — o que faz desta aba o **painel único de
@@ -265,6 +271,15 @@ export function ProjetoCronograma() {
   const escopo = modoGeral
     ? null
     : (dados?.escopos.find((e) => e.id === escopoSelecionado) ?? null);
+  /**
+   * O carimbo do §5.3 — e SÓ isso: ele alimenta um banner e habilita o botão.
+   *
+   * ⚠️ Não é trava de nada. `pincelTravado`, o `disabled` da entrega e os
+   * filtros de "escopo oficializado" saíram daqui de propósito (§15): pintar é
+   * sempre permitido, e quem delimita o trabalho é a JANELA do escopo, que não
+   * pergunta se o cronograma foi oficializado.
+   */
+  const oficializado = !!escopo?.cronograma_oficializado_em;
 
   /** As frentes cujo calendário deve aparecer: a do escopo, ou todas no Geral. */
   const frentesVisiveis = useMemo(() => {
@@ -936,6 +951,20 @@ export function ProjetoCronograma() {
   }
 
   /**
+   * §5.3: cravar o cronograma do escopo — um CARIMBO, não um cadeado.
+   *
+   * ⚠️ Já foi o cadeado que trancava o calendário atrás de uma fila de
+   * aprovação; hoje só registra a data e alimenta o banner. Por isso não
+   * recarrega o projeto nem mexe em janela: nenhum dia da contagem muda.
+   */
+  async function oficializar() {
+    if (!token || !escopo) return;
+    await oficializarCronograma(escopo.id, token);
+    setConfirmandoOficializacao(false);
+    await carregar();
+  }
+
+  /**
    * ⭐ O clique num dia, quando há modo de marcação ligado (§4 do de-para).
    *
    * Cada modo escreve numa tabela diferente, mas para quem usa é o mesmo
@@ -1074,13 +1103,18 @@ export function ProjetoCronograma() {
   }
 
   /**
-   * Gera o PDF a partir de uma cópia FORA DA TELA com os meses escolhidos.
+   * Gera o PDF ou a imagem a partir de uma cópia FORA DA TELA com os meses
+   * escolhidos.
    *
    * Não dá para rasterizar o calendário visível: ele mostra o recorte da visão
    * atual (um dia, se for o caso), e o §6.4 quer o cronograma de apresentação.
    * O erro sobe para o modal mostrar.
    */
-  async function gerarPdf(mesesEscolhidos: Date[], escopoEscolhido: number | "geral") {
+  async function gerarPdf(
+    mesesEscolhidos: Date[],
+    escopoEscolhido: number | "geral",
+    formato: "pdf" | "png",
+  ) {
     setEscopoExport(escopoEscolhido);
     setMesesExport(mesesEscolhidos);
     // Dois frames: um para o React montar a área, outro para o navegador
@@ -1090,7 +1124,11 @@ export function ProjetoCronograma() {
     );
     try {
       if (!areaExport.current) throw new Error("A área de exportação não montou");
-      await exportarPDF(areaExport.current, projeto.nome);
+      if (formato === "png") {
+        await exportarPNG(areaExport.current, projeto.nome);
+      } else {
+        await exportarPDF(areaExport.current, projeto.nome);
+      }
       setExportandoPdf(false);
     } finally {
       setMesesExport(null);
@@ -1137,6 +1175,16 @@ export function ProjetoCronograma() {
           coordenador é o botão da barra. */}
       {avisoJanela && <AvisoBanner>{avisoJanela.texto}</AvisoBanner>}
 
+      {/* ⚠️ Banner de OUTRO assunto, e por isso separado do de cima: este é o
+          carimbo do §5.3, memória de quando o cronograma foi cravado. Ele não
+          fala da janela nem a limita — os dois convivem e podem aparecer
+          juntos. `escopo!` é seguro: `oficializado` já exige o escopo. */}
+      {oficializado && (
+        <AvisoBanner>
+          Cronograma oficializado em {formatarData(escopo!.cronograma_oficializado_em)}.
+        </AvisoBanner>
+      )}
+
       <Barra>
         <GrupoVisao role="group" aria-label="Visão do cronograma">
           {VISOES.map((opcao) => (
@@ -1182,7 +1230,7 @@ export function ProjetoCronograma() {
         >
           {/* Geral junta tudo: etapas, marcos e os dias não úteis de todas as
               frentes. Escolher um escopo estreita a tela para o que é dele. */}
-          <option value="geral">Geral — o projeto inteiro</option>
+          <option value="geral">Geral</option>
           {dados.escopos.map((e) => (
             <option key={e.id} value={e.id}>
               {e.nome}
@@ -1293,11 +1341,26 @@ export function ProjetoCronograma() {
           )
         )}
 
+        {/* O carimbo do §5.3, depois da banca marcada: "este é o cronograma
+            combinado". Some depois de carimbado porque carimbar de novo não
+            diz nada de novo — e é o ÚNICO efeito que oficializar tem hoje:
+            pintar, criar e excluir etapa continuam liberados depois dele. */}
+        {podeEditar && escopo && !oficializado && etapas.length > 0 && escopo.banca && (
+          <BotaoBarra
+            type="button"
+            $variant="outline"
+            onClick={() => setConfirmandoOficializacao(true)}
+          >
+            <Lock size={14} />
+            Oficializar
+          </BotaoBarra>
+        )}
+
         {/* Exportar é a única ação da matriz liberada ao consultor — o
             botão não fica atrás de `pode()`. */}
         <BotaoBarra type="button" $variant="ghost" onClick={() => setExportandoPdf(true)}>
           <Download size={14} />
-          PDF
+          Exportar
         </BotaoBarra>
       </Barra>
 
@@ -1339,6 +1402,7 @@ export function ProjetoCronograma() {
           onEraseRange={aoApagar}
           onArrasteMudou={setPreviewIntervalo}
           onDiaClicado={modoMarcacao ? marcarDia : undefined}
+          semScrollProprio
         />
 
         <LegendaBox>
@@ -1574,8 +1638,9 @@ export function ProjetoCronograma() {
       {criandoEtapa && (
         <NovaEtapaModal
           corInicial={corSugerida(etapas.length)}
-          escopos={dados.escopos
-            .map((e) => ({ id: e.id, nome: e.nome }))}
+          // Todos os escopos: o filtro `!cronograma_oficializado_em` que vivia
+          // aqui saiu junto com o cadeado (§15).
+          escopos={dados.escopos.map((e) => ({ id: e.id, nome: e.nome }))}
           escopoFixo={escopo?.id ?? null}
           onCancelar={() => setCriandoEtapa(false)}
           onCriar={criarEtapa}
@@ -1622,6 +1687,23 @@ export function ProjetoCronograma() {
           ehDiretor={ehDiretor}
           onCancelar={() => setRemarcando(null)}
           onConfirmar={confirmarBanca}
+        />
+      )}
+
+      {confirmandoOficializacao && (
+        <ConfirmarModal
+          titulo="Oficializar cronograma"
+          // Diz o que o carimbo NÃO faz: a versão antiga trancava o
+          // calendário, e quem já usou o sistema espera esse cadeado aqui.
+          mensagem={
+            <>
+              Registra a data em que este cronograma foi cravado. As etapas continuam
+              editáveis — quem delimita o trabalho é a <strong>janela do escopo</strong>.
+            </>
+          }
+          rotuloConfirmar="Oficializar"
+          onCancelar={() => setConfirmandoOficializacao(false)}
+          onConfirmar={oficializar}
         />
       )}
 

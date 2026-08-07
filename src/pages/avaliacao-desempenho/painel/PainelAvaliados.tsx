@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { deleteAvaliacao, getAvaliacaoDetalhe, getAvaliacoes } from "@/lib/desempenho-avaliacoes";
 import { getLotes } from "@/lib/desempenho-lotes";
 import { getUsuarios } from "@/lib/usuarios";
-import { getProjetos } from "@/lib/projetos";
+import { getProjetos, paraDataUtc } from "@/lib/projetos";
 import { getFrentes } from "@/lib/frentes";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import { frentesDoUsuario } from "@/lib/nucleo";
@@ -66,7 +66,7 @@ function corDaNota(nota: number): string {
 
 function formatarData(iso?: string): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return paraDataUtc(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 export function PainelAvaliados() {

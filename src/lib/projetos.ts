@@ -2,10 +2,10 @@ import { apiFetch } from "@/lib/api";
 import { API_URL } from "@/config/config";
 import type {
   EscopoVendido,
+  HistoricoEntrada,
   MembroEquipePayload,
   ProjetoCompleto,
   ProjetoResumo,
-  StatusHistorico,
   StatusProjeto,
 } from "@/types/projeto";
 
@@ -50,9 +50,17 @@ export function desarquivarProjeto(projetoId: number, token: string) {
   });
 }
 
+/** Sem volta — o backend só aceita se o projeto já estiver arquivado. */
+export function deletarProjetoPermanente(projetoId: number, token: string) {
+  return apiFetch<{ nome: string }>(`/projetos/${projetoId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 export interface CreateProjetoPayload {
   nome: string;
-  cliente: string;
+  cliente?: string | null;
   descricao?: string | null;
   link_proposta?: string | null;
   frente_ids: number[];
@@ -134,12 +142,20 @@ export function mudarStatus(projetoId: number, statusNovo: string, token: string
   );
 }
 
-export function updateDescricao(projetoId: number, descricao: string, token: string) {
-  return apiFetch<{ id: number; descricao: string | null }>(`/projetos/${projetoId}/descricao`, {
-    method: "PATCH",
-    token,
-    body: JSON.stringify({ descricao }),
-  });
+export function updateDescricao(
+  projetoId: number,
+  descricao: string,
+  token: string,
+  nome?: string,
+) {
+  return apiFetch<{ id: number; nome: string; descricao: string | null }>(
+    `/projetos/${projetoId}/descricao`,
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify(nome ? { descricao, nome } : { descricao }),
+    },
+  );
 }
 
 /** A resposta traz o `status`: encurtar a ambientação pode encerrá-la agora
@@ -159,7 +175,59 @@ export function updateDiaReuniaoPadrao(projetoId: number, diaReuniaoPadrao: numb
 }
 
 export function getHistoricoProjeto(projetoId: number, token: string) {
-  return apiFetch<StatusHistorico[]>(`/projetos/${projetoId}/historico`, { token });
+  return apiFetch<HistoricoEntrada[]>(`/projetos/${projetoId}/historico`, { token });
+}
+
+/** §7.4 — só a diretoria; o backend recusa com 403 quem não for. */
+export function registrarJustificativaAtraso(
+  projetoId: number,
+  texto: string,
+  token: string,
+  projetoEscopoId?: number,
+  motivoTipo?: string,
+) {
+  return apiFetch<HistoricoEntrada>(`/projetos/${projetoId}/justificativa-atraso`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({
+      texto,
+      projeto_escopo_id: projetoEscopoId ?? null,
+      motivo_tipo: motivoTipo ?? null,
+    }),
+  });
+}
+
+/** §7.4 — não é edição de rotina, é pra corrigir engano/teste. Só diretoria. */
+export function excluirJustificativaAtraso(projetoId: number, justificativaId: number, token: string) {
+  return apiFetch<null>(`/projetos/${projetoId}/justificativa-atraso/${justificativaId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+/** §5.6 — mesma lógica da justificativa de atraso acima. Só diretoria. */
+export function excluirRemarcacaoBanca(projetoId: number, remarcacaoId: number, token: string) {
+  return apiFetch<null>(`/projetos/${projetoId}/remarcacao-banca/${remarcacaoId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+/** "Limpar histórico" não apaga nada — só marca 'agora' como corte de
+ *  exibição da timeline. As linhas continuam no banco, usadas na contagem
+ *  de dias (§5.4); só saem da tela até alguém pedir pra ver tudo de novo. */
+export function ocultarHistorico(projetoId: number, token: string) {
+  return apiFetch<{ id: number; historico_oculto_ate: string }>(
+    `/projetos/${projetoId}/historico/ocultar`,
+    { method: "PATCH", token },
+  );
+}
+
+export function mostrarHistoricoCompleto(projetoId: number, token: string) {
+  return apiFetch<{ id: number; historico_oculto_ate: null }>(
+    `/projetos/${projetoId}/historico/mostrar-tudo`,
+    { method: "PATCH", token },
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -191,11 +259,35 @@ export function deleteEscopoProjeto(escopoId: number, token: string) {
   return apiFetch(`/escopos-projeto/${escopoId}`, { method: "DELETE", token });
 }
 
+export interface UpdateEscopoProjetoPayload {
+  nome_customizado?: string | null;
+  dias_uteis_vendidos?: number;
+  data_entrega_planejada?: string | null;
+  /** Trocada pelas setinhas de reordenar na tabela de escopos vendidos. */
+  ordem?: number;
+}
+
+export function updateEscopoProjeto(
+  escopoId: number,
+  dados: UpdateEscopoProjetoPayload,
+  token: string,
+) {
+  return apiFetch<{ id: number }>(`/escopos-projeto/${escopoId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
 // ⭐ A contagem do §5.4 começa pela REUNIÃO INICIAL, marcada no calendário do
 // CRONOGRAMA com o escopo escolhido (`createReuniao` em `lib/tarefas.ts`). A
 // aba Reuniões, que era onde isso ficava, deixou de existir: todas as datas do
 // projeto passaram a ser cravadas numa tela só (§2). Não existe um "iniciar
 // escopo" digitado à parte.
+//
+// (Merge) `updateEscopoProjeto` acima veio da main e convive com isso: ele edita
+// os CAMPOS do escopo vendido (nome, dias, entrega planejada, ordem na tabela),
+// não a data de início — que continua sendo a reunião inicial do cronograma.
 
 /**
  * 🔒 O backend recusa com 422 até a banca do escopo ser realizada (§5.5).
@@ -254,6 +346,15 @@ export const ROTULO_STATUS_ESCOPO: Record<string, string> = {
   em_andamento: "Em andamento",
   entregue: "Entregue",
   cancelado: "Cancelado",
+};
+
+/** §7.4 — o `tipo` de `MotivoAtraso`, usado tanto na aba Atrasos quanto no
+ *  histórico do projeto (pra mostrar a que motivo uma justificativa se
+ *  refere). Um só lugar pras duas telas não divergirem no rótulo. */
+export const ROTULO_MOTIVO_ATRASO: Record<string, string> = {
+  banca: "Banca",
+  entrega_interna: "Entrega",
+  entrega_externa: "Agenda do cliente",
 };
 
 /* ------------------------------------------------------------------ */
@@ -333,6 +434,16 @@ export const CORES_STATUS: Record<StatusProjeto, string> = {
   pausado: "#F59E0B", // âmbar — vermelho fica reservado pro alerta de vencida
 };
 
+/** Mesma ordem de colunas do kanban de projetos (`ProjetoKanbanBoard`,
+ *  que itera `Object.keys(CORES_STATUS)`) — usada pra ordenar a lista pela
+ *  fase do ciclo de vida sem inventar uma segunda ordem que discorde do
+ *  kanban. */
+const ORDEM_STATUS_KANBAN = Object.keys(CORES_STATUS) as StatusProjeto[];
+
+export function ordemStatus(status: StatusProjeto): number {
+  return ORDEM_STATUS_KANBAN.indexOf(status);
+}
+
 /* ------------------------------------------------------------------ */
 /* Formatação                                                          */
 /* ------------------------------------------------------------------ */
@@ -364,6 +475,19 @@ export function formatarData(iso: string | null | undefined): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+/**
+ * O backend manda datetime em UTC, mas sem o `Z` na string (datetime "naive"
+ * do Python/Pydantic — ex.: `"2026-08-07T03:16:00"`). Sem fuso marcado,
+ * `new Date(...)` lê a string como hora LOCAL em vez de UTC, e mostra o
+ * relógio de UTC cru como se já fosse horário de Brasília — sempre 3h
+ * adiantado. Não mexe em data pura (`2026-07-14`, sem hora): essa já é
+ * tratada à parte, porque não é um instante pra converter, só um dia.
+ */
+export function paraDataUtc(iso: string): Date {
+  const temFuso = /Z$|[+-]\d{2}:?\d{2}$/.test(iso);
+  return new Date(temFuso ? iso : `${iso}Z`);
+}
+
 export function formatarDataHora(iso: string | null | undefined): string {
   if (!iso) return "—";
   // ⚠ Data pura (`2026-07-14`) não tem hora e NÃO pode passar por `new Date`:
@@ -372,8 +496,20 @@ export function formatarDataHora(iso: string | null | undefined): string {
   // entrega) no mesmo campo, então a distinção é feita aqui.
   if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return formatarData(iso);
 
-  const d = new Date(iso);
+  const d = paraDataUtc(iso);
   if (Number.isNaN(d.getTime())) return formatarData(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * "dd/mm/aaaa às hh:mm" — usado nos cards de projeto (kanban e lista) pra
+ * mostrar a data da próxima banca (§6.2). Espaço inquebrável em volta do
+ * "às" pra data e hora nunca se separarem numa quebra de linha do card.
+ */
+export function formatarDataHoraBanca(iso: string | null | undefined): string {
+  const completo = formatarDataHora(iso);
+  const espaco = completo.indexOf(" ");
+  if (espaco === -1) return completo;
+  return `${completo.slice(0, espaco)} às ${completo.slice(espaco + 1)}`;
 }

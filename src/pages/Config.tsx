@@ -7,6 +7,7 @@ import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/esco
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
 import { ConfiguracaoBancaCard } from "./config/ConfiguracaoBancaCard";
+import { GestaoSemestralCard } from "./config/GestaoSemestralCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Escopo, Frente } from "@/types/banca";
 import type { Cargo } from "@/types/auth";
@@ -93,10 +94,12 @@ const PERMISSOES = [
       "Criar e mover etapas e marcos, definir o cronograma de um escopo e agendar as bancas.",
   },
   {
+    // Caixa separada de `pode_definir_cronograma` de propósito: quem monta o
+    // cronograma é quem pede os dias; quem decide o pedido é outra pessoa.
     campo: "pode_aprovar_reajuste" as const,
     titulo: "Aprovar reajuste de cronograma",
     descricao:
-      "Decidir os pedidos de dias de ajuste dos escopos. A tela de reajuste ainda não existe — a caixa fica pronta para quando ela for construída.",
+      "Decidir os pedidos de dias de ajuste dos escopos, no card de pedidos da Visão geral do Monitoramento.",
   },
   {
     campo: "pode_criar_tarefa" as const,
@@ -120,6 +123,28 @@ const PERMISSOES = [
     titulo: "Monitoramento e alocação",
     descricao:
       "Abrir o Monitoramento: visão geral, execução, alocação de pessoas e atrasos.",
+  },
+  // As 3 abaixo não estão na tabela do §3 — nasceram travadas só por posição
+  // (diretor, ou diretor+gerente) e viraram caixa configurável a pedido
+  // explícito do usuário, pro mesmo motivo das 10: dar pra delegar sem
+  // precisar tornar alguém "diretor" inteiro.
+  {
+    campo: "pode_administrar_desempenho" as const,
+    titulo: "Administrar Avaliação de Desempenho",
+    descricao:
+      "Abrir o painel de Avaliação de Desempenho: lotes, avaliadores, avaliados, relatório, mentoria e PDI.",
+  },
+  {
+    campo: "pode_editar_formularios_desempenho" as const,
+    titulo: "Editar formulários de Avaliação de Desempenho",
+    descricao:
+      "Mudar as seções e critérios dos formulários — afeta o que todo mundo é avaliado, não só a rotina de administrar.",
+  },
+  {
+    campo: "pode_administrar_configuracoes" as const,
+    titulo: "Administrar Configurações",
+    descricao:
+      "Abrir Configurações e Calendários base — inclusive editar cargos, o que inclui conceder esta mesma caixa a outros.",
   },
 ];
 
@@ -179,16 +204,17 @@ export function Config() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // Núcleo e Configurações ficaram fora da tabela das 10, então voltam a ser
-  // restritos à diretoria por posição.
-  if (usuario?.posicao !== "diretor") {
+  // Núcleo e Configurações ficaram fora da tabela das 10 do §3, mas viraram
+  // caixa de cargo própria (`pode_administrar_configuracoes`) a pedido
+  // explícito do usuário — inclusive pra editar cargo, que é a ação mais
+  // sensível daqui: quem tem a caixa concede a mesma caixa (ou qualquer
+  // outra) a outro cargo. Só quem já tem a permissão consegue distribuí-la,
+  // então não dá pra se auto-conceder do zero.
+  if (!usuario?.cargo.pode_administrar_configuracoes) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Editar cargo é editar quem pode o quê. Sem caixa própria (ela saiu com as
-  // 7 antigas), a trava é a posição — que não se edita por aqui, e por isso
-  // ninguém consegue se auto-conceder permissão.
-  const podeEditarCargos = usuario.posicao === "diretor";
+  const podeEditarCargos = usuario.cargo.pode_administrar_configuracoes;
 
   if (erro) {
     return (
@@ -213,6 +239,8 @@ export function Config() {
           </PageSubheading>
         </PageHeaderText>
       </PageHeaderRow>
+
+      <GestaoSemestralCard />
 
       <SituacoesCargaCard />
 
@@ -279,8 +307,9 @@ export function Config() {
         <PageCardContent>
           {escopos.length === 0 && <EmptyText>Nenhum escopo cadastrado.</EmptyText>}
           {escopos.length > 0 && (
-            <TabelaNomes
+            <TabelaEscopos
               itens={escopos}
+              frentes={frentes}
               onEditar={setModalEscopo}
               onExcluir={(item) => setParaExcluir({ tipo: "escopo", item })}
             />
@@ -303,8 +332,7 @@ export function Config() {
         <PageCardContent>
           {!podeEditarCargos && (
             <EmptyText style={{ fontSize: "0.7rem" }}>
-              Só a diretoria altera cargos e permissões — é o que impede alguém de
-              se auto-conceder acesso. Aqui você consulta quem pode o quê.
+              Só quem já tem esta permissão pode editar cargos — impede auto-concessão de acesso.
             </EmptyText>
           )}
           {cargos.length === 0 && <EmptyText>Nenhum cargo cadastrado.</EmptyText>}
@@ -369,13 +397,13 @@ export function Config() {
       )}
 
       {modalEscopo && (
-        <ModalNome
-          titulo={modalEscopo === "novo" ? "Novo escopo" : "Editar escopo"}
-          nomeInicial={modalEscopo === "novo" ? "" : modalEscopo.nome}
+        <ModalEscopo
+          escopo={modalEscopo === "novo" ? null : modalEscopo}
+          frentes={frentes}
           onClose={() => setModalEscopo(null)}
-          onSalvar={async (nome) => {
-            if (modalEscopo === "novo") await createEscopo(nome, token);
-            else await updateEscopo(modalEscopo.id, nome, token);
+          onSalvar={async (nome, frenteId) => {
+            if (modalEscopo === "novo") await createEscopo(nome, frenteId, token);
+            else await updateEscopo(modalEscopo.id, nome, frenteId, token);
             setModalEscopo(null);
             buscar();
           }}
@@ -410,23 +438,27 @@ export function Config() {
   );
 }
 
-// Genérica no item para preservar o tipo concreto (`Escopo`, `Frente`, …)
-// no callback — sem isso, `onEditar={setModalEscopo}` perde os campos novos.
-function TabelaNomes<T extends { id: number; nome: string }>({
+function TabelaEscopos({
   itens,
+  frentes,
   onEditar,
   onExcluir,
 }: {
-  itens: T[];
-  onEditar: (item: T) => void;
-  onExcluir: (item: T) => void;
+  itens: Escopo[];
+  frentes: Frente[];
+  onEditar: (item: Escopo) => void;
+  onExcluir: (item: Escopo) => void;
 }) {
+  const nomeFrente = (frenteId: number | null) =>
+    frenteId ? (frentes.find((f) => f.id === frenteId)?.nome ?? "—") : "—";
+
   return (
     <TableScrollWrap $scrollable={itens.length > LIST_MAX_VISIVEIS}>
       <DataTable>
         <TableHead>
           <TableRow>
             <TableHeadCell>Nome</TableHeadCell>
+            <TableHeadCell>Frente</TableHeadCell>
             <TableHeadCell />
           </TableRow>
         </TableHead>
@@ -434,6 +466,7 @@ function TabelaNomes<T extends { id: number; nome: string }>({
           {itens.map((item) => (
             <TableRow key={item.id}>
               <NameCell>{item.nome}</NameCell>
+              <TableCell>{nomeFrente(item.frente_id)}</TableCell>
               <ActionsCell>
                 <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(item)}>
                   Editar
@@ -450,18 +483,22 @@ function TabelaNomes<T extends { id: number; nome: string }>({
   );
 }
 
-function ModalNome({
-  titulo,
-  nomeInicial,
+function ModalEscopo({
+  escopo,
+  frentes,
   onClose,
   onSalvar,
 }: {
-  titulo: string;
-  nomeInicial: string;
+  /** `null` = criando um escopo novo. */
+  escopo: Escopo | null;
+  frentes: Frente[];
   onClose: () => void;
-  onSalvar: (nome: string) => Promise<void>;
+  onSalvar: (nome: string, frenteId: number | null) => Promise<void>;
 }) {
-  const [nome, setNome] = useState(nomeInicial);
+  const [nome, setNome] = useState(escopo?.nome ?? "");
+  const [frenteId, setFrenteId] = useState<string>(
+    escopo?.frente_id ? String(escopo.frente_id) : "",
+  );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -471,7 +508,7 @@ function ModalNome({
     setSalvando(true);
     setErro("");
     try {
-      await onSalvar(nome.trim());
+      await onSalvar(nome.trim(), frenteId ? Number(frenteId) : null);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao salvar");
     } finally {
@@ -483,7 +520,7 @@ function ModalNome({
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog">
         <ModalHeader>
-          <ModalTitle>{titulo}</ModalTitle>
+          <ModalTitle>{escopo ? "Editar escopo" : "Novo escopo"}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>
@@ -491,8 +528,19 @@ function ModalNome({
         <FormStack onSubmit={handleSubmit}>
           <ModalBody>
             <FieldGroup>
-              <FieldLabel htmlFor="nome-item">Nome</FieldLabel>
-              <FieldInput id="nome-item" value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
+              <FieldLabel htmlFor="escopo-nome">Nome</FieldLabel>
+              <FieldInput id="escopo-nome" value={nome} onChange={(e) => setNome(e.target.value)} required autoFocus />
+            </FieldGroup>
+            <FieldGroup>
+              <FieldLabel htmlFor="escopo-frente">Frente</FieldLabel>
+              <FieldSelect id="escopo-frente" value={frenteId} onChange={(e) => setFrenteId(e.target.value)}>
+                <option value="">Sem frente</option>
+                {frentes.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.nome}
+                  </option>
+                ))}
+              </FieldSelect>
             </FieldGroup>
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>

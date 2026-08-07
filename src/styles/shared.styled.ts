@@ -13,6 +13,22 @@ export {
 /** Máximo de linhas visíveis em listas/tabelas antes de ativar scroll. */
 export const LIST_MAX_VISIVEIS = 4;
 
+/** Bloco de texto livre (relato, descrição) em destaque — nunca `DetailValue`,
+ *  que é para pares chave/valor curtos e alinha à direita: um parágrafo ali
+ *  fica torto. Usado em Bancas (descrição do coordenador) e Avaliações
+ *  (o mesmo texto, lido pela diretoria). */
+export const DescricaoQuote = styled.p`
+  margin: 0;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${theme.colors.muted};
+  border-left: 3px solid ${theme.colors.primary};
+  border-radius: ${theme.borderRadius.md};
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.5;
+  color: ${theme.colors.foreground};
+  white-space: pre-wrap;
+`;
+
 const TABLE_HEADER_HEIGHT = "2.75rem";
 const ROW_HEIGHT = "3.35rem";
 

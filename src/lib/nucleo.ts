@@ -12,7 +12,6 @@ const PERMISSOES_DE_LIDERANCA = [
   "pode_editar_equipe",
   "pode_gerir_membros",
   "pode_definir_cronograma",
-  "pode_aprovar_reajuste",
   "pode_ver_monitoramento",
 ] as const;
 
