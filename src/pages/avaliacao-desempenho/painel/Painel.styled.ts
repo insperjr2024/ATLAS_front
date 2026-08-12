@@ -286,6 +286,12 @@ export const LoteCardHeader = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
+export const LoteCardInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+`;
+
 export const LoteCardTitulo = styled.span`
   font-size: ${theme.fontSize.sm};
   font-weight: ${theme.fontWeight.semibold};
