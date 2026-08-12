@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
   cancelarSolicitacao,
@@ -67,7 +68,14 @@ const TOM_STATUS = {
  */
 export function Vagas() {
   const { token } = useAuth();
-  const [aba, setAba] = useState<Aba>("vagas");
+  /* A notificação do coordenador manda `/vagas?aba=recebidos`: sem ler isso, o
+     clique abriria a lista de projetos abertos e ele teria de achar a aba
+     sozinho — logo depois de a plataforma ter dito que havia um pedido. */
+  const [searchParams] = useSearchParams();
+  const [aba, setAba] = useState<Aba>(() => {
+    const pedida = searchParams.get("aba");
+    return pedida === "recebidos" || pedida === "meus" ? pedida : "vagas";
+  });
   const [dados, setDados] = useState<{
     projetos: ProjetoComVaga[];
     minhaCarga: number;
