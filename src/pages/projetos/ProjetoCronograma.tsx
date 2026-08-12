@@ -104,6 +104,7 @@ import { NovaEtapaModal } from "./NovaEtapaModal";
 import { MarcarBancaModal } from "./MarcarBancaModal";
 import { MarcarEntregaModal } from "./MarcarEntregaModal";
 import { MarcarReuniaoModal } from "./MarcarReuniaoModal";
+import { BancaDetalhesModal } from "./BancaDetalhesModal";
 import { PedirDiasModal } from "./PedirDiasModal";
 import { useProjeto } from "./ProjetoPage";
 
@@ -175,7 +176,25 @@ export function ProjetoCronograma() {
   const [referencia, setReferencia] = useState<Date | null>(null);
   const [criandoEtapa, setCriandoEtapa] = useState(false);
   const [confirmandoOficializacao, setConfirmandoOficializacao] = useState(false);
-  const [pedindoDias, setPedindoDias] = useState(false);
+  /**
+   * ⭐ §8: o pedido de dias em preenchimento, com o que o CALENDÁRIO já disse.
+   *
+   * Não é um booleano porque o pedido não nasce mais de um formulário em
+   * branco: o coordenador arrasta a etapa além da janela e o excedente do
+   * gesto já chega aqui como `dias` e `ateDia`. O botão da barra continua
+   * abrindo o mesmo modal, só que sem seleção (`ateDia: null`) — é a porta de
+   * quem prefere digitar o número.
+   *
+   * Guarda o `escopoId` em vez de depender do escopo selecionado na barra: na
+   * visão Geral dá para pintar a etapa de um escopo sem que ele seja o
+   * escolhido, e o pedido é sempre do escopo da ETAPA que foi arrastada.
+   */
+  const [pedindoDias, setPedindoDias] = useState<{
+    escopoId: number;
+    dias: number;
+    /** O último dia útil alcançado no arrasto; `null` quando veio do botão. */
+    ateDia: string | null;
+  } | null>(null);
   /**
    * ⭐ O modo de marcação ativo — o que faz desta aba o **painel único de
    * datas** do projeto (§2). Com um modo ligado, clicar num dia crava aquela
@@ -186,6 +205,8 @@ export function ProjetoCronograma() {
    * ligados juntos faria o gesto ser ambíguo.
    */
   const [modoMarcacao, setModoMarcacao] = useState<ModoMarcacao>(null);
+  /** A banca cuja ficha está aberta — o clique no marco do calendário (§5.5). */
+  const [bancaAberta, setBancaAberta] = useState<number | null>(null);
   const [remarcando, setRemarcando] = useState<{ dia: string; escopoId: number } | null>(null);
   /** A reunião sendo marcada ou editada pelo calendário (§12). */
   const [reuniaoAberta, setReuniaoAberta] = useState<{
@@ -407,11 +428,17 @@ export function ProjetoCronograma() {
       // deste filtro logo acima: ele é do projeto, não de um escopo.
       if (!modoGeral && e.id !== escopoSelecionado) continue;
       if (e.banca?.data_hora) {
+        const bancaId = e.banca.id;
         lista.push({
           data: chaveData(paraDataUtc(e.banca.data_hora)),
           tipo: "banca",
           rotulo: ROTULOS_MARCO.banca,
           titulo: `Banca — ${e.nome}`,
+          // ⭐ O único marco que abre ficha. Banca é a marcação que carrega
+          // informação que NÃO cabe no calendário — quem avalia, quem é a
+          // equipe, qual o resultado —, e até aqui ela só existia na tela
+          // `/bancas`, longe de onde a data aparece.
+          onClick: () => setBancaAberta(bancaId),
         });
       }
       const entrega = e.data_entrega_real ?? e.data_entrega_planejada;
@@ -650,6 +677,12 @@ export function ProjetoCronograma() {
      é sempre permitido — o banner avisa quando passa da janela, e o único
      bloqueio duro é a banca fora dela. */
 
+  /** O escopo do pedido de dias em aberto — ver o comentário de `pedindoDias`. */
+  const escopoDoPedido = useMemo(
+    () => dados?.escopos.find((e) => e.id === pedindoDias?.escopoId) ?? null,
+    [dados, pedindoDias],
+  );
+
   /** A frente do escopo dono da etapa no pincel — quem manda no que trava. */
   const frenteDoPincel = useMemo(
     () => dados?.escopos.find((e) => e.id === grupoDoPincel?.escopoId)?.frente_id ?? null,
@@ -705,6 +738,52 @@ export function ProjetoCronograma() {
     }
     return mapa;
   }, [dados, frenteDoPincel, fimDeSemana, escopoDoPincel]);
+
+  /**
+   * ⭐ §8: os dias DEPOIS do fim da janela que o arrasto pode alcançar para
+   * virar um pedido à diretoria — em vez de esbarrar numa parede muda.
+   *
+   * É o que responde "quantos dias a mais eu quero?" com o gesto que a pessoa
+   * já usa para tudo nesta tela: arrastar no calendário. O excedente do
+   * arrasto vira `dias_solicitados`; a parte que cabe na janela é pintada
+   * normalmente (o `apararPontas` do calendário cuida disso).
+   *
+   * ⚠ **Só dias ÚTEIS entram.** É a contagem deles que vai no pedido, e o
+   * backend soma dias úteis em `dias_uteis_ajustados` — deixar um sábado no
+   * conjunto pediria um dia que a janela não gasta.
+   *
+   * Vazio (= a parede volta a ser parede) quando o pedido não teria como ser
+   * aceito: fora dos 3 dias úteis, para quem não é o coordenador, ou com um
+   * pedido já pendente. Abrir o formulário nesses casos entregaria um 422
+   * depois de a pessoa escrever a justificativa.
+   */
+  const diasNegociaveis = useMemo(() => {
+    const negociaveis = new Set<string>();
+    const alvo = escopoDoPincel;
+    if (!dados || !alvo) return negociaveis;
+
+    // Mesma soltura de trava do `diasBloqueados`: depois da banca realizada o
+    // escopo está em correções, que não são janela e não se pedem a ninguém.
+    const emAjustes = !!alvo.data_entrega_real || !!alvo.banca?.realizado_em;
+    const fim = alvo.fim_janela?.slice(0, 10) ?? null;
+    if (emAjustes || !fim) return negociaveis;
+    if (!souCoordenador || !alvo.pedido_ajuste_aberto || alvo.reajuste_pendente) {
+      return negociaveis;
+    }
+
+    // O que é dia não útil DE VERDADE (fim de semana, feriado, recesso) —
+    // recomposto sem a camada "fora da janela" que o `diasBloqueados` soma.
+    const naoUteis = new Map(fimDeSemana);
+    for (const dia of dados.dias_nao_uteis) {
+      if (dia.frente_id !== null && dia.frente_id !== frenteDoPincel) continue;
+      naoUteis.set(dia.data.slice(0, 10), { tipo: dia.tipo, descricao: dia.descricao });
+    }
+
+    for (const dia of diasDoIntervalo(fim, dados.janela.fim.slice(0, 10))) {
+      if (dia > fim && !naoUteis.has(dia)) negociaveis.add(dia);
+    }
+    return negociaveis;
+  }, [dados, escopoDoPincel, frenteDoPincel, fimDeSemana, souCoordenador]);
 
 
   /**
@@ -1097,10 +1176,27 @@ export function ProjetoCronograma() {
    * formulário que a pessoa está preenchendo, não a um banner no topo.
    */
   async function pedirDias(dias: number, motivo: string) {
-    if (!token || !escopo) return;
-    await pedirDiasDeAjuste(escopo.id, { dias_solicitados: dias, motivo }, token);
-    setPedindoDias(false);
+    if (!token || !pedindoDias) return;
+    await pedirDiasDeAjuste(pedindoDias.escopoId, { dias_solicitados: dias, motivo }, token);
+    setPedindoDias(null);
     await Promise.all([carregar(), recarregarProjeto()]);
+  }
+
+  /**
+   * ⭐ §8: o arrasto passou do fim da janela — o excedente vira o pedido.
+   *
+   * Chega aqui só o que o calendário considerou negociável (ver
+   * `diasNegociaveis`), então `diasExtras` já é a contagem de dias ÚTEIS que
+   * falta para a etapa caber: exatamente o número que o backend vai somar em
+   * `dias_uteis_ajustados` se a diretoria aprovar.
+   *
+   * Abre o modal em vez de enviar direto: o §8 exige a justificativa, e um
+   * arrasto não tem onde escrevê-la.
+   */
+  function negociarDias(_grupo: string, diasExtras: number, ultimoDia: string) {
+    if (!escopoDoPincel) return;
+    setAviso("");
+    setPedindoDias({ escopoId: escopoDoPincel.id, dias: diasExtras, ateDia: ultimoDia });
   }
 
   /**
@@ -1312,7 +1408,7 @@ export function ProjetoCronograma() {
             type="button"
             $variant="outline"
             title={`O prazo vai até ${formatarData(escopo.prazo_pedido_ajuste)}`}
-            onClick={() => setPedindoDias(true)}
+            onClick={() => setPedindoDias({ escopoId: escopo.id, dias: 5, ateDia: null })}
           >
             <CalendarPlus size={14} />
             Pedir mais dias
@@ -1334,6 +1430,17 @@ export function ProjetoCronograma() {
             {/* Sem botão de borracha, o gesto precisa estar escrito em algum
                 lugar — senão ninguém descobre que dá para desmarcar. */}
             <ContadorDias>Arraste a partir de um dia já pintado para desmarcar.</ContadorDias>
+            {/* §8: o mesmo motivo do aviso acima. O arrasto além da janela é o
+                jeito de PEDIR os dias, e ninguém tenta um gesto que a tela
+                mostra como parede se não estiver escrito que ele leva a algum
+                lugar. Só aparece quando o pedido é possível — `diasNegociaveis`
+                já é vazio fora do prazo, para quem não é coordenador e com um
+                pedido pendente. */}
+            {diasNegociaveis.size > 0 && (
+              <ContadorDias>
+                Arraste além do fim da janela para pedir esses dias à diretoria.
+              </ContadorDias>
+            )}
           </>
         ) : (
           podeEditar &&
@@ -1396,11 +1503,13 @@ export function ProjetoCronograma() {
           faixas={faixas}
           diasNaoUteis={diasNaoUteis}
           diasBloqueados={diasBloqueados}
+          diasNegociaveis={diasNegociaveis}
           grupoAtivo={grupoAtivo}
           pincel={grupoDoPincel ?? null}
           somenteLeitura={!podeEditar}
           onPaintRange={aoPintar}
           onEraseRange={aoApagar}
+          onNegociar={negociarDias}
           onArrasteMudou={setPreviewIntervalo}
           onDiaClicado={modoMarcacao ? marcarDia : undefined}
           semScrollProprio
@@ -1748,13 +1857,22 @@ export function ProjetoCronograma() {
         />
       )}
 
-      {pedindoDias && escopo && (
+      {bancaAberta !== null && (
+        <BancaDetalhesModal bancaId={bancaAberta} onFechar={() => setBancaAberta(null)} />
+      )}
+
+      {/* O escopo do PEDIDO, não o da barra: na visão Geral o arrasto pode ser
+          de uma etapa cujo escopo não é o selecionado. */}
+      {pedindoDias && escopoDoPedido && (
         <PedirDiasModal
-          nomeEscopo={escopo.nome}
-          diasVendidos={escopo.dias_uteis_vendidos}
-          diasAjustados={escopo.dias_uteis_ajustados}
-          prazo={formatarData(escopo.prazo_pedido_ajuste)}
-          onCancelar={() => setPedindoDias(false)}
+          nomeEscopo={escopoDoPedido.nome}
+          diasVendidos={escopoDoPedido.dias_uteis_vendidos}
+          diasAjustados={escopoDoPedido.dias_uteis_ajustados}
+          prazo={formatarData(escopoDoPedido.prazo_pedido_ajuste)}
+          diasIniciais={pedindoDias.dias}
+          fimAtual={formatarData(escopoDoPedido.fim_janela)}
+          ateDia={pedindoDias.ateDia ? formatarData(pedindoDias.ateDia) : null}
+          onCancelar={() => setPedindoDias(null)}
           onPedir={pedirDias}
         />
       )}

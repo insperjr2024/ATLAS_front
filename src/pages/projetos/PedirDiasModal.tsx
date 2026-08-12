@@ -18,6 +18,21 @@ interface Props {
   diasAjustados: number;
   /** O último dia em que o pedido ainda é aceito, já formatado. */
   prazo: string;
+  /**
+   * Quantos dias vêm marcados de largada.
+   *
+   * Vindo do arrasto no calendário é a contagem de dias úteis que a etapa
+   * passou da janela; vindo do botão da barra é só um chute editável.
+   */
+  diasIniciais: number;
+  /** O fim da janela hoje, já formatado — o "de" da conta. */
+  fimAtual: string;
+  /**
+   * O último dia alcançado no arrasto, já formatado. `null` quando o pedido
+   * veio do botão e não do calendário — e é isso que decide se a tela fala em
+   * "você selecionou até tal dia" ou só pede um número.
+   */
+  ateDia: string | null;
   onCancelar: () => void;
   /** Se rejeitar, a mensagem do backend aparece no próprio formulário. */
   onPedir: (dias: number, motivo: string) => Promise<void> | void;
@@ -40,10 +55,13 @@ export function PedirDiasModal({
   diasVendidos,
   diasAjustados,
   prazo,
+  diasIniciais,
+  fimAtual,
+  ateDia,
   onCancelar,
   onPedir,
 }: Props) {
-  const [dias, setDias] = useState(5);
+  const [dias, setDias] = useState(diasIniciais);
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -79,6 +97,17 @@ export function PedirDiasModal({
             O prazo para pedir vai até <strong>{prazo}</strong>. Depois dele, o que
             passar da janela é atraso do projeto.
           </p>
+
+          {/* ⭐ O que o CALENDÁRIO disse, quando o pedido nasceu de um arrasto.
+              Some se a pessoa mexer no número: a frase afirma até que dia a
+              janela chegaria, e com outro número ela passaria a mentir. */}
+          {ateDia && dias === diasIniciais && (
+            <p>
+              Você marcou até <strong>{ateDia}</strong> no cronograma: a janela
+              termina hoje em <strong>{fimAtual}</strong> e passaria a alcançar o
+              dia selecionado.
+            </p>
+          )}
 
           <FieldGroup>
             <FieldLabel htmlFor="dias-ajuste">Dias úteis a mais</FieldLabel>

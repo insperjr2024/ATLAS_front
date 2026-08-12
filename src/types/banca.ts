@@ -70,6 +70,34 @@ export interface Banca extends BancaBase {
   descricao_coordenador_enviada_em: string | null;
 }
 
+/**
+ * A ficha da banca com os nomes RESOLVIDOS pelo backend — o retorno de
+ * `GET /bancas/{id}/detalhes`.
+ *
+ * Existe ao lado de `Banca` (que traz ids crus) porque serve outro consumidor:
+ * quem só quer mostrar a banca, sem carregar as listas de usuários, frentes e
+ * candidaturas da empresa inteira para traduzir id em nome. Ver
+ * `getBancaDetalhes` em `lib/bancas.ts`.
+ */
+export interface BancaDetalhes {
+  id: number;
+  nome_projeto: string;
+  data_hora: string | null;
+  realizado_em: string | null;
+  resultado: ResultadoBanca | null;
+  status: StatusBanca;
+  /** Plural: uma banca pode cobrir vários escopos do projeto de uma sentada. */
+  escopos: string[];
+  frentes: string[];
+  coordenador: string;
+  /** Já sem o coordenador, que tem linha própria na ficha. */
+  membros: string[];
+  avaliadores: string[];
+  descricao_coordenador: string | null;
+  /** `null` nas bancas legadas, sem escopo vendido vinculado. */
+  projeto_id: number | null;
+}
+
 export interface Candidatura {
   id: number;
   banca_id: number;
