@@ -107,11 +107,26 @@ export function Vagas() {
     setTentativa((n) => n + 1);
   }
 
+  /**
+   * ⚠ **Recarrega mesmo quando falha** — e é o `finally` que importa aqui.
+   *
+   * O pedido é gravado antes de o coordenador ser notificado, então uma falha
+   * depois do commit devolve erro para uma solicitação que EXISTE. Sem o
+   * recarregamento, "Meus pedidos" continuava mostrando a lista velha: a
+   * pessoa via o erro, tentava de novo, ouvia que já tinha um pedido em
+   * análise, e não achava esse pedido em lugar nenhum da tela.
+   *
+   * O `throw` segue para o modal, que é quem mostra a mensagem — mas agora a
+   * lista por trás já está com a verdade.
+   */
   async function enviarPedido(justificativa: string) {
     if (!token || !aberto) return;
-    await criarSolicitacao(aberto.id, justificativa, token);
-    setAberto(null);
-    recarregar();
+    try {
+      await criarSolicitacao(aberto.id, justificativa, token);
+      setAberto(null);
+    } finally {
+      recarregar();
+    }
   }
 
   async function responder(id: number, aprovar: boolean) {
