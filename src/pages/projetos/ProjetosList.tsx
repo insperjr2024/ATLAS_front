@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Archive,
   AlertTriangle,
@@ -347,15 +347,24 @@ export function ProjetosList() {
       </PageHeaderRow>
 
       {projetosFiltrados.length === 0 ? (
-        <EmptyText>
-          {modo === "arquivados"
-            ? "Nenhum projeto arquivado."
-            : frentesSelecionadas.length > 0
-              ? "Nenhum projeto nas frentes selecionadas."
-              : podeCriar
-                ? "Nenhum projeto ainda. Crie o primeiro."
-                : "Você ainda não está alocado em nenhum projeto."}
-        </EmptyText>
+        modo !== "arquivados" && frentesSelecionadas.length === 0 && !podeCriar ? (
+          /* ⭐ Quem não está em projeto nenhum via só uma frase e um beco sem
+             saída — e tela vazia sem explicação parece defeito. Agora ela diz
+             o que fazer e leva para lá. São ~28 pessoas hoje. */
+          <EmptyText>
+            Você ainda não está em nenhum projeto.{" "}
+            <Link to="/vagas">Veja os projetos com vaga</Link> e peça para entrar em um —
+            quem responde é o coordenador.
+          </EmptyText>
+        ) : (
+          <EmptyText>
+            {modo === "arquivados"
+              ? "Nenhum projeto arquivado."
+              : frentesSelecionadas.length > 0
+                ? "Nenhum projeto nas frentes selecionadas."
+                : "Nenhum projeto ainda. Crie o primeiro."}
+          </EmptyText>
+        )
       ) : modo === "kanban" ? (
         <>
           {avisoKanban && <FormErrorText>{avisoKanban}</FormErrorText>}

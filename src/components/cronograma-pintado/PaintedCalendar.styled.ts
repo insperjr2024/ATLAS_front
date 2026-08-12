@@ -431,6 +431,60 @@ export const ContadorDias = styled.span`
 `;
 
 /**
+ * "Como funciona" — destacado de propósito.
+ *
+ * 📐 Não é um `BotaoVisao` como os outros: perdido entre os modos de marcação
+ * ele virava mais um botão cinza numa fileira de botões cinza, e quem não
+ * conhece a tela não achava justamente o que existe para essa pessoa. Fica
+ * ao lado da data, em vermelho claro, lido como ajuda e não como ação.
+ */
+export const BotaoAjuda = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid color-mix(in srgb, ${theme.colors.primary} 35%, transparent);
+  background: color-mix(in srgb, ${theme.colors.primary} 10%, white);
+  color: ${theme.colors.primary};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  white-space: nowrap;
+  cursor: pointer;
+  /* O espacamento do NavPeriodo e de 0.25rem, pensado para as setas — sem
+     isto o botao encosta no rotulo da data. */
+  margin-left: ${theme.spacing.sm};
+
+  &:hover {
+    background: color-mix(in srgb, ${theme.colors.primary} 18%, white);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 1px;
+  }
+`;
+
+/**
+ * A frase que ocupa o lugar dos botões escondidos.
+ *
+ * 📐 Botão desabilitado com tooltip não serve para quem não conhece a tela:
+ * a explicação só aparece no hover, e no celular nunca aparece. Aqui o texto
+ * fica visível e diz a AÇÃO a tomar ("escolha um escopo"), não só que algo
+ * está indisponível.
+ */
+export const DicaEscopo = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  padding: 0.25rem 0.625rem;
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.muted};
+`;
+
+/**
  * Esconde a cópia do export sem tirá-la do layout.
  *
  * Fora da tela por deslocamento, e não por `display: none`: o html-to-image
@@ -694,4 +748,65 @@ export const AmostraHachurada = styled.span`
     rgba(0, 0, 0, 0.12) 2px,
     rgba(0, 0, 0, 0.12) 4px
   );
+`;
+
+/* ------------------------------------------------------------------ */
+/* Desfazer                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A barra de desfazer, fixa no rodapé.
+ *
+ * 📐 Flutuante e não dentro da barra de ferramentas: quem acabou de clicar
+ * num dia está olhando para o calendário, não para o topo da tela. A janela
+ * é curta de propósito — desfazer eterno viraria mais um estado para a
+ * pessoa administrar.
+ */
+export const BarraDesfazer = styled.div`
+  position: fixed;
+  left: 50%;
+  bottom: ${theme.spacing.lg};
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.foreground};
+  color: ${theme.colors.background};
+  box-shadow: ${theme.shadows.lg};
+  font-size: ${theme.fontSize.sm};
+  max-width: calc(100vw - 2rem);
+`;
+
+export const BotaoDesfazer = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: rgb(255 255 255 / 15%);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+/** Os segundos restantes. `tabular-nums` para o texto não dançar a cada tique. */
+export const ContagemDesfazer = styled.span`
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+  font-size: ${theme.fontSize.xs};
 `;
