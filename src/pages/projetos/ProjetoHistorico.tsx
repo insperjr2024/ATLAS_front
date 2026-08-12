@@ -140,6 +140,25 @@ function autorDe(h: HistoricoEntrada): number | null {
  * de banca (§7.4/§5.6) do projeto, com resumo de tempo por etapa, filtros
  * por status/autor/período, paginação por dia e "Limpar histórico".
  */
+/**
+ * ⭐ O id NUMÉRICO de uma linha do histórico.
+ *
+ * O backend compõe a timeline de sete fontes e prefixa o id de cada uma para
+ * as chaves não colidirem — `"justificativa:7"`, `"remarcacao:3"`,
+ * `"entrega:12"`. Ótimo como chave de React, inútil como id de rota.
+ *
+ * ⚠ Dois bugs saíram de ler o valor cru:
+ *
+ * - a âncora virava `#justificativa-justificativa:7`, e o link "justificado"
+ *   da aba Atrasos aponta para `#justificativa-7` — a pessoa caía no topo do
+ *   histórico em vez de na nota que acabou de escrever;
+ * - o botão Excluir mandava `justificativa:7` para uma rota que espera `int`,
+ *   e voltava 422.
+ */
+function idNumerico(id: number | string): number {
+  return Number(String(id).split(":").pop());
+}
+
 export function ProjetoHistorico() {
   const { projeto, usuarios, recarregar } = useProjeto();
   const { token, usuario } = useAuth();
@@ -198,9 +217,9 @@ export function ProjetoHistorico() {
   async function excluir(linha: JustificativaAtrasoHistorico | RemarcacaoBancaHistorico) {
     if (!token) return;
     if (linha.tipo === "justificativa_atraso") {
-      await excluirJustificativaAtraso(projeto.id, linha.id, token);
+      await excluirJustificativaAtraso(projeto.id, idNumerico(linha.id), token);
     } else {
-      await excluirRemarcacaoBanca(projeto.id, linha.id, token);
+      await excluirRemarcacaoBanca(projeto.id, idNumerico(linha.id), token);
     }
     // No sucesso quem chamou desmonta o ConfirmarModal (ver o próprio
     // componente) — precisa fechar aqui antes de recarregar.
@@ -548,7 +567,7 @@ export function ProjetoHistorico() {
 
                     if (linha.tipo === "justificativa_atraso") {
                       const escopo = projeto.escopos.find((e) => e.id === linha.projeto_escopo_id);
-                      const idAncora = `justificativa-${linha.id}`;
+                      const idAncora = `justificativa-${idNumerico(linha.id)}`;
                       return (
                         <HistoricoTimelineItem key={idAncora}>
                           <HistoricoTimelineTrilho $ultimo={ultimo}>
@@ -575,7 +594,13 @@ export function ProjetoHistorico() {
                                   </HistoricoNotaMotivo>
                                 )}
                               </HistoricoNotaCabecalho>
-                              <HistoricoNotaTexto>{linha.texto}</HistoricoNotaTexto>
+                              {/* ⚠ `detalhe`, não `texto`. O backend unificou as
+                                  cinco fontes do histórico num envelope com
+                                  `titulo`/`detalhe` prontos; o campo `texto`
+                                  parou de ser enviado e esta linha renderizava
+                                  `undefined` — a nota aparecia com autor e data,
+                                  mas SEM o motivo escrito. */}
+                              <HistoricoNotaTexto>{linha.detalhe}</HistoricoNotaTexto>
                             </HistoricoNotaLinha>
                             <HistoricoTimelineMeta>
                               <HistoricoAutorChip>{nomeUsuario(linha.registrado_por)}</HistoricoAutorChip>
@@ -593,7 +618,7 @@ export function ProjetoHistorico() {
 
                     if (linha.tipo === "banca_remarcada") {
                       const escopo = projeto.escopos.find((e) => e.id === linha.projeto_escopo_id);
-                      const idAncora = `remarcacao-${linha.id}`;
+                      const idAncora = `remarcacao-${idNumerico(linha.id)}`;
                       return (
                         <HistoricoTimelineItem key={idAncora}>
                           <HistoricoTimelineTrilho $ultimo={ultimo}>
@@ -616,7 +641,10 @@ export function ProjetoHistorico() {
                                     .join(" · ")}
                                 </HistoricoNotaMotivo>
                               </HistoricoNotaCabecalho>
-                              <HistoricoNotaTexto>{linha.justificativa}</HistoricoNotaTexto>
+                              {/* Mesmo caso da justificativa de atraso acima: o
+                                  campo virou `detalhe` no envelope, e este lia
+                                  o nome antigo. */}
+                              <HistoricoNotaTexto>{linha.detalhe}</HistoricoNotaTexto>
                             </HistoricoNotaLinha>
                             <HistoricoTimelineMeta>
                               <HistoricoAutorChip>

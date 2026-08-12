@@ -115,6 +115,19 @@ export interface EscopoVendido {
   /** §10 — dias úteis além da janela, derivados. Zero enquanto ela não estoura. */
   atraso: number;
   /**
+   * §7.4: o "porquê" do `atraso` acima, escrito por quem conduz o projeto.
+   *
+   * `null` = ainda não justificado, e é o que faz o card "Escopos vendidos"
+   * PEDIR a nota em vez de só mostrar o número. Só a mais recente vem aqui —
+   * o histórico completo das notas fica na aba Histórico.
+   */
+  justificativa_atraso: {
+    id: number;
+    texto: string;
+    registrado_por: string | null;
+    registrado_em: string;
+  } | null;
+  /**
    * §11 — dias úteis pintados depois de a BANCA ser realizada: as
    * **correções** que ela apontou.
    *
@@ -193,9 +206,18 @@ export interface JustificativaAtrasoHistorico {
   tipo: "justificativa_atraso";
   id: number;
   projeto_escopo_id: number | null;
-  /** "banca" | "entrega_interna" | "entrega_externa" | null (nota geral). */
+  /** "banca" | "escopo" | null (nota geral). Os tipos de entrega saíram dos
+   *  insights em 2026-08-12, mas notas antigas ainda os carregam. */
   motivo_tipo: string | null;
-  texto: string;
+  /**
+   * ⚠ **O texto da nota vem em `detalhe`, não aqui.**
+   *
+   * O backend unificou as fontes do histórico num envelope com `titulo` e
+   * `detalhe` prontos, e parou de emitir `texto`. O campo continua declarado
+   * — opcional — porque declará-lo obrigatório foi o que escondeu o bug: a
+   * tela lia `linha.texto`, o `tsc` aprovava, e a nota renderizava vazia.
+   */
+  texto?: string;
   registrado_por: number;
   alterado_em: string;
   //: O campo de autoria comum a todas as cinco fontes — o backend o emite
@@ -258,7 +280,9 @@ export interface RemarcacaoBancaHistorico {
   projeto_escopo_id: number | null;
   data_anterior: string;
   data_nova: string;
-  justificativa: string;
+  /** ⚠ Mesmo caso de `texto` na justificativa de atraso: o motivo escrito vem
+   *  em `detalhe`. Opcional para o `tsc` cobrar quem tentar lê-lo. */
+  justificativa?: string;
   registrado_por: number | null;
   alterado_em: string;
   titulo?: string;

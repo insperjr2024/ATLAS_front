@@ -5,26 +5,22 @@ import type { CronogramaResposta } from "@/types/cronograma";
 
 /* Os tipos espelham `use_cases/monitoramento/monitoramento.py`. */
 
-/** O que faz um projeto pedir atenção (§7.1).
+/**
+ * O que faz um projeto pedir atenção (§7.1).
  *
- *  `entrega_interna` e `entrega_externa` são separadas porque o §7.4 as trata
- *  diferente — a externa depende da agenda do cliente e não se cobra do time. */
-export type TipoAtencao =
-  | "kickoff"
-  | "banca"
-  | "entrega_interna"
-  | "entrega_externa"
-  | "reuniao"
-  | "tarefa";
+ * ⚠ `entrega_interna` e `entrega_externa` saíram em 2026-08-12: o atraso da
+ * ENTREGA ao cliente deixou de ser insight. Ele media a agenda do cliente e não
+ * o trabalho do time, e deixava vermelho um projeto cuja banca aconteceu no
+ * prazo. O atraso do escopo hoje é medido só contra a BANCA.
+ */
+export type TipoAtencao = "kickoff" | "banca" | "reuniao" | "tarefa";
 
-/** Os rótulos do filtro, na ordem em que aparecem. A ordem é do que o time
- *  controla (tarefa, reunião) para o que depende de terceiro (cliente). */
+/** Os rótulos do filtro, na ordem em que aparecem — do que o time controla no
+ *  dia a dia (tarefa, reunião) para os marcos (banca, kickoff). */
 export const ROTULO_ATENCAO: Record<TipoAtencao, string> = {
   tarefa: "Tarefas",
   reuniao: "Reuniões",
   banca: "Bancas",
-  entrega_interna: "Entregas",
-  entrega_externa: "Entregas (cliente)",
   kickoff: "Kickoff",
 };
 
@@ -82,10 +78,23 @@ export interface VisaoGeral {
     escopo: string;
     data_hora: string;
   }[];
+  /**
+   * 😴 O VÃO ENTRE ESCOPOS: da entrega ao cliente de um até a reunião inicial
+   * do seguinte — um item por PAR, não por projeto.
+   *
+   * ⚠ Media sempre até HOJE e dava número negativo quando a entrega estava
+   * registrada para o futuro (a tela chegou a mostrar "-16 dias parado").
+   * Corrigido em 2026-08-12.
+   */
   tempo_parado: {
     projeto_id: number;
     projeto_nome: string;
     escopo_entregue: string;
+    /** `null` quando o vão está ABERTO — ninguém começou o próximo escopo. */
+    escopo_seguinte: string | null;
+    /** Aberto = ainda correndo até hoje. Fechado = tamanho definitivo. */
+    aberto: boolean;
+    /** Dias CORRIDOS: é tempo de calendário parado, não esforço. */
     dias_parado: number;
   }[];
   /** §7.1: o motivo é explícito, nunca um rótulo genérico. */
@@ -297,17 +306,41 @@ export interface Atrasos {
     pior_projeto: string;
     pior_motivo: string;
   }[];
+  /**
+   * §10: os escopos que passaram da JANELA — a coluna "Atraso" do card
+   * "Escopos vendidos", com o porquê escrito por quem conduz o projeto.
+   *
+   * ⚠ **Não são os `motivos` de `por_projeto`.** Aqueles perguntam "o que
+   * venceu e não aconteceu?" e fecham quando o fato acontece; este pergunta
+   * "o trabalho passou do tempo vendido?". Um escopo pode estourar a janela
+   * com a banca realizada e a entrega em dia — e aí não há motivo nenhum
+   * aberto, o projeto nem aparece na lista de atrasos.
+   *
+   * Vem ordenado com o que FALTA justificar primeiro: é fila de trabalho.
+   */
+  escopos_atrasados: {
+    projeto_id: number;
+    projeto_nome: string;
+    projeto_escopo_id: number;
+    escopo_nome: string;
+    /** Dias úteis além da janela — a mesma conta da tela do projeto. */
+    dias: number;
+    dias_vendidos: number;
+    dias_ajustados: number;
+    /** `null` = ninguém explicou ainda. */
+    justificativa: string | null;
+    justificativa_id: number | null;
+    registrado_por: string | null;
+    registrado_em: string | null;
+  }[];
   /** Os números da faixa do topo, calculados no backend — a divisão
    *  banca/entrega decide a leitura do §7.4 e o front recontar isso a partir
    *  das descrições seria reimplementar a classificação. */
+  /** ⚠ `com_externo`/`pior_externo` saíram com o motivo de entrega
+   *  (2026-08-12): sem ele seriam dois zeros permanentes na faixa do topo. */
   resumo: {
     projetos: number;
     pior_caso: number;
-    /** Projetos com entrega travada do lado do CLIENTE. O §7.4 tira isso do
-     *  que se cobra do time, mas é o caso mais delicado do portfólio — quem
-     *  resolve é a diretoria falando com o cliente. */
-    com_externo: number;
-    pior_externo: number;
   };
 }
 
@@ -446,20 +479,15 @@ export interface AprovacaoAtraso {
   motivos: string[];
 }
 
-export interface AprovacaoEntrega {
-  escopo_id: number;
-  projeto_id: number;
-  projeto_nome: string;
-  escopo_nome: string;
-  data_prometida: string;
-  data_entrega: string;
-  dias_de_atraso: number;
-}
-
+/**
+ * ⚠ Havia uma terceira fila, `entregas_sem_classificacao` (entregas atrasadas
+ * sem o rótulo interno/agenda do cliente). Removida em 2026-08-12 junto com o
+ * atraso de ENTREGA nos insights: sem a métrica que separava os dois tipos, a
+ * classificação deixou de mudar qualquer número.
+ */
 export interface Aprovacoes {
   dias_de_ajuste: AprovacaoDiasDeAjuste[];
   atrasos_sem_justificativa: AprovacaoAtraso[];
-  entregas_sem_classificacao: AprovacaoEntrega[];
   /** Servido pronto pelo backend — o badge da aba precisa dele antes de
    *  qualquer render, e somar no front duplicaria a conta. */
   total: number;
