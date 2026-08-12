@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api";
 import { paraDataUtc } from "@/lib/projetos";
 import type {
   Banca,
+  BancaDetalhes,
   BancaFrente,
   BancaParaAvaliar,
   Candidatura,
@@ -99,6 +100,21 @@ export function alocarUsuario(bancaId: number, usuarioId: number, token: string)
 
 export function getBancas(token: string) {
   return apiFetch<Banca[]>("/bancas", { token });
+}
+
+/**
+ * A ficha da banca com os NOMES já resolvidos — uma chamada só.
+ *
+ * ⚠ Não confundir com `getBancas()` + os cruzamentos de `lib/nucleo.ts`, que é
+ * como a tela `/bancas` monta a mesma informação. Lá o custo já foi pago (ela
+ * carrega usuários, frentes, candidaturas e equipes para desenhar os cards);
+ * em qualquer outra tela, puxar cinco listagens inteiras para escrever sete
+ * linhas seria caro à toa. E o backend resolve `membros` melhor: ele conhece a
+ * equipe REAL do projeto, não só a tabela legada `equipe_projeto`, que fica
+ * vazia em toda banca marcada pelo cronograma.
+ */
+export function getBancaDetalhes(bancaId: number, token: string) {
+  return apiFetch<BancaDetalhes>(`/bancas/${bancaId}/detalhes`, { token });
 }
 
 export function getCandidaturas(token: string) {

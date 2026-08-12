@@ -1,4 +1,4 @@
-import type { BancaFrente, Candidatura, EquipeProjeto, Escopo, Frente } from "@/types/banca";
+import type { BancaFrente, Candidatura, Escopo, Frente } from "@/types/banca";
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 
 export function consultoresDoNucleo(usuarios: UsuarioResumo[]): UsuarioResumo[] {
@@ -35,8 +35,29 @@ export function frentesDaBanca(bancasFrentes: BancaFrente[], frentes: Frente[], 
     .map((bf) => frentes.find((f) => f.id === bf.frente_id)?.nome ?? "—");
 }
 
-export function membrosDaBanca(equipes: EquipeProjeto[], usuarios: UsuarioResumo[], bancaId: number): string[] {
-  return equipes.filter((e) => e.banca_id === bancaId).map((e) => nomeUsuario(usuarios, e.usuario_id));
+/**
+ * ⭐ A equipe da banca, a partir do `equipe_ids` que o BACKEND já resolveu.
+ *
+ * ⚠ Isto substituiu uma versão que lia `equipe_projeto` — a tabela LEGADA do
+ * módulo de bancas, preenchida à mão no formulário "Consultores do projeto".
+ * Banca marcada pelo cronograma não escreve nela, então a ficha mostrava
+ * "Membros —" justamente nas bancas do fluxo novo, que hoje são a maioria.
+ *
+ * `equipe_ids` já soma as duas fontes (ver `utils/equipe_banca.py` no backend)
+ * e não custa chamada nova: vem junto de cada banca em `GET /bancas`.
+ *
+ * O coordenador sai da lista porque tem linha própria na ficha — o backend o
+ * inclui no conjunto por outro motivo (§8: quem não pode avaliar a banca).
+ */
+export function membrosDaBanca(
+  equipeIds: number[] | undefined,
+  coordenadorId: number,
+  usuarios: UsuarioResumo[],
+): string[] {
+  return (equipeIds ?? [])
+    .filter((id) => id !== coordenadorId)
+    .map((id) => nomeUsuario(usuarios, id))
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 
 export function avaliadoresDaBanca(candidaturas: Candidatura[], usuarios: UsuarioResumo[], bancaId: number): string[] {

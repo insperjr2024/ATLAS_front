@@ -187,8 +187,14 @@ export const MarcosDoDia = styled.div`
  * impresso em preto-e-branco, e o nome escrito atende isso melhor do que um
  * símbolo: texto sobrevive ao P&B, símbolo depende da legenda ao lado.
  */
-export const MarcoBox = styled.span<{ $borda: string; $fundo: string; $texto: string }>`
+export const MarcoBox = styled.span<{
+  $borda: string;
+  $fundo: string;
+  $texto: string;
+  $clicavel?: boolean;
+}>`
   display: block;
+  width: 100%;
   padding: 0.1rem 0.3rem;
   border: 1px solid ${({ $borda }) => $borda};
   border-radius: ${theme.borderRadius.sm};
@@ -201,6 +207,28 @@ export const MarcoBox = styled.span<{ $borda: string; $fundo: string; $texto: st
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+
+  /* Marco que abre ficha vira <button> (ver \`onClick\` em MarcoRenderizavel).
+     Sem afordância nenhuma ninguém descobre que dá para clicar — e o box é
+     pequeno demais para um ícone caber junto do rótulo. */
+  ${({ $clicavel }) =>
+    $clicavel &&
+    `
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.7rem;
+    font-weight: ${theme.fontWeight.medium};
+
+    &:hover {
+      filter: brightness(0.95);
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${theme.colors.primary};
+      outline-offset: 1px;
+    }
+  `}
 `;
 
 /**

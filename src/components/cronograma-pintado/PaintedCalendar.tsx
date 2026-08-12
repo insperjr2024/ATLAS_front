@@ -44,6 +44,16 @@ export interface MarcoRenderizavel {
   rotulo: string;
   /** O nome completo — no box das visões maiores e no `title` da célula. */
   titulo: string;
+  /**
+   * Abre a ficha do marco. Sem isto o box é só rótulo, como sempre foi.
+   *
+   * Mora no DADO e não numa prop do calendário porque quem sabe o que um
+   * marco abre é quem o montou: o calendário não conhece banca, reunião nem
+   * entrega — ele desenha `MarcoRenderizavel`. Com uma prop `onMarcoClicado`
+   * genérica, ou todos os marcos ficariam clicáveis (e três quartos deles
+   * abririam nada), ou o componente precisaria de um `switch` por tipo.
+   */
+  onClick?: () => void;
 }
 
 export interface FaixaDerivada {
@@ -498,10 +508,28 @@ export function PaintedCalendar({
                           {marcosDoDia.map((m) => (
                             <MarcoBox
                               key={`${m.tipo}-${m.titulo}`}
+                              // Vira <button> só quando abre alguma coisa: um
+                              // rótulo sem ação não deve entrar na navegação
+                              // por teclado nem anunciar-se como botão.
+                              {...(m.onClick
+                                ? {
+                                    as: "button" as const,
+                                    type: "button" as const,
+                                    $clicavel: true,
+                                    // ⚠ O pointerdown é do ARRASTO de pintura,
+                                    // que nasce na célula. Sem barrá-lo aqui,
+                                    // clicar no marco começa uma pincelada.
+                                    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+                                    onClick: (e: React.MouseEvent) => {
+                                      e.stopPropagation();
+                                      m.onClick!();
+                                    },
+                                  }
+                                : {})}
                               $borda={COR_MARCO.borda}
                               $fundo={COR_MARCO.fundo}
                               $texto={COR_MARCO.texto}
-                              title={m.titulo}
+                              title={m.onClick ? `${m.titulo} — clique para ver os detalhes` : m.titulo}
                             >
                               {detalhado ? m.titulo : m.rotulo}
                             </MarcoBox>

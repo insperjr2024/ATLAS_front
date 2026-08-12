@@ -1468,7 +1468,7 @@ function VerMaisModal({
             </DetailRow>
             <DetailRow>
               <DetailTerm>Membros</DetailTerm>
-              <DetailValue>{membrosDaBanca(contexto.equipesProjeto, contexto.usuarios, banca.id).join(", ") || "—"}</DetailValue>
+              <DetailValue>{membrosDaBanca(banca.equipe_ids, banca.coordenador_id, contexto.usuarios).join(", ") || "—"}</DetailValue>
             </DetailRow>
             <DetailRow>
               <DetailTerm>Avaliadores</DetailTerm>
