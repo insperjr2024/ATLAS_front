@@ -58,6 +58,10 @@ import {
   PermissaoTexto,
   PermissaoTitulo,
   PermissaoDesc,
+  SecaoGrupo,
+  SecaoCabecalho,
+  SecaoTitulo,
+  SecaoDescricao,
 } from "./Config.styled";
 import { LIST_MAX_VISIVEIS, TableScrollWrap } from "@/styles/shared.styled";
 
@@ -233,135 +237,170 @@ export function Config() {
         <PageHeaderText>
           <PageHeading>Configurações</PageHeading>
           <PageSubheading>
-            Gestão semestral, calendário acadêmico, frentes, escopos e permissões por posição.
+            O semestre em curso, a estrutura de frentes e escopos, as regras que a plataforma
+            aplica sozinha e o acesso de cada posição.
           </PageSubheading>
         </PageHeaderText>
       </PageHeaderRow>
 
-      <GestaoSemestralCard />
+      {/* Os cards estão agrupados por assunto, e não na ordem em que foram
+          sendo construídos. A ordem dos grupos segue a dependência: o semestre
+          e os cadastros vêm primeiro porque o resto os referencia (escopo
+          aponta pra frente, banca conta o piso da frente), as regras
+          automáticas depois, e o acesso por último — é o único grupo que não
+          fala de operação, e sim de quem entra onde. */}
+      <SecaoGrupo>
+        <SecaoCabecalho>
+          <SecaoTitulo>Ciclo e estrutura</SecaoTitulo>
+          <SecaoDescricao>
+            O semestre em curso e os cadastros que o resto da plataforma referencia.
+          </SecaoDescricao>
+        </SecaoCabecalho>
 
-      <SituacoesCargaCard />
+        <GestaoSemestralCard />
 
-      <PageCard>
-        <PageCardHeader>
-          <CardHeaderActions>
-            <PageCardTitle>Frentes</PageCardTitle>
-            <PageButtonSm type="button" onClick={() => setModalFrente("novo")}>
-              <Plus size={14} />
-              Adicionar
-            </PageButtonSm>
-          </CardHeaderActions>
-        </PageCardHeader>
-        <PageCardContent>
-          {frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
-          {frentes.length > 0 && (
-            <TableScrollWrap $scrollable={frentes.length > LIST_MAX_VISIVEIS}>
+        <PageCard>
+          <PageCardHeader>
+            <CardHeaderActions>
+              <PageCardTitle>Frentes</PageCardTitle>
+              <PageButtonSm type="button" onClick={() => setModalFrente("novo")}>
+                <Plus size={14} />
+                Adicionar
+              </PageButtonSm>
+            </CardHeaderActions>
+          </PageCardHeader>
+          <PageCardContent>
+            {frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
+            {frentes.length > 0 && (
+              <TableScrollWrap $scrollable={frentes.length > LIST_MAX_VISIVEIS}>
+                <DataTable>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeadCell>Nome</TableHeadCell>
+                      <TableHeadCell>Piso mínimo por banca</TableHeadCell>
+                      <TableHeadCell />
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {frentes.map((frente) => (
+                      <TableRow key={frente.id}>
+                        <NameCell>{frente.nome}</NameCell>
+                        <TableCell>{frente.piso_banca}</TableCell>
+                        <ActionsCell>
+                          <PageButtonSm $variant="outline" type="button" onClick={() => setModalFrente(frente)}>
+                            Editar
+                          </PageButtonSm>
+                          <PageButtonSm
+                            $variant="outline"
+                            type="button"
+                            onClick={() => setParaExcluir({ tipo: "frente", item: frente })}
+                          >
+                            Excluir
+                          </PageButtonSm>
+                        </ActionsCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </DataTable>
+              </TableScrollWrap>
+            )}
+          </PageCardContent>
+        </PageCard>
+
+        {/* Logo abaixo de Frentes: todo escopo aponta para uma frente, então a
+            lista de cima é o vocabulário do select daqui. */}
+        <PageCard>
+          <PageCardHeader>
+            <CardHeaderActions>
+              <PageCardTitle>Escopos</PageCardTitle>
+              <PageButtonSm type="button" onClick={() => setModalEscopo("novo")}>
+                <Plus size={14} />
+                Adicionar
+              </PageButtonSm>
+            </CardHeaderActions>
+          </PageCardHeader>
+          <PageCardContent>
+            {escopos.length === 0 && <EmptyText>Nenhum escopo cadastrado.</EmptyText>}
+            {escopos.length > 0 && (
+              <TabelaEscopos
+                itens={escopos}
+                frentes={frentes}
+                onEditar={setModalEscopo}
+                onExcluir={(item) => setParaExcluir({ tipo: "escopo", item })}
+              />
+            )}
+          </PageCardContent>
+        </PageCard>
+      </SecaoGrupo>
+
+      <SecaoGrupo>
+        <SecaoCabecalho>
+          <SecaoTitulo>Regras de operação</SecaoTitulo>
+          <SecaoDescricao>
+            Os números que a plataforma aplica sozinha ao montar bancas e ao ler a carga de cada
+            pessoa.
+          </SecaoDescricao>
+        </SecaoCabecalho>
+
+        <ConfiguracaoBancaCard />
+
+        <SituacoesCargaCard />
+      </SecaoGrupo>
+
+      <SecaoGrupo>
+        <SecaoCabecalho>
+          <SecaoTitulo>Acesso</SecaoTitulo>
+          <SecaoDescricao>Quem pode fazer o quê na plataforma, por posição.</SecaoDescricao>
+        </SecaoCabecalho>
+
+        <PageCard>
+          <PageCardHeader>
+            <CardHeaderActions>
+              <PageCardTitle>Permissões por posição</PageCardTitle>
+            </CardHeaderActions>
+          </PageCardHeader>
+          <PageCardContent>
+            {!podeEditarPermissoes && (
+              <EmptyText style={{ fontSize: "0.7rem" }}>
+                Só quem já tem esta permissão pode editar — impede auto-concessão de acesso.
+              </EmptyText>
+            )}
+            <TableScrollWrap $scrollable={posicoes.length > LIST_MAX_VISIVEIS}>
               <DataTable>
                 <TableHead>
                   <TableRow>
-                    <TableHeadCell>Nome</TableHeadCell>
-                    <TableHeadCell>Piso mínimo por banca</TableHeadCell>
+                    <TableHeadCell>Posição</TableHeadCell>
+                    <TableHeadCell>Permissões</TableHeadCell>
                     <TableHeadCell />
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {frentes.map((frente) => (
-                    <TableRow key={frente.id}>
-                      <NameCell>{frente.nome}</NameCell>
-                      <TableCell>{frente.piso_banca}</TableCell>
+                  {posicoes.map((posicao) => (
+                    <TableRow key={posicao.posicao}>
+                      <NameCell>{ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</NameCell>
+                      <TableCell>
+                        {permissoesDaPosicao(posicao).length === 0 && "—"}
+                        {permissoesDaPosicao(posicao).map((p) => (
+                          <PermissaoBadge key={p.campo} title={p.descricao}>
+                            {p.titulo}
+                          </PermissaoBadge>
+                        ))}
+                      </TableCell>
                       <ActionsCell>
-                        <PageButtonSm $variant="outline" type="button" onClick={() => setModalFrente(frente)}>
-                          Editar
-                        </PageButtonSm>
-                        <PageButtonSm
-                          $variant="outline"
-                          type="button"
-                          onClick={() => setParaExcluir({ tipo: "frente", item: frente })}
-                        >
-                          Excluir
-                        </PageButtonSm>
+                        {podeEditarPermissoes && (
+                          <PageButtonSm $variant="outline" type="button" onClick={() => setModalPosicao(posicao)}>
+                            Editar
+                          </PageButtonSm>
+                        )}
                       </ActionsCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </DataTable>
             </TableScrollWrap>
-          )}
-        </PageCardContent>
-      </PageCard>
-
-      <ConfiguracaoBancaCard />
-
-      <PageCard>
-        <PageCardHeader>
-          <CardHeaderActions>
-            <PageCardTitle>Escopos</PageCardTitle>
-            <PageButtonSm type="button" onClick={() => setModalEscopo("novo")}>
-              <Plus size={14} />
-              Adicionar
-            </PageButtonSm>
-          </CardHeaderActions>
-        </PageCardHeader>
-        <PageCardContent>
-          {escopos.length === 0 && <EmptyText>Nenhum escopo cadastrado.</EmptyText>}
-          {escopos.length > 0 && (
-            <TabelaEscopos
-              itens={escopos}
-              frentes={frentes}
-              onEditar={setModalEscopo}
-              onExcluir={(item) => setParaExcluir({ tipo: "escopo", item })}
-            />
-          )}
-        </PageCardContent>
-      </PageCard>
-
-      <PageCard>
-        <PageCardHeader>
-          <CardHeaderActions>
-            <PageCardTitle>Permissões por posição</PageCardTitle>
-          </CardHeaderActions>
-        </PageCardHeader>
-        <PageCardContent>
-          {!podeEditarPermissoes && (
-            <EmptyText style={{ fontSize: "0.7rem" }}>
-              Só quem já tem esta permissão pode editar — impede auto-concessão de acesso.
-            </EmptyText>
-          )}
-          <TableScrollWrap $scrollable={posicoes.length > LIST_MAX_VISIVEIS}>
-            <DataTable>
-              <TableHead>
-                <TableRow>
-                  <TableHeadCell>Posição</TableHeadCell>
-                  <TableHeadCell>Permissões</TableHeadCell>
-                  <TableHeadCell />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {posicoes.map((posicao) => (
-                  <TableRow key={posicao.posicao}>
-                    <NameCell>{ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</NameCell>
-                    <TableCell>
-                      {permissoesDaPosicao(posicao).length === 0 && "—"}
-                      {permissoesDaPosicao(posicao).map((p) => (
-                        <PermissaoBadge key={p.campo} title={p.descricao}>
-                          {p.titulo}
-                        </PermissaoBadge>
-                      ))}
-                    </TableCell>
-                    <ActionsCell>
-                      {podeEditarPermissoes && (
-                        <PageButtonSm $variant="outline" type="button" onClick={() => setModalPosicao(posicao)}>
-                          Editar
-                        </PageButtonSm>
-                      )}
-                    </ActionsCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DataTable>
-          </TableScrollWrap>
-        </PageCardContent>
-      </PageCard>
+          </PageCardContent>
+        </PageCard>
+      </SecaoGrupo>
 
       {modalFrente && (
         <ModalFrente

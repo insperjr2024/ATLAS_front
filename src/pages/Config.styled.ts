@@ -58,6 +58,48 @@ export {
   ToggleRow,
 };
 
+/* ------------------------------------------------------------------ */
+/* Seções da página                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A página tem cards demais para uma pilha só: sem agrupamento, "Situações de
+ * carga" e "Permissões por posição" ficam a mesma distância uma da outra que
+ * "Frentes" e "Escopos", que são o mesmo assunto. O grupo é só visual — os
+ * cards continuam independentes —, mas separa o que se lê junto do que não.
+ *
+ * O respiro entre grupos (`& + &`) é maior que o de dentro do grupo, senão a
+ * hierarquia depende só do título e some quando a pessoa rola a página.
+ */
+export const SecaoGrupo = styled.section`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+
+  & + & {
+    margin-top: ${theme.spacing.sm};
+  }
+`;
+
+export const SecaoCabecalho = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+`;
+
+export const SecaoTitulo = styled.h2`
+  margin: 0;
+  font-size: ${theme.fontSize.lg};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
+`;
+
+export const SecaoDescricao = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+`;
+
 export const PermissoesGrid = styled.div`
   display: flex;
   flex-direction: column;
