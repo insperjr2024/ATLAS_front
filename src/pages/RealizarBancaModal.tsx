@@ -14,6 +14,7 @@ import {
   ModalTitle,
 } from "@/styles/modal.styled";
 import { PageButton } from "@/styles/page.styled";
+import { AvisoRegra } from "@/components/AvisoRegra";
 import {
   CheckboxGrid,
   CheckboxLabel,
@@ -87,7 +88,13 @@ export function RealizarBancaModal({
     setSalvando(true);
     try {
       await onConfirmar({
-        realizado_em: `${data}T${hora}:00`,
+        // ⚠ Os dois campos são hora LOCAL — é o que a pessoa digitou olhando o
+        // relógio dela. O banco guarda UTC (ver `paraDataUtc` em
+        // `lib/projetos.ts`), então a conversão tem de acontecer AQUI. Mandar a
+        // string crua fazia o backend gravar 14:00 local como 14:00 UTC, e a
+        // banca reaparecia 3h mais cedo — a cada registro, sempre para trás.
+        // O `marcarBancaDoEscopo` do cronograma já fazia certo; era só este.
+        realizado_em: new Date(`${data}T${hora}:00`).toISOString(),
         presentes: [...presentes],
         // O backend recusa abaixo do mínimo sem isto, e só aceita de diretor.
         forcar: abaixoDoMinimo && ehDiretor,
@@ -169,7 +176,7 @@ export function RealizarBancaModal({
               </FormErrorText>
             )}
 
-            {erro && <FormErrorText>{erro}</FormErrorText>}
+            <AvisoRegra mensagem={erro} onFechar={() => setErro("")} />
           </ModalBody>
 
           <ModalFooter>
