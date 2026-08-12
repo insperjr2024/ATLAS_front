@@ -75,9 +75,33 @@ export function RealizarBancaModal({
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [onCancelar]);
 
-  const abaixoDoMinimo = candidaturas.length < banca.piso_minimo;
+  /**
+   * ⚠ **Só o TOTAL — e é por isso que isto não decide mais o `forcar`.**
+   *
+   * O §8 tem três regras de composição, e esta é uma: o piso total. As outras
+   * duas são por FRENTE (piso de cada uma, e a liderança de cada uma), e o
+   * front não tem como calculá-las — nenhum endpoint expõe os déficits por
+   * frente, e reimplementar `ComposicaoBancaChecker` aqui criaria uma segunda
+   * régua que divergiria da primeira.
+   *
+   * O efeito de usá-la como gate era um BECO: uma banca com 5 de 5 alocados
+   * mas sem ninguém de Direito passava por aqui como completa, ia sem
+   * `forcar`, e o backend recusava com "faltam 1 de Direito" — sem que a
+   * diretora tivesse qualquer botão para seguir. Continua servindo para o
+   * aviso adiantado, que é o que ela sabe responder.
+   */
+  const totalAbaixoDoMinimo = candidaturas.length < banca.piso_minimo;
 
-  async function enviar(e: React.FormEvent) {
+  /**
+   * A recusa de composição que o BACKEND devolveu — a régua completa do §8.
+   *
+   * Enquanto não há uma, `forcar` vai `false`: ninguém força o que ainda não
+   * foi barrado. Depois dela, a diretora ganha o botão de registrar assim
+   * mesmo, e a decisão continua morando num lugar só (o servidor).
+   */
+  const [recusaDeComposicao, setRecusaDeComposicao] = useState(false);
+
+  async function enviar(e: React.FormEvent, forcar = false) {
     e.preventDefault();
     if (!data || !hora) {
       setErro("Informe a data e a hora em que a banca aconteceu.");
@@ -89,11 +113,15 @@ export function RealizarBancaModal({
       await onConfirmar({
         realizado_em: `${data}T${hora}:00`,
         presentes: [...presentes],
-        // O backend recusa abaixo do mínimo sem isto, e só aceita de diretor.
-        forcar: abaixoDoMinimo && ehDiretor,
+        forcar,
       });
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao registrar");
+      const mensagem = err instanceof Error ? err.message : "Erro ao registrar";
+      setErro(mensagem);
+      // A assinatura da recusa de composição (ver `_exigir_composicao`). Só
+      // ela destrava o "registrar assim mesmo" — um erro de rede ou de data
+      // não deve virar convite para forçar.
+      setRecusaDeComposicao(mensagem.includes("Composição incompleta"));
       setSalvando(false);
     }
   }
@@ -157,10 +185,11 @@ export function RealizarBancaModal({
               )}
             </FieldGroup>
 
-            {/* A composição do §8 é regra de negócio: quem afrouxa é a
-                diretoria. Para os demais isto é um beco, e o texto precisa
-                dizer o que fazer em vez de só barrar. */}
-            {abaixoDoMinimo && (
+            {/* Aviso ADIANTADO do que o front sabe conferir sozinho (o total).
+                Não barra nada: quem barra é o backend, que também olha as
+                frentes. Some depois da recusa, para não ficar dois blocos
+                vermelhos dizendo quase a mesma coisa. */}
+            {totalAbaixoDoMinimo && !erro && (
               <FormErrorText>
                 Esta banca tem {candidaturas.length} de {banca.piso_minimo} pessoas alocadas.{" "}
                 {ehDiretor
@@ -176,13 +205,23 @@ export function RealizarBancaModal({
             <PageButton type="button" $variant="outline" onClick={onCancelar}>
               Cancelar
             </PageButton>
-            <PageButton type="submit" disabled={salvando || (abaixoDoMinimo && !ehDiretor)}>
-              {salvando
-                ? "Registrando…"
-                : abaixoDoMinimo && ehDiretor
-                  ? "Registrar assim mesmo"
-                  : "Registrar realização"}
-            </PageButton>
+            {/* ⭐ A saída do beco: o backend recusou por composição e quem está
+                aqui é a diretoria, então ela reenvia com `forcar`. O botão só
+                nasce DEPOIS da recusa — antes dela não há o que forçar, e
+                oferecer o atalho de largada convidaria a pular a regra. */}
+            {recusaDeComposicao && ehDiretor ? (
+              <PageButton
+                type="button"
+                disabled={salvando}
+                onClick={(e) => enviar(e as unknown as React.FormEvent, true)}
+              >
+                {salvando ? "Registrando…" : "Registrar assim mesmo"}
+              </PageButton>
+            ) : (
+              <PageButton type="submit" disabled={salvando}>
+                {salvando ? "Registrando…" : "Registrar realização"}
+              </PageButton>
+            )}
           </ModalFooter>
         </form>
       </ModalContent>

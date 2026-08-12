@@ -79,9 +79,13 @@ import { useFiltroEscopo } from "./FiltroEscopo";
 
 /**
  * §7.4 — o pilar é a BANCA: "um escopo está atrasado quando passa da data da
- * sua banca sem que ela tenha acontecido". A entrega ao cliente é acompanhada
- * à parte, com a distinção interno/externo, para não penalizar o time pelo
- * que não é dele.
+ * sua banca sem que ela tenha acontecido".
+ *
+ * ⚠ Desde 2026-08-12 é o único pilar: o atraso da ENTREGA ao cliente saiu dos
+ * insights por decisão da diretoria. Ele media a agenda do cliente e não o
+ * trabalho do time, e deixava vermelho um projeto cuja banca aconteceu no
+ * prazo. Sumiram com ele a pílula "Espera do cliente", o item "Esperando o
+ * cliente" da faixa e a distinção interno/externo na cor.
  *
  * Os dias aqui são ÚTEIS, pelo calendário do Insper — a mesma régua da aba de
  * Execução. O texto do §7.4 dizia "corridos", mas a diretoria confirmou em
@@ -119,10 +123,9 @@ export function AtrasosAba() {
   const [dados, setDados] = useState<Atrasos | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  // §7.4 — o alerta é automático; só a diretoria digita o porquê. A
-  // justificativa é POR MOTIVO (escopo + tipo): o mesmo escopo pode estar
-  // atrasado em banca e entrega ao mesmo tempo, e uma nota genérica do
-  // projeto não distingue qual dos dois foi respondido.
+  // §7.4 — o alerta é automático; só a diretoria digita o porquê aqui. A
+  // justificativa é POR MOTIVO (escopo + tipo), e não por projeto: uma nota
+  // genérica não diria a qual dos motivos do projeto ela responde.
   const podeJustificar = pode(usuario, "registrar_justificativa_atraso");
   const [justificando, setJustificando] = useState<{ projeto: LinhaProjeto; motivo: Motivo } | null>(
     null,
@@ -209,18 +212,10 @@ export function AtrasosAba() {
             </ResumoValor>
             <ResumoRotulo>Pior atraso isolado</ResumoRotulo>
           </ResumoItem>
-          {/* 🤝 A entrega travada do lado do CLIENTE.
-              O §7.4 tira isso do que se cobra do time, e por isso ela some das
-              outras leituras — mas é o caso mais delicado do portfólio: é o
-              cliente esperando, e quem resolve é a diretoria falando com ele,
-              não o coordenador trabalhando mais. Sem um número próprio, esses
-              casos ficavam diluídos no total de atrasados. */}
-          <ResumoItem>
-            <ResumoValor $nivel={resumo.com_externo > 0 ? nivel(resumo.pior_externo) : undefined}>
-              {resumo.com_externo}
-            </ResumoValor>
-            <ResumoRotulo>Esperando o cliente</ResumoRotulo>
-          </ResumoItem>
+          {/* ⚠ Havia aqui um "Esperando o cliente", contando os projetos com
+              entrega travada do lado dele. Saiu junto com o motivo que o
+              alimentava (2026-08-12): o atraso da entrega deixou de ser
+              insight, e o número viraria um zero permanente. */}
         </FaixaResumo>
       )}
 
@@ -260,12 +255,14 @@ export function AtrasosAba() {
             <ConteudoPaginado estado={listaProjetos}>
               <ListaSimples>
                 {listaProjetos.visiveis.map((p) => {
-                  const externo = apenasExterno(p);
                   /* A cor vem do pior motivo isolado — os cortes do `nivel()`
                      foram escritos sobre o cronograma de UM escopo (§5.6), não
-                     sobre a soma do projeto. Quando o atraso é todo externo a
-                     cor sai de cena: §7.4 não cobra isso do time. */
-                  const grau = nivel(pior(p.motivos.filter((m) => !ehExterno(m))));
+                     sobre a soma do projeto.
+
+                     ⚠ Havia aqui um filtro tirando os motivos externos da
+                     conta. Com a entrega fora dos insights, todo motivo que
+                     chega é banca — trabalho do time — e nenhum sai da cor. */
+                  const grau = nivel(pior(p.motivos));
                   return (
                     <LinhaAtraso key={p.projeto_id}>
                       {/* O PIOR motivo isolado, não a soma dos motivos. Três
@@ -274,7 +271,7 @@ export function AtrasosAba() {
                           ao lado de uma COR tirada do pior caso, então o número
                           e a cor falavam de coisas diferentes. Agora falam do
                           mesmo, e a lista é ordenada por ele. */}
-                      <AtrasoDias $nivel={grau} $externo={externo}>
+                      <AtrasoDias $nivel={grau}>
                         <strong>{p.pior_motivo}</strong>
                         <span>dias</span>
                       </AtrasoDias>
@@ -287,7 +284,6 @@ export function AtrasosAba() {
                           <Pilula $tom="neutro">
                             {ROTULO_STATUS[p.status as StatusProjeto] ?? p.status}
                           </Pilula>
-                          {externo && <Pilula $tom="atencao">Espera do cliente</Pilula>}
                         </AtrasoTitulo>
   
                         <MotivoLista>
@@ -305,11 +301,11 @@ export function AtrasosAba() {
                                  do DOM (em vez de ficar vazio), os de depois
                                  escorregam pra coluna errada. */
                               <MotivoItem key={`${m.tipo}-${m.projeto_escopo_id ?? i}`}>
-                                <MotivoTag $externo={ehExterno(m)}>
+                                <MotivoTag>
                                   {ROTULO_MOTIVO_ATRASO[m.tipo] ?? m.tipo}
                                 </MotivoTag>
                                 <MotivoEscopoNome title={m.escopo}>{m.escopo}</MotivoEscopoNome>
-                                <MotivoDias $nivel={nivel(m.dias)} $externo={ehExterno(m)}>
+                                <MotivoDias $nivel={nivel(m.dias)}>
                                   {m.dias} {m.dias === 1 ? "dia" : "dias"}
                                 </MotivoDias>
                                 <MotivoData>
@@ -421,6 +417,59 @@ export function AtrasosAba() {
           )}
         </PageCardContent>
       </PageCard>
+
+      {/* ⭐ §10: escopos que passaram da JANELA — outra pergunta que a lista
+          acima não responde.
+
+          Os `motivos` de cima perguntam "o que venceu e não aconteceu?" e
+          fecham quando o fato acontece. Este pergunta "o trabalho passou do
+          tempo que foi vendido?": um escopo pode estourar a janela com a banca
+          já realizada e a entrega em dia, e aí o projeto nem aparece lá em
+          cima.
+
+          Sem botão de justificar aqui: quem escreve é quem conduz o escopo, na
+          Visão geral do projeto. Esta é a leitura da diretoria — e o que falta
+          explicação vem primeiro, porque é o que ela precisa cobrar. */}
+      {dados.escopos_atrasados.length > 0 && (
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>
+              Escopos que passaram da janela ({dados.escopos_atrasados.length})
+            </PageCardTitle>
+          </PageCardHeader>
+          <PageCardContent>
+            <ListaSimples>
+              {dados.escopos_atrasados.map((e) => (
+                <LinhaAtraso key={e.projeto_escopo_id}>
+                  <AtrasoDias $nivel={nivel(e.dias)}>{e.dias}</AtrasoDias>
+                  <AtrasoCorpo>
+                    <AtrasoTitulo>
+                      <LinkProjeto to={`/projetos/${e.projeto_id}`}>
+                        {e.projeto_nome}
+                      </LinkProjeto>
+                      <MotivoEscopoNome>{e.escopo_nome}</MotivoEscopoNome>
+                    </AtrasoTitulo>
+                    <MotivoData>
+                      {e.dias_vendidos} dias vendidos
+                      {e.dias_ajustados > 0 && ` · ${e.dias_ajustados} ajustados`}
+                    </MotivoData>
+                    {e.justificativa ? (
+                      <MotivoData>
+                        {e.justificativa}
+                        {e.registrado_por && ` — ${e.registrado_por}`}
+                      </MotivoData>
+                    ) : (
+                      /* Sem selo verde: o vazio aqui é uma pendência, e é o
+                         coordenador que a resolve na tela do projeto. */
+                      <SemDado>Ainda sem justificativa do coordenador.</SemDado>
+                    )}
+                  </AtrasoCorpo>
+                </LinhaAtraso>
+              ))}
+            </ListaSimples>
+          </PageCardContent>
+        </PageCard>
+      )}
 
       {justificando && token && (
         <JustificarAtrasoModal
@@ -546,19 +595,8 @@ function nivel(dias: number): NivelSeveridade {
   return "leve";
 }
 
-/** §7.4: a entrega que escorregou por agenda do cliente não é atraso do time. */
-function ehExterno(m: Motivo): boolean {
-  return m.tipo === "entrega_externa";
-}
-
-/** O maior atraso da lista. Zero quando não há motivo — um projeto atrasado
- *  só por agenda do cliente cai aqui, e "leve" é o degrau certo: a cor dele é
- *  desligada de qualquer forma pelo `$externo`. */
+/** O maior atraso da lista. Zero quando não há motivo — `nivel()` trata isso
+ *  como "leve", que é o degrau certo para ausência de atraso. */
 function pior(motivos: Motivo[]): number {
   return Math.max(0, ...motivos.map((m) => m.dias));
-}
-
-/** Todo o atraso do projeto vem da agenda do cliente. */
-function apenasExterno(p: LinhaProjeto): boolean {
-  return p.motivos.length > 0 && p.motivos.every(ehExterno);
 }
