@@ -340,6 +340,29 @@ export function Bancas() {
     )
     .sort(porDataMaisProxima);
 
+  /**
+   * ⚠ **O buraco em que uma banca some da tela.**
+   *
+   * As três seções de alocação acima exigem `aceitaInscricao`, e `paraAvaliar`
+   * só traz banca em que o usuário logado é avaliador alocado. Uma banca
+   * registrada como realizada com zero alocados não cai em nenhuma das quatro:
+   * ela existe no banco, vem no `GET /bancas`, e a interface inteira a ignora.
+   *
+   * Some sem nenhuma pista de que existiu, e é a diretoria que produz esse
+   * estado — o `forcar` do `RealizarBancaModal` é justamente o que deixa
+   * registrar abaixo do mínimo. Listar aqui é o mínimo para a banca continuar
+   * encontrável.
+   */
+  const realizadasSemAvaliador = bancas
+    .filter(
+      (b) =>
+        b.realizado_em &&
+        !b.resultado &&
+        !paraAvaliar.some((p) => p.id === b.id) &&
+        !jaAvaliadas.some((j) => j.id === b.id),
+    )
+    .sort(porDataMaisProxima);
+
   async function handleAlocar(bancaId: number) {
     if (!token) return;
     await alocar(bancaId, token);
@@ -461,7 +484,9 @@ export function Bancas() {
         </TabButton>
         <TabButton type="button" $ativa={aba === "avaliacao"} onClick={() => setAba("avaliacao")}>
           Avaliação
-          <TabCount>{paraAvaliar.length + jaAvaliadas.length}</TabCount>
+          <TabCount>
+            {paraAvaliar.length + jaAvaliadas.length + realizadasSemAvaliador.length}
+          </TabCount>
         </TabButton>
         {/* Por último: as três primeiras são filas de TRABALHO ("o que eu
             preciso fazer"); esta é consulta ("esse horário está livre?"). */}
@@ -574,6 +599,25 @@ export function Bancas() {
             onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
             onVerMais={setBancaDetalhe}
           />
+          {/* Realizada, sem resultado e sem avaliador — ver
+              `realizadasSemAvaliador`. Sem ação por enquanto: registrar
+              resultado ainda não tem tela (o `registrarResultado` de
+              `lib/bancas.ts` não é chamado por ninguém). Aparecer já resolve o
+              pior, que era sumir sem deixar rastro. */}
+          {realizadasSemAvaliador.length > 0 && (
+            <SecaoBancas
+              bancaDestacada={bancaDestacada}
+              refDestacada={refDestacada}
+              titulo="Realizadas sem avaliador"
+              bancas={realizadasSemAvaliador}
+              contexto={contexto}
+              acao="nenhuma"
+              usuarioId={usuario.id}
+              gerenciar={podeAgendar}
+              ehDiretorLista={ehDiretor}
+              onVerMais={setBancaDetalhe}
+            />
+          )}
           <SecaoBancas
           bancaDestacada={bancaDestacada}
           refDestacada={refDestacada}

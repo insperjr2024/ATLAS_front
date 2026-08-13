@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  HelpCircle,
   Lock,
   Plus,
   Trash2,
@@ -57,6 +58,11 @@ import {
   BotaoNav,
   BotaoVisao,
   ContadorDias,
+  DicaEscopo,
+  BotaoAjuda,
+  BarraDesfazer,
+  BotaoDesfazer,
+  ContagemDesfazer,
   CronogramaLayout,
   FieldEntrega,
   GrupoVisao,
@@ -92,7 +98,7 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
-import { AvisoBanner, FieldSelect, FormErrorText } from "./Projetos.styled";
+import { AvisoBanner, FieldSelect } from "./Projetos.styled";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   planejarEscrita,
@@ -103,6 +109,8 @@ import { ExportarPdfModal } from "./ExportarPdfModal";
 import { NovaEtapaModal } from "./NovaEtapaModal";
 import { MarcarBancaModal } from "./MarcarBancaModal";
 import { MarcarEntregaModal } from "./MarcarEntregaModal";
+import { AjudaCronogramaModal } from "./AjudaCronogramaModal";
+import { AvisoRegra } from "@/components/AvisoRegra";
 import { MarcarReuniaoModal } from "./MarcarReuniaoModal";
 import { BancaDetalhesModal } from "./BancaDetalhesModal";
 import { PedirDiasModal } from "./PedirDiasModal";
@@ -166,6 +174,22 @@ export function ProjetoCronograma() {
    * deliberada de quem escolhe um escopo.
    */
   const [escopoSelecionado, setEscopoSelecionado] = useState<number | "geral">("geral");
+
+  /**
+   * A última marcação, enquanto ela ainda pode ser desfeita (§ UX).
+   *
+   * 📐 Só existe quando há PARA ONDE voltar. Kickoff, banca e entrega não
+   * aceitam data vazia na API (`data_kickoff: date`, não `Optional`), então
+   * marcar a primeira vez é irreversível — e oferecer um "desfazer" que
+   * falharia seria pior que não oferecer.
+   */
+  const [desfazer, setDesfazer] = useState<{
+    rotulo: string;
+    acao: () => Promise<unknown>;
+    ate: number;
+  } | null>(null);
+  const [restam, setRestam] = useState(0);
+  const [ajudaAberta, setAjudaAberta] = useState(false);
   const [grupoAtivo, setGrupoAtivo] = useState<string | null>(null);
   const [previewIntervalo, setPreviewIntervalo] = useState<{ inicio: string; fim: string } | null>(
     null,
@@ -288,6 +312,21 @@ export function ProjetoCronograma() {
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
   }, [modoMarcacao]);
+
+  // Um tique por segundo enquanto houver o que desfazer. O `setState` mora
+  // no callback do intervalo, não no corpo do efeito — no corpo ele dispararia
+  // render em cascata.
+  useEffect(() => {
+    if (!desfazer) return;
+    const tique = () => {
+      const s = Math.ceil((desfazer.ate - Date.now()) / 1000);
+      if (s <= 0) setDesfazer(null);
+      else setRestam(s);
+    };
+    tique();
+    const id = window.setInterval(tique, 1000);
+    return () => window.clearInterval(id);
+  }, [desfazer]);
 
   const modoGeral = escopoSelecionado === "geral";
   const escopo = modoGeral
@@ -1100,6 +1139,23 @@ export function ProjetoCronograma() {
    * A banca abre confirmação em vez de gravar direto: ela pode exigir
    * justificativa (fora da janela, ou remarcação), e o backend recusa sem ela.
    */
+  /** Registra o desfazer com a janela de 30 s. */
+  function oferecerDesfazer(rotulo: string, acao: () => Promise<unknown>) {
+    setDesfazer({ rotulo, acao, ate: Date.now() + 30_000 });
+  }
+
+  async function executarDesfazer() {
+    if (!desfazer) return;
+    const acao = desfazer.acao;
+    setDesfazer(null);
+    try {
+      await acao();
+      await Promise.all([carregar(), recarregarProjeto()]);
+    } catch (e) {
+      setAviso(e instanceof Error ? e.message : "Não foi possível desfazer");
+    }
+  }
+
   function marcarDia(dia: string) {
     if (!token || !modoMarcacao) return;
     setAviso("");
@@ -1142,7 +1198,12 @@ export function ProjetoCronograma() {
    */
   async function confirmarKickoff() {
     if (!token || !kickoffAberto) return;
+    const anterior = projeto.data_kickoff?.slice(0, 10) ?? null;
     await marcarKickoff(projeto.id, kickoffAberto, token);
+    // Só há desfazer se existia data antes: a API não aceita kickoff vazio.
+    if (anterior) {
+      oferecerDesfazer("Kickoff movido", () => marcarKickoff(projeto.id, anterior, token));
+    }
     setKickoffAberto(null);
     setModoMarcacao(null);
     await carregar();
@@ -1152,6 +1213,7 @@ export function ProjetoCronograma() {
   /** Confirma a banca — com justificativa, horário e cobertura de escopos. */
   async function confirmarBanca(justificativa: string, horario: string, escopoIds: number[]) {
     if (!token || !remarcando) return;
+    const anteriorIso = dados?.escopos.find((e) => e.id === remarcando.escopoId)?.banca?.data_hora ?? null;
     await marcarBancaDoEscopo(
       remarcando.escopoId,
       new Date(`${remarcando.dia}T${horario}:00`).toISOString(),
@@ -1159,6 +1221,14 @@ export function ProjetoCronograma() {
       justificativa || undefined,
       escopoIds,
     );
+    // Remarcar exige justificativa (§5.6), então o desfazer manda uma que
+    // diz o que foi: a linha do histórico tem que contar a verdade.
+    if (anteriorIso) {
+      const escopoId = remarcando.escopoId;
+      oferecerDesfazer("Banca remarcada", () =>
+        marcarBancaDoEscopo(escopoId, anteriorIso, token, "Desfeito pelo usuário", escopoIds),
+      );
+    }
     setRemarcando(null);
     setModoMarcacao(null);
     // As duas: `carregar()` atualiza o calendário; `recarregarProjeto()`
@@ -1179,9 +1249,17 @@ export function ProjetoCronograma() {
     if (!token || !reuniaoAberta) return;
     const { dia, escopoId, reuniaoId } = reuniaoAberta;
     if (reuniaoId) {
+      const obsAntes = reuniaoAberta.observacoes ?? "";
       await updateReuniao(reuniaoId, dia, escopoId, token, observacoes);
+      oferecerDesfazer("Reunião alterada", () =>
+        updateReuniao(reuniaoId, dia, escopoId, token, obsAntes),
+      );
     } else {
-      await createReuniao(projeto.id, dia, escopoId, token, observacoes);
+      const criada = await createReuniao(projeto.id, dia, escopoId, token, observacoes);
+      // A única marcação plenamente reversível: criar tem inverso exato.
+      if (criada?.id) {
+        oferecerDesfazer("Reunião marcada", () => deleteReuniao(criada.id, token));
+      }
     }
     setReuniaoAberta(null);
     setModoMarcacao(null);
@@ -1201,12 +1279,19 @@ export function ProjetoCronograma() {
   /** §13: registrar a entrega é livre; alterá-la é decisão da diretoria. */
   async function confirmarEntrega(justificativa: string) {
     if (!token || !entregaAberta) return;
+    const anterior = dados?.escopos.find((e) => e.id === entregaAberta.escopoId)?.data_entrega_real ?? null;
     await marcarEntregaEscopo(
       entregaAberta.escopoId,
       entregaAberta.dia,
       token,
       justificativa || undefined,
     );
+    if (anterior) {
+      const escopoId = entregaAberta.escopoId;
+      oferecerDesfazer("Entrega alterada", () =>
+        marcarEntregaEscopo(escopoId, anterior.slice(0, 10), token, "Desfeito pelo usuário"),
+      );
+    }
     setEntregaAberta(null);
     setModoMarcacao(null);
     await carregar();
@@ -1361,6 +1446,10 @@ export function ProjetoCronograma() {
             <ChevronRight size={14} />
           </BotaoNav>
           <RotuloPeriodo>{blocos[0]?.titulo}</RotuloPeriodo>
+          <BotaoAjuda type="button" onClick={() => setAjudaAberta(true)}>
+            <HelpCircle size={13} aria-hidden />
+            Como funciona
+          </BotaoAjuda>
         </NavPeriodo>
 
         <FieldSelect
@@ -1371,9 +1460,10 @@ export function ProjetoCronograma() {
           }}
           aria-label="Escopo"
         >
-          {/* Geral junta tudo: etapas, marcos e os dias não úteis de todas as
-              frentes. Escolher um escopo estreita a tela para o que é dele. */}
-          <option value="geral">Geral</option>
+          {/* "Todos os escopos" e não "Geral": para quem chega agora, Geral
+              não diz se é um escopo chamado assim ou a soma de todos. O valor
+              continua sendo `geral` — mudou só o rótulo. */}
+          <option value="geral">Todos os escopos</option>
           {dados.escopos.map((e) => (
             <option key={e.id} value={e.id}>
               {e.nome}
@@ -1383,40 +1473,48 @@ export function ProjetoCronograma() {
 
         {/* ⭐ Marcar clicando no dia: reunião inicial, reunião geral, banca e
             entrega. Antes cada uma vivia numa tela diferente — a aba Reuniões,
-            a Visão geral e um botão no topo desta barra. */}
+            a Visão geral e um botão no topo desta barra.
+
+            📐 Os modos que dependem de escopo SOMEM na visão Geral, em vez de
+            ficarem desabilitados. Botão morto com tooltip não ensina nada a
+            quem não conhece a tela — a explicação só aparece no hover, e no
+            celular nunca aparece. No lugar deles entra uma frase que diz o que
+            fazer para eles voltarem. */}
         {podeEditar && (
           <GrupoVisao role="group" aria-label="Marcar no calendário">
-            {MODOS.map((modo) => {
-              const indisponivel = modo.escopo && !escopo;
-              return (
-                <BotaoVisao
-                  key={modo.valor}
-                  type="button"
-                  $ativo={modoMarcacao === modo.valor}
-                  aria-pressed={modoMarcacao === modo.valor}
-                  disabled={indisponivel}
-                  title={
-                    indisponivel
-                      ? "Escolha um escopo na barra para marcar isto"
-                      : `Clique num dia para marcar: ${modo.rotulo.toLowerCase()}`
-                  }
-                  onClick={() => {
-                    // Ligar um modo desliga o pincel: os dois disputam o mesmo
-                    // clique, e mantê-los juntos tornaria o gesto ambíguo.
-                    setGrupoAtivo(null);
-                    setModoMarcacao((atual) => (atual === modo.valor ? null : modo.valor));
-                  }}
-                >
-                  {modo.rotulo}
-                </BotaoVisao>
-              );
-            })}
+            {MODOS.filter((modo) => !modo.escopo || escopo).map((modo) => (
+              <BotaoVisao
+                key={modo.valor}
+                type="button"
+                $ativo={modoMarcacao === modo.valor}
+                aria-pressed={modoMarcacao === modo.valor}
+                title={`Clique num dia para marcar: ${modo.rotulo.toLowerCase()}`}
+                onClick={() => {
+                  // Ligar um modo desliga o pincel: os dois disputam o mesmo
+                  // clique, e mantê-los juntos tornaria o gesto ambíguo.
+                  setGrupoAtivo(null);
+                  setModoMarcacao((atual) => (atual === modo.valor ? null : modo.valor));
+                }}
+              >
+                {modo.rotulo}
+              </BotaoVisao>
+            ))}
           </GrupoVisao>
+        )}
+
+        {podeEditar && !escopo && (
+          <DicaEscopo>
+            Escolha um escopo acima para marcar reunião inicial, banca e entrega.
+          </DicaEscopo>
         )}
 
         {modoMarcacao && (
           <ContadorDias>
-            Clique num dia para marcar. Esc ou clique no botão de novo para sair.
+            {/* Nomeia O QUE está sendo marcado: com 4 modos parecidos, "clique
+                num dia" sozinho deixa a pessoa sem saber qual ela ligou. */}
+            Clique num dia para marcar{" "}
+            <strong>{MODOS.find((m) => m.valor === modoMarcacao)?.rotulo.toLowerCase()}</strong>
+            {escopo ? ` em ${escopo.nome}` : ""}. Esc para sair.
           </ContadorDias>
         )}
 
@@ -1518,7 +1616,7 @@ export function ProjetoCronograma() {
         </BotaoBarra>
       </Barra>
 
-      {aviso && <FormErrorText>{aviso}</FormErrorText>}
+      <AvisoRegra mensagem={aviso} onFechar={() => setAviso("")} />
 
       {/* O calendário na tela é o de uma frente só, mas a etapa vale para as
           duas. Este banner é o único lugar em que o conflito com a frente
@@ -1921,6 +2019,18 @@ export function ProjetoCronograma() {
           onCancelar={() => setPedindoDias(null)}
           onPedir={pedirDias}
         />
+      )}
+
+      {ajudaAberta && <AjudaCronogramaModal onFechar={() => setAjudaAberta(false)} />}
+
+      {desfazer && (
+        <BarraDesfazer role="status" aria-live="polite">
+          <span>{desfazer.rotulo}.</span>
+          <BotaoDesfazer type="button" onClick={executarDesfazer}>
+            Desfazer
+            <ContagemDesfazer>{restam}s</ContagemDesfazer>
+          </BotaoDesfazer>
+        </BarraDesfazer>
       )}
 
     </PageStack>

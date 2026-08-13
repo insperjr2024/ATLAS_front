@@ -9,6 +9,7 @@ import { FormErrorText } from "@/pages/Bancas.styled";
 import {
   LoteCard,
   LoteCardHeader,
+  LoteCardInfo,
   LoteCardMeta,
   LoteCardTitulo,
   LotesStack,
@@ -137,13 +138,13 @@ export function RelatorioPdi({ usuarioId, podeEnviarInicial, podeEnviarEncontro 
             return (
               <LoteCard key={pasta.pasta_id}>
                 <LoteCardHeader>
-                  <div>
+                  <LoteCardInfo>
                     <LoteCardTitulo>
                       {pasta.pasta_nome}
                       {pasta.pasta_semestre && ` (${pasta.pasta_semestre})`}
                     </LoteCardTitulo>
                     <LoteCardMeta>Prazo: {formatarData(pasta.prazo)}</LoteCardMeta>
-                  </div>
+                  </LoteCardInfo>
                 </LoteCardHeader>
 
                 {pasta.itens.length === 0 ? (
