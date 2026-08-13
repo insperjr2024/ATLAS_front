@@ -1769,9 +1769,11 @@ export function ProjetoCronograma() {
                           const uteis = diasDoIntervalo(t.data_inicio, t.data_fim).filter(
                             (d) => !diasNaoUteis.has(d),
                           ).length;
-                          // Trecho que TERMINA depois do marco tem correção
-                          // dentro dele, inclusive o que atravessa a data.
-                          const ehCorrecao = !!marcoCorrecoes && t.data_fim > marcoCorrecoes;
+                          // Qual banca precede este trecho, e como ela
+                          // terminou, é o que decide entre "correção N" e
+                          // "ajustes". Trecho que TERMINA depois do marco tem
+                          // retrabalho dentro dele, inclusive o que o atravessa.
+                          const posBanca = periodoDoTrecho(periodosPosBanca, t.data_fim);
                           return (
                             <small key={t.id}>
                               {semAno(t.data_inicio)} – {semAno(t.data_fim)} · {uteis}{" "}

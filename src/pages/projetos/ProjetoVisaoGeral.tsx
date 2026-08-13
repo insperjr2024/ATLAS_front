@@ -59,6 +59,7 @@ import {
   DatasGrid,
   DataItem,
   DataItemLabel,
+  DataItemNota,
   DataItemValor,
   EdicaoBotoes,
   EquipeList,
@@ -299,6 +300,24 @@ export function ProjetoVisaoGeral() {
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Por que ESTA entrega está travada, os quatro degraus.
+ *
+ * Um texto único ("a entrega só libera depois da banca ser aprovada") deixa
+ * quem lê sem próximo passo: marcar a banca, esperar os votos e marcar uma
+ * segunda banca são ações diferentes, e o cadeado é o único lugar onde essa
+ * diferença aparece na tela.
+ */
+function motivoDaTrava(banca: BancaDoEscopo | null): string {
+  if (!banca) return "Este escopo ainda não tem banca marcada, marque-a no Cronograma.";
+  if (!banca.realizado_em) return "A banca deste escopo ainda não foi realizada.";
+  if (banca.resultado === "nao_aprovada")
+    return "A banca não foi aprovada, é preciso marcar uma nova banca antes de entregar ao cliente.";
+  if (!banca.resultado)
+    return "A banca aconteceu, mas ainda não tem resultado: a entrega libera quando os avaliadores votarem.";
+  return "A entrega só é liberada depois da banca do escopo ser aprovada.";
+}
 
 /**
  * A tabela do escopo · status · dias usados · banca · entrega.

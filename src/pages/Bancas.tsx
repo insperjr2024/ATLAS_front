@@ -791,6 +791,8 @@ function SecaoBancas({
   onRealizar?: (banca: Banca) => void;
   /** Abre a alocação manual, só faz sentido enquanto a banca não aconteceu. */
   onAlocarPessoas?: (banca: Banca) => void;
+  /** Abre o registro de resultado, só faz sentido em banca já realizada. */
+  onRegistrarResultado?: (banca: Banca) => void;
   /** Alocar OUTRA pessoa é ação de diretoria, diferente de gerenciar. */
   ehDiretorLista?: boolean;
   onPedirTroca?: (bancaId: number) => void;

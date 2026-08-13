@@ -137,6 +137,29 @@ export function marcarKickoff(projetoId: number, dataKickoff: string, token: str
 // Não existe `marcarEntregaCliente`: entrega ao cliente e entrega do escopo
 // são a MESMA data, quem a escreve é `marcarEntregaEscopo`, e a do
 // projeto é derivada da última pelo backend.
+//
+// O que existe é a PROMESSA, abaixo: outra pergunta, outro campo.
+
+/**
+ * A data combinada com o cliente na venda.
+ *
+ * `null` limpa a promessa. Não toca na entrega realizada, aquela é derivada
+ * dos escopos e não passa por aqui.
+ */
+export function updateEntregaPrevistaCliente(
+  projetoId: number,
+  data: string | null,
+  token: string,
+) {
+  return apiFetch<{ id: number; data_entrega_prevista_cliente: string | null }>(
+    `/projetos/${projetoId}/entrega-prevista-cliente`,
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ data_entrega_prevista_cliente: data }),
+    },
+  );
+}
 
 /** `statusNovo` aceita qualquer etapa ativa (ver `destinosValidos`), `"pausado"` ou `"retomar"`. */
 export function mudarStatus(projetoId: number, statusNovo: string, token: string) {
