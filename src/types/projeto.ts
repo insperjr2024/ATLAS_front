@@ -64,6 +64,29 @@ export interface BancaDoEscopo {
   /** Todos os escopos que esta banca cobre, este incluído — uma banca pode
    *  avaliar mais de um escopo do projeto de uma vez. */
   escopo_ids: number[];
+  /**
+   * ⭐ Cada TENTATIVA da banca, da primeira à atual (§9).
+   *
+   * Os campos acima descrevem só a tentativa CORRENTE: uma banca reprovada e
+   * remarcada tem `data_hora` da 2ª e `resultado` nulo, e a reprovação da 1ª
+   * vive aqui. É o que permite ao cronograma pintar as duas.
+   *
+   * Opcional porque as bancas anteriores a `banca_sessao` não têm nenhuma —
+   * quem lê precisa tratar a lista vazia.
+   */
+  sessoes?: SessaoDaBanca[];
+}
+
+/** Uma tentativa de banca (§9) — a linha de `banca_sessao`. */
+export interface SessaoDaBanca {
+  id: number;
+  /** 1 na primeira, 2 na segunda… É o que vira "2ª banca" na tela. */
+  numero: number;
+  data_hora: string | null;
+  realizado_em: string | null;
+  resultado: ResultadoBanca | null;
+  /** Preenchido = tentativa arquivada. A corrente é a única sem ele. */
+  encerrada_em: string | null;
 }
 
 /**
@@ -176,7 +199,16 @@ export interface ProjetoCompleto extends ProjetoResumo {
    * Ambientação continua sendo pela mão de alguém.
    */
   fim_ambientacao: string | null;
+  /** ⭐ DERIVADA: a entrega do último escopo. O que ACONTECEU. */
   data_entrega_cliente: string | null;
+  /**
+   * ⭐ A PROMESSA feita ao cliente na venda. O que foi COMBINADO.
+   *
+   * Campo próprio, e não o de cima: juntar as duas fazia a promessa ser
+   * sobrescrita pela realidade na primeira entrega. Separadas, dá para medir
+   * se o projeto cumpriu o prazo prometido.
+   */
+  data_entrega_prevista_cliente: string | null;
   /** 1 = segunda … 7 = domingo. */
   dia_reuniao_padrao: number | null;
   criado_por: number | null;
@@ -290,10 +322,28 @@ export interface RemarcacaoBancaHistorico {
   alterado_por?: number | null;
 }
 
+/**
+ * ⭐ A banca tendo ACONTECIDO, e no que deu (§8).
+ *
+ * Uma linha por SESSÃO: a banca que reprovou continua no histórico depois que
+ * a segunda é marcada — é o que dá sentido ao rótulo "2ª banca". O veredito vem
+ * escrito em `detalhe`, junto do resto do envelope comum.
+ */
+export interface BancaRealizadaHistorico {
+  tipo: "banca_realizada";
+  id: string;
+  projeto_escopo_id: number | null;
+  titulo: string;
+  detalhe: string | null;
+  alterado_em: string;
+  alterado_por?: number | null;
+}
+
 export type HistoricoEntrada =
   | StatusHistorico
   | JustificativaAtrasoHistorico
   | RemarcacaoBancaHistorico
+  | BancaRealizadaHistorico
   | DiasDeAjusteHistorico
   | PedidoDeDiasHistorico
   | ReuniaoHistorico
