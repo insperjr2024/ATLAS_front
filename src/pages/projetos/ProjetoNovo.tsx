@@ -1,18 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Paperclip, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { createProjeto, DIAS_REUNIAO, uploadAnexoProposta } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import { getEscopos } from "@/lib/escopos";
-import {
-  MemberPicker,
-  montarEquipePayload,
-  validarEquipe,
-  type EquipeSelecionada,
-} from "@/components/membros/MemberPicker";
+import { montarEquipePayload, validarEquipe, type EquipeSelecionada } from "@/components/membros/MemberPicker";
+import { EquipeCampo } from "@/components/membros/EquipePainel";
 import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
 import {
   EscopoPicker,
@@ -23,49 +19,94 @@ import {
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { Escopo, Frente } from "@/types/banca";
 import {
-  PageStack,
-  PageCard,
-  PageCardHeader,
-  PageCardTitle,
-  PageCardContent,
   PageButton,
-  PageButtonSm,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
   EmptyText,
+  PageStack,
 } from "@/styles/page.styled";
 import {
   PageHeaderRow,
   PageHeaderText,
   PageHeading,
-  PageSubheading,
-  FormStack,
   FieldGroup,
   FieldLabel,
   Required,
   FieldInput,
   FieldTextarea,
   FieldSelect,
-  CheckboxGrid,
-  CheckboxLabel,
   FormErrorText,
-  FormFields,
-  ModoPropostaRow,
-  ModalFooter,
   VoltarLink,
 } from "./Projetos.styled";
+import {
+  AcoesBarra,
+  AcoesBotoes,
+  AcoesMensagem,
+  ArquivoBotao,
+  ArquivoLinha,
+  ArquivoNome,
+  ArquivoRemover,
+  CampoAjuda,
+  CamposGrade,
+  FrenteLista,
+  FrenteToggle,
+  ModoBotao,
+  ModoLista,
+  Secao,
+  SecaoCabecalho,
+  SecaoCorpo,
+  SecaoDescricao,
+  SecaoLista,
+  SecaoNumero,
+  SecaoTexto,
+  SecaoTitulo,
+} from "./ProjetoNovo.styled";
 
 /** Duas ou mais frentes tornam o projeto sinérgico — mesmo critério do
  *  backend em `get_projeto` (`len(frentes) > 1`). Não há teto de frentes. */
 const MIN_FRENTES_SINERGICO = 2;
+
+/** Um bloco do formulário: número, título e a frase que explica por que ele
+ *  existe. Fora do componente da página para não remontar a cada tecla. */
+function BlocoSecao({
+  numero,
+  titulo,
+  descricao,
+  children,
+}: {
+  numero: number;
+  titulo: string;
+  descricao: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Secao>
+      <SecaoCabecalho>
+        <SecaoNumero aria-hidden="true">{numero}</SecaoNumero>
+        <SecaoTexto>
+          <SecaoTitulo>{titulo}</SecaoTitulo>
+          <SecaoDescricao>{descricao}</SecaoDescricao>
+        </SecaoTexto>
+      </SecaoCabecalho>
+      <SecaoCorpo>{children}</SecaoCorpo>
+    </Secao>
+  );
+}
 
 /**
  * O cadastro do §6.3.
  *
  * ⚠ Kickoff **não** entra aqui: o projeto nasce Vendido, sem data. Ela é
  * marcada depois, na página do projeto, e é isso que dispara a mudança de
- * status. Os **escopos vendidos** também não — são a fatia F4.
+ * status.
+ *
+ * A **equipe é opcional** (2026-08-13). Antes o formulário exigia coordenador
+ * e pelo menos um consultor, e isso invertia a ordem real das coisas: o
+ * projeto é vendido antes de o time existir. Quem cadastrava punha nomes de
+ * mentira só para conseguir salvar — e esses nomes ficavam no histórico de
+ * participação, que o §10 não deixa reescrever. O time entra depois, em
+ * Vagas ou na Visão geral, e o mesmo painel lateral de Vagas serve aqui.
  */
 export function ProjetoNovo() {
   const { token } = useAuth();
@@ -85,6 +126,7 @@ export function ProjetoNovo() {
   const [linkProposta, setLinkProposta] = useState("");
   const [anexoProposta, setAnexoProposta] = useState<File | null>(null);
   const [erroAnexo, setErroAnexo] = useState("");
+  const anexoRef = useRef<HTMLInputElement>(null);
   const [frenteIds, setFrenteIds] = useState<number[]>([]);
   const [diasAmbientacao, setDiasAmbientacao] = useState("5");
   // 3 é o padrão combinado com o núcleo para o time de consultores.
@@ -158,6 +200,14 @@ export function ProjetoNovo() {
     setAnexoProposta(arquivo);
   }
 
+  /** Limpar o state não basta: sem zerar o `value` do input, escolher DE NOVO
+   *  o mesmo arquivo não dispara `change` e o anexo não volta. */
+  function limparAnexo() {
+    setAnexoProposta(null);
+    setErroAnexo("");
+    if (anexoRef.current) anexoRef.current.value = "";
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -171,6 +221,8 @@ export function ProjetoNovo() {
       setErro(erroEscopos);
       return;
     }
+    // Equipe vazia passa — o que ainda é erro é a mesma pessoa nos dois
+    // papéis. Ver `validarEquipe`.
     const erroEquipe = validarEquipe(equipe);
     if (erroEquipe) {
       setErro(erroEquipe);
@@ -251,13 +303,14 @@ export function ProjetoNovo() {
         </PageHeaderText>
       </PageHeaderRow>
 
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>Dados do projeto</PageCardTitle>
-        </PageCardHeader>
-        <FormStack onSubmit={handleSubmit}>
-          <PageCardContent>
-            <FormFields>
+      <form onSubmit={handleSubmit} noValidate>
+        <SecaoLista>
+          <BlocoSecao
+            numero={1}
+            titulo="O projeto"
+            descricao="Como ele vai ser reconhecido na lista, em Vagas e nas notificações."
+          >
+            <CamposGrade>
               <FieldGroup>
                 <FieldLabel htmlFor="projeto-nome">
                   Nome do projeto<Required>*</Required>
@@ -280,51 +333,84 @@ export function ProjetoNovo() {
                   placeholder="Padaria do Zé"
                 />
               </FieldGroup>
+            </CamposGrade>
 
-              <FieldGroup>
-                <FieldLabel>
-                  Frente(s)<Required>*</Required>
-                </FieldLabel>
-                <CheckboxGrid>
-                  {frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
+            <FieldGroup>
+              <FieldLabel htmlFor="projeto-descricao">Descrição</FieldLabel>
+              <FieldTextarea
+                id="projeto-descricao"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                placeholder="O que o cliente contratou."
+              />
+            </FieldGroup>
+          </BlocoSecao>
+
+          <BlocoSecao
+            numero={2}
+            titulo="Frentes e escopos vendidos"
+            descricao="A frente decide quais escopos existem para este projeto e quem aparece na hora de montar o time."
+          >
+            <FieldGroup>
+              <FieldLabel as="span">
+                Frente(s)<Required>*</Required>
+              </FieldLabel>
+              {frentes.length === 0 ? (
+                <EmptyText>Nenhuma frente cadastrada.</EmptyText>
+              ) : (
+                <FrenteLista>
                   {frentes.map((frente) => {
                     const marcada = frenteIds.includes(frente.id);
                     return (
-                      <CheckboxLabel key={frente.id}>
+                      <FrenteToggle key={frente.id} $marcada={marcada}>
                         <input
                           type="checkbox"
                           checked={marcada}
                           onChange={() => toggleFrente(frente.id)}
                         />
                         {frente.nome}
-                      </CheckboxLabel>
+                      </FrenteToggle>
                     );
                   })}
-                </CheckboxGrid>
-                {/* O texto acompanha a regra nova: sem teto de frentes, "sinérgico"
-                    passa a ser ">= 2" em vez de "exatamente 2". */}
-                <PageSubheading>
-                  {sinergico
-                    ? `🔗 ${frenteIds.length} frentes marcadas: o projeto é sinérgico e aparece para os gerentes de todas elas.`
-                    : "Marque quantas frentes o projeto tiver. Duas ou mais = projeto sinérgico."}
-                </PageSubheading>
-              </FieldGroup>
+                </FrenteLista>
+              )}
+              {/* Só quando acontece. A instrução ("marque quantas frentes o
+                  projeto tiver") saiu junto com as outras descrições de campo;
+                  isto aqui não descreve o campo, avisa uma consequência que
+                  muda o projeto de categoria — sem teto de frentes,
+                  "sinérgico" é ">= 2", o mesmo critério do `get_projeto`. */}
+              {sinergico && (
+                <CampoAjuda>
+                  {frenteIds.length} frentes marcadas: o projeto é sinérgico e aparece para os
+                  gerentes de todas elas.
+                </CampoAjuda>
+              )}
+            </FieldGroup>
 
-              <FieldGroup>
-                <FieldLabel>
-                  Escopos vendidos<Required>*</Required>
-                </FieldLabel>
-                <EscopoPicker
-                  catalogo={catalogo}
-                  frentes={frentes}
-                  frentesMarcadas={frenteIds}
-                  valor={escopos}
-                  onChange={setEscopos}
-                  desabilitado={salvando}
-                />
-              </FieldGroup>
+            <FieldGroup>
+              <FieldLabel as="span">
+                Escopos vendidos<Required>*</Required>
+              </FieldLabel>
+              <EscopoPicker
+                catalogo={catalogo}
+                frentes={frentes}
+                frentesMarcadas={frenteIds}
+                valor={escopos}
+                onChange={setEscopos}
+                desabilitado={salvando}
+              />
+            </FieldGroup>
+          </BlocoSecao>
 
+          <BlocoSecao
+            numero={3}
+            titulo="Prazos e capacidade"
+            descricao="Os números que a contagem de dias úteis e a página de Vagas usam."
+          >
+            <CamposGrade>
               <FieldGroup>
+                {/* "dias úteis" volta pro rótulo: sem a frase de apoio embaixo,
+                    é a única coisa que diz que 5 não são 5 dias corridos. */}
                 <FieldLabel htmlFor="projeto-ambientacao">
                   Dias de ambientação (dias úteis)<Required>*</Required>
                 </FieldLabel>
@@ -344,9 +430,7 @@ export function ProjetoNovo() {
                   venda fecha com data, e travar o cadastro por isso empurraria
                   quem cria a inventar um valor. */}
               <FieldGroup>
-                <FieldLabel htmlFor="projeto-entrega-prevista">
-                  Entrega prevista ao cliente
-                </FieldLabel>
+                <FieldLabel htmlFor="projeto-entrega-prevista">Entrega prevista ao cliente</FieldLabel>
                 <FieldInput
                   id="projeto-entrega-prevista"
                   type="date"
@@ -354,7 +438,9 @@ export function ProjetoNovo() {
                   onChange={(e) => setEntregaPrevista(e.target.value)}
                 />
               </FieldGroup>
+            </CamposGrade>
 
+            <CamposGrade>
               <FieldGroup>
                 <FieldLabel htmlFor="projeto-max-consultores">
                   Máximo de consultores<Required>*</Required>
@@ -368,27 +454,7 @@ export function ProjetoNovo() {
                   onChange={(e) => setMaxConsultores(e.target.value)}
                   required
                 />
-                <EmptyText>
-                  É o que decide se o projeto ainda aparece em Vagas. Não conta o coordenador.
-                </EmptyText>
               </FieldGroup>
-
-              <MemberPicker
-                usuarios={usuarios}
-                valor={equipe}
-                onChange={setEquipe}
-                desabilitado={salvando}
-                usuariosFrentes={usuariosFrentes}
-                frentes={frentes}
-                frenteIdsProjeto={frenteIds}
-              />
-
-              {/* Logo abaixo da escolha: serve para rever o time ANTES de
-                  fechar, não para descobrir o problema depois. */}
-              <CompatibilidadeHorarios
-                consultorIds={equipe.consultorIds}
-                usuarios={usuarios}
-              />
 
               <FieldGroup>
                 <FieldLabel htmlFor="projeto-dia-reuniao">Dia padrão da reunião semanal</FieldLabel>
@@ -405,34 +471,66 @@ export function ProjetoNovo() {
                   ))}
                 </FieldSelect>
               </FieldGroup>
+            </CamposGrade>
+          </BlocoSecao>
 
-              <FieldGroup>
-                <FieldLabel>Proposta</FieldLabel>
-                <ModoPropostaRow>
-                  <PageButtonSm
-                    type="button"
-                    $variant={modoProposta === "link" ? "primary" : "outline"}
-                    onClick={() => {
-                      setModoProposta("link");
-                      setAnexoProposta(null);
-                      setErroAnexo("");
-                    }}
-                  >
-                    Link
-                  </PageButtonSm>
-                  <PageButtonSm
-                    type="button"
-                    $variant={modoProposta === "anexo" ? "primary" : "outline"}
-                    onClick={() => {
-                      setModoProposta("anexo");
-                      setLinkProposta("");
-                    }}
-                  >
-                    Anexar PDF
-                  </PageButtonSm>
-                </ModoPropostaRow>
+          <BlocoSecao
+            numero={4}
+            titulo="Equipe"
+            descricao="Opcional. O projeto pode nascer sem time e ser preenchido depois, em Vagas. Não é preciso inventar nomes agora."
+          >
+            <EquipeCampo
+              usuarios={usuarios}
+              usuariosFrentes={usuariosFrentes}
+              frentes={frentes}
+              frenteIdsProjeto={frenteIds}
+              maxConsultores={Number(maxConsultores) || undefined}
+              valor={equipe}
+              onChange={setEquipe}
+              desabilitado={salvando}
+            />
 
-                {modoProposta === "link" ? (
+            {/* Logo abaixo da escolha: serve para rever o time ANTES de
+                fechar, não para descobrir o problema depois. Some sozinho com
+                menos de 2 consultores — a comparação é entre pessoas, e o
+                próprio componente já devolve `null` nesse caso. */}
+            <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={usuarios} />
+          </BlocoSecao>
+
+          <BlocoSecao
+            numero={5}
+            titulo="Proposta"
+            descricao="O documento fechado com o cliente: um link ou o PDF."
+          >
+            <FieldGroup>
+              <ModoLista role="group" aria-label="Formato da proposta">
+                <ModoBotao
+                  type="button"
+                  $ativo={modoProposta === "link"}
+                  aria-pressed={modoProposta === "link"}
+                  onClick={() => {
+                    setModoProposta("link");
+                    limparAnexo();
+                  }}
+                >
+                  Link
+                </ModoBotao>
+                <ModoBotao
+                  type="button"
+                  $ativo={modoProposta === "anexo"}
+                  aria-pressed={modoProposta === "anexo"}
+                  onClick={() => {
+                    setModoProposta("anexo");
+                    setLinkProposta("");
+                  }}
+                >
+                  Anexar PDF
+                </ModoBotao>
+              </ModoLista>
+
+              {modoProposta === "link" ? (
+                <>
+                  <FieldLabel htmlFor="projeto-proposta">Link da proposta</FieldLabel>
                   <FieldInput
                     id="projeto-proposta"
                     type="url"
@@ -440,43 +538,56 @@ export function ProjetoNovo() {
                     onChange={(e) => setLinkProposta(e.target.value)}
                     placeholder="https://…"
                   />
-                ) : (
-                  <>
-                    <FieldInput
-                      id="projeto-proposta-anexo"
-                      type="file"
-                      accept="application/pdf,.pdf"
-                      onChange={handleArquivoProposta}
-                    />
-                    {erroAnexo && <FormErrorText>{erroAnexo}</FormErrorText>}
-                  </>
-                )}
-              </FieldGroup>
+                </>
+              ) : (
+                <>
+                  <ArquivoLinha>
+                    <ArquivoBotao htmlFor="projeto-proposta-anexo">
+                      <Paperclip size={14} aria-hidden="true" />
+                      {anexoProposta ? "Trocar PDF" : "Escolher PDF"}
+                      <input
+                        ref={anexoRef}
+                        id="projeto-proposta-anexo"
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        aria-label="Arquivo da proposta, em PDF"
+                        onChange={handleArquivoProposta}
+                      />
+                    </ArquivoBotao>
+                    <ArquivoNome $vazio={!anexoProposta}>
+                      {anexoProposta ? anexoProposta.name : "Nenhum PDF escolhido"}
+                    </ArquivoNome>
+                    {anexoProposta && (
+                      <ArquivoRemover
+                        type="button"
+                        aria-label={`Remover ${anexoProposta.name}`}
+                        onClick={limparAnexo}
+                      >
+                        <X size={16} />
+                      </ArquivoRemover>
+                    )}
+                  </ArquivoLinha>
+                  {erroAnexo && <FormErrorText>{erroAnexo}</FormErrorText>}
+                </>
+              )}
+            </FieldGroup>
+          </BlocoSecao>
 
-              <FieldGroup>
-                <FieldLabel htmlFor="projeto-descricao">Descrição</FieldLabel>
-                <FieldTextarea
-                  id="projeto-descricao"
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
-                  placeholder="O que o cliente contratou, em uma linha ou duas."
-                />
-              </FieldGroup>
-
-              {erro && <FormErrorText>{erro}</FormErrorText>}
-            </FormFields>
-          </PageCardContent>
-
-          <ModalFooter>
-            <PageButton type="button" $variant="outline" onClick={() => navigate("/projetos")}>
-              Cancelar
-            </PageButton>
-            <PageButton type="submit" disabled={salvando}>
-              {salvando ? "Criando…" : "Criar projeto"}
-            </PageButton>
-          </ModalFooter>
-        </FormStack>
-      </PageCard>
+          <AcoesBarra>
+            <AcoesMensagem $erro={!!erro} role={erro ? "alert" : undefined}>
+              {erro || "Nome, frentes e escopos são o mínimo para criar."}
+            </AcoesMensagem>
+            <AcoesBotoes>
+              <PageButton type="button" $variant="outline" onClick={() => navigate("/projetos")}>
+                Cancelar
+              </PageButton>
+              <PageButton type="submit" disabled={salvando}>
+                {salvando ? "Criando…" : "Criar projeto"}
+              </PageButton>
+            </AcoesBotoes>
+          </AcoesBarra>
+        </SecaoLista>
+      </form>
     </PageStack>
   );
 }

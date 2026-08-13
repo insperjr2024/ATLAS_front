@@ -6,7 +6,7 @@ import type { MembroEquipePayload } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
 import { normalizarTexto } from "@/lib/nucleo";
-import { FieldGroup, FieldLabel, Required } from "@/pages/Bancas.styled";
+import { FieldGroup, FieldLabel } from "@/pages/Bancas.styled";
 import {
   AddRow,
   Chip,
@@ -48,20 +48,28 @@ export const POSICOES_ELEGIVEIS_CONSULTOR: Posicao[] = ["consultor", "coordenado
 export const POSICOES_ELEGIVEIS_COORDENADOR: Posicao[] = ["coordenador", "gerente"];
 
 /**
- * A regra do coordenador e do mínimo de consultor (§6.3) numa função só,
- * para o formulário de criação e o modal de editar equipe dizerem exatamente
- * a mesma coisa. O backend revalida em `create_projeto.py` e
- * `update_equipe_projeto.py`. Consultor não tem máximo, só o mínimo de 1.
+ * A regra de equipe (§6.3) numa função só, para o formulário de criação e o
+ * modal de editar equipe dizerem exatamente a mesma coisa. O backend revalida
+ * em `validacao_equipe.py`.
+ *
+ * **A equipe pode estar vazia** (2026-08-13). Exigir coordenador e ao menos
+ * um consultor já no cadastro invertia a ordem real das coisas — o projeto é
+ * vendido antes de o time existir, e quem cadastrava era obrigado a inventar
+ * nomes só para o formulário passar. Esses nomes ficavam no histórico de
+ * participação, que o §10 não deixa reescrever. O time entra depois, em
+ * Vagas ou na Visão geral.
+ *
+ * Sobra uma checagem só, a que continua sendo erro de verdade: a mesma
+ * pessoa nas duas cadeiras do mesmo projeto — o backend recusa, e a
+ * contagem de consultores alocados leria as duas linhas como duas pessoas.
  *
  * Ninguém tem limite de projetos: a mesma pessoa pode coordenar (ou consultar)
  * vários ao mesmo tempo, por isso não há checagem contra outros projetos.
  */
 export function validarEquipe({ coordenadorId, consultorIds }: EquipeSelecionada): string | null {
-  if (!coordenadorId) return "Escolha o coordenador do projeto.";
-  if (consultorIds.includes(coordenadorId)) {
+  if (coordenadorId && consultorIds.includes(coordenadorId)) {
     return "O coordenador não pode ser também consultor do mesmo projeto.";
   }
-  if (consultorIds.length === 0) return "Escolha pelo menos um consultor.";
   return null;
 }
 
@@ -188,9 +196,10 @@ export function MemberPicker({
   return (
     <PickerStack>
       <FieldGroup>
-        <FieldLabel htmlFor="equipe-coordenador">
-          Coordenador<Required>*</Required>
-        </FieldLabel>
+        {/* Sem asterisco: a equipe deixou de ser obrigatória — ver
+            `validarEquipe`. Um projeto pode ficar sem coordenador enquanto a
+            gestão decide quem assume. */}
+        <FieldLabel htmlFor="equipe-coordenador">Coordenador</FieldLabel>
         <PessoaDropdown
           id="equipe-coordenador"
           opcoes={elegiveisCoordenador}
@@ -208,12 +217,10 @@ export function MemberPicker({
       </FieldGroup>
 
       <FieldGroup>
-        <FieldLabel htmlFor="equipe-consultor">
-          Consultores<Required>*</Required>
-        </FieldLabel>
+        <FieldLabel htmlFor="equipe-consultor">Consultores</FieldLabel>
         <ChipRow>
           {consultorIds.length === 0 && (
-            <CountHint $ok={false}>Escolha pelo menos um consultor.</CountHint>
+            <CountHint $ok={false}>Nenhum consultor no time ainda.</CountHint>
           )}
           {consultorIds.map((id) => (
             <Chip key={id}>

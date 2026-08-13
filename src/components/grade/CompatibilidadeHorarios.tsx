@@ -135,7 +135,7 @@ export function CompatibilidadeHorarios({ consultorIds, usuarios }: Props) {
                     <MiniCelula
                       key={dia}
                       $livre={livre}
-                      title={`${dia}, ${faixa.hora_inicio} — ${
+                      title={`${dia}, ${faixa.hora_inicio}: ${
                         livre ? "todos livres" : "alguém tem aula"
                       }`}
                     />
@@ -152,7 +152,7 @@ export function CompatibilidadeHorarios({ consultorIds, usuarios }: Props) {
           texto genérico não sabe dizer: quem exatamente. */}
       {nomesSemGrade.length > 0 && nomesSemGrade.length < dados.considerados.length && (
         <Aviso>
-          {`${nomesSemGrade.join(", ")} ainda não preencheu a grade — ${
+          {`${nomesSemGrade.join(", ")} ainda não preencheu a grade e ${
             nomesSemGrade.length === 1 ? "entrou" : "entraram"
           } na conta como livre em todos os horários.`}
         </Aviso>
