@@ -18,15 +18,15 @@ import {
 import { ItemLista, LinkProjeto, ListaSimples, Pilula } from "./Monitoramento.styled";
 
 /**
- * ⭐ A fila da diretoria — tudo que espera decisão dela, num lugar só.
+ * A fila da diretoria, tudo que espera decisão dela, num lugar só.
  *
  * O problema que esta aba resolve não é de dado, é de descoberta. As decisões
  * estavam espalhadas: o pedido de dias num card da Visão geral e a
  * justificativa de atraso dentro da aba Atrasos. Fila que ninguém sabe que
- * existe é fila parada — dois pedidos chegaram a ficar represados sem ninguém
+ * existe é fila parada, dois pedidos chegaram a ficar represados sem ninguém
  * notar.
  *
- * ⚠ **Nem toda ação restrita à diretoria é uma aprovação.** Criar formulário,
+ * **Nem toda ação restrita à diretoria é uma aprovação.** Criar formulário,
  * configurar coluna do kanban e excluir usuário também são só dela, e nenhuma
  * entra aqui: são coisas que ela FAZ quando quer, não coisas que esperam por
  * ela. O critério é ter alguém do outro lado bloqueado enquanto não houver
@@ -108,8 +108,8 @@ export function AprovacoesAba() {
           ) : (
             <>
               <EmptyText style={{ marginBottom: "0.75rem" }}>
-                §7.4: o alerta de atraso é automático, mas o motivo é você quem escreve — e é ele
-                que explica o vermelho para quem olha o portfólio depois.
+                O alerta de atraso é automático, mas o motivo é você quem escreve, e é ele que
+                explica o vermelho para quem olha o portfólio depois.
               </EmptyText>
               <ListaSimples>
                 {dados.atrasos_sem_justificativa.map((a) => (
@@ -131,10 +131,10 @@ export function AprovacoesAba() {
         </PageCardContent>
       </PageCard>
 
-      {/* ⚠ Havia aqui um terceiro card, "Entregas sem classificação": as
+      {/* Havia aqui um terceiro card, "Entregas sem classificação": as
           entregas atrasadas ainda não marcadas como atraso interno ou por
           agenda do cliente. Saiu em 2026-08-12 junto com o que lhe dava
-          sentido — o atraso de ENTREGA deixou de ser insight, e com ele a
+          sentido, o atraso de ENTREGA deixou de ser insight, e com ele a
           métrica que separava os dois tipos. O card seguia pedindo à diretoria
           uma classificação que não mudava mais número nenhum. */}
     </PageStack>

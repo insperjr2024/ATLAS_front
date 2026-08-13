@@ -17,11 +17,11 @@ interface Props {
 }
 
 /**
- * "Como funciona" — a explicação da tela, sob demanda.
+ * "Como funciona", a explicação da tela, sob demanda.
  *
- * 📐 Num botão, e não num texto fixo no topo: quem usa a tela todo dia não
+ * Num botão, e não num texto fixo no topo: quem usa a tela todo dia não
  * precisa reler a instrução, e um aviso permanente vira ruído que se aprende
- * a ignorar. Quem chega pela primeira vez procura ajuda — e acha.
+ * a ignorar. Quem chega pela primeira vez procura ajuda, e acha.
  *
  * O conteúdo descreve o GESTO (escolher escopo, ligar o modo, clicar no dia),
  * porque é isso que não se descobre olhando: um calendário não anuncia que é
@@ -52,7 +52,7 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
               <PassoTitulo>1. Escolha um escopo</PassoTitulo>
               <PassoTexto>
                 No seletor acima. Em <strong>Todos os escopos</strong> você vê o projeto
-                inteiro, mas só consegue marcar kickoff e reunião semanal — as datas de
+                inteiro, mas só consegue marcar kickoff e reunião semanal, as datas de
                 banca e entrega pertencem a um escopo específico.
               </PassoTexto>
             </PassoItem>
@@ -69,7 +69,7 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
             <PassoItem>
               <PassoTitulo>3. Clique no dia</PassoTitulo>
               <PassoTexto>
-                No calendário. Abre uma confirmação antes de gravar — nenhum clique crava
+                No calendário. Abre uma confirmação antes de gravar, nenhum clique crava
                 data direto. Para sair do modo sem marcar nada, aperte{" "}
                 <strong>Esc</strong> ou clique no botão de novo.
               </PassoTexto>

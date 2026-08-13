@@ -7,14 +7,14 @@ interface Props {
 }
 
 /**
- * Erro de regra de negócio — o que a plataforma recusou, e por quê.
+ * Erro de regra de negócio, o que a plataforma recusou, e por quê.
  *
- * 📐 Fica até a pessoa fechar. Antes era um `<p>` vermelho pequeno que a ação
+ * Fica até a pessoa fechar. Antes era um `<p>` vermelho pequeno que a ação
  * seguinte apagava: quem não lesse na hora perdia a explicação, e mensagens
  * como "Composição incompleta (faltam 1 de Tech)" são longas demais para
  * serem lidas de relance.
  *
- * 📐 O texto é selecionável de propósito (`user-select`): quem não entende a
+ * O texto é selecionável de propósito (`user-select`): quem não entende a
  * recusa costuma copiar e mandar para outra pessoa. Um aviso que some não
  * dá nem tempo disso.
  */

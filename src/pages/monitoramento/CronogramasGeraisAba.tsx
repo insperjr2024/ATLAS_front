@@ -23,7 +23,7 @@ import {
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
-/** Um limiar curto o bastante para chamar atenção antes de estourar — não
+/** Um limiar curto o bastante para chamar atenção antes de estourar, não
  *  é a mesma régua do backend (que só distingue em_contagem/estourou), é
  *  só o corte visual de "quase lá" nesta tela. */
 const DIAS_LIMIAR_ATENCAO = 5;
@@ -44,16 +44,16 @@ function rodapeDoEscopo(escopo: EscopoCritico | null): { tom: TomPilula; rotulo:
 }
 
 /** Pra "Voltar" (no header do projeto) devolver pra cá, e não pra listagem
- *  de projetos — ver `voltarDoLocation` em `ProjetoPage.tsx`. */
+ *  de projetos, ver `voltarDoLocation` em `ProjetoPage.tsx`. */
 const VOLTAR_PARA_AQUI = {
   voltarPara: "/monitoramento/cronogramas",
   voltarRotulo: "Voltar para Monitoramento",
 };
 
 /**
- * Board macro de cronogramas (§7): o mês atual de todos os projetos
+ * Board macro de cronogramas: o mês atual de todos os projetos
  * visíveis, um mini-calendário por projeto, ordenados pelo escopo mais
- * perto de estourar o prazo primeiro — a ordem já vem pronta do backend.
+ * perto de estourar o prazo primeiro, a ordem já vem pronta do backend.
  *
  * Read-only, mesmo espírito da aba Tarefas: clicar no card leva para o
  * cronograma de verdade do projeto, onde dá para editar.

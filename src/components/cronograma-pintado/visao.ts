@@ -1,13 +1,13 @@
 /**
- * A visão do cronograma — dia, semana ou mês — e a navegação entre períodos.
+ * A visão do cronograma, dia, semana ou mês, e a navegação entre períodos.
  *
  * Existe separado do `PaintedCalendar` de propósito: o componente continua
  * burro e controlado, recebendo blocos já derivados. É isso que mantém o
  * arrastar-e-pintar agnóstico de layout (ele faz hit-test por `data-dia`, não
  * por posição na grade) e o que torna esta derivação testável sem montar React.
  *
- * Atenção: o §6.4 do case pede os meses empilhados como formato canônico. As visões
- * de semana e dia são lentes de trabalho para o detalhe, não substitutas — a
+ * Atenção: o  do case pede os meses empilhados como formato canônico. As visões
+ * de semana e dia são lentes de trabalho para o detalhe, não substitutas, a
  * de mês é o default.
  */
 
@@ -23,7 +23,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { chaveData, diasDaSemana, rotulosDiaSemana, semanasDoMes } from "@/components/calendario/semanas";
 
-/** §6.4 pede seg–dom para o cronograma. */
+/**  pede seg–dom para o cronograma. */
 export const INICIO_SEMANA = 1;
 
 const ROTULOS_SEMANA = rotulosDiaSemana(INICIO_SEMANA);
@@ -84,8 +84,8 @@ export function intervaloDaVisao(visao: Visao, referencia: Date): { inicio: stri
  * Os 1ºs-de-mês cobertos pela janela do projeto.
  *
  * Usado pelo export: o PDF sai dos meses que a pessoa escolheu, e não do
- * recorte que estava na tela — um PDF de um dia só não é "pronto para
- * apresentações" (§6.4).
+ * recorte que estava na tela, um PDF de um dia só não é "pronto para
+ * apresentações".
  */
 export function mesesDaJanela(inicio: string, fim: string): Date[] {
   const meses: Date[] = [];
@@ -99,7 +99,7 @@ export function mesesDaJanela(inicio: string, fim: string): Date[] {
   return meses;
 }
 
-/** Vários meses empilhados — o formato canônico do §6.4, usado no export. */
+/** Vários meses empilhados, o formato canônico, usado no export. */
 export function blocosDosMeses(meses: Date[]): BlocoCalendario[] {
   return meses.map((mes) => blocoDoMes(mes));
 }

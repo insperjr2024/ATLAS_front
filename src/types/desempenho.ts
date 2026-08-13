@@ -1,4 +1,4 @@
-// Avaliação de Desempenho — periódica/finalização de consultores e
+// Avaliação de Desempenho, periódica/finalização de consultores e
 // coordenadores. Não confundir com os tipos de `banca.ts` (feedback de
 // banca, outra feature).
 
@@ -63,7 +63,7 @@ export interface DesempenhoFilaItem {
   lote_nome: string;
   lote_tipo: DesempenhoTipo;
   /** false = o lote fechou (manualmente ou pelo prazo) com essa pendência
-   *  ainda em aberto — item continua aparecendo por um tempo só pro aviso,
+   *  ainda em aberto, item continua aparecendo por um tempo só pro aviso,
    *  nunca dá pra responder por ele. */
   aberto: boolean;
   avaliado_id: number;
@@ -130,7 +130,7 @@ export interface DesempenhoPdiPasta {
   tipo: DesempenhoPdiPastaTipo;
   prazo: string;
   ordem: number;
-  /** Gestão vigente na data do prazo (ex: "2026.2") — derivado no backend,
+  /** Gestão vigente na data do prazo (ex: "2026.2"), derivado no backend,
    *  não é um campo próprio da pasta. `null` se o prazo cair fora de
    *  qualquer semestre cadastrado. */
   semestre: string | null;
@@ -138,7 +138,7 @@ export interface DesempenhoPdiPasta {
 
 export type DesempenhoPdiItemTipoArquivo = "documento" | "foto" | "qualquer";
 
-/** Um documento exigido dentro de uma pasta — a pasta é uma checklist de
+/** Um documento exigido dentro de uma pasta, a pasta é uma checklist de
  *  itens (ex: "Encontro 1" pode exigir Foto + Relatório, cada um com seu
  *  próprio envio). `tipo_arquivo` restringe o formato aceito no upload. */
 export interface DesempenhoPdiItem {
@@ -171,7 +171,7 @@ export interface DesempenhoPdiItemComEnvio {
   envio: DesempenhoPdiEnvio | null;
 }
 
-/** Uma linha por PASTA, com a checklist de itens dentro — é o shape que
+/** Uma linha por PASTA, com a checklist de itens dentro, é o shape que
  *  `RelatorioPdi` desenha direto, sem precisar cruzar listas. */
 export interface DesempenhoPdiPastaComItens {
   pasta_id: number;

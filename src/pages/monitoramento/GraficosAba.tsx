@@ -58,14 +58,14 @@ type TipoGrafico = (typeof TIPOS)[number]["chave"];
 const CORES = PALETA.map((p) => p.amostra);
 
 /**
- * Montador de gráficos do monitoramento (§7).
+ * Montador de gráficos do monitoramento.
  *
- * 📐 As tabelas oferecidas vêm de um catálogo curado no backend — o front não
+ * As tabelas oferecidas vêm de um catálogo curado no backend, o front não
  * conhece o banco nem tem cópia da lista. Coluna de credencial, texto sobre
  * pessoas e tabela de ligação ficam de fora de propósito; ver o aviso no topo
  * de `graficos.py`.
  *
- * 📐 Nada fica salvo. O gráfico existe enquanto a tela está aberta — foi a
+ * Nada fica salvo. O gráfico existe enquanto a tela está aberta, foi a
  * escolha do núcleo, para ver se o formato serve antes de virar tabela nova.
  */
 export function GraficosAba() {
@@ -113,7 +113,7 @@ export function GraficosAba() {
   const podeMedir = metricas.length > 0 && !ehRelacao;
 
   // Só busca quando a combinação está completa. `operacao` diferente de
-  // contagem exige métrica — sem ela o backend recusaria e a tela piscaria
+  // contagem exige métrica, sem ela o backend recusaria e a tela piscaria
   // erro enquanto a pessoa ainda está montando.
   const pronto = !!tabela && !!dimensao && (operacao === "contagem" || !!metrica);
   const chave = pronto

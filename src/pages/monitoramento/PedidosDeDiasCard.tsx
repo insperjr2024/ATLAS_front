@@ -19,15 +19,15 @@ import { FieldGroup, FieldInput, FieldLabel } from "@/pages/projetos/Projetos.st
 import { ItemLista, LinkProjeto, ListaSimples } from "./Monitoramento.styled";
 
 /**
- * §8: a fila de pedidos de dias de ajuste, para quem os aprova.
+ * a fila de pedidos de dias de ajuste, para quem os aprova.
  *
- * ⭐ **É o segundo caminho, não o único.** O mesmo pedido pode ser decidido no
+ * **É o segundo caminho, não o único.** O mesmo pedido pode ser decidido no
  * banner do cronograma do projeto, onde o estouro está à vista. Esta lista
  * existe para quem chega pelo portfólio: sem ela, a diretoria só descobriria os
  * pedidos abrindo projeto por projeto ou pela notificação, que some quando é
  * lida.
  *
- * A decisão exige justificativa nos dois sentidos — aprovar e negar. O §8 diz
+ * A decisão exige justificativa nos dois sentidos, aprovar e negar. O  diz
  * que a recusa fica registrada, e é ela que explica depois por que a janela
  * continuou nos dias vendidos.
  */
@@ -39,12 +39,12 @@ export function PedidosDeDiasCard({ onDecidiu }: { onDecidiu?: () => void } = {}
   const [justificativa, setJustificativa] = useState("");
   const [enviando, setEnviando] = useState(false);
 
-  // ⚠ A régua é a POSIÇÃO, não uma caixa de cargo.
+  // A régua é a POSIÇÃO, não uma caixa de cargo.
   //
   // Isto lia `cargo.pode_aprovar_reajuste`, que o backend removeu junto com a
   // coluna (migration 1556cc590a06). Como o campo deixou de vir, o default
-  // `false` do AuthContext valia sempre — e o `return null` logo abaixo
-  // escondia o card até da diretora, que é justamente quem decide. O §8 diz
+  // `false` do AuthContext valia sempre, e o `return null` logo abaixo
+  // escondia o card até da diretora, que é justamente quem decide. O  diz
   // "só a diretoria", e é isso que o `require_diretor` da rota cobra.
   const podeAprovar = usuario?.posicao === "diretor";
 
@@ -101,7 +101,7 @@ export function PedidosDeDiasCard({ onDecidiu }: { onDecidiu?: () => void } = {}
               <ItemLista key={p.id}>
                 <div>
                   <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`}>
-                    {p.projeto_nome ?? "Projeto"} — {p.escopo_nome ?? "escopo"}
+                    {p.projeto_nome ?? "Projeto"}, {p.escopo_nome ?? "escopo"}
                   </LinkProjeto>
                   {/* Os dois números lado a lado, nunca somados: é contra a
                       janela de hoje que a diretoria decide se +N faz sentido. */}

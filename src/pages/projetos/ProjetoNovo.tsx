@@ -56,16 +56,16 @@ import {
   VoltarLink,
 } from "./Projetos.styled";
 
-/** Duas ou mais frentes tornam o projeto sinérgico — mesmo critério do
+/** Duas ou mais frentes tornam o projeto sinérgico, mesmo critério do
  *  backend em `get_projeto` (`len(frentes) > 1`). Não há teto de frentes. */
 const MIN_FRENTES_SINERGICO = 2;
 
 /**
- * O cadastro do §6.3.
+ * O cadastro do projeto.
  *
- * ⚠ Kickoff **não** entra aqui: o projeto nasce Vendido, sem data. Ela é
+ * Kickoff **não** entra aqui: o projeto nasce Vendido, sem data. Ela é
  * marcada depois, na página do projeto, e é isso que dispara a mudança de
- * status. Os **escopos vendidos** também não — são a fatia F4.
+ * status. Os **escopos vendidos** também não, são a fatia F4.
  */
 export function ProjetoNovo() {
   const { token } = useAuth();
@@ -132,7 +132,7 @@ export function ProjetoNovo() {
     setFrenteIds((atual) => {
       if (atual.includes(id)) {
         const novas = atual.filter((x) => x !== id);
-        // Desmarcar a frente tem que levar os escopos dela junto — senão o
+        // Desmarcar a frente tem que levar os escopos dela junto, senão o
         // formulário envia um escopo de uma frente que o projeto não tem
         // mais, e o backend recusa com uma mensagem confusa.
         setEscopos((lista) => lista.filter((e) => novas.includes(e.frente_id)));
@@ -180,7 +180,7 @@ export function ProjetoNovo() {
     let projetoId = projetoCriadoId;
     try {
       // Se o projeto já foi criado numa tentativa anterior (e só o upload do
-      // anexo falhou), não cria de novo — só reenvia o anexo.
+      // anexo falhou), não cria de novo, só reenvia o anexo.
       if (!projetoId) {
         const projeto = await createProjeto(
           {
@@ -300,7 +300,7 @@ export function ProjetoNovo() {
                     passa a ser ">= 2" em vez de "exatamente 2". */}
                 <PageSubheading>
                   {sinergico
-                    ? `🔗 ${frenteIds.length} frentes marcadas: o projeto é sinérgico e aparece para os gerentes de todas elas.`
+                    ? `${frenteIds.length} frentes marcadas: o projeto é sinérgico e aparece para os gerentes de todas elas.`
                     : "Marque quantas frentes o projeto tiver. Duas ou mais = projeto sinérgico."}
                 </PageSubheading>
               </FieldGroup>

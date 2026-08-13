@@ -7,8 +7,8 @@ import { useMonitoramento } from "./MonitoramentoLayout";
 /**
  * O filtro de frente de UMA aba.
  *
- * ⭐ **Cada aba tem o seu, e não há mais um global no topo.** O seletor único
- * ficava longe do conteúdo — quem descia até a tabela não via qual frente
+ * **Cada aba tem o seu, e não há mais um global no topo.** O seletor único
+ * ficava longe do conteúdo, quem descia até a tabela não via qual frente
  * estava escolhida, e o número na tela parecia o do núcleo inteiro. Perto do
  * card, o recorte se lê junto com o dado que ele recorta.
  *
@@ -16,9 +16,9 @@ import { useMonitoramento } from "./MonitoramentoLayout";
  * cada aba ter memória própria, e resolve o caso comum de olhar Atrasos de uma
  * frente e Alocação do núcleo todo sem ficar re-selecionando.
  *
- * ⚠ Quem **decide** é o backend. Mesmo que um gerente forje um `?frente_id=`,
- * `aplicar_recorte_visao` restringe às frentes dele — esconder o seletor aqui
- * é conveniência de UI, não segurança (§7.5: "o gerente fica travado na própria
+ * Quem **decide** é o backend. Mesmo que um gerente forje um `?frente_id=`,
+ * `aplicar_recorte_visao` restringe às frentes dele, esconder o seletor aqui
+ * é conveniência de UI, não segurança ("o gerente fica travado na própria
  * frente").
  */
 export function useFiltroFrente() {

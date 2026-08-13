@@ -25,7 +25,7 @@ import {
 /**
  * Passo 1 da recuperação: pedir o link por e-mail.
  *
- * ⚠ O texto de sucesso é condicional de propósito — "se este e-mail estiver
+ * O texto de sucesso é condicional de propósito, "se este e-mail estiver
  * cadastrado" e não "enviamos para você". O backend responde igual exista o
  * e-mail ou não, para a rota pública não virar um verificador de quem é membro
  * do núcleo; prometer entrega aqui desmentiria isso e ainda entregaria a

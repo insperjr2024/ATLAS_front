@@ -35,20 +35,20 @@ import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
 /**
- * Board macro (§7): todas as tarefas de todos os projetos visíveis, num
- * lugar só. Em swimlanes — uma faixa por projeto — porque um board com os
+ * Board macro: todas as tarefas de todos os projetos visíveis, num
+ * lugar só. Em swimlanes, uma faixa por projeto, porque um board com os
  * cards misturados dentro da mesma coluna não deixa ver de relance quais
  * são do mesmo projeto; a faixa já é o agrupamento.
  *
- * Read-only de propósito — arrastar move a tarefa DE VERDADE dentro de um
+ * Read-only de propósito, arrastar move a tarefa DE VERDADE dentro de um
  * projeto, e aqui não tem "o projeto" único pra isso fazer sentido. Clicar
  * no card leva pro board real, onde a ação existe.
  *
- * As colunas vêm do backend já agrupadas por nome (§ TarefasGeraisUseCase):
+ * As colunas vêm do backend já agrupadas por nome (TarefasGeraisUseCase):
  * projetos com o fluxo padrão caem nas mesmas 5 colunas de sempre; um
  * projeto com coluna própria só alarga a grade, sem quebrar o resto.
  */
-/** Cor fixa por projeto — mesma paleta das colunas de tarefa, pra não
+/** Cor fixa por projeto, mesma paleta das colunas de tarefa, pra não
  *  inventar uma segunda linguagem de cor na mesma tela. Não é a cor da
  *  frente nem de nada do domínio, só uma identidade visual estável (o id
  *  não muda, então o projeto sempre cai na mesma cor). */
@@ -57,7 +57,7 @@ function corDoProjeto(projetoId: number): string {
 }
 
 /** Pra "Voltar" (no header do projeto) devolver pra cá, e não pra listagem
- *  de projetos — ver `voltarDoLocation` em `ProjetoPage.tsx`. */
+ *  de projetos, ver `voltarDoLocation` em `ProjetoPage.tsx`. */
 const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/tarefas", voltarRotulo: "Voltar para Monitoramento" };
 
 export function TarefasGeraisAba() {
@@ -133,7 +133,7 @@ export function TarefasGeraisAba() {
     );
   }
 
-  // Uma linha por projeto — só quem tem alguma tarefa na visão atual entra.
+  // Uma linha por projeto, só quem tem alguma tarefa na visão atual entra.
   const projetos = Array.from(
     new Map(
       dados.tarefas.map((t) => [t.projeto_id, { nome: t.projeto_nome, cliente: t.cliente }]),
@@ -206,7 +206,7 @@ export function TarefasGeraisAba() {
         >
           {projetos.map((projeto) => (
             <Fragment key={projeto.id}>
-              {/* Linha PRÓPRIA, ocupando a largura toda — não é mais uma coluna
+              {/* Linha PRÓPRIA, ocupando a largura toda, não é mais uma coluna
                   congelada à esquerda. Como coluna, os cards passavam por baixo
                   dela ao rolar para o lado, que é o comportamento inerente de
                   `position: sticky` e não tinha conserto por CSS. Aqui não há

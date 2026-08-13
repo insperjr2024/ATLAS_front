@@ -38,13 +38,13 @@ function etapasPresentes(linhas: LinhaCarga[]): StatusProjeto[] {
 }
 
 /**
- * Carga por pessoa (§7.3), filtrável por etapa.
+ * Carga por pessoa, filtrável por etapa.
  *
  * Responde o que as tabelas abaixo não respondem: "quem está cheio **de projeto
  * em validação de bancas**". A carga total já está na tabela; aqui a pergunta é
  * a fatia dela.
  *
- * ⚠ **O filtro muda a barra, nunca a situação.** `total` e `situacao` da linha
+ * **O filtro muda a barra, nunca a situação.** `total` e `situacao` da linha
  * são do backend, sobre a carga inteira. Recalcular a situação sobre o
  * subconjunto faria a mesma pessoa aparecer "Disponível" no gráfico filtrado e
  * "Carga alta" na tabela logo abaixo.
@@ -63,7 +63,7 @@ export function BarrasCarga({ papel, linhas }: { papel: Papel; linhas: LinhaCarg
       .map((l) => ({
         nome: l.nome,
         // Sem filtro o valor é o `total` do backend. Com filtro, a contagem do
-        // subconjunto — e é só isso que o filtro pode mexer.
+        // subconjunto, e é só isso que o filtro pode mexer.
         valor: etapa ? l.projetos.filter((p) => p.status === etapa).length : l.total,
       }))
       // Quem tem zero no recorte sai: uma barra de altura zero só ocupa espaço
@@ -75,8 +75,8 @@ export function BarrasCarga({ papel, linhas }: { papel: Papel; linhas: LinhaCarg
       .sort((a, b) => b.valor - a.valor || a.nome.localeCompare(b.nome));
   }, [linhas, etapa]);
 
-  // ⭐ Páginas de 15, e NÃO rolagem. Rolagem funciona para lista; num gráfico de
-  // barras ela destrói o próprio recurso — comparar alturas exige ver as barras
+  // Páginas de 15, e NÃO rolagem. Rolagem funciona para lista; num gráfico de
+  // barras ela destrói o próprio recurso, comparar alturas exige ver as barras
   // ao mesmo tempo, e o que está fora da tela não se compara com nada. Cada
   // página é um conjunto inteiro na tela, comparável entre si.
   //
@@ -92,9 +92,9 @@ export function BarrasCarga({ papel, linhas }: { papel: Papel; linhas: LinhaCarg
   // Uma barra ocupa ~1.75rem; o container precisa de altura fixa porque o
   // ResponsiveContainer mede o pai e em altura `auto` calcula zero.
   //
-  // ⭐ Com mais de uma página, a altura é a da PÁGINA CHEIA, não a da página
+  // Com mais de uma página, a altura é a da PÁGINA CHEIA, não a da página
   // atual. A última costuma ter menos barras, e dimensioná-la pelo conteúdo
-  // encolhia o card ao virar a página — a tela inteira saltava, e o botão de
+  // encolhia o card ao virar a página, a tela inteira saltava, e o botão de
   // voltar fugia de debaixo do cursor.
   const barrasNaAltura = grafico.totalPaginas > 1 ? BARRAS_POR_PAGINA : dados.length;
   const altura = `${Math.max(8, barrasNaAltura * 1.75 + 2)}rem`;
@@ -120,7 +120,7 @@ export function BarrasCarga({ papel, linhas }: { papel: Papel; linhas: LinhaCarg
         </FieldSelect>
 
         {/* Sem este aviso o gráfico mostra números menores que a tabela logo
-            abaixo e parece bug — o filtro fica escondido num select que
+            abaixo e parece bug, o filtro fica escondido num select que
             ninguém relê depois de escolher. */}
         {etapa && <FiltroAtivo>contando só {ROTULO_STATUS[etapa].toLowerCase()}</FiltroAtivo>}
       </ControlesGrafico>
@@ -138,9 +138,9 @@ export function BarrasCarga({ papel, linhas }: { papel: Papel; linhas: LinhaCarg
                 e texto girado é ilegível numa lista longa. */}
             <BarChart data={dados} layout="vertical" margin={{ left: 8, right: 24 }}>
               <CartesianGrid horizontal={false} stroke={theme.colors.border} />
-              {/* ⭐ Escala FIXA no maior valor de todas as páginas, não no da
+              {/* Escala FIXA no maior valor de todas as páginas, não no da
                   página atual. O recharts reescala sozinho por padrão, e aí a
-                  página 4 — onde o topo tem 1 projeto — desenharia essa barra do
+                  página 4, onde o topo tem 1 projeto, desenharia essa barra do
                   mesmo comprimento da de 6 da página 1. As páginas deixariam de
                   ser comparáveis entre si, que é justamente o que um gráfico de
                   carga precisa entregar. */}

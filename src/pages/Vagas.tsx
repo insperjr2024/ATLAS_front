@@ -159,22 +159,22 @@ const TODOS = "__todos__";
  * Menor que os 12 do monitoramento porque o item aqui é alto: nome, carga e a
  * justificativa inteira, que passa de três linhas quando a pessoa escreve
  * direito. Um projeto disputado chega a 20 pedidos, e sem página o cartão
- * viraria uma tela de rolagem só dele — os outros projetos sumiriam abaixo.
+ * viraria uma tela de rolagem só dele, os outros projetos sumiriam abaixo.
  */
 const PEDIDOS_POR_PAGINA = 5;
 
 /** No histórico o item é uma linha compacta, sem botão nem justificativa
- *  inteira — cabe mais que na fila sem o bloco virar uma rolagem própria. */
+ *  inteira, cabe mais que na fila sem o bloco virar uma rolagem própria. */
 const HISTORICO_POR_PAGINA = 10;
 
 /**
- * Vagas em projetos (§7.3).
+ * Vagas em projetos.
  *
  * A página serve três públicos, e o back diz qual é qual pelas flags de
  * `/projetos-com-vaga`:
  *
  * - `pode_solicitar` (só consultor): "Projetos" e "Meus pedidos";
- * - `coordena_projeto`: "Meus projetos", só leitura — quem está no time e
+ * - `coordena_projeto`: "Meus projetos", só leitura, quem está no time e
  *   quem pediu para entrar, sem botão de decidir;
  * - `pode_responder` (gerência e diretoria): "Solicitações" e "Histórico",
  *   com filtro por frente e por projeto, mais a alocação direta.
@@ -221,7 +221,7 @@ export function Vagas() {
   const [filtroProjeto, setFiltroProjeto] = useState(TODOS);
 
   // Filtro por frente: só na fila, e só para quem enxerga mais de uma. Para
-  // o gerente de uma frente a lista já chega recortada nela — o seletor teria
+  // o gerente de uma frente a lista já chega recortada nela, o seletor teria
   // uma opção. No histórico ele não entra: lá a pergunta é "o que decidimos
   // sobre o projeto X", e o filtro de projeto já responde.
   const [filtroFrente, setFiltroFrente] = useState(TODOS);
@@ -268,7 +268,7 @@ export function Vagas() {
   }
 
   /**
-   * ⚠ **Recarrega mesmo quando falha** — e é o `finally` que importa aqui.
+   * **Recarrega mesmo quando falha**, e é o `finally` que importa aqui.
    *
    * O pedido é gravado antes de o coordenador ser notificado, então uma falha
    * depois do commit devolve erro para uma solicitação que EXISTE. Sem o
@@ -276,7 +276,7 @@ export function Vagas() {
    * pessoa via o erro, tentava de novo, ouvia que já tinha um pedido em
    * análise, e não achava esse pedido em lugar nenhum da tela.
    *
-   * O `throw` segue para o modal, que é quem mostra a mensagem — mas agora a
+   * O `throw` segue para o modal, que é quem mostra a mensagem, mas agora a
    * lista por trás já está com a verdade.
    */
   async function enviarPedido(justificativa: string) {
@@ -396,7 +396,7 @@ export function Vagas() {
           <PageCardContent>
             <EmptyText>
               Sua posição entra em projeto por alocação da gestão, e você não coordena nenhum
-              projeto no momento — não há nada para pedir nem para acompanhar aqui.
+              projeto no momento, não há nada para pedir nem para acompanhar aqui.
             </EmptyText>
           </PageCardContent>
         </PageCard>
@@ -487,7 +487,7 @@ export function Vagas() {
                 {/* Filtro e agrupamento só para quem compara frentes. O
                     gerente de uma frente só já recebe a lista recortada
                     nela: o seletor teria uma opção e o agrupamento, um
-                    grupo. Quem decide é o back, pelo recorte do §3. */}
+                    grupo. Quem decide é o back, pelo recorte. */}
                 {dados.filtraPorFrente && (
                   <LinhaDeCampos>
                     <FieldGroup>
@@ -698,7 +698,7 @@ export function Vagas() {
  * Para o consultor ele é um botão de "pedir para entrar", e desliga quando há
  * impedimento. Para a gestão é sempre clicável e o impedimento não aparece:
  * ali o texto seria "sua posição entra por alocação da gestão", que é
- * verdade e irrelevante — ela não está pedindo nada, está alocando.
+ * verdade e irrelevante, ela não está pedindo nada, está alocando.
  */
 function CartaoProjeto({
   projeto: p,
@@ -836,7 +836,7 @@ function GradeDaGestao({
   );
 }
 
-/** Iniciais para o círculo do time. Duas letras no máximo — três já viram
+/** Iniciais para o círculo do time. Duas letras no máximo, três já viram
  *  mancha e param de funcionar como âncora visual. */
 function iniciais(nome: string | null): string {
   const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
@@ -851,7 +851,7 @@ function iniciais(nome: string | null): string {
  * O cartão responde, de cima para baixo, às perguntas na ordem em que ele as
  * faz: que projeto é este, quão cheio está, quem está dentro, quem quer
  * entrar. As duas listas ficam lado a lado porque a comparação entre elas é o
- * ponto — "tenho 1 vaga e 3 pedidos" é a leitura que interessa, e ela some se
+ * ponto, "tenho 1 vaga e 3 pedidos" é a leitura que interessa, e ela some se
  * as listas ficarem uma embaixo da outra.
  */
 function ProjetoCoordenadoCard({
@@ -870,7 +870,7 @@ function ProjetoCoordenadoCard({
 
   // Pendentes primeiro: é o que ainda pode virar alguma coisa. Dentro de cada
   // grupo a ordem de chegada do back (mais recente antes) se mantém. O
-  // `useMemo` existe para a lista não ser recriada a cada render — a
+  // `useMemo` existe para a lista não ser recriada a cada render, a
   // paginação usa a identidade dela para memoizar a fatia visível.
   const pedidos = useMemo(
     () =>
@@ -1016,7 +1016,7 @@ function porProjeto(pedidos: SolicitacaoRecebida[]) {
   return [...mapa.entries()];
 }
 
-/** "3 projetos · Carga alta" — a mesma leitura do painel de alocação. */
+/** "3 projetos · Carga alta", a mesma leitura do painel de alocação. */
 function CargaDoSolicitante({ pedido }: { pedido: SolicitacaoRecebida }) {
   return (
     <>
@@ -1042,7 +1042,7 @@ function CargaDoSolicitante({ pedido }: { pedido: SolicitacaoRecebida }) {
  * aqui: a quantidade de PROJETOS, porque fechado cada um ocupa uma linha; e a
  * de PEDIDOS por projeto, porque aberto ele mostra uma página de cada vez.
  *
- * Abre sozinho quando é o único da lista — um clique obrigatório para ver a
+ * Abre sozinho quando é o único da lista, um clique obrigatório para ver a
  * única coisa que existe na tela é clique desperdiçado.
  */
 function BlocoDeProjeto({
@@ -1105,7 +1105,7 @@ function BlocoDeProjeto({
  * Cartão por pedido, com a ação no rodapé e separada por uma linha: aceitar
  * alguém num time é decisão, e decisão precisa de ar em volta para não ser
  * tomada por engano ao varrer a lista. "Recusar" vem antes de "Aceitar no
- * time" porque é a ordem que os modais do app já usam — secundária à
+ * time" porque é a ordem que os modais do app já usam, secundária à
  * esquerda, primária à direita.
  */
 function FilaDePedidos({
@@ -1170,7 +1170,7 @@ function FilaDePedidos({
  * O histórico: a mesma informação da fila, em densidade de consulta.
  *
  * Linhas em vez de cartões, sem botão, e o desfecho como palavra em vez de
- * pílula — numa lista longa, uma caixa colorida por linha vira serrilhado e
+ * pílula, numa lista longa, uma caixa colorida por linha vira serrilhado e
  * compete com o nome, que é o que se procura ao varrer. A justificativa fica
  * cortada em duas linhas: aqui ela é contexto, não a decisão.
  */

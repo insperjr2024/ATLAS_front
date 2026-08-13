@@ -1,7 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import type { Permissoes, Posicao, PosicaoPermissao } from "@/types/auth";
 
-/** As 4 linhas fixas — sem criar/apagar, só editar as caixas de cada uma. */
+/** As 4 linhas fixas, sem criar/apagar, só editar as caixas de cada uma. */
 export function getPosicoesPermissoes(token: string) {
   return apiFetch<PosicaoPermissao[]>("/posicoes-permissoes", { token });
 }

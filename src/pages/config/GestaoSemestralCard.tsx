@@ -21,7 +21,7 @@ import {
 } from "@/styles/page.styled";
 
 /**
- * A gestão semestral (§12) — de onde vem o semestre que Calendários base,
+ * A gestão semestral, de onde vem o semestre que Calendários base,
  * Bancas e Avaliação de Desempenho todos assumem que já existe. Fica aqui, e
  * não espalhada por essas telas, porque abrir/arquivar uma gestão é uma
  * decisão administrativa só, não uma ação de cada funcionalidade que usa o
@@ -61,7 +61,7 @@ export function GestaoSemestralCard() {
   }
 
   // Abrir uma gestão nova arquiva a anterior sozinho (regra do backend, ver
-  // `CreateSemestreUseCase`) — aqui só cria e recarrega.
+  // `CreateSemestreUseCase`), aqui só cria e recarrega.
   async function criar(dados: { nome: string; inicio: string; fim: string }) {
     if (!token) return;
     await createSemestre(dados, token);
@@ -101,7 +101,7 @@ export function GestaoSemestralCard() {
             Calendários base, Bancas e Avaliação de Desempenho usam por padrão.
           </EmptyText>
         ) : (
-          <EmptyText>Nenhum semestre cadastrado ainda — crie um para liberar o resto da plataforma.</EmptyText>
+          <EmptyText>Nenhum semestre cadastrado ainda, crie um para liberar o resto da plataforma.</EmptyText>
         )}
       </PageCardContent>
 

@@ -70,7 +70,7 @@ export function PainelMentoria() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // Mentor pode ser coordenador, gerente ou diretor (2026-08-06) — não só coordenador.
+  // Mentor pode ser coordenador, gerente ou diretor (2026-08-06), não só coordenador.
   const mentoresElegiveis = useMemo(
     () => usuarios.filter((u) => u.posicao === "coordenador" || u.posicao === "gerente" || u.posicao === "diretor"),
     [usuarios],

@@ -20,7 +20,7 @@ export const MiniFrameOuter = styled.div`
 
 /**
  * O calendário renderizado em TAMANHO NATURAL, numa largura de referência
- * fixa — é dela que medimos a altura real do mês antes de encolher. O
+ * fixa, é dela que medimos a altura real do mês antes de encolher. O
  * `transform: scale` (e não `zoom`) tem comportamento padronizado entre
  * navegadores para essa medição continuar confiável.
  */

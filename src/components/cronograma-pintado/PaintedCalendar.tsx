@@ -27,7 +27,7 @@ export interface EtapaPintavel {
   id: number;
   /** A chave do grupo. Linhas com a mesma chave são TRECHOS de uma só etapa. */
   grupo: string;
-  /** De qual escopo é — a etapa cobre a faixa de período do próprio escopo. */
+  /** De qual escopo é, a etapa cobre a faixa de período do próprio escopo. */
   projeto_escopo_id?: number | null;
   nome: string;
   cor: string;
@@ -42,14 +42,14 @@ export interface MarcoRenderizavel {
   tipo: TipoMarco;
   /** O nome curto do box na visão de mês, onde não cabe o título inteiro. */
   rotulo: string;
-  /** O nome completo — no box das visões maiores e no `title` da célula. */
+  /** O nome completo, no box das visões maiores e no `title` da célula. */
   titulo: string;
   /**
    * Abre a ficha do marco. Sem isto o box é só rótulo, como sempre foi.
    *
    * Mora no DADO e não numa prop do calendário porque quem sabe o que um
    * marco abre é quem o montou: o calendário não conhece banca, reunião nem
-   * entrega — ele desenha `MarcoRenderizavel`. Com uma prop `onMarcoClicado`
+   * entrega, ele desenha `MarcoRenderizavel`. Com uma prop `onMarcoClicado`
    * genérica, ou todos os marcos ficariam clicáveis (e três quartos deles
    * abririam nada), ou o componente precisaria de um `switch` por tipo.
    */
@@ -58,7 +58,7 @@ export interface MarcoRenderizavel {
 
 export interface FaixaDerivada {
   tipo: "escopo" | "ambientacao" | "pausa";
-  /** Só o período de escopo tem dono — é o que dá uma fatia por escopo. */
+  /** Só o período de escopo tem dono, é o que dá uma fatia por escopo. */
   projeto_escopo_id?: number | null;
   inicio: string;
   fim: string;
@@ -93,24 +93,24 @@ interface PaintedCalendarProps {
    */
   diasBloqueados?: Map<string, DiaNaoUtil>;
   /**
-   * ⭐ Os dias que a trava **não** deveria tratar como parede.
+   * Os dias que a trava **não** deveria tratar como parede.
    *
    * Fim de semana e feriado são fato: não se trabalha, ponto. Já "fora da
-   * janela do escopo" é um limite NEGOCIADO — a janela pode crescer se a
+   * janela do escopo" é um limite NEGOCIADO, a janela pode crescer se a
    * diretoria autorizar. Tratar os dois igual fazia o arrasto ser aparado em
    * silêncio, e a pessoa ficava arrastando sem entender por que nada
    * acontecia.
    *
    * Estes dias continuam com a mesma aparência de bloqueado (a janela ainda
    * não cresceu), mas o gesto que os alcança dispara `onNegociar` em vez de
-   * ser engolido. A parte que cabe na janela é pintada normalmente — não se
+   * ser engolido. A parte que cabe na janela é pintada normalmente, não se
    * perde o trabalho por causa do pedido.
    */
   diasNegociaveis?: Set<string>;
   /** O grupo do "pintando: X". `null` = cursor de leitura. */
   grupoAtivo: string | null;
   /** Nome e cor do grupo ativo. Necessário à parte porque uma etapa recém
-   *  criada ainda não tem linha em `etapas` — e sem isto a PRIMEIRA pincelada
+   *  criada ainda não tem linha em `etapas`, e sem isto a PRIMEIRA pincelada
    *  ficava sem preview nenhum, nem contorno nem cor.
    *
    *  Quem passa deve mandar um objeto ESTÁVEL (o próprio grupo memoizado, não
@@ -120,13 +120,13 @@ interface PaintedCalendarProps {
   /**
    * Escreve o motivo dentro da célula do dia não útil, mesmo na visão de mês.
    *
-   * No cronograma a hachura basta — quem olha quer ver as etapas, e o motivo
+   * No cronograma a hachura basta, quem olha quer ver as etapas, e o motivo
    * fica no `title`. Na tela de calendários base o dia não útil É o conteúdo,
    * então dizer "Feriado" ou "Avaliação final" na célula é o ponto.
    */
   mostrarMotivo?: boolean;
   /** Deixa o calendário crescer e quem rola passa a ser a página. Use onde não
-   *  há legenda grudada ao lado — senão sobra scroll dentro de scroll. */
+   *  há legenda grudada ao lado, senão sobra scroll dentro de scroll. */
   semScrollProprio?: boolean;
   onPaintRange: (grupo: string, inicio: string, fim: string) => void;
   /** Arrasto iniciado sobre dia que já é da etapa: TIRA o intervalo dela. */
@@ -140,12 +140,12 @@ interface PaintedCalendarProps {
    */
   onNegociar?: (grupo: string, diasExtras: number, ultimoDia: string) => void;
   /**
-   * ⭐ Um CLIQUE simples num dia, quando a página está num modo de marcação
-   * (reunião inicial, reunião geral, banca, entrega — §4 do de-para).
+   * Um CLIQUE simples num dia, quando a página está num modo de marcação
+   * (reunião inicial, reunião geral, banca ou entrega, conforme o de-para).
    *
    * Não interfere no arrasto: enquanto ele existe, `grupoAtivo` é `null` (a
    * página desliga o pincel ao entrar num modo), então os dois gestos nunca
-   * disputam o mesmo clique. Dia não útil não dispara — não se marca reunião
+   * disputam o mesmo clique. Dia não útil não dispara, não se marca reunião
    * em feriado.
    */
   onDiaClicado?: (dia: string) => void;
@@ -164,12 +164,12 @@ interface DonoDoDia {
   fundo: string;
   texto: string;
   nome: string;
-  /** Qual etapa (agrupada) é dona — usado para não repetir fatia da mesma. */
+  /** Qual etapa (agrupada) é dona, usado para não repetir fatia da mesma. */
   grupo: string;
 }
 
 /**
- * O calendário pintável do §6.4 — meses empilhados, seg–dom, arrastar para
+ * O calendário pintável, meses empilhados, seg–dom, arrastar para
  * pintar um intervalo.
  *
  * Controlado e sem fetch próprio de propósito: é o que o torna testável e o
@@ -211,7 +211,7 @@ export function PaintedCalendar({
   }, [marcos]);
 
   /**
-   * Quem são os donos de cada dia — uma LISTA, não um vencedor.
+   * Quem são os donos de cada dia, uma LISTA, não um vencedor.
    *
    * O arraste entra como etapa virtual: o renderizador da célula não sabe a
    * diferença entre pintura salva e preview, só pergunta "quem é dona desta
@@ -227,7 +227,7 @@ export function PaintedCalendar({
 
     // Dedupe por GRUPO: dois trechos da mesma etapa podem cair no mesmo dia
     // (o usuário repintou por cima), e sem isto a célula ganharia duas fatias
-    // da cor idêntica — que lê como um bug, não como informação.
+    // da cor idêntica, que lê como um bug, não como informação.
     const acrescentar = (inicio: string, fim: string, cor: string, nome: string, grupo: string) => {
       const tons = tonsDaCor(cor);
       for (const chave of diasDoIntervalo(inicio, fim)) {
@@ -243,7 +243,7 @@ export function PaintedCalendar({
     // vêm antes para ficarem sempre na mesma posição da divisão, senão a fatia
     // trocaria de lado conforme a ordem em que as etapas foram criadas.
     //
-    // A chave do grupo carrega o escopo: dois escopos em PARALELO (§5.4) têm
+    // A chave do grupo carrega o escopo: dois escopos em PARALELO têm
     // duas faixas de período no mesmo dia, e sem isso o dedupe engoliria a
     // segunda como se fosse repetição da primeira.
     for (const faixa of faixas) {
@@ -253,9 +253,9 @@ export function PaintedCalendar({
 
     for (const etapa of [...etapas].sort((a, b) => a.ordem - b.ordem)) {
       acrescentar(etapa.data_inicio, etapa.data_fim, etapa.cor, etapa.nome, etapa.grupo);
-      // ⭐ A faixa do escopo é FUNDO, não concorrente: onde a etapa dele já
+      // A faixa do escopo é FUNDO, não concorrente: onde a etapa dele já
       // pinta o dia, a faixa sai de cena. Sem isto toda etapa apareceria pela
-      // metade — dividida com a própria faixa que a contém, o tempo inteiro.
+      // metade, dividida com a própria faixa que a contém, o tempo inteiro.
       if (etapa.projeto_escopo_id) {
         const chaveFaixa = `faixa:escopo:${etapa.projeto_escopo_id}`;
         for (const chave of diasDoIntervalo(etapa.data_inicio, etapa.data_fim)) {
@@ -271,7 +271,7 @@ export function PaintedCalendar({
     }
 
     // A etapa em arrasto entra como mais uma fatia nos dias que ainda não são
-    // dela — o preview mostra o resultado real do drop, não uma cor por cima.
+    // dela, o preview mostra o resultado real do drop, não uma cor por cima.
     const preview = new Set<string>();
     if (arraste) {
       // Cai no `pincel` quando a etapa ainda não tem linha gravada.
@@ -344,7 +344,7 @@ export function PaintedCalendar({
           ?.closest<HTMLElement>("[data-dia]");
         const chave = alvo?.dataset.dia;
         // Sem alvo (ponteiro na legenda, no vão entre meses, fora da janela)
-        // MANTÉM o último hover — senão o preview pisca a cada borda.
+        // MANTÉM o último hover, senão o preview pisca a cada borda.
         if (!chave) return;
         setArraste((atual) => (atual && atual.hover !== chave ? { ...atual, hover: chave } : atual));
       });
@@ -358,7 +358,7 @@ export function PaintedCalendar({
 
       // Atenção: hit-test do ponto FINAL aqui, e não confiar só no `hover`: num
       // arrasto rápido o último `pointermove` pode ter sido descartado pelo
-      // throttle de rAF, e o intervalo sairia curto — a etapa terminaria
+      // throttle de rAF, e o intervalo sairia curto, a etapa terminaria
       // antes de onde o dedo soltou.
       const alvoFinal = document
         .elementFromPoint(e.clientX, e.clientY)
@@ -369,7 +369,7 @@ export function PaintedCalendar({
         atual.ancora <= fimReal
           ? { inicio: atual.ancora, fim: fimReal }
           : { inicio: fimReal, fim: atual.ancora };
-      // ⭐ O gesto que passa da janela: a parte que cabe é pintada, e o
+      // O gesto que passa da janela: a parte que cabe é pintada, e o
       // excedente vira o pedido à diretoria. Antes de aparar, porque aparar é
       // exatamente o que apagava a intenção.
       const negociados = diasNegociaveis
@@ -449,7 +449,7 @@ export function PaintedCalendar({
                     ? fundoDiagonal(donos.map((d) => d.fundo))
                     : undefined;
                   // Com a célula dividida, nenhuma cor da paleta serve para
-                  // todas as fatias — cai no cinza-escuro neutro.
+                  // todas as fatias, cai no cinza-escuro neutro.
                   const corTexto =
                     donos.length === 1
                       ? donos[0].texto
@@ -458,7 +458,7 @@ export function PaintedCalendar({
                         : undefined;
                   const marcosDoDia = marcosPorDia.get(chave) ?? [];
                   const rotuloDoNaoUtil = naoUtil
-                    ? `${rotuloNaoUtil(naoUtil.tipo)}${naoUtil.descricao ? ` — ${naoUtil.descricao}` : ""}`
+                    ? `${rotuloNaoUtil(naoUtil.tipo)}${naoUtil.descricao ? `, ${naoUtil.descricao}` : ""}`
                     : null;
 
                   return (
@@ -486,7 +486,7 @@ export function PaintedCalendar({
 
                       {/* O nome da etapa só onde cabe; no mês a cor + legenda
                           fazem esse trabalho e o espaço é do box de marco.
-                          Com o dia dividido, lista TODAS as donas — é a única
+                          Com o dia dividido, lista TODAS as donas, é a única
                           forma de saber quem é cada fatia sem contar cor. */}
                       {detalhado && !rotuloDoNaoUtil && donos.length > 0 && (
                         <DetalheCelula $texto={corTexto}>
@@ -516,7 +516,7 @@ export function PaintedCalendar({
                                     as: "button" as const,
                                     type: "button" as const,
                                     $clicavel: true,
-                                    // ⚠ O pointerdown é do ARRASTO de pintura,
+                                    // O pointerdown é do ARRASTO de pintura,
                                     // que nasce na célula. Sem barrá-lo aqui,
                                     // clicar no marco começa uma pincelada.
                                     onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
@@ -529,7 +529,7 @@ export function PaintedCalendar({
                               $borda={COR_MARCO.borda}
                               $fundo={COR_MARCO.fundo}
                               $texto={COR_MARCO.texto}
-                              title={m.onClick ? `${m.titulo} — clique para ver os detalhes` : m.titulo}
+                              title={m.onClick ? `${m.titulo}, clique para ver os detalhes` : m.titulo}
                             >
                               {detalhado ? m.titulo : m.rotulo}
                             </MarcoBox>
@@ -580,7 +580,7 @@ export function diasDoIntervalo(inicio: string, fim: string): string[] {
  * Caminha as pontas para dentro até o primeiro/último dia útil.
  *
  * Uma etapa que "começa no sábado" envenena o `contar_dias_uteis` do
- * monitoramento depois — o intervalo gravado tem que ser honesto.
+ * monitoramento depois, o intervalo gravado tem que ser honesto.
  */
 export function apararPontas(
   inicio: string,

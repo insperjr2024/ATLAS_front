@@ -58,7 +58,7 @@ import {
   InsightAcoes,
 } from "./DashboardBancas.styled";
 
-/** §8 — quem avalia tem 2 dias corridos a partir da banca realizada.
+/** , quem avalia tem 2 dias corridos a partir da banca realizada.
  *  Espelha `PRAZO_AVALIACAO_DIAS` em `src/utils/avaliacoes_pendentes.py`. */
 const PRAZO_AVALIACAO_DIAS = 2;
 
@@ -132,17 +132,17 @@ function comparecimento(bancas: Banca[], candidaturas: Candidatura[]) {
 }
 
 /**
- * Dashboard Bancas — a visão da diretoria sobre a área (§8).
+ * Dashboard Bancas, a visão da diretoria sobre a área.
  *
- * 📐 Junta o que era a tela Núcleo (distribuição e resultados) com o que só
+ * Junta o que era a tela Núcleo (distribuição e resultados) com o que só
  * existia no banco e ninguém via: presença por membro e as bancas que estão
  * prestes a dar errado.
  *
  * A lista "últimas realizadas" do Núcleo não veio junto: a tela que hospeda
  * este bloco já tem "Bancas realizadas", com filtro e nota por banca.
  *
- * ⚠ Só a diretoria chega aqui. As listas pessoais — "o que EU preciso
- * avaliar" — ficaram na aba Alocação de propósito: elas são a fila de tarefa
+ * Só a diretoria chega aqui. As listas pessoais, "o que EU preciso
+ * avaliar", ficaram na aba Alocação de propósito: elas são a fila de tarefa
  * de cada um, não indicador de área, e trancá-las aqui deixaria consultor e
  * coordenador sem ver o próprio prazo.
  */
@@ -164,7 +164,7 @@ export function DashboardBancas({
   const [distribuicaoFrenteId, setDistribuicaoFrenteId] = useState<string>("");
   const [resultadosModo, setResultadosModo] = useState<ResultadosModo>("coordenador");
 
-  /** Sem escolha explícita, cai na primeira frente — derivado, não estado
+  /** Sem escolha explícita, cai na primeira frente, derivado, não estado
    *  espelhado, para não sincronizar dentro de efeito. */
   const frenteAtivaId = distribuicaoFrenteId || (frentes.length > 0 ? String(frentes[0].id) : "");
 
@@ -188,7 +188,7 @@ export function DashboardBancas({
   const presencaNucleo = useMemo(() => {
     const atual = comparecimento(bancasSemestre, candidaturas);
 
-    // O semestre anterior é o de maior início antes do atual — não "id - 1",
+    // O semestre anterior é o de maior início antes do atual, não "id - 1",
     // que quebraria se um semestre fosse cadastrado fora de ordem.
     const anterior = semestre
       ? semestres
@@ -217,7 +217,7 @@ export function DashboardBancas({
     [bancasSemestre],
   );
 
-  /** Ainda vai acontecer e não fechou composição — dá tempo de agir. */
+  /** Ainda vai acontecer e não fechou composição, dá tempo de agir. */
   const emRisco = useMemo(() => {
     return bancasSemestre
       .filter(
@@ -237,7 +237,7 @@ export function DashboardBancas({
    *
    * A regra é a mesma do backend (`calcular_avaliacoes_pendentes`): quem foi
    * alocado numa banca já realizada e não submeteu, deve. O prazo conta de
-   * `realizado_em`, não da data marcada — banca que aconteceu atrasada não
+   * `realizado_em`, não da data marcada, banca que aconteceu atrasada não
    * encurta o prazo de quem avalia.
    */
   const avaliacoesVencendo = useMemo(() => {
@@ -402,7 +402,7 @@ export function DashboardBancas({
         <PageCard>
           <PageCardHeader>
             <CardHeaderRow>
-              <PageCardTitle>Distribuição de bancas — {semestreNome}</PageCardTitle>
+              <PageCardTitle>Distribuição de bancas, {semestreNome}</PageCardTitle>
               <FilterGroup>
                 <FilterLabel htmlFor="dist-modo">Ver por</FilterLabel>
                 <FieldSelect
@@ -456,7 +456,7 @@ export function DashboardBancas({
         <PageCard>
           <PageCardHeader>
             <CardHeaderRow>
-              <PageCardTitle>Resultados — {semestreNome}</PageCardTitle>
+              <PageCardTitle>Resultados, {semestreNome}</PageCardTitle>
               <FilterGroup>
                 <FilterLabel htmlFor="res-modo">Ver por</FilterLabel>
                 <FieldSelect

@@ -76,7 +76,7 @@ export function PainelPdi() {
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState("");
 
-  // Checklist sendo montada junto com a pasta nova — os itens só são
+  // Checklist sendo montada junto com a pasta nova, os itens só são
   // criados de fato depois que a pasta existe (o backend exige pasta_id),
   // então ficam aqui como rascunho até o submit.
   const [itensNovaPasta, setItensNovaPasta] = useState<{ nome: string; tipo_arquivo: DesempenhoPdiItemTipoArquivo }[]>(
@@ -208,7 +208,7 @@ export function PainelPdi() {
       setErroExcluir(
         err instanceof Error
           ? err.message
-          : "Erro ao excluir a pasta — provavelmente ainda tem item cadastrado nela.",
+          : "Erro ao excluir a pasta, provavelmente ainda tem item cadastrado nela.",
       );
     }
   }
@@ -281,7 +281,7 @@ export function PainelPdi() {
       setParaExcluirItem(null);
     } catch (err) {
       setErroExcluirItem(
-        err instanceof Error ? err.message : "Erro ao excluir o item — provavelmente já existe envio nele.",
+        err instanceof Error ? err.message : "Erro ao excluir o item, provavelmente já existe envio nele.",
       );
     }
   }

@@ -4,8 +4,8 @@ import { getPosicoesPermissoes } from "@/lib/posicoes-permissoes";
 import type { Usuario, Permissoes, Posicao, StatusUsuario } from "@/types/auth";
 
 // A API devolve `posicao` solto em /auth/me, sem as 13 caixas de permissão
-// dela aninhadas — por isso buscamos as permissões à parte (por posição,
-// desde 2026-08-07 — antes era por `cargo_id`) e montamos o Usuario completo
+// dela aninhadas, por isso buscamos as permissões à parte (por posição,
+// desde 2026-08-07, antes era por `cargo_id`) e montamos o Usuario completo
 // aqui.
 interface UsuarioResponse {
   id: number;
@@ -14,7 +14,7 @@ interface UsuarioResponse {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
-  /** Primeiro acesso pendente — ver `Usuario.senha_provisoria`. */
+  /** Primeiro acesso pendente, ver `Usuario.senha_provisoria`. */
   senha_provisoria: boolean;
 }
 
@@ -34,7 +34,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-/** Permissões de mentira, todas as caixas desmarcadas — só pra existir
+/** Permissões de mentira, todas as caixas desmarcadas, só pra existir
  *  enquanto `senha_provisoria` for true. O PrivateRoute não deixa nada além
  *  de /definir-senha acontecer nesse estado, então nenhuma delas chega a ser
  *  lida de verdade. */
@@ -55,13 +55,13 @@ const PERMISSOES_PLACEHOLDER: Permissoes = {
 };
 
 /**
- * ⭐ Estende a sessão: pede um token novo, com o prazo cheio, e guarda no
+ * Estende a sessão: pede um token novo, com o prazo cheio, e guarda no
  * lugar do atual. Quem abre o ATLAS toda semana nunca precisa relogar.
  *
  * Grava só no `localStorage`, sem `setToken`: mexer no estado dispararia de
  * novo o efeito que carrega o usuário (o `token` é a dependência dele) e a
  * renovação viraria um laço. O token em memória continua válido nesta sessão
- * — o novo entra em vigor no próximo load, que é quando ele é lido.
+ *, o novo entra em vigor no próximo load, que é quando ele é lido.
  *
  * Falha em silêncio de propósito: renovar é conforto, não requisito. Se a
  * rede cair aqui, a sessão segue valendo pelo prazo que já tinha.
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const dados = await apiFetch<UsuarioResponse>("/auth/me", { token });
       // Com senha provisória o backend trava QUALQUER rota fora das 3 do
-      // primeiro acesso — /posicoes-permissoes não é uma delas, e 403 caía no
+      // primeiro acesso, /posicoes-permissoes não é uma delas, e 403 caía no
       // catch abaixo, que desloga. As permissões de verdade não fazem falta
       // agora: o PrivateRoute só deixa passar pra /definir-senha até isso
       // resolver, e recarregarUsuario() busca as permissões reais depois,
