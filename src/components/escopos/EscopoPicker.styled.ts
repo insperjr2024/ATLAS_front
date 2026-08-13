@@ -81,16 +81,74 @@ export const RemoverBotao = styled.button`
   }
 `;
 
-export const PickerRodape = styled.div`
+/**
+ * O catálogo, agrupado por frente.
+ *
+ * Era um `<select>` só, com "Escopo · Frente" em cada linha, quarenta opções
+ * numa lista sem hierarquia, e a relação entre a frente marcada lá em cima e
+ * o que aparecia aqui não se via. Em grupos, o vínculo é a própria estrutura:
+ * marcar Business faz nascer o bloco Business, desmarcar faz sumir.
+ */
+export const PickerCatalogo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+  padding-top: ${theme.spacing.md};
+  border-top: 1px dashed ${theme.colors.border};
+`;
+
+export const CatalogoGrupo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+`;
+
+export const CatalogoGrupoTitulo = styled.h5`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const CatalogoChips = styled.div`
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding-top: ${theme.spacing.sm};
-  border-top: 1px dashed ${theme.colors.border};
+  gap: ${theme.spacing.xs};
+`;
 
-  select {
-    flex: 1;
-    min-width: 12rem;
+/** Um escopo do catálogo, pronto para entrar. Clicar adiciona, sem passo
+ *  intermediário de "escolher e confirmar", que era o que o select exigia. */
+export const EscopoChip = styled.button<{ $outro?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  padding: 0 0.625rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px ${({ $outro }) => ($outro ? "dashed" : "solid")} ${theme.colors.border};
+  background: ${({ $outro }) => ($outro ? "transparent" : theme.colors.background)};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${({ $outro }) => ($outro ? theme.colors.mutedForeground : theme.colors.foreground)};
+  cursor: pointer;
+  transition: background ${theme.transitions.fast}, border-color ${theme.transitions.fast},
+    color ${theme.transitions.fast};
+
+  &:hover:not(:disabled) {
+    border-color: ${theme.colors.primary};
+    color: ${theme.colors.primary};
+    background: color-mix(in srgb, ${theme.colors.primary} 6%, white);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 35%, transparent);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
   }
 `;
