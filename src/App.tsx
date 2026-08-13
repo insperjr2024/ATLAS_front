@@ -12,7 +12,8 @@ import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { MeuPerfil } from "@/pages/MeuPerfil";
-import { Vagas } from "@/pages/Vagas";
+import { ProjetosVagas } from "@/pages/projetos/ProjetosVagas";
+import { ProjetosSolicitacoes } from "@/pages/projetos/ProjetosSolicitacoes";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Membros } from "@/pages/Membros";
 import { Notificacoes } from "@/pages/Notificacoes";
@@ -69,7 +70,6 @@ export default function App() {
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />
                 <Route path="/meu-perfil" element={<MeuPerfil />} />
-                <Route path="/vagas" element={<Vagas />} />
               {/* /calendario agora agrega os 4 tipos (§6.5); a visão
                   só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
               {/* /calendario agrega os 4 tipos (§6.5); a página só-de-bancas
@@ -83,6 +83,15 @@ export default function App() {
               <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
+              {/* §7.3 — navegar vagas e responder a pedidos, dentro de
+                  Projetos (não mais um item próprio do menu). Precisam vir
+                  ANTES de /projetos/:id na leitura pra ficar claro que não
+                  são o mesmo tipo de rota, mesmo o React Router já
+                  priorizando segmento fixo sobre parâmetro sozinho.
+                  /projetos/solicitacoes é a MESMA rota que a notificação de
+                  pedido novo já usa (`solicitacao_projeto.py`, backend). */}
+              <Route path="/projetos/vagas" element={<ProjetosVagas />} />
+              <Route path="/projetos/solicitacoes" element={<ProjetosSolicitacoes />} />
               {/* Criar projeto é a caixa de permissão `pode_criar_projeto` —
                   a mesma que decide o botão em `ProjetosList` e que o backend
                   já checava (`require_pode_criar_projeto`). Guard por posição

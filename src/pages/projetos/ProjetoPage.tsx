@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate, useOutletContext, useParams } from "r
 import { Archive, ArchiveRestore, ArrowLeft, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
+import { getSolicitacoesRecebidas } from "@/lib/vagas";
 import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
 import {
   arquivarProjeto,
@@ -46,6 +47,7 @@ import {
   TagRow,
   FrenteTag,
   AvisoBanner,
+  AvisoLink,
   TabBar,
   TabLink,
   EtapaSeletorWrap,
@@ -133,6 +135,7 @@ export function ProjetoPage() {
   const [nomeEditado, setNomeEditado] = useState("");
   const [salvandoNome, setSalvandoNome] = useState(false);
   const [erroNome, setErroNome] = useState("");
+  const [pedidosPendentes, setPedidosPendentes] = useState(0);
 
   const carregar = useCallback(async () => {
     if (!token || !projetoId) return;
@@ -167,6 +170,25 @@ export function ProjetoPage() {
   useEffect(() => {
     carregar();
   }, [carregar, location.pathname]);
+
+  // Aviso de pedido de entrada pendente (§7.3) — o endpoint já vem escopado
+  // a quem PODE responder (coordenador, gerência ou diretoria), então some
+  // sozinho pra quem não tem nada a fazer aqui.
+  useEffect(() => {
+    if (!token || !projetoId) return;
+    let ativo = true;
+    getSolicitacoesRecebidas(token)
+      .then((r) => {
+        if (!ativo) return;
+        setPedidosPendentes(
+          r.filter((s) => s.projeto_id === projetoId && s.status === "pendente").length,
+        );
+      })
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
+  }, [token, projetoId]);
 
   async function aplicarStatus(statusNovo: string) {
     if (!token || !projeto) return;
@@ -371,6 +393,19 @@ export function ProjetoPage() {
       </ShellHeader>
 
       {erroStatus && <FormErrorText>{erroStatus}</FormErrorText>}
+
+      {pedidosPendentes > 0 && (
+        <AvisoBanner>
+          {pedidosPendentes} {pedidosPendentes === 1 ? "pedido de entrada" : "pedidos de entrada"}{" "}
+          aguardando resposta.{" "}
+          <AvisoLink
+            to="/projetos/solicitacoes"
+            state={{ voltarPara: `/projetos/${projeto.id}`, voltarRotulo: `Voltar para ${projeto.nome}` }}
+          >
+            Responder
+          </AvisoLink>
+        </AvisoBanner>
+      )}
 
       {projeto.arquivado_em && (
         <AvisoBanner>📦 Projeto arquivado — não aparece nas listagens normais.</AvisoBanner>

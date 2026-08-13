@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowDownNarrowWide,
   ArrowUpNarrowWide,
+  ArrowRight,
   ChevronDown,
   LayoutGrid,
   KanbanSquare,
@@ -21,6 +22,7 @@ import {
   ROTULO_STATUS,
 } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
+import { getProjetosComVaga, getSolicitacoesRecebidas } from "@/lib/vagas";
 import { ProjetoKanbanBoard } from "@/components/kanban/ProjetoKanbanBoard";
 import { Ponto } from "@/components/kanban/Kanban.styled";
 import { tonsDaColuna } from "@/lib/colunas-tarefa";
@@ -61,6 +63,8 @@ import {
   CheckboxLabel,
   ViewToggleRow,
   ViewToggleBtn,
+  VagasSelo,
+  PendenteDot,
   FormErrorText,
 } from "./Projetos.styled";
 
@@ -100,6 +104,8 @@ export function ProjetosList() {
   }
   const [avisoKanban, setAvisoKanban] = useState("");
   const [ordemAsc, setOrdemAsc] = useState(true);
+  const [vagasAbertas, setVagasAbertas] = useState<number | null>(null);
+  const [projetosComPendencia, setProjetosComPendencia] = useState<Set<number>>(new Set());
   const filtroRef = useRef<HTMLDivElement>(null);
 
   const podeFiltrar = pode(usuario, "filtrar_por_frente");
@@ -140,6 +146,44 @@ export function ProjetosList() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  // Só a contagem, pro botão "Vagas abertas" — a lista completa (com
+  // impedimento, coordenador, etc.) só é buscada dentro de /projetos/vagas.
+  useEffect(() => {
+    if (!token) return;
+    let ativo = true;
+    getProjetosComVaga(token)
+      .then((r) => {
+        if (ativo) setVagasAbertas(r.projetos.length);
+      })
+      .catch(() => {
+        // Contagem é só um adorno do botão — sem ela, o botão continua
+        // levando pra /projetos/vagas normalmente.
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [token]);
+
+  // A bolinha vermelha no card (§7.3): só marca projeto que ESTA pessoa pode
+  // responder — o endpoint já vem escopado assim (coordenador do projeto,
+  // gerência ou diretoria), então não precisa checar permissão de novo aqui.
+  useEffect(() => {
+    if (!token) return;
+    let ativo = true;
+    getSolicitacoesRecebidas(token)
+      .then((r) => {
+        if (ativo) {
+          setProjetosComPendencia(
+            new Set(r.filter((s) => s.status === "pendente").map((s) => s.projeto_id)),
+          );
+        }
+      })
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
   }, [token]);
 
   useEffect(() => {
@@ -231,6 +275,15 @@ export function ProjetosList() {
             {projetosFiltrados.length} {projetosFiltrados.length === 1 ? "projeto" : "projetos"}
             {pendentes > 0 && ` · ${pendentes} com kickoff pendente`}
           </PageSubheading>
+          {!!vagasAbertas && (
+            <VagasSelo
+              to="/projetos/vagas"
+              state={{ voltarPara: `/projetos?modo=${modo}`, voltarRotulo: "Voltar para Projetos" }}
+            >
+              {vagasAbertas} {vagasAbertas === 1 ? "vaga aberta" : "vagas abertas"}
+              <ArrowRight size={12} />
+            </VagasSelo>
+          )}
         </PageHeaderText>
 
         <FiltersRow>
@@ -353,7 +406,13 @@ export function ProjetosList() {
              o que fazer e leva para lá. São ~28 pessoas hoje. */
           <EmptyText>
             Você ainda não está em nenhum projeto.{" "}
-            <Link to="/vagas">Veja os projetos com vaga</Link> e peça para entrar em um —
+            <Link
+              to="/projetos/vagas"
+              state={{ voltarPara: `/projetos?modo=${modo}`, voltarRotulo: "Voltar para Projetos" }}
+            >
+              Veja os projetos com vaga
+            </Link>{" "}
+            e peça para entrar em um,
             quem responde é o coordenador.
           </EmptyText>
         ) : (
@@ -373,6 +432,7 @@ export function ProjetosList() {
             podeArrastar={podeArrastarKanban}
             nomeFrente={nomeFrente}
             onMover={moverStatus}
+            projetosComPendencia={projetosComPendencia}
           />
         </>
       ) : (
@@ -388,6 +448,9 @@ export function ProjetosList() {
                 // preciso dizer explicitamente o modo de onde se veio.
                 state={{ voltarPara: `/projetos?modo=${modo}`, voltarRotulo: "Voltar para projetos" }}
               >
+                {projetosComPendencia.has(projeto.id) && (
+                  <PendenteDot title="Pedido de entrada pendente" />
+                )}
                 <div>
                   <CardTitle>{projeto.nome}</CardTitle>
                 </div>
