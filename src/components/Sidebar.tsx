@@ -67,8 +67,9 @@ const navItems: NavItemConfig[] = [
     visiblePorPosicao: (u) => u.posicao === "coordenador" || u.posicao === "gerente" || u.posicao === "diretor",
   },
   { icon: ClipboardList, label: "Bancas", path: "/bancas" },
-  // Sem trava: qualquer um vê as vagas, e a aba de responder só aparece para
-  // quem coordena algum projeto — quem não coordena recebe lista vazia.
+  // Sem trava: a página serve os dois lados e decide o que mostrar pelas
+  // flags que o back manda — consultor pede para entrar, quem coordena ou
+  // monta equipe responde aos pedidos.
   { icon: UserPlus, label: "Vagas em projetos", path: "/vagas" },
   { icon: Calendar, label: "Calendário", path: "/calendario" },
   // Sem trava: a grade de aulas (§11) é de todo mundo, e cada um só vê a sua.
