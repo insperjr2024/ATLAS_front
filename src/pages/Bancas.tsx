@@ -607,10 +607,13 @@ export function Bancas() {
             onVerMais={setBancaDetalhe}
           />
           {/* Realizada, sem resultado e sem avaliador — ver
-              `realizadasSemAvaliador`. Sem ação por enquanto: registrar
-              resultado ainda não tem tela (o `registrarResultado` de
-              `lib/bancas.ts` não é chamado por ninguém). Aparecer já resolve o
-              pior, que era sumir sem deixar rastro. */}
+              `realizadasSemAvaliador`. Estas não caem em nenhuma das outras
+              seções: as de alocação exigem status aberto, e a de avaliação
+              pendente só lista quem é avaliador. Sem esta seção elas existiam
+              no banco e a tela inteira as ignorava.
+
+              Quem chega aqui registra o resultado pela própria seção — só a
+              diretoria, já que sem avaliador não há votação de onde apurar. */}
           {realizadasSemAvaliador.length > 0 && (
             <SecaoBancas
               bancaDestacada={bancaDestacada}
@@ -622,6 +625,7 @@ export function Bancas() {
               usuarioId={usuario.id}
               gerenciar={podeAgendar}
               ehDiretorLista={ehDiretor}
+              onRegistrarResultado={setBancaResultado}
               onVerMais={setBancaDetalhe}
             />
           )}

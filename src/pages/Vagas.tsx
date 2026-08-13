@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronDown, ChevronRight, Inbox, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Inbox, TriangleAlert, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS, formatarDataHora } from "@/lib/projetos";
 import type { StatusProjeto } from "@/types/projeto";
@@ -97,7 +97,8 @@ import {
   HistTopo,
   HistDesfecho,
   HistTexto,
-  CandidatoSituacao,
+  CargaBadge,
+  CargaRecado,
   CoordLista,
   CoordCard,
   CoordCabecalhoTitulo,
@@ -1016,21 +1017,41 @@ function porProjeto(pedidos: SolicitacaoRecebida[]) {
   return [...mapa.entries()];
 }
 
-/** "3 projetos · Carga alta" — a mesma leitura do painel de alocação. */
+/**
+ * ⭐ Em quantos projetos o solicitante já está — a informação que decide o
+ * pedido, com o peso visual de quem decide.
+ *
+ * Era uma linha de meta cinza, do mesmo tamanho da data, e passava batido:
+ * quem aprova lia a justificativa (por que a pessoa QUER entrar) e não via a
+ * carga (se ela CABE em mais um). Virou badge, e fica vermelho quando a
+ * escala classifica a carga como alerta.
+ *
+ * ⚠ **O gatilho é o `tom` da escala, nunca um número aqui.** O limiar de
+ * "Demanda alta" — hoje 3 projetos — é editável pela diretoria em
+ * `situacao_carga`. Cravar `>= 3` no front recriaria a régua paralela que o
+ * núcleo acabou de tirar do backend, e as duas divergiriam no dia em que
+ * alguém mexesse na configuração.
+ *
+ * ⚠ Não é bloqueio, e o texto evita soar como um: a carga alta é aviso, e
+ * quem decide é quem está lendo. Dizer "não pode" seria mentira — a
+ * plataforma aceita.
+ */
 function CargaDoSolicitante({ pedido }: { pedido: SolicitacaoRecebida }) {
+  const situacao = pedido.situacao_do_solicitante;
+  const alerta = situacao?.tom === "alerta";
+  const carga = pedido.carga_do_solicitante;
+
   return (
-    <>
-      {pedido.carga_do_solicitante}{" "}
-      {pedido.carga_do_solicitante === 1 ? "projeto" : "projetos"}
-      {pedido.situacao_do_solicitante && (
-        <>
-          {" · "}
-          <CandidatoSituacao $tom={pedido.situacao_do_solicitante.tom}>
-            {pedido.situacao_do_solicitante.nome}
-          </CandidatoSituacao>
-        </>
-      )}
-    </>
+    <CargaBadge $alerta={alerta}>
+      {alerta && <TriangleAlert size={13} aria-hidden />}
+      <span>
+        Já está em {carga} {carga === 1 ? "projeto" : "projetos"}
+        {situacao && ` · ${situacao.nome}`}
+        {alerta && (
+          <CargaRecado> — entrar em mais um pode sobrecarregar</CargaRecado>
+        )}
+      </span>
+    </CargaBadge>
   );
 }
 
@@ -1136,9 +1157,7 @@ function FilaDePedidos({
                   <SolNome>{s.usuario_nome}</SolNome>
                   <SolQuando dateTime={s.criado_em}>{formatarDataHora(s.criado_em)}</SolQuando>
                 </SolTopo>
-                <SolMeta>
-                  <CargaDoSolicitante pedido={s} />
-                </SolMeta>
+                <CargaDoSolicitante pedido={s} />
                 <SolTexto>{s.justificativa}</SolTexto>
                 <SolAcoes>
                   <PageButtonSm

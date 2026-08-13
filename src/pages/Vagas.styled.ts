@@ -1007,3 +1007,49 @@ export const PainelSecao = styled.section`
     border-top: 1px solid ${theme.colors.border};
   }
 `;
+
+/**
+ * A carga do solicitante na tela de decisão — badge, não linha de apoio.
+ *
+ * ⭐ **É a informação que decide o pedido.** Quem aprova precisa saber em
+ * quantos projetos a pessoa já está antes de colocá-la em mais um; a
+ * justificativa diz por que ela quer entrar, não se ela cabe. Como linha de
+ * meta cinza, do mesmo tamanho da data, essa informação passava batido.
+ *
+ * ⚠ O vermelho vem do `tom` da escala de `situacao_carga`, e nunca de um
+ * número cravado aqui. A diretoria edita o limiar de "Demanda alta" nas
+ * configurações — hoje 3 — e o destaque tem de seguir essa decisão sozinho.
+ * Um `>= 3` no front voltaria a ser a régua paralela que o núcleo acabou de
+ * remover do backend.
+ */
+export const CargaBadge = styled.span<{ $alerta: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  align-self: flex-start;
+
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: ${theme.borderRadius.md};
+
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${({ $alerta }) =>
+    $alerta ? theme.fontWeight.semibold : theme.fontWeight.medium};
+
+  color: ${({ $alerta }) =>
+    $alerta ? theme.colors.destructive : theme.colors.mutedForeground};
+  background: ${({ $alerta }) =>
+    $alerta ? "hsl(0, 72%, 51%, 0.1)" : theme.colors.muted};
+  border: 1px solid
+    ${({ $alerta }) => ($alerta ? "hsl(0, 72%, 51%, 0.35)" : "transparent")};
+
+  svg {
+    flex-shrink: 0;
+  }
+`;
+
+/** O complemento do badge: o que a carga significa para quem decide. */
+export const CargaRecado = styled.span`
+  font-weight: ${theme.fontWeight.normal};
+  opacity: 0.9;
+`;

@@ -14,8 +14,8 @@ import {
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
-  EmptyText,
 } from "@/styles/page.styled";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import {
   CelulaDias,
   ConteudoCarregando,
@@ -251,7 +251,13 @@ export function ExecucaoAba() {
         </PageCardHeader>
         <PageCardContent>
           {dados.tarefas.length === 0 ? (
-            <EmptyText>Nenhum projeto na sua visão.</EmptyText>
+            /* "Na sua visão" é jargão de quem construiu a tela: descreve o
+               recorte de permissão sem dizer qual é nem o que fazer com ele. */
+            <EstadoVazio
+              causa="acesso"
+              titulo="Nenhum projeto para mostrar nesta semana"
+              motivo="Esta tabela cobre os projetos das frentes que você acompanha. Se falta algum, peça à diretoria para conferir a sua frente no cadastro de membros."
+            />
           ) : (
             <>
               {/* 7 colunas não cabem num celular. Rolar na horizontal preserva
@@ -366,7 +372,11 @@ export function ExecucaoAba() {
         </PageCardHeader>
         <PageCardContent>
           {dados.reunioes.length === 0 ? (
-            <EmptyText>Nenhum projeto na sua visão.</EmptyText>
+            <EstadoVazio
+              causa="vazio"
+              titulo="Nenhuma reunião registrada nesta semana"
+              motivo="As reuniões semanais são marcadas no cronograma de cada projeto. Se a semana já passou e nada aparece, é sinal de que ninguém registrou."
+            />
           ) : (
             <>
               <ConteudoPaginado estado={paginaReunioes}>

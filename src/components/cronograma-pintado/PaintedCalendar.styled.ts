@@ -466,22 +466,48 @@ export const BotaoAjuda = styled.button`
 `;
 
 /**
- * A frase que ocupa o lugar dos botões escondidos.
+ * A caixa que ocupa o lugar dos botões escondidos.
  *
  * 📐 Botão desabilitado com tooltip não serve para quem não conhece a tela:
  * a explicação só aparece no hover, e no celular nunca aparece. Aqui o texto
  * fica visível e diz a AÇÃO a tomar ("escolha um escopo"), não só que algo
  * está indisponível.
+ *
+ * ⚠ **Linha inteira, e não uma pílula ao lado dos botões.** Era uma pílula
+ * cinza pequena no meio da barra, e passava despercebida justamente por quem
+ * ela existe para socorrer: quem abre a tela pela primeira vez, não encontra
+ * o botão de banca e não desconfia que a causa é o seletor acima. Ocupando a
+ * linha, ela vira o próximo lugar para onde o olho vai depois dos botões.
+ *
+ * 📐 Tom neutro, não de alerta: nada deu errado, só falta um passo. Vermelho
+ * aqui ensinaria a pessoa a ignorar o vermelho que importa.
  */
-export const DicaEscopo = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: ${theme.fontSize.xs};
-  color: ${theme.colors.mutedForeground};
-  padding: 0.25rem 0.625rem;
+export const DicaEscopo = styled.div`
+  /* Quebra a linha da barra flex e ocupa a largura toda. */
+  flex-basis: 100%;
+
+  display: flex;
+  align-items: flex-start;
+  gap: ${theme.spacing.sm};
+
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.md};
   background: ${theme.colors.muted};
+
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.45;
+  color: ${theme.colors.mutedForeground};
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  strong {
+    color: ${theme.colors.foreground};
+    font-weight: ${theme.fontWeight.semibold};
+  }
 `;
 
 /**
