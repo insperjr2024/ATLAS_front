@@ -36,6 +36,7 @@ import {
   ErrorText,
   PageButton,
 } from "@/styles/page.styled";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import { CaixaGrafico } from "./Monitoramento.styled";
 import {
   MontadorGrid,
@@ -342,7 +343,15 @@ export function GraficosAba() {
           ) : !dados ? (
             <EmptyText>Carregando...</EmptyText>
           ) : dados.dados.length === 0 ? (
-            <EmptyText>Nenhum dado para esse recorte.</EmptyText>
+            /* "Recorte" é jargão de quem construiu a tela. Quem monta um
+               gráfico e não vê nada precisa saber que a combinação escolhida
+               é que não tem registro — e que a saída é trocar o agrupamento
+               ou o período, não desistir. */
+            <EstadoVazio
+              causa="filtro"
+              titulo="Nenhum registro nessa combinação"
+              motivo="A tabela tem dados, mas nenhum se encaixa no agrupamento e no período escolhidos. Tente outro agrupamento, ou amplie o período."
+            />
           ) : (
             <>
               <CaixaGrafico $altura="22rem">

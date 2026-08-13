@@ -12,7 +12,6 @@ import {
   ErrorBlock,
   ErrorText,
   PageButton,
-  EmptyText,
 } from "@/styles/page.styled";
 import { Card, CardMeta, CardTitulo, CardTopo, Ponto } from "@/components/kanban/Kanban.styled";
 import { StatusPilula } from "@/pages/projetos/Projetos.styled";
@@ -32,6 +31,7 @@ import {
   SwimLabelTexto,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
 /**
@@ -125,10 +125,26 @@ export function TarefasGeraisAba() {
   }
 
   if (dados.tarefas.length === 0 || dados.colunas.length === 0) {
+    // Com filtro ligado a tarefa provavelmente existe e está escondida; sem
+    // nenhum, ou ninguém criou tarefa ainda, ou não é da sua visão. As duas
+    // levam a ações opostas.
+    const filtrando = frenteId !== null || escopoId !== null;
     return (
       <PageStack>
         {seletor}
-        <EmptyText>Nenhuma tarefa na sua visão.</EmptyText>
+        {filtrando ? (
+          <EstadoVazio
+            causa="filtro"
+            titulo="Nenhuma tarefa com esse recorte"
+            motivo="Os filtros acima estão escondendo o resto. Volte para “Todas as frentes” para ver tudo."
+          />
+        ) : (
+          <EstadoVazio
+            causa="vazio"
+            titulo="Nenhuma tarefa cadastrada"
+            motivo="Os projetos que você acompanha ainda não têm tarefa nenhuma no quadro. Elas são criadas dentro de cada projeto, na aba Tarefas."
+          />
+        )}
       </PageStack>
     );
   }
@@ -171,7 +187,11 @@ export function TarefasGeraisAba() {
       </BarraBusca>
 
       {projetos.length === 0 ? (
-        <EmptyText>Nenhum projeto com "{busca}".</EmptyText>
+        <EstadoVazio
+          causa="filtro"
+          titulo={`Nenhum projeto com “${busca}”`}
+          motivo="A busca olha o nome do projeto e o do cliente. Limpe o campo acima para ver o quadro inteiro de novo."
+        />
       ) : (
         <>
         {/* O cabeçalho fica FORA do quadro para poder grudar no topo da página:

@@ -43,7 +43,6 @@ import { PainelAvaliados } from "@/pages/avaliacao-desempenho/painel/PainelAvali
 import { PainelRelatorio } from "@/pages/avaliacao-desempenho/painel/PainelRelatorio";
 import { PainelLotes } from "@/pages/avaliacao-desempenho/painel/PainelLotes";
 import { PainelMentoria } from "@/pages/avaliacao-desempenho/painel/PainelMentoria";
-import { PainelPdi } from "@/pages/avaliacao-desempenho/painel/PainelPdi";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 import { CronogramasGeraisAba } from "@/pages/monitoramento/CronogramasGeraisAba";
@@ -148,7 +147,6 @@ export default function App() {
                   <Route path="relatorio" element={<PainelRelatorio />} />
                   <Route path="lotes" element={<PainelLotes />} />
                   <Route path="mentoria" element={<PainelMentoria />} />
-                  <Route path="pdi" element={<PainelPdi />} />
                 </Route>
               </Route>
 

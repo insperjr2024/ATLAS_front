@@ -478,13 +478,12 @@ export const EtapaSeletorWrap = styled.div`
 export const EtapaBotaoAtual = styled.button`
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  height: 2.25rem;
-  padding: 0 0.75rem;
-  border: 1px solid ${theme.colors.input};
-  border-radius: ${theme.borderRadius.lg};
-  background: ${theme.colors.background};
-  color: ${theme.colors.foreground};
+  gap: 0.375rem;
+  padding: 0;
+  border: none;
+  border-radius: ${theme.borderRadius.full};
+  background: transparent;
+  color: ${theme.colors.mutedForeground};
   font-size: ${theme.fontSize.sm};
   cursor: pointer;
 
@@ -495,7 +494,6 @@ export const EtapaBotaoAtual = styled.button`
 
   &:focus-visible {
     outline: none;
-    border-color: ${theme.colors.ring};
     box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 25%, transparent);
   }
 `;
