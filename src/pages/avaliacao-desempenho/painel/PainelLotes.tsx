@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertTriangle, Pencil } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   abrirLote,
@@ -135,7 +136,7 @@ export function PainelLotes() {
       setLotes(l);
       setProjetos(p);
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao carregar lotes");
+      setErro(err instanceof Error ? err.message : "Erro ao carregar formulários");
     } finally {
       setCarregando(false);
     }
@@ -210,7 +211,7 @@ export function PainelLotes() {
       setDataFim("");
       setProjetoIds([]);
     } catch (err) {
-      setErroForm(err instanceof Error ? err.message : "Erro ao criar lote");
+      setErroForm(err instanceof Error ? err.message : "Erro ao criar formulário");
     } finally {
       setSalvando(false);
     }
@@ -272,7 +273,7 @@ export function PainelLotes() {
       setLotes((atual) => atual.map((l) => (l.id === loteId ? atualizado : l)));
       setEditandoLoteId(null);
     } catch (err) {
-      setEditErro(err instanceof Error ? err.message : "Erro ao salvar o lote");
+      setEditErro(err instanceof Error ? err.message : "Erro ao salvar o formulário");
     } finally {
       setEditSalvando(false);
     }
@@ -312,7 +313,11 @@ export function PainelLotes() {
     <>
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Novo lote</PageCardTitle>
+          <PageCardTitle>Novo formulário</PageCardTitle>
+          <PageButtonSm as={Link} to="/avaliacao-desempenho/painel/formularios" $variant="outline">
+            <Pencil size={14} />
+            Editar formulário
+          </PageButtonSm>
         </PageCardHeader>
         <PageCardContent>
           <FormStack onSubmit={handleCriar}>
@@ -406,7 +411,7 @@ export function PainelLotes() {
             </FieldGroup>
             {erroForm && <ErrorText>{erroForm}</ErrorText>}
             <PageButton type="submit" disabled={salvando}>
-              {salvando ? "Criando..." : "Criar lote"}
+              {salvando ? "Criando..." : "Criar formulário"}
             </PageButton>
           </FormStack>
         </PageCardContent>
@@ -414,11 +419,11 @@ export function PainelLotes() {
 
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Lotes</PageCardTitle>
+          <PageCardTitle>Formulários</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
           {lotes.length === 0 ? (
-            <EmptyText>Nenhum lote criado ainda.</EmptyText>
+            <EmptyText>Nenhum formulário criado ainda.</EmptyText>
           ) : (
             <LotesStack>
             {lotes.map((lote) => {
@@ -539,7 +544,7 @@ export function PainelLotes() {
                   {pendenciasLoteId === lote.id && !lote.aberto && (
                     <SubLista>
                       {gruposPendencias.length === 0 ? (
-                        <EmptyText>Ninguém pendente neste lote.</EmptyText>
+                        <EmptyText>Ninguém pendente neste formulário.</EmptyText>
                       ) : (
                         gruposPendencias.map((grupo) => (
                           <PendenciaCard key={grupo.avaliadorId}>
@@ -573,8 +578,8 @@ export function PainelLotes() {
 
       {paraExcluir && (
         <ConfirmarModal
-          titulo="Excluir lote"
-          mensagem={`Excluir o lote "${paraExcluir.nome}"? Esta ação não pode ser desfeita.`}
+          titulo="Excluir formulário"
+          mensagem={`Excluir o formulário "${paraExcluir.nome}"? Esta ação não pode ser desfeita.`}
           onCancelar={() => setParaExcluir(null)}
           onConfirmar={confirmarExclusao}
         />

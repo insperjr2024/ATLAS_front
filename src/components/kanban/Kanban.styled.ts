@@ -5,7 +5,7 @@ import type { TonsColuna } from "@/lib/colunas-tarefa";
 /** O número de colunas é dado, não constante: a diretoria pode criar mais. */
 export const Board = styled.div<{ $colunas: number }>`
   display: grid;
-  grid-template-columns: repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(11rem, 1fr));
+  grid-template-columns: repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(13.5rem, 1fr));
   gap: ${theme.spacing.sm};
   overflow-x: auto;
   padding-bottom: ${theme.spacing.sm};

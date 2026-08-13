@@ -47,6 +47,7 @@ import {
   KpiValor,
   LinhaItem,
   LinkProjeto,
+  ListaAtencaoGrid,
   ListaSimples,
   PainelGrid,
   type NivelSeveridade,
@@ -432,7 +433,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
               </ControlesGrafico>
 
               <ConteudoPaginado estado={atencao}>
-                <ListaSimples>
+                <ListaAtencaoGrid>
                   {atencao.visiveis.map((item, i) => (
                     /* A cor do marcador carrega a gravidade: sem ela uma lista
                        de 15 itens grita igual e a diretoria não sabe por onde
@@ -451,7 +452,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                       </span>
                     </ItemAtencao>
                   ))}
-                </ListaSimples>
+                </ListaAtencaoGrid>
               </ConteudoPaginado>
               {/* Este é o card que mais cresce da tela: 77 itens com o núcleo
                   cheio. A lista vem ordenada por gravidade, então a página 1 é

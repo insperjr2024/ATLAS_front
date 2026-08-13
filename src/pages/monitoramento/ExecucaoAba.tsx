@@ -23,7 +23,7 @@ import {
   FaixaResumo,
   ItemAtencao,
   LinkProjeto,
-  ListaSimples,
+  ListaAtencaoGrid,
   NavegacaoSemana,
   ValorDeHoje,
   ResumoItem,
@@ -195,7 +195,7 @@ export function ExecucaoAba() {
           </PageCardHeader>
           <PageCardContent>
             <ConteudoPaginado estado={listaSemTarefa}>
-              <ListaSimples>
+              <ListaAtencaoGrid>
                 {listaSemTarefa.visiveis.map((linha) => (
                   <ItemAtencao key={linha.projeto_id} $nivel={nivelSemTarefa(linha)}>
                     <strong>
@@ -211,7 +211,7 @@ export function ExecucaoAba() {
                     <span>{motivoSemTarefa(linha)}</span>
                   </ItemAtencao>
                 ))}
-              </ListaSimples>
+              </ListaAtencaoGrid>
             </ConteudoPaginado>
             <Paginacao estado={listaSemTarefa} />
           </PageCardContent>

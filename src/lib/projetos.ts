@@ -402,7 +402,7 @@ export const ROTULO_STATUS: Record<StatusProjeto, string> = {
   vendido: "Vendido",
   ambientacao: "Ambientação",
   em_andamento: "Em andamento",
-  validacao_bancas: "Validação em bancas",
+  validacao_bancas: "Aguardando bancas",
   envio_tep: "Envio do TEP",
   periodo_ajustes: "Período de ajustes",
   finalizado: "Finalizado",
