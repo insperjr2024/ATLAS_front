@@ -12,6 +12,7 @@ import {
   formatarDataHoraBanca,
   marcarKickoff,
   registrarJustificativaAtraso,
+  updateEntregaPrevistaCliente,
   ROTULO_STATUS_ESCOPO,
   rotuloDiaSemana,
   updateDescricao,
@@ -27,7 +28,7 @@ import {
 } from "@/components/membros/MemberPicker";
 import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
-import type { ProjetoCompleto } from "@/types/projeto";
+import type { BancaDoEscopo, ProjetoCompleto } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
 import {
   PageStack,
@@ -58,7 +59,6 @@ import {
   DatasGrid,
   DataItem,
   DataItemLabel,
-  DataItemNota,
   DataItemValor,
   EdicaoBotoes,
   EquipeList,
@@ -251,11 +251,17 @@ export function ProjetoVisaoGeral() {
               <DataItemValor>
                 <span>{formatarData(projeto.data_entrega_cliente)}</span>
               </DataItemValor>
-              <DataItemNota>
-                É a entrega do último escopo — cada escopo tem a sua, registrada em{" "}
-                <strong>Entrega</strong>, no calendário do Cronograma.
-              </DataItemNota>
             </DataItem>
+            {/* ⭐ A PROMESSA, ao lado do fato. Duas datas de propósito: a de
+                cima é o que aconteceu (derivada dos escopos), esta é o que foi
+                combinado na venda. É a diferença entre elas que responde
+                "entregamos ao cliente no prazo?" — pergunta que até aqui só
+                existia por escopo. */}
+            <DataEditavelEntregaPrevista
+              projeto={projeto}
+              token={token}
+              recarregar={recarregar}
+            />
             <DataEditavelDiasAmbientacao projeto={projeto} token={token} recarregar={recarregar} />
             <DataEditavelDiaReuniao projeto={projeto} token={token} recarregar={recarregar} />
           </DatasGrid>
@@ -289,6 +295,24 @@ export function ProjetoVisaoGeral() {
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Por que ESTA entrega está travada — os quatro degraus do §5.5.
+ *
+ * ⭐ Um texto único ("a entrega só libera depois da banca ser aprovada") deixa
+ * quem lê sem próximo passo: marcar a banca, esperar os votos e marcar uma
+ * segunda banca são ações diferentes, e o cadeado é o único lugar onde essa
+ * diferença aparece na tela.
+ */
+function motivoDaTrava(banca: BancaDoEscopo | null): string {
+  if (!banca) return "Este escopo ainda não tem banca marcada — marque-a no Cronograma.";
+  if (!banca.realizado_em) return "A banca deste escopo ainda não foi realizada.";
+  if (banca.resultado === "nao_aprovada")
+    return "A banca não foi aprovada — é preciso marcar uma nova banca antes de entregar ao cliente.";
+  if (!banca.resultado)
+    return "A banca aconteceu, mas ainda não tem resultado: a entrega libera quando os avaliadores votarem.";
+  return "A entrega só é liberada depois da banca do escopo ser aprovada.";
+}
 
 /**
  * A tabela do §6.4: escopo · status · dias usados · banca · entrega.
@@ -493,7 +517,7 @@ function TabelaEscopos() {
                             <EmptyText>liberada</EmptyText>
                           )
                         ) : (
-                          <Cadeado title="A entrega só é liberada depois da banca do escopo ser aprovada">
+                          <Cadeado title={motivoDaTrava(escopo.banca)}>
                             <Lock size={12} />
                             travada
                           </Cadeado>
@@ -506,7 +530,8 @@ function TabelaEscopos() {
             </DataTable>
 
             <LegendaTabela>
-              🔒 A entrega fica travada até a banca do escopo ser realizada. Os dias correm da
+              🔒 A entrega fica travada até a banca do escopo ser <strong>aprovada</strong> — quem
+              decide é a maioria dos votos de quem participou dela. Os dias correm da
               reunião inicial até a <strong>banca ser realizada</strong> — feriados, provas e
               recessos do calendário do Insper não contam, e o que se faz depois da banca é{" "}
               <strong>correção</strong>, que tem coluna própria e não consome dias vendidos.
@@ -845,12 +870,97 @@ function DataEditavelKickoff({
           </>
         )}
       </DataItemValor>
-      {!editando && (
-        <DataItemNota>
-          Ou marque no calendário, em <strong>Kickoff</strong>, na aba Cronograma. É dele que a
-          ambientação conta.
-        </DataItemNota>
-      )}
+      {erro && <FormErrorText>{erro}</FormErrorText>}
+    </DataItem>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * ⭐ A data que foi PROMETIDA ao cliente na venda.
+ *
+ * ⚠ **Não é a "Entrega ao cliente" logo acima.** Aquela é derivada — a entrega
+ * do último escopo, ou seja, o que de fato aconteceu — e por isso não se
+ * edita. Esta é o combinado, e não muda quando o trabalho anda.
+ *
+ * As duas já viveram no mesmo campo, e foi um bug: a promessa era sobrescrita
+ * pela realidade no primeiro reagendamento, e ninguém mais sabia se a data na
+ * tela era o que se prometeu ou o que se cumpriu.
+ *
+ * Vazio é estado normal: nem toda venda fecha com data combinada.
+ */
+function DataEditavelEntregaPrevista({
+  projeto,
+  token,
+  recarregar,
+}: {
+  projeto: ProjetoCompleto;
+  token: string | null;
+  recarregar: () => Promise<void>;
+}) {
+  const { usuario } = useAuth();
+  // Mesma permissão do backend (`require_pode_editar_equipe`).
+  const podeEditar = !!usuario?.permissoes.pode_editar_equipe;
+  const [editando, setEditando] = useState(false);
+  const [data, setData] = useState(projeto.data_entrega_prevista_cliente?.slice(0, 10) ?? "");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function salvar() {
+    if (!token) return;
+    setSalvando(true);
+    setErro("");
+    try {
+      // String vazia limpa a promessa — venda que ainda não fechou data.
+      await updateEntregaPrevistaCliente(projeto.id, data || null, token);
+      setEditando(false);
+      await recarregar();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao salvar a data");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <DataItem>
+      <DataItemLabel>Entrega prevista ao cliente</DataItemLabel>
+      <DataItemValor>
+        {editando ? (
+          <>
+            <FieldInput
+              type="date"
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+              aria-label="Entrega prevista ao cliente"
+            />
+            <PageButtonSm type="button" disabled={salvando} onClick={salvar}>
+              {salvando ? "Salvando…" : "Salvar"}
+            </PageButtonSm>
+            <PageButtonSm
+              type="button"
+              $variant="ghost"
+              onClick={() => {
+                setEditando(false);
+                setData(projeto.data_entrega_prevista_cliente?.slice(0, 10) ?? "");
+                setErro("");
+              }}
+            >
+              Cancelar
+            </PageButtonSm>
+          </>
+        ) : (
+          <>
+            <span>{formatarData(projeto.data_entrega_prevista_cliente)}</span>
+            {podeEditar && (
+              <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
+                {projeto.data_entrega_prevista_cliente ? "Alterar" : "Definir"}
+              </PageButtonSm>
+            )}
+          </>
+        )}
+      </DataItemValor>
       {erro && <FormErrorText>{erro}</FormErrorText>}
     </DataItem>
   );

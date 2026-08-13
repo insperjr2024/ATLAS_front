@@ -90,12 +90,89 @@ export interface BancaDetalhes {
   escopos: string[];
   frentes: string[];
   coordenador: string;
+  /** Para a tela saber se o usuário logado é ele — comparar por nome quebra
+   *  em homônimos e em qualquer diferença de grafia. */
+  coordenador_id: number | null;
   /** Já sem o coordenador, que tem linha própria na ficha. */
   membros: string[];
-  avaliadores: string[];
+  /** ⭐ Objetos, não nomes: a aba precisa do id para saber quem é o usuário
+   *  logado e se ele já votou nesta tentativa. */
+  avaliadores: AvaliadorDaBanca[];
   descricao_coordenador: string | null;
   /** `null` nas bancas legadas, sem escopo vendido vinculado. */
   projeto_id: number | null;
+  /** ⭐ Cada TENTATIVA (§9) — a 1ª que reprovou continua aqui depois da 2ª. */
+  sessoes: SessaoDeBanca[];
+  /** ⭐ Quem votou o quê, e o que escreveu. Só avaliações SUBMETIDAS. */
+  avaliacoes: AvaliacaoDaBanca[];
+  /** A conta dos votos da sessão em curso — leitura, não decide nada. */
+  apuracao: ApuracaoDaBanca;
+  /** Média das notas por critério. Outra dimensão que o voto: mede QUÃO BEM,
+   *  não se pode ir ao cliente. `null` quando ninguém preencheu notas. */
+  nota_final: number | null;
+}
+
+/**
+ * Um avaliador escalado, com o estado dele NESTA tentativa.
+ *
+ * `presente` vem de `candidatura.confirmado`, marcado ao registrar a
+ * realização — escalado e compareceu são coisas diferentes, e só quem
+ * compareceu vota.
+ */
+export interface AvaliadorDaBanca {
+  usuario_id: number;
+  nome: string;
+  presente: boolean;
+  /** O rascunho ou envio dele nesta sessão — `null` se ainda não abriu. */
+  avaliacao_id: number | null;
+  ja_votou: boolean;
+  voto_aprovacao: boolean | null;
+  comentario_feedback: string | null;
+}
+
+/** Uma tentativa de banca (§9) — a linha de `banca_sessao`. */
+export interface SessaoDeBanca {
+  id: number;
+  numero: number;
+  data_hora: string | null;
+  realizado_em: string | null;
+  resultado: ResultadoBanca | null;
+  /** Preenchido = tentativa arquivada; a corrente é a única sem ele. */
+  encerrada_em: string | null;
+}
+
+/** Uma nota (ou resposta) dada a um critério do formulário. */
+export interface NotaDoCriterio {
+  pergunta: string;
+  ordem: number;
+  /** Critério de nota traz isto; pergunta dissertativa traz `resposta_texto`. */
+  nota: number | null;
+  resposta_texto: string | null;
+}
+
+/** O voto de um avaliador numa tentativa, com o que ele respondeu. */
+export interface AvaliacaoDaBanca {
+  id: number;
+  avaliador: string;
+  avaliador_id: number;
+  /** A tentativa a que este voto pertence. */
+  sessao: number;
+  /** `true` = aprovo. `null` nas avaliações anteriores ao voto existir. */
+  voto_aprovacao: boolean | null;
+  comentario_feedback: string | null;
+  submetida_em: string | null;
+  /** ⭐ Critério a critério — é o que a aba abre ao clicar no nome. */
+  notas: NotaDoCriterio[];
+}
+
+export interface ApuracaoDaBanca {
+  sessao: number;
+  aprovacoes: number;
+  reprovacoes: number;
+  /** Tamanho do eleitorado: quantos votos a banca espera. */
+  esperados: number;
+  /** "maioria" | "empate" | "sem_votos" | "aguardando" */
+  motivo: string;
 }
 
 export interface Candidatura {
@@ -211,6 +288,12 @@ export interface Avaliacao {
   banca_id: number;
   avaliador_id: number;
   formulario_id: number;
+  /** ⭐ A tentativa a que este voto pertence (§9). `banca_id` é o mesmo na 1ª e
+   *  na 2ª banca; é a sessão que as separa. Opcional porque as avaliações
+   *  anteriores à coluna não a trazem — o padrão é 1. */
+  sessao?: number;
+  /** ⭐ `true` = aprovo. É a maioria destes votos que decide a banca (§8). */
+  voto_aprovacao?: boolean | null;
   status: "rascunho" | "submetida";
   comentario_feedback: string | null;
   submetida_em: string | null;

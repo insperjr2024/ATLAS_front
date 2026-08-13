@@ -12,8 +12,7 @@ import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
 import { MeuPerfil } from "@/pages/MeuPerfil";
-import { ProjetosVagas } from "@/pages/projetos/ProjetosVagas";
-import { ProjetosSolicitacoes } from "@/pages/projetos/ProjetosSolicitacoes";
+import { Vagas } from "@/pages/Vagas";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Membros } from "@/pages/Membros";
 import { Notificacoes } from "@/pages/Notificacoes";
@@ -25,6 +24,7 @@ import { ProjetoNovo } from "@/pages/projetos/ProjetoNovo";
 import { ProjetoPage } from "@/pages/projetos/ProjetoPage";
 import { ProjetoVisaoGeral } from "@/pages/projetos/ProjetoVisaoGeral";
 import { ProjetoCronograma } from "@/pages/projetos/ProjetoCronograma";
+import { ProjetoBanca } from "@/pages/projetos/ProjetoBanca";
 import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
 import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
 import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
@@ -83,15 +83,7 @@ export default function App() {
               <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
-              {/* §7.3 — navegar vagas e responder a pedidos, dentro de
-                  Projetos (não mais um item próprio do menu). Precisam vir
-                  ANTES de /projetos/:id na leitura pra ficar claro que não
-                  são o mesmo tipo de rota, mesmo o React Router já
-                  priorizando segmento fixo sobre parâmetro sozinho.
-                  /projetos/solicitacoes é a MESMA rota que a notificação de
-                  pedido novo já usa (`solicitacao_projeto.py`, backend). */}
-              <Route path="/projetos/vagas" element={<ProjetosVagas />} />
-              <Route path="/projetos/solicitacoes" element={<ProjetosSolicitacoes />} />
+              <Route path="/vagas" element={<Vagas />} />
               {/* Criar projeto é a caixa de permissão `pode_criar_projeto` —
                   a mesma que decide o botão em `ProjetosList` e que o backend
                   já checava (`require_pode_criar_projeto`). Guard por posição
@@ -109,6 +101,7 @@ export default function App() {
               <Route path="/projetos/:id" element={<ProjetoPage />}>
                 <Route index element={<ProjetoVisaoGeral />} />
                 <Route path="cronograma" element={<ProjetoCronograma />} />
+                <Route path="banca" element={<ProjetoBanca />} />
                 <Route path="tarefas" element={<ProjetoTarefas />} />
                 <Route path="historico" element={<ProjetoHistorico />} />
               </Route>

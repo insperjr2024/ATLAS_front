@@ -150,7 +150,7 @@ export function BancaDetalhesModal({
               </DetailRow>
               <DetailRow>
                 <DetailTerm>Avaliadores</DetailTerm>
-                <DetailValue>{banca.avaliadores.join(", ") || "—"}</DetailValue>
+                <DetailValue>{banca.avaliadores.map((a) => a.nome).join(", ") || "—"}</DetailValue>
               </DetailRow>
               {banca.descricao_coordenador && (
                 <DetailRow>

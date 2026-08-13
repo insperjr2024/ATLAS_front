@@ -69,6 +69,8 @@ export interface CreateProjetoPayload {
   max_consultores: number;
   equipe: MembroEquipePayload[];
   dia_reuniao_padrao?: number | null;
+  /** A promessa ao cliente, registrada já na venda. */
+  data_entrega_prevista_cliente?: string | null;
   escopos?: EscopoVendidoPayload[];
 }
 
@@ -132,9 +134,32 @@ export function marcarKickoff(projetoId: number, dataKickoff: string, token: str
   );
 }
 
-// ⭐ Não existe `marcarEntregaCliente`: entrega ao cliente e entrega do escopo
-// são a MESMA data (§5.5) — quem a escreve é `marcarEntregaEscopo`, e a do
-// projeto é derivada da última pelo backend.
+// ⭐ Não existe `marcarEntregaCliente`: a entrega ao cliente REALIZADA e a
+// entrega do escopo são a MESMA data (§5.5) — quem a escreve é
+// `marcarEntregaEscopo`, e a do projeto é derivada da última pelo backend.
+//
+// O que existe é a PROMESSA, abaixo: outra pergunta, outro campo.
+
+/**
+ * A data combinada com o cliente na venda.
+ *
+ * `null` limpa a promessa. Não toca na entrega realizada — aquela é derivada
+ * dos escopos e não passa por aqui.
+ */
+export function updateEntregaPrevistaCliente(
+  projetoId: number,
+  data: string | null,
+  token: string,
+) {
+  return apiFetch<{ id: number; data_entrega_prevista_cliente: string | null }>(
+    `/projetos/${projetoId}/entrega-prevista-cliente`,
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({ data_entrega_prevista_cliente: data }),
+    },
+  );
+}
 
 /** `statusNovo` aceita qualquer etapa ativa (ver `destinosValidos`), `"pausado"` ou `"retomar"`. */
 export function mudarStatus(projetoId: number, statusNovo: string, token: string) {
@@ -293,7 +318,8 @@ export function updateEscopoProjeto(
 // não a data de início — que continua sendo a reunião inicial do cronograma.
 
 /**
- * 🔒 O backend recusa com 422 até a banca do escopo ser realizada (§5.5).
+ * 🔒 O backend recusa com 422 até a banca do escopo ser APROVADA (§5.5) — a
+ * banca acontecer não basta, é o resultado que libera.
  *
  * `justificativa` só é exigida para ALTERAR uma entrega já registrada, e nesse
  * caso o backend também exige que quem altera seja a diretoria (§13).

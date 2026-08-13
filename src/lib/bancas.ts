@@ -299,3 +299,64 @@ export function toTimeInputValue(iso: string): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+/**
+ * ⭐ Pedir para marcar a banca num horário já ocupado (§8).
+ *
+ * ⚠ **O caminho que faltava.** O backend bloqueia duas bancas no mesmo horário
+ * e anuncia que a exceção é da diretoria — mas até aqui nenhuma tela sabia como
+ * pedi-la. Quem esbarrava no choque lia a regra e não tinha o que fazer.
+ */
+export function solicitarExcecaoChoque(
+  dados: { projeto_escopo_id: number; data_hora_pretendida: string; justificativa: string },
+  token: string,
+) {
+  return apiFetch<{ id: number; status: string }>("/bancas/excecoes-choque", {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+/** Um pedido de exceção esperando a diretoria. */
+export interface ExcecaoChoquePendente {
+  id: number;
+  projeto_id: number | null;
+  projeto_nome: string;
+  projeto_escopo_id: number;
+  data_hora_pretendida: string;
+  /** Com QUEM está chocando — o contexto sem o qual a decisão é no escuro. */
+  conflita_com: string;
+  justificativa: string;
+  solicitado_por: number;
+  solicitado_por_nome: string | null;
+  criado_em: string;
+}
+
+export function getExcecoesChoquePendentes(token: string) {
+  return apiFetch<ExcecaoChoquePendente[]>("/bancas/excecoes-choque/pendentes", { token });
+}
+
+/** A decisão da diretoria — `resposta` é obrigatória nos dois sentidos. */
+export function decidirExcecaoChoque(
+  pedidoId: number,
+  dados: { aprovar: boolean; resposta: string },
+  token: string,
+) {
+  return apiFetch(`/bancas/excecoes-choque/${pedidoId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+/**
+ * ⭐ Todas as bancas de um PROJETO, cada uma com a ficha completa.
+ *
+ * É o que a aba "Banca" do projeto consome. Rota própria, e não N chamadas a
+ * `/bancas/{id}/detalhes`: quem abre a aba não sabe os ids das bancas, e
+ * descobri-los exigiria buscar os escopos antes só para saber o que pedir.
+ */
+export function getBancasDoProjeto(projetoId: number, token: string) {
+  return apiFetch<BancaDetalhes[]>(`/projetos/${projetoId}/bancas`, { token });
+}

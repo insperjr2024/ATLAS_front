@@ -21,6 +21,7 @@ import {
   podeGerenciarBanca,
   realizarBanca,
   registrarDescricaoCoordenador,
+  registrarResultado,
   ROTULO_STATUS_BANCA,
   syncBancaFrentes,
   syncEquipeProjeto,
@@ -40,7 +41,9 @@ import {
   isPerguntaOpcional,
   submeterAvaliacao,
 } from "@/lib/avaliacoes";
+import { CalendarioBancas } from "@/components/bancas/CalendarioBancas";
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
+import { VotoBanca } from "@/components/VotoBanca";
 import { AlertModal } from "@/components/AlertModal";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { DescricaoQuote } from "@/styles/shared.styled";
@@ -50,7 +53,14 @@ import {
   createSolicitacaoTroca,
   getSolicitacoesTroca,
 } from "@/lib/solicitacoes-troca";
-import { getProjetos, getEscoposProjeto, marcarBancaDoEscopo, paraDataUtc } from "@/lib/projetos";
+import {
+  formatarDataHora,
+  getProjetos,
+  getEscoposProjeto,
+  marcarBancaDoEscopo,
+  paraDataUtc,
+} from "@/lib/projetos";
+import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import type { EscopoVendido, ProjetoResumo } from "@/types/projeto";
 import type {
   Banca,
@@ -146,7 +156,7 @@ import {
   BancaAcoes,
 } from "./Bancas.styled";
 
-type AbaBancas = "meus" | "alocacao" | "avaliacao" | "desempenho";
+type AbaBancas = "meus" | "alocacao" | "avaliacao" | "desempenho" | "calendario";
 
 function porDataMaisProxima(a: Banca, b: Banca): number {
   return new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime();
@@ -197,6 +207,8 @@ export function Bancas() {
   const [criarAberto, setCriarAberto] = useState(false);
   const [bancaRealizar, setBancaRealizar] = useState<Banca | null>(null);
   const [bancaAlocar, setBancaAlocar] = useState<Banca | null>(null);
+  /** ⭐ A banca cujo resultado a diretoria vai registrar à mão (§8). */
+  const [bancaResultado, setBancaResultado] = useState<Banca | null>(null);
   const [aba, setAba] = useState<AbaBancas>("alocacao");
   const [avisoErro, setAvisoErro] = useState("");
   const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
@@ -485,7 +497,17 @@ export function Bancas() {
         <TabButton type="button" $ativa={aba === "desempenho"} onClick={() => setAba("desempenho")}>
           Desempenho
         </TabButton>
+        {/* Por último: as três primeiras são filas de TRABALHO ("o que eu
+            preciso fazer"); esta é consulta ("esse horário está livre?"). */}
+        <TabButton type="button" $ativa={aba === "calendario"} onClick={() => setAba("calendario")}>
+          Calendário
+          <TabCount>{bancas.length}</TabCount>
+        </TabButton>
       </TabBar>
+
+      {aba === "calendario" && (
+        <CalendarioBancas bancas={bancas} onAbrirBanca={setBancaDetalhe} />
+      )}
 
       {aba === "meus" && mostrarMeusProjetos && (
         <SecaoBancas
@@ -503,6 +525,7 @@ export function Bancas() {
           onRealizar={setBancaRealizar}
           onAlocarPessoas={setBancaAlocar}
           ehDiretorLista={ehDiretor}
+          onRegistrarResultado={setBancaResultado}
         />
       )}
 
@@ -520,6 +543,7 @@ export function Bancas() {
             onRealizar={setBancaRealizar}
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
+            onRegistrarResultado={setBancaResultado}
             onAcao={handleDesalocar}
             onPedirTroca={handlePedirTroca}
             onConvidar={setBancaConvidar}
@@ -539,6 +563,7 @@ export function Bancas() {
             onRealizar={setBancaRealizar}
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
+            onRegistrarResultado={setBancaResultado}
             onVerMais={setBancaDetalhe}
           />
           <SecaoBancas
@@ -553,6 +578,7 @@ export function Bancas() {
             onRealizar={setBancaRealizar}
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
+            onRegistrarResultado={setBancaResultado}
             onVerMais={setBancaDetalhe}
           />
           <SecaoTrocas
@@ -578,6 +604,7 @@ export function Bancas() {
             onRealizar={setBancaRealizar}
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
+            onRegistrarResultado={setBancaResultado}
             onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
             onVerMais={setBancaDetalhe}
           />
@@ -616,6 +643,8 @@ export function Bancas() {
         onClose={() => setBancaDetalhe(null)}
         onEditar={setBancaEditar}
         onExcluir={handleExcluir}
+        onRegistrarResultado={setBancaResultado}
+        ehDiretor={!!ehDiretor}
         onDescricaoEnviada={recarregar}
       />
 
@@ -637,6 +666,18 @@ export function Bancas() {
           ehDiretor={!!ehDiretor}
           onCancelar={() => setBancaRealizar(null)}
           onConfirmar={handleRealizar}
+        />
+      )}
+
+      {bancaResultado && token && (
+        <RegistrarResultadoModal
+          banca={bancaResultado}
+          token={token}
+          onFechar={() => setBancaResultado(null)}
+          onRegistrou={() => {
+            setBancaResultado(null);
+            recarregar();
+          }}
         />
       )}
 
@@ -721,6 +762,7 @@ function SecaoBancas({
   onExcluir,
   onRealizar,
   onAlocarPessoas,
+  onRegistrarResultado,
   ehDiretorLista,
   onPedirTroca,
   onConvidar,
@@ -745,6 +787,13 @@ function SecaoBancas({
   onRealizar?: (banca: Banca) => void;
   /** Abre a alocação manual — só faz sentido enquanto a banca não aconteceu. */
   onAlocarPessoas?: (banca: Banca) => void;
+  /**
+   * ⭐ Override da diretoria sobre o resultado (§8).
+   *
+   * A saída para a banca que aconteceu e ninguém votou: sem ela, o veredito
+   * nunca sai e a entrega ao cliente fica travada para sempre (§5.5).
+   */
+  onRegistrarResultado?: (banca: Banca) => void;
   /** Alocar OUTRA pessoa é ação de diretoria (§8), diferente de gerenciar. */
   ehDiretorLista?: boolean;
   onPedirTroca?: (bancaId: number) => void;
@@ -790,6 +839,27 @@ function SecaoBancas({
                 : undefined;
               const prazo = acao === "avaliar" ? contexto.prazosAvaliacao[banca.id] : undefined;
               const prazoExpirado = !!prazo?.prazoExpirado;
+
+              /**
+               * ⭐ Por que o botão está cinza — e, principalmente, **o que
+               * fazer agora**.
+               *
+               * O rótulo já dizia "Lotada" e "Prazo esgotado", que nomeiam o
+               * estado e deixam a pessoa exatamente onde ela estava: sem saber
+               * se é definitivo, se dá para contornar, ou com quem falar. As
+               * três partes de toda mensagem da plataforma são o que está
+               * bloqueado, por quê, e a saída.
+               */
+              const motivoBloqueio = lotada
+                ? `Esta banca já tem ${banca.vagas} avaliadores, que é o máximo. ` +
+                  "Peça troca a quem já está alocado, ou volte se alguém se desalocar."
+                : prazoExpirado
+                  ? "O prazo de 2 dias corridos para avaliar acabou" +
+                    (prazo?.prazoAvaliacao
+                      ? ` em ${formatarDataHora(prazo.prazoAvaliacao)}. `
+                      : ". ") +
+                    "A plataforma não aceita mais o envio — avise a diretoria se esta avaliação ainda precisa entrar."
+                  : null;
 
               // Qualquer clique dentro do rodapé de ações não deve também
               // disparar o clique do card inteiro (que abre "Ver mais").
@@ -907,6 +977,23 @@ function SecaoBancas({
                           Registrar realização
                         </PageButtonSm>
                       )}
+
+                      {/* ⭐ Só quando a banca JÁ aconteceu e continua sem
+                          veredito — e só para a diretoria, que é quem a rota
+                          aceita (`require_diretor`). O caminho normal é o voto
+                          dos avaliadores; este botão existe para o caso que o
+                          voto não resolve: ninguém votou e o prazo venceu.
+                          Mostrá-lo antes disso convidaria a diretoria a decidir
+                          por cima de quem esteve na banca. */}
+                      {ehDiretorLista && onRegistrarResultado && banca.realizado_em && !banca.resultado && (
+                        <PageButtonSm
+                          $variant="outline"
+                          type="button"
+                          onClick={pararPropagacao(() => onRegistrarResultado(banca))}
+                        >
+                          Registrar resultado
+                        </PageButtonSm>
+                      )}
                       {acao === "deslocar" && minhaCandidatura && (
                         <>
                           {minhaSolicitacaoPendente && onCancelarTroca ? (
@@ -940,22 +1027,24 @@ function SecaoBancas({
                     </BancaAcoesSecundarias>
 
                     {acao !== "nenhuma" && onAcao && (
-                      <PageButtonSm
-                        $variant={acao === "deslocar" ? "outline" : "primary"}
-                        type="button"
-                        disabled={lotada || prazoExpirado}
-                        onClick={pararPropagacao(() => onAcao(banca.id))}
-                      >
-                        {lotada
-                          ? "Lotada"
-                          : prazoExpirado
-                            ? "Prazo esgotado"
-                            : acao === "alocar"
-                              ? "Alocar-se"
-                              : acao === "deslocar"
-                                ? "Deslocar-se"
-                                : "Avaliar"}
-                      </PageButtonSm>
+                      <MotivoDesabilitado motivo={motivoBloqueio}>
+                        <PageButtonSm
+                          $variant={acao === "deslocar" ? "outline" : "primary"}
+                          type="button"
+                          disabled={lotada || prazoExpirado}
+                          onClick={pararPropagacao(() => onAcao(banca.id))}
+                        >
+                          {lotada
+                            ? "Lotada"
+                            : prazoExpirado
+                              ? "Prazo esgotado"
+                              : acao === "alocar"
+                                ? "Alocar-se"
+                                : acao === "deslocar"
+                                  ? "Deslocar-se"
+                                  : "Avaliar"}
+                        </PageButtonSm>
+                      </MotivoDesabilitado>
                     )}
                   </BancaCardFooter>
                 </BancaCard>
@@ -1462,6 +1551,8 @@ function VerMaisModal({
   onClose,
   onEditar,
   onExcluir,
+  onRegistrarResultado,
+  ehDiretor,
   onDescricaoEnviada,
 }: {
   banca: Banca | null;
@@ -1471,6 +1562,20 @@ function VerMaisModal({
   onClose: () => void;
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
+  /**
+   * ⭐ Override da diretoria sobre o resultado (§8) — e o ÚNICO lugar de onde
+   * ele é sempre alcançável.
+   *
+   * ⚠ O botão existe nos cards das listas, mas nenhuma delas contém a banca em
+   * que ele é necessário: "Alocação" só mostra banca `aberta`/`atrasada`,
+   * "Avaliação" exige candidatura própria e "Meus projetos" exige ser do
+   * grupo. Uma banca REALIZADA e sem veredito, de um projeto que o diretor não
+   * coordena, não aparecia em nenhuma — justamente a que a fila "Bancas sem
+   * resultado" manda ele resolver. Daqui ela é alcançável pela aba Calendário
+   * e por qualquer card.
+   */
+  onRegistrarResultado?: (banca: Banca) => void;
+  ehDiretor?: boolean;
   onDescricaoEnviada?: () => void;
 }) {
   if (!banca) return null;
@@ -1536,6 +1641,11 @@ function VerMaisModal({
           )}
         </ModalBody>
         <ModalFooter>
+          {ehDiretor && onRegistrarResultado && banca.realizado_em && !banca.resultado && (
+            <PageButton type="button" onClick={() => onRegistrarResultado(banca)}>
+              Registrar resultado
+            </PageButton>
+          )}
           {podeGerenciar && onEditar && (
             <PageButton type="button" onClick={() => onEditar(banca)}>
               Editar
@@ -1756,6 +1866,10 @@ function AvaliarModal({
   );
   const [respostasTexto, setRespostasTexto] = useState<Record<number, string>>({});
   const [comentario, setComentario] = useState("");
+  // ⭐ O voto que decide a banca (§8) — nasce nulo de propósito: não há default
+  // seguro entre aprovar e reprovar, e um pré-selecionado seria enviado por
+  // inércia por quem só quer fechar o formulário.
+  const [voto, setVoto] = useState<boolean | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -1765,6 +1879,10 @@ function AvaliarModal({
     const faltando = perguntasNota.some((p) => notas[p.id] == null);
     if (faltando) {
       setErro("Selecione uma nota de 1 a 5 para todos os critérios.");
+      return;
+    }
+    if (voto === null) {
+      setErro("Diga se você aprova ou não este escopo — é o seu voto que decide a banca.");
       return;
     }
     setEnviando(true);
@@ -1805,7 +1923,7 @@ function AvaliarModal({
           );
         }
       }
-      await submeterAvaliacao(avaliacao.id, comentario.trim() || null, token);
+      await submeterAvaliacao(avaliacao.id, voto, comentario.trim() || null, token);
       onEnviada();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao enviar avaliação");
@@ -1917,6 +2035,9 @@ function AvaliarModal({
                 <FieldLabel htmlFor="comentario">Comentário (opcional)</FieldLabel>
                 <FieldTextarea id="comentario" value={comentario} onChange={(e) => setComentario(e.target.value)} />
               </FieldGroup>
+              {/* Por último, e depois do comentário: o voto é a conclusão de
+                  tudo que foi respondido acima, não a primeira impressão. */}
+              <VotoBanca value={voto} onChange={setVoto} disabled={enviando} />
               {erro && <FormErrorText>{erro}</FormErrorText>}
             </ModalBody>
             <ModalFooterSplit>
@@ -1930,6 +2051,82 @@ function AvaliarModal({
           </FormStack>
         )}
       </WideModalContent>
+    </ModalOverlay>
+  );
+}
+
+/**
+ * ⭐ Override da diretoria sobre o resultado da banca (§8).
+ *
+ * ⚠ **Não é o caminho normal, e a tela precisa dizer isso.** Quem decide é a
+ * maioria dos avaliadores que estiveram na banca; a apuração grava sozinha
+ * assim que os votos entram. Este modal existe para o único caso que o voto
+ * não resolve — a banca aconteceu, o prazo de 2 dias venceu e ninguém votou.
+ * Sem ele o veredito nunca sairia e a entrega ao cliente ficaria travada para
+ * sempre (§5.5), que é exatamente o beco em que as bancas antigas estão.
+ *
+ * O aviso no corpo não é decoração: sem ele, a diretoria usaria este botão
+ * como atalho e o voto viraria enfeite.
+ */
+function RegistrarResultadoModal({
+  banca,
+  token,
+  onFechar,
+  onRegistrou,
+}: {
+  banca: Banca;
+  token: string;
+  onFechar: () => void;
+  onRegistrou: () => void;
+}) {
+  const [resultado, setResultado] = useState<"aprovada" | "nao_aprovada" | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function handleConfirmar() {
+    if (!resultado) {
+      setErro("Escolha o resultado da banca.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      await registrarResultado(banca.id, resultado, token);
+      onRegistrou();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao registrar o resultado");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onFechar} role="presentation">
+      <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="resultado-titulo">
+        <ModalHeader>
+          <ModalTitle id="resultado-titulo">Registrar resultado — {banca.nome_projeto}</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onFechar}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          <p>
+            O resultado normalmente sai do <strong>voto dos avaliadores</strong> que estiveram na
+            banca. Use este registro apenas quando o prazo de avaliação venceu e ninguém votou — é
+            o resultado que libera a entrega ao cliente.
+          </p>
+          <VotoBanca value={resultado === null ? null : resultado === "aprovada"} onChange={(v) => setResultado(v ? "aprovada" : "nao_aprovada")} disabled={salvando} />
+          {erro && <FormErrorText>{erro}</FormErrorText>}
+        </ModalBody>
+        <ModalFooterSplit>
+          <PageButton $variant="outline" type="button" onClick={onFechar}>
+            Cancelar
+          </PageButton>
+          <PageButton type="button" onClick={handleConfirmar} disabled={salvando}>
+            {salvando ? "Registrando..." : "Registrar resultado"}
+          </PageButton>
+        </ModalFooterSplit>
+      </NarrowModalContent>
     </ModalOverlay>
   );
 }

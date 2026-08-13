@@ -242,7 +242,12 @@ export function DashboardBancas({
    */
   const avaliacoesVencendo = useMemo(() => {
     const submetidas = new Set(
-      avaliacoes.filter((a) => a.status === "submetida").map((a) => `${a.banca_id}:${a.avaliador_id}`),
+      // ⚠ A sessão entra na chave (§9): sem ela, quem avaliou a banca que
+      // reprovou conta como "já enviou" na segunda e some da cobrança. Mesma
+      // chave que `calcular_avaliacoes_pendentes` usa no backend.
+      avaliacoes
+        .filter((a) => a.status === "submetida")
+        .map((a) => `${a.banca_id}:${a.avaliador_id}:${a.sessao ?? 1}`),
     );
 
     return bancasSemestre
