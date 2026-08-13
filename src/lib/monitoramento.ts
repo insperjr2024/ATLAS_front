@@ -479,8 +479,30 @@ export interface AprovacaoAtraso {
   motivos: string[];
 }
 
+/** Alguém pediu para entrar num projeto e está parado esperando resposta. */
+export interface AprovacaoEntrada {
+  id: number;
+  projeto_id: number;
+  projeto_nome: string;
+  usuario_id: number;
+  usuario_nome: string | null;
+  /** Em quantos projetos a pessoa já está — o contexto da decisão. */
+  carga_do_solicitante: number;
+  justificativa: string;
+  criado_em: string;
+}
+
+/** §5.5: a banca aconteceu e ninguém registrou aprovada/não aprovada. */
+export interface AprovacaoBancaSemResultado {
+  banca_id: number;
+  projeto_id: number;
+  projeto_nome: string;
+  escopo_nome: string;
+  realizado_em: string;
+}
+
 /**
- * ⚠ Havia uma terceira fila, `entregas_sem_classificacao` (entregas atrasadas
+ * ⚠ Havia uma quinta fila, `entregas_sem_classificacao` (entregas atrasadas
  * sem o rótulo interno/agenda do cliente). Removida em 2026-08-12 junto com o
  * atraso de ENTREGA nos insights: sem a métrica que separava os dois tipos, a
  * classificação deixou de mudar qualquer número.
@@ -488,6 +510,11 @@ export interface AprovacaoAtraso {
 export interface Aprovacoes {
   dias_de_ajuste: AprovacaoDiasDeAjuste[];
   atrasos_sem_justificativa: AprovacaoAtraso[];
+  solicitacoes_de_entrada: AprovacaoEntrada[];
+  bancas_sem_resultado: AprovacaoBancaSemResultado[];
+  /** §8: pedidos para marcar banca em horário já ocupado. O card tem busca
+   *  própria (decide inline); isto entra no envelope para alimentar o total. */
+  excecoes_de_choque: unknown[];
   /** Servido pronto pelo backend — o badge da aba precisa dele antes de
    *  qualquer render, e somar no front duplicaria a conta. */
   total: number;

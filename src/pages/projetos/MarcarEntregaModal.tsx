@@ -35,8 +35,9 @@ interface Props {
  * coisa: sem gate, um escopo entregue com atraso poderia ter a data empurrada
  * até o atraso sumir do monitoramento.
  *
- * A trava do §5.5 (sem banca realizada não há entrega) continua sendo do
- * backend — este modal não a repete, só mostra a recusa quando ela vem.
+ * A trava do §5.5 (sem banca APROVADA não há entrega — realizar não basta)
+ * continua sendo do backend; este modal não a repete, só mostra a recusa
+ * quando ela vem.
  */
 export function MarcarEntregaModal({
   alvo,

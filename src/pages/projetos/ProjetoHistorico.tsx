@@ -94,6 +94,11 @@ const APARENCIA_EVENTO: Record<string, { rotulo: string; cor: string }> = {
   // são as cores que dizem "informação" e "atenção" sem gritar erro.
   reuniao: { rotulo: "Reunião", cor: theme.colors.info },
   entrega_alterada: { rotulo: "Entrega", cor: theme.colors.warning },
+  // A banca acontecendo é evento de peso: é ela que destrava a entrega ao
+  // cliente (§5.5). Fica em `info`, e não em `success` — a linha existe tanto
+  // para a banca aprovada quanto para a reprovada, e a cor não pode antecipar
+  // um veredito que está escrito no detalhe.
+  banca_realizada: { rotulo: "Banca", cor: theme.colors.info },
 };
 
 

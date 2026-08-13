@@ -415,6 +415,19 @@ export function ProjetoCronograma() {
   const marcos = useMemo<MarcoRenderizavel[]>(() => {
     if (!dados) return [];
     const lista: MarcoRenderizavel[] = [];
+    // ⭐ A promessa ao cliente — do PROJETO, não de um escopo.
+    //
+    // Só na visão Geral: dentro de um escopo específico ela apareceria colada
+    // às datas dele e passaria por entrega daquele escopo, que é outra coisa
+    // (e já tem marco próprio, logo abaixo).
+    if (modoGeral && projeto.data_entrega_prevista_cliente) {
+      lista.push({
+        data: projeto.data_entrega_prevista_cliente.slice(0, 10),
+        tipo: "entrega_prevista_cliente",
+        rotulo: ROTULOS_MARCO.entrega_prevista_cliente,
+        titulo: "Entrega prevista ao cliente",
+      });
+    }
     if (dados.data_kickoff) {
       lista.push({
         data: dados.data_kickoff.slice(0, 10),
@@ -429,17 +442,50 @@ export function ProjetoCronograma() {
       if (!modoGeral && e.id !== escopoSelecionado) continue;
       if (e.banca?.data_hora) {
         const bancaId = e.banca.id;
-        lista.push({
-          data: chaveData(paraDataUtc(e.banca.data_hora)),
-          tipo: "banca",
-          rotulo: ROTULOS_MARCO.banca,
-          titulo: `Banca — ${e.nome}`,
-          // ⭐ O único marco que abre ficha. Banca é a marcação que carrega
-          // informação que NÃO cabe no calendário — quem avalia, quem é a
-          // equipe, qual o resultado —, e até aqui ela só existia na tela
-          // `/bancas`, longe de onde a data aparece.
-          onClick: () => setBancaAberta(bancaId),
-        });
+        // ⭐ **Uma marcação por TENTATIVA, não por banca.**
+        //
+        // `banca.data_hora` é só a tentativa CORRENTE. Uma banca reprovada e
+        // remarcada sumia do dia em que de fato aconteceu — o calendário
+        // mostrava a data nova como se a primeira nunca tivesse existido, e
+        // quem abrisse o cronograma não tinha como saber que houve duas.
+        //
+        // `sessoes` vem vazio nas bancas anteriores a `banca_sessao`: o
+        // fallback mantém essas com a marcação de sempre.
+        const tentativas = e.banca.sessoes?.length
+          ? e.banca.sessoes
+          : [
+              {
+                id: 0,
+                numero: 1,
+                data_hora: e.banca.data_hora,
+                realizado_em: e.banca.realizado_em,
+                resultado: e.banca.resultado,
+                encerrada_em: null,
+              },
+            ];
+        for (const tentativa of tentativas) {
+          if (!tentativa.data_hora) continue;
+          // "Banca" na primeira, "2ª banca" da segunda em diante: numerar a
+          // primeira sugeriria que houve outra antes dela.
+          const nome = tentativa.numero <= 1 ? "Banca" : `${tentativa.numero}ª banca`;
+          const veredito =
+            tentativa.resultado === "aprovada"
+              ? " · aprovada"
+              : tentativa.resultado === "nao_aprovada"
+                ? " · não aprovada"
+                : "";
+          lista.push({
+            data: chaveData(paraDataUtc(tentativa.data_hora)),
+            tipo: "banca",
+            rotulo: nome,
+            titulo: `${nome} — ${e.nome}${veredito}`,
+            // ⭐ O único marco que abre ficha. Banca é a marcação que carrega
+            // informação que NÃO cabe no calendário — quem avalia, quem é a
+            // equipe, qual o resultado —, e até aqui ela só existia na tela
+            // `/bancas`, longe de onde a data aparece.
+            onClick: () => setBancaAberta(bancaId),
+          });
+        }
       }
       const entrega = e.data_entrega_real ?? e.data_entrega_planejada;
       if (entrega) {
@@ -481,7 +527,7 @@ export function ProjetoCronograma() {
       });
     }
     return lista;
-  }, [dados, modoGeral, escopoSelecionado]);
+  }, [dados, modoGeral, escopoSelecionado, projeto.data_entrega_prevista_cliente]);
 
   /**
    * ⭐ A JANELA de cada escopo — da reunião inicial até *vendidos + ajustados*

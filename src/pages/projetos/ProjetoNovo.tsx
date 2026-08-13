@@ -90,6 +90,10 @@ export function ProjetoNovo() {
   // 3 é o padrão combinado com o núcleo para o time de consultores.
   const [maxConsultores, setMaxConsultores] = useState("3");
   const [diaReuniao, setDiaReuniao] = useState("");
+  // A promessa feita ao cliente na venda. Opcional: nem toda venda fecha com
+  // data combinada, e exigi-la aqui travaria o cadastro por um dado que às
+  // vezes só existe depois do kickoff.
+  const [entregaPrevista, setEntregaPrevista] = useState("");
   const [equipe, setEquipe] = useState<EquipeSelecionada>({ coordenadorId: null, consultorIds: [] });
   const [escopos, setEscopos] = useState<EscopoEmEdicao[]>([]);
 
@@ -193,6 +197,7 @@ export function ProjetoNovo() {
             max_consultores: Number(maxConsultores) || 3,
             equipe: montarEquipePayload(equipe),
             dia_reuniao_padrao: diaReuniao ? Number(diaReuniao) : null,
+            data_entrega_prevista_cliente: entregaPrevista || null,
             escopos: montarEscoposPayload(escopos),
           },
           token,
@@ -331,6 +336,22 @@ export function ProjetoNovo() {
                   value={diasAmbientacao}
                   onChange={(e) => setDiasAmbientacao(e.target.value)}
                   required
+                />
+              </FieldGroup>
+
+              {/* ⭐ A data combinada com o cliente, registrada já na venda —
+                  é aqui que ela é conhecida. Sem obrigatoriedade: nem toda
+                  venda fecha com data, e travar o cadastro por isso empurraria
+                  quem cria a inventar um valor. */}
+              <FieldGroup>
+                <FieldLabel htmlFor="projeto-entrega-prevista">
+                  Entrega prevista ao cliente
+                </FieldLabel>
+                <FieldInput
+                  id="projeto-entrega-prevista"
+                  type="date"
+                  value={entregaPrevista}
+                  onChange={(e) => setEntregaPrevista(e.target.value)}
                 />
               </FieldGroup>
 
