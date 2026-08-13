@@ -4,7 +4,9 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   Bell,
+  CalendarCheck,
   CalendarClock,
+  CalendarPlus,
   CalendarSync,
   CalendarX,
   Check,
@@ -82,6 +84,13 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   banca_hoje: { icone: CalendarClock, rotulo: "Banca hoje", alerta: false },
   alocado_em_projeto: { icone: UserPlus, rotulo: "Alocado em projeto", alerta: false },
   entrega_registrada: { icone: CheckCircle2, rotulo: "Entrega registrada", alerta: false },
+  // Alguém pediu para entrar num projeto. Alerta porque espera decisão de quem
+  // recebe — parado, o pedido segura a pessoa fora do time.
+  solicitacao_projeto: { icone: UserPlus, rotulo: "Pedido para entrar", alerta: true },
+  // Pedido de dias de ajuste no cronograma (§13). O pedido é alerta pelo mesmo
+  // motivo; a resposta não é, já foi resolvida.
+  reajuste_solicitado: { icone: CalendarPlus, rotulo: "Pedido de dias", alerta: true },
+  reajuste_respondido: { icone: CalendarCheck, rotulo: "Pedido de dias respondido", alerta: false },
   // Vindos do módulo de bancas, que passou a escrever nesta mesma central.
   troca_banca: { icone: ArrowLeftRight, rotulo: "Troca de banca", alerta: false },
   avaliacao_pendente: { icone: ClipboardCheck, rotulo: "Avaliação pendente", alerta: true },
@@ -100,6 +109,29 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   pdi_prazo_vencido: { icone: GraduationCap, rotulo: "Prazo de PDI vencido", alerta: true },
 };
 
+/**
+ * A aparência de um tipo, com rede de proteção.
+ *
+ * ⚠ **Ler `APARENCIA[tipo]` direto derrubava a página inteira.** O tipo que
+ * não estivesse no mapa devolvia `undefined`, o destructure estourava, e o
+ * ErrorBoundary trocava a tela toda por "Algo deu errado" — uma notificação
+ * desconhecida apagava as outras cinquenta.
+ *
+ * Foi o que aconteceu: o backend ganhou `solicitacao_projeto`,
+ * `reajuste_solicitado` e `reajuste_respondido`, o `TipoNotificacao` do front
+ * não foi atualizado junto, e o `Record<>` deixou de cobrar as entradas.
+ *
+ * ⭐ O tipo completo, corrigido, impede a próxima omissão em tempo de
+ * compilação. Este fallback cobre o que ele não alcança: o backend sobe antes
+ * do front, e por alguns minutos manda um tipo que esta versão não conhece.
+ * Aí a notificação aparece genérica, em vez de derrubar a central.
+ */
+function aparenciaDe(tipo: TipoNotificacao) {
+  return (
+    APARENCIA[tipo] ?? { icone: Bell, rotulo: "Aviso", alerta: false }
+  );
+}
+
 /** A ordem dos chips: os 5 do briefing primeiro, na ordem em que ele os
  *  lista, e depois os três que vieram na sequência. Fixa e não derivada do que
  *  chegou, assim o filtro não muda de lugar a cada recarga. */
@@ -114,6 +146,9 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "entrega_alterada",
   "alocado_em_projeto",
   "entrega_registrada",
+  "solicitacao_projeto",
+  "reajuste_solicitado",
+  "reajuste_respondido",
   "troca_banca",
   "avaliacao_pendente",
   "descricao_coordenador_pendente",
@@ -336,7 +371,7 @@ export function Notificacoes() {
                     <OpcaoCaixa $marcada={marcada}>
                       {marcada && <Check size={11} strokeWidth={3} />}
                     </OpcaoCaixa>
-                    <OpcaoTexto>{APARENCIA[tipo].rotulo}</OpcaoTexto>
+                    <OpcaoTexto>{aparenciaDe(tipo).rotulo}</OpcaoTexto>
                     <OpcaoContagem>{total}</OpcaoContagem>
                   </OpcaoLinha>
                 );
@@ -396,7 +431,7 @@ export function Notificacoes() {
             <>
               <Lista>
                 {visiveis.map((notificacao) => {
-                  const { icone: Icone, alerta } = APARENCIA[notificacao.tipo];
+                  const { icone: Icone, alerta } = aparenciaDe(notificacao.tipo);
                   return (
                     <Item key={notificacao.chave} $lida={notificacao.lida}>
                       <ItemIcone $alerta={alerta}>

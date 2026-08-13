@@ -149,6 +149,21 @@ interface PaintedCalendarProps {
    * em feriado.
    */
   onDiaClicado?: (dia: string) => void;
+  /**
+   * ⭐ A pessoa tentou pintar um dia travado — e a plataforma precisa dizer
+   * por quê.
+   *
+   * ⚠ **Sem isto, a recusa era silêncio.** `iniciarArraste` saía por um
+   * `return` quando o dia não é pintável, e nada acontecia: nem o arrasto
+   * começava, nem mensagem aparecia. Quem tentava pintar antes da reunião
+   * inicial, ou além do fim da janela, ficava clicando numa parede muda sem
+   * descobrir que existe uma regra — e o backend, que tem a explicação
+   * pronta, nunca chegava a ser chamado.
+   *
+   * Recebe o motivo que já está no mapa de `diasBloqueados`; quem monta a
+   * frase é a página, que conhece o escopo e as datas da janela.
+   */
+  onBloqueado?: (dia: string, motivo: DiaNaoUtil) => void;
 }
 
 interface Arraste {
@@ -194,6 +209,7 @@ export function PaintedCalendar({
   onNegociar,
   onArrasteMudou,
   onDiaClicado,
+  onBloqueado,
 }: PaintedCalendarProps) {
   const [arraste, setArraste] = useState<Arraste | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -316,7 +332,16 @@ export function PaintedCalendar({
       onDiaClicado!(chave);
       return;
     }
-    if (!pintavel(chave) || e.button !== 0) return;
+    if (!pintavel(chave) || e.button !== 0) {
+      // ⭐ A recusa fala. Só quando há pincel ligado e o dia está travado:
+      // sem pincel a pessoa não estava tentando pintar, e explicar uma regra
+      // que ela não esbarrou seria ruído.
+      const motivo = travas.get(chave);
+      if (e.button === 0 && grupoAtivo !== null && motivo) {
+        onBloqueado?.(chave, motivo);
+      }
+      return;
+    }
     // Mata a seleção de texto nativa sobre a grade.
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
