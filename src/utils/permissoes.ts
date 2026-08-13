@@ -20,7 +20,8 @@ export type Acao =
   | "registrar_reuniao"
   | "filtrar_por_frente"
   | "ver_tarefas_gerais"
-  | "ver_cronogramas_gerais";
+  | "ver_cronogramas_gerais"
+  | "ver_historico_projetos";
 
 const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão — restrito às lideranças
@@ -50,6 +51,9 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   /** O board macro de cronogramas (todos os projetos juntos) — mesma trava
    *  do board de tarefas: o backend usa require_diretor. */
   ver_cronogramas_gerais: ["diretor"],
+  /** A aba Histórico de projetos (portfólio encerrado) — o backend usa
+   *  require_gestao, então diretor e gerente, como o arquivar. */
+  ver_historico_projetos: ["diretor", "gerente"],
 
   // Condução do projeto — o consultor não define cronograma nem move o
   // ciclo de vida do projeto (§4)

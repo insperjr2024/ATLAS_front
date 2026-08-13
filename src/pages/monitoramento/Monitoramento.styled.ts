@@ -1785,3 +1785,222 @@ export const CronogramaCardRodape = styled.p`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.foreground};
 `;
+
+/* ─── Histórico de projetos (§7) ──────────────────────────────────────────
+   O portfólio ENCERRADO — finalizados ou arquivados —, só para diretoria e
+   gerência. Uma tabela de referência: o nome leva ao projeto, e as demais
+   colunas respondem "quem coordenou, em que semestre fechou, quanto durou".
+   Os controles (segmento + busca) ficam numa faixa acima da tabela. */
+
+/** A faixa de controles acima da tabela: o segmento (Todos/Finalizados/
+ *  Arquivados) à esquerda, a busca à direita, quebrando em telas estreitas. */
+export const HistControles = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+`;
+
+/** A célula do projeto: o nome (que é link) sobre o cliente em tom apagado. */
+export const HistCelulaProjeto = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 12rem;
+`;
+
+export const HistCliente = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** Envolve as pílulas de uma célula (as frentes, ou o status + "Arquivado")
+ *  para elas quebrarem juntas sem colar uma na outra. */
+export const HistTags = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+`;
+
+/** O intervalo kickoff → encerramento. `tabular-nums` para as datas alinharem
+ *  na vertical; a seta em tom apagado para separar sem competir. */
+export const HistDatas = styled.span`
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: ${theme.colors.foreground};
+
+  .seta {
+    margin: 0 0.3rem;
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/** O bloco de controles à esquerda: o segmento e o toggle de agrupar, lado a
+ *  lado, quebrando junto em tela estreita. */
+export const HistSegmentos = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
+/** As ações do cabeçalho do card (exportar CSV/PDF). */
+export const HistAcoes = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+/** O cabeçalho de coluna clicável para ordenar. Herda o tipo do `th` (caixa
+ *  alta pequena) e ganha a seta só quando é a coluna ativa — uma seta em toda
+ *  coluna viraria ruído. */
+export const HistOrdenar = styled.button<{ $ativo: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: ${({ $ativo }) => ($ativo ? theme.colors.foreground : "inherit")};
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+    border-radius: ${theme.borderRadius.sm};
+  }
+
+  .seta {
+    font-size: 0.7em;
+    line-height: 1;
+  }
+`;
+
+/** A linha-título de um grupo de semestre, quando a tabela está agrupada.
+ *  Ocupa a largura inteira (colSpan) e fica levemente destacada do corpo. */
+export const HistGrupoCelula = styled.td`
+  padding: 0.5rem ${theme.spacing.md};
+  background: ${theme.colors.muted};
+  border-top: 1px solid ${theme.colors.border};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  letter-spacing: 0.03em;
+  color: ${theme.colors.foreground};
+
+  small {
+    margin-left: 0.4rem;
+    font-weight: ${theme.fontWeight.normal};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/* ─── Modal "Ações recentes" (a partir de uma linha do histórico) ──────────
+   Abre as últimas ações do projeto sem sair da aba: mudanças de status,
+   bancas, entregas, reuniões e decisões — o que o backend já compõe em
+   `/projetos/{id}/historico`. */
+
+/** O subtítulo do modal (o nome do projeto sob "Ações recentes"). */
+export const HistModalSub = styled.p`
+  margin: 0.15rem 0 0;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const AcaoLista = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+`;
+
+export const AcaoItem = styled.li`
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: ${theme.spacing.sm};
+  align-items: start;
+`;
+
+type CorAcao = "azul" | "roxo" | "ambar" | "verde" | "vermelho" | "neutro";
+
+const COR_ACAO: Record<CorAcao, string> = {
+  azul: theme.colors.primary,
+  roxo: "#7c3aed",
+  ambar: theme.colors.warning,
+  verde: theme.colors.success,
+  vermelho: theme.colors.destructive,
+  neutro: theme.colors.mutedForeground,
+};
+
+/** O ponto colorido por categoria de ação — cor além do texto, para a lista
+ *  se ler de relance (status, banca, entrega, reunião…). */
+export const AcaoDot = styled.span<{ $cor: CorAcao }>`
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-top: 0.35rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $cor }) => COR_ACAO[$cor]};
+`;
+
+export const AcaoConteudo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+`;
+
+export const AcaoTitulo = styled.span`
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+`;
+
+export const AcaoDetalhe = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const AcaoMeta = styled.span`
+  margin-top: 0.1rem;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  font-variant-numeric: tabular-nums;
+`;
+
+/** O botão de "ver ações" numa linha da tabela — discreto, ícone + texto. */
+export const HistBotaoAcoes = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.card};
+  color: ${theme.colors.mutedForeground};
+  font-size: ${theme.fontSize.xs};
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color ${theme.transitions.fast}, border-color ${theme.transitions.fast},
+    background ${theme.transitions.fast};
+
+  &:hover {
+    color: ${theme.colors.primary};
+    border-color: ${theme.colors.primary};
+    background: ${theme.colors.muted};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+  }
+`;
