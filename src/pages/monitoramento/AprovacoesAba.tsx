@@ -17,6 +17,10 @@ import {
 } from "@/styles/page.styled";
 import { ItemLista, LinkProjeto, ListaSimples, Pilula } from "./Monitoramento.styled";
 
+/** Pra "voltar" do projeto cair de novo aqui, não em `/projetos` — mesmo
+ *  padrão de `AtrasosAba.tsx`. */
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/aprovacoes", voltarRotulo: "Voltar para Aprovações" };
+
 /**
  * ⭐ A fila da diretoria — tudo que espera decisão dela, num lugar só.
  *
@@ -92,7 +96,11 @@ export function AprovacoesAba() {
     <PageStack>
       {/* Decide na própria lista: o pedido traz o motivo escrito, que é todo o
           contexto de que a decisão precisa. */}
-      <PedidosDeDiasCard onDecidiu={carregar} />
+      <PedidosDeDiasCard
+        onDecidiu={carregar}
+        voltarPara={VOLTAR_PARA_AQUI.voltarPara}
+        voltarRotulo={VOLTAR_PARA_AQUI.voltarRotulo}
+      />
 
       <PageCard>
         <PageCardHeader>
@@ -115,7 +123,7 @@ export function AprovacoesAba() {
                 {dados.atrasos_sem_justificativa.map((a) => (
                   <ItemLista key={a.projeto_id}>
                     <div>
-                      <LinkProjeto as={Link} to={`/projetos/${a.projeto_id}`}>
+                      <LinkProjeto as={Link} to={`/projetos/${a.projeto_id}`} state={VOLTAR_PARA_AQUI}>
                         {a.projeto_nome}
                       </LinkProjeto>
                       <EmptyText>{a.motivos.join(" · ")}</EmptyText>

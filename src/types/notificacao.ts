@@ -4,6 +4,9 @@ export type TipoNotificacao =
   // 📌 eventos da plataforma (§6.6)
   | "alocado_em_projeto"
   | "entrega_registrada"
+  // 📌 Vagas em projetos (§7.3) — pedido de entrada, para quem pede E para
+  // quem responde (`solicitacao_projeto.py`)
+  | "solicitacao_projeto"
   // 📌 o plano mudou depois de combinado — §5.6 e a data prometida ao cliente
   | "banca_remarcada"
   | "entrega_alterada"

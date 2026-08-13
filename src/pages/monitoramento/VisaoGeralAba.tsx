@@ -54,6 +54,10 @@ import {
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
+/** Pra "voltar" do projeto cair de novo aqui — Visão geral é a rota índice
+ *  de Monitoramento, então o destino é a pasta sem sub-rota. */
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento", voltarRotulo: "Voltar para Monitoramento" };
+
 /** "seg 11" — o dia da semana é o que a pessoa usa para se localizar numa
  *  agenda de 7 dias; a data completa não acrescenta nada nessa janela. */
 function diaDaSemana(iso: string): string {
@@ -315,7 +319,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                             `data_inicio` ao próximo escopo, e é lá que isso se
                             faz. Cair na visão geral obrigaria mais um clique
                             justo em quem veio resolver. */}
-                        <LinhaItem to={`/projetos/${p.projeto_id}/cronograma`}>
+                        <LinhaItem to={`/projetos/${p.projeto_id}/cronograma`} state={VOLTAR_PARA_AQUI}>
                           {/* Os dias vêm para a esquerda, no lugar que a agenda
                               de bancas usa para a data: é o número que ordena a
                               lista, então é por ele que o olho desce. */}
@@ -373,7 +377,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                   <ListaSimples>
                     {janela.visiveis.map((p) => (
                       <ItemLista key={p.projeto_id}>
-                        <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`}>
+                        <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`} state={VOLTAR_PARA_AQUI}>
                           {p.projeto_nome}
                         </LinkProjeto>
                         <small>
@@ -398,7 +402,10 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
 
       {/* Antes de "Atenção agora" de propósito: pedido pendente é uma decisão
           esperando pessoa, não um alerta para observar. */}
-      <PedidosDeDiasCard />
+      <PedidosDeDiasCard
+        voltarPara={VOLTAR_PARA_AQUI.voltarPara}
+        voltarRotulo={VOLTAR_PARA_AQUI.voltarRotulo}
+      />
 
       <PageCard>
         <PageCardHeader>
@@ -439,7 +446,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                        começar. */
                     <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
                       <strong>
-                        <LinkProjeto to={`/projetos/${item.projeto_id}`}>
+                        <LinkProjeto to={`/projetos/${item.projeto_id}`} state={VOLTAR_PARA_AQUI}>
                           {item.projeto_nome}
                         </LinkProjeto>
                       </strong>

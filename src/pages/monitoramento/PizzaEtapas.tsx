@@ -173,7 +173,12 @@ export function PizzaEtapas({ etapas }: { etapas: EtapaDoPortfolio[] }) {
                 <ItemLista key={p.id}>
                   {/* Sem o link o clique vira beco sem saída: mostra os nomes e
                       não deixa chegar a nenhum deles. */}
-                  <LinkProjeto to={`/projetos/${p.id}`}>{p.nome}</LinkProjeto>
+                  <LinkProjeto
+                    to={`/projetos/${p.id}`}
+                    state={{ voltarPara: "/monitoramento", voltarRotulo: "Voltar para Monitoramento" }}
+                  >
+                    {p.nome}
+                  </LinkProjeto>
                 </ItemLista>
               ))}
             </ListaSimples>

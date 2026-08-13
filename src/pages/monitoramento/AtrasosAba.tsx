@@ -444,7 +444,7 @@ export function AtrasosAba() {
                   <AtrasoDias $nivel={nivel(e.dias)}>{e.dias}</AtrasoDias>
                   <AtrasoCorpo>
                     <AtrasoTitulo>
-                      <LinkProjeto to={`/projetos/${e.projeto_id}`}>
+                      <LinkProjeto to={`/projetos/${e.projeto_id}`} state={VOLTAR_PARA_AQUI}>
                         {e.projeto_nome}
                       </LinkProjeto>
                       <MotivoEscopoNome>{e.escopo_nome}</MotivoEscopoNome>

@@ -21,6 +21,7 @@ import {
   Star,
   Truck,
   UserPlus,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -82,6 +83,9 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   banca_hoje: { icone: CalendarClock, rotulo: "Banca hoje", alerta: false },
   alocado_em_projeto: { icone: UserPlus, rotulo: "Alocado em projeto", alerta: false },
   entrega_registrada: { icone: CheckCircle2, rotulo: "Entrega registrada", alerta: false },
+  // Pedido de entrada em projeto (§7.3) — tanto o aviso pra quem coordena
+  // quanto a resposta pra quem pediu usam este mesmo tipo.
+  solicitacao_projeto: { icone: Users, rotulo: "Pedido de entrada em projeto", alerta: false },
   // Vindos do módulo de bancas (§8), que passou a escrever nesta mesma central.
   troca_banca: { icone: ArrowLeftRight, rotulo: "Troca de banca", alerta: false },
   avaliacao_pendente: { icone: ClipboardCheck, rotulo: "Avaliação pendente", alerta: true },
@@ -114,6 +118,7 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "entrega_alterada",
   "alocado_em_projeto",
   "entrega_registrada",
+  "solicitacao_projeto",
   "troca_banca",
   "avaliacao_pendente",
   "descricao_coordenador_pendente",
@@ -264,7 +269,14 @@ export function Notificacoes() {
 
   function abrir(notificacao: Notificacao) {
     void marcarUma(notificacao);
-    if (notificacao.rota) navigate(notificacao.rota);
+    // `voltarPara` é lido só por quem entende o estado (hoje, `ProjetoPage`)
+    // — inofensivo nas rotas que ignoram `location.state`, e é o que faz
+    // "voltar" de dentro de um projeto cair de novo aqui, não em /projetos.
+    if (notificacao.rota) {
+      navigate(notificacao.rota, {
+        state: { voltarPara: "/notificacoes", voltarRotulo: "Voltar para notificações" },
+      });
+    }
   }
 
   const naoLidas = itens.filter((i) => !i.lida).length;

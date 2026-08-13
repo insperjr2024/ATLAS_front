@@ -31,7 +31,15 @@ import { ItemLista, LinkProjeto, ListaSimples } from "./Monitoramento.styled";
  * que a recusa fica registrada, e é ela que explica depois por que a janela
  * continuou nos dias vendidos.
  */
-export function PedidosDeDiasCard({ onDecidiu }: { onDecidiu?: () => void } = {}) {
+interface Props {
+  onDecidiu?: () => void;
+  /** Pra "voltar" do cronograma cair de novo em quem chamou este card
+   *  (Aprovações ou Visão geral) — os dois usam este mesmo componente. */
+  voltarPara: string;
+  voltarRotulo: string;
+}
+
+export function PedidosDeDiasCard({ onDecidiu, voltarPara, voltarRotulo }: Props) {
   const { token, usuario } = useAuth();
   const [pedidos, setPedidos] = useState<PedidoPendente[]>([]);
   const [erro, setErro] = useState("");
@@ -100,7 +108,10 @@ export function PedidosDeDiasCard({ onDecidiu }: { onDecidiu?: () => void } = {}
             {pedidos.map((p) => (
               <ItemLista key={p.id}>
                 <div>
-                  <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`}>
+                  <LinkProjeto
+                    to={`/projetos/${p.projeto_id}/cronograma`}
+                    state={{ voltarPara, voltarRotulo }}
+                  >
                     {p.projeto_nome ?? "Projeto"} — {p.escopo_nome ?? "escopo"}
                   </LinkProjeto>
                   {/* Os dois números lado a lado, nunca somados: é contra a
