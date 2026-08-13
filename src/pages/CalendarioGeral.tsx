@@ -1,20 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { addMonths, endOfMonth, format, isSameMonth, isToday, startOfMonth } from "date-fns";
+import { addDays, addMonths, format, isSameMonth, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Calendar, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Palette, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   COR_TIPO,
+  getCoresCustomizadas,
   getEventos,
-  GLIFO_TIPO,
   ROTULO_TIPO,
+  salvarCoresCustomizadas,
   type EventoCalendario,
   type TipoEvento,
 } from "@/lib/calendario";
 import { formatarDataHora } from "@/lib/projetos";
 import { DayEvents, DayNumber, WeekdayCell, WeekdayRow } from "@/components/calendario/CalendarGrid.styled";
-import { chaveData, rotulosDiaSemana, semanasDoMes } from "@/components/calendario/semanas";
+import { chaveData, diasDaSemana, rotulosDiaSemana, semanasDoMes } from "@/components/calendario/semanas";
 import {
   PageBadge,
   PageButton,
@@ -22,8 +24,12 @@ import {
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
+  EmptyText,
 } from "@/styles/page.styled";
+import { ViewToggleRow, ViewToggleBtn } from "@/pages/projetos/Projetos.styled";
 import {
+  AvisoMaisEventos,
+  BotaoCores,
   Cabecalho,
   Chip,
   CorpoCalendario,
@@ -32,9 +38,14 @@ import {
   DetailRow,
   DetailTerm,
   DetailValue,
+  DiaViewWrap,
   FiltroChips,
+  FlutuanteEventos,
   GradeWrap,
-  MaisEventos,
+  ItemCorInput,
+  LinhaCor,
+  LinhaDia,
+  ListaEventosDia,
   MesAtual,
   ModalBody,
   ModalClose,
@@ -49,30 +60,35 @@ import {
   PageHeading,
   PageSubheading,
   PaginaCalendario,
+  PainelCores,
   Pilula,
-  PilulaGlifo,
+  PilulasWrap,
   PilulaTexto,
   WeekRowPreenche,
 } from "./CalendarioGeral.styled";
 
 const INICIO_SEMANA = 0;
 const ROTULOS = rotulosDiaSemana(INICIO_SEMANA);
-const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega"];
-/** Reunião é semanal, POR PROJETO — com o portfólio inteiro junto numa grade
- *  só, ela sozinha lota todos os dias úteis de todas as semanas. Isso é
- *  exatamente o "tem tudo, mas não faz sentido": marco raro (banca, kickoff,
- *  entrega) e rotina recorrente (reunião) pesando igual afogam os marcos que
- *  a pessoa realmente veio procurar. Reunião começa OFF; quem quiser ligar,
- *  liga no filtro. */
-const TIPOS_PADRAO: TipoEvento[] = TIPOS.filter((t) => t !== "reuniao");
-/** A célula agora tem altura FLEXÍVEL (encolhe pra caber as 5-6 semanas do
- *  mês na tela, sem empurrar a página) — 3, não 4, porque numa célula mais
- *  baixa é o que sobra de espaço com folga pro "+N mais" sempre caber
- *  embaixo, em vez de arriscar cortar o próprio texto do evento. */
-const MAX_PILULAS = 3;
+const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega", "prova"];
+/**
+ * A célula tem altura FLEXÍVEL (encolhe pra caber as 5-6 semanas do mês na
+ * tela, sem empurrar a página). Duas pílulas cabem com folga agora que o
+ * aviso de excedente é um BADGE no canto da célula (`AvisoMaisEventos`),
+ * não mais uma linha somada ao fim da pilha de pílulas — as pílulas usam a
+ * altura de `DayEvents` inteira, sem dividir espaço com mais nada.
+ */
+const MAX_PILULAS_MES = 2;
+/** A visão Semana só tem UMA fileira de dia — sobra muito mais altura por
+ *  célula do que no mês inteiro, então cabe bem mais antes de precisar do
+ *  "+N mais". */
+const MAX_PILULAS_SEMANA = 8;
+
+type Visao = "mes" | "semana" | "dia";
 
 /**
- * O calendário geral do §6.5 — bancas, kickoffs, reuniões e entregas.
+ * O calendário geral do §6.5 — bancas, kickoffs, reuniões, entregas e provas
+ * (semanas de avaliação do calendário acadêmico da(s) frente(s) dos projetos
+ * visíveis).
  *
  * Recorta por posição, como o resto do site: diretor vê o portfólio
  * inteiro, gerente só a própria frente, coordenador/consultor só os
@@ -89,23 +105,103 @@ export function CalendarioGeral() {
   // reflete o que a pessoa está de fato vendo, em vez de prometer "todos os
   // projetos" pra quem só vê os próprios.
   const veTudo = usuario?.posicao === "diretor" || usuario?.posicao === "gerente";
-  const [mes, setMes] = useState(() => startOfMonth(new Date()));
+  const [visao, setVisao] = useState<Visao>("mes");
+  const [data, setData] = useState(() => new Date());
   const [eventos, setEventos] = useState<EventoCalendario[]>([]);
-  const [tiposAtivos, setTiposAtivos] = useState<TipoEvento[]>(TIPOS_PADRAO);
+  const [tiposAtivos, setTiposAtivos] = useState<TipoEvento[]>(TIPOS);
   const [detalhe, setDetalhe] = useState<EventoCalendario | null>(null);
+  const [diaAberto, setDiaAberto] = useState<Date | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+
+  const [coresCustom, setCoresCustom] = useState<Partial<Record<TipoEvento, string>>>(() =>
+    getCoresCustomizadas(),
+  );
+  const [painelCoresAberto, setPainelCoresAberto] = useState(false);
+  const refPainelCores = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!painelCoresAberto) return;
+    function aoClicarFora(evento: MouseEvent) {
+      if (!refPainelCores.current?.contains(evento.target as Node)) setPainelCoresAberto(false);
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, [painelCoresAberto]);
+
+  function corDoTipo(tipo: TipoEvento): string {
+    return coresCustom[tipo] ?? COR_TIPO[tipo];
+  }
+
+  function mudarCor(tipo: TipoEvento, cor: string) {
+    setCoresCustom((atuais) => {
+      const proximo = { ...atuais, [tipo]: cor };
+      salvarCoresCustomizadas(proximo);
+      return proximo;
+    });
+  }
+
+  function restaurarCoresPadrao() {
+    setCoresCustom({});
+    salvarCoresCustomizadas({});
+  }
+
+  /**
+   * O dropdown do "+N mais" no hover — não é o mesmo estado do "+N mais"
+   * clicado (`diaAberto`, que abre o dia inteiro): aqui é só o QUE SOBROU
+   * fora da pílula única de cada célula, ancorado no retângulo do próprio
+   * chip. Um `setTimeout` cancelável dá a folga pro cursor atravessar o vão
+   * entre o chip e o painel (que vive num portal, fora da árvore do chip, e
+   * por isso nunca herda o `:hover` dele) sem o painel fechar no meio do
+   * caminho.
+   */
+  const [flutuante, setFlutuante] = useState<{
+    chave: string;
+    eventos: EventoCalendario[];
+    retangulo: DOMRect;
+  } | null>(null);
+  const fecharFlutuanteRef = useRef<number | null>(null);
+
+  function abrirFlutuante(chave: string, eventos: EventoCalendario[], retangulo: DOMRect) {
+    if (fecharFlutuanteRef.current !== null) {
+      window.clearTimeout(fecharFlutuanteRef.current);
+      fecharFlutuanteRef.current = null;
+    }
+    setFlutuante({ chave, eventos, retangulo });
+  }
+
+  function agendarFechoFlutuante() {
+    fecharFlutuanteRef.current = window.setTimeout(() => setFlutuante(null), 150);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (fecharFlutuanteRef.current !== null) window.clearTimeout(fecharFlutuanteRef.current);
+    };
+  }, []);
+
+  // A janela de busca muda com a visão: mês inteiro (com as bordas das
+  // semanas), só os 7 dias da semana corrente, ou só o dia — sempre o
+  // mínimo necessário pro que está na tela agora.
+  const { inicio, fim } = useMemo(() => {
+    if (visao === "semana") {
+      const dias = diasDaSemana(data, INICIO_SEMANA);
+      return { inicio: chaveData(dias[0]), fim: chaveData(dias[6]) };
+    }
+    if (visao === "dia") {
+      return { inicio: chaveData(data), fim: chaveData(data) };
+    }
+    const semanas = semanasDoMes(data, INICIO_SEMANA);
+    return { inicio: chaveData(semanas[0][0]), fim: chaveData(semanas[semanas.length - 1][6]) };
+  }, [visao, data]);
 
   async function carregar() {
     if (!token) return;
     setCarregando(true);
     setErro("");
     try {
-      // Busca o mês inteiro (com as bordas das semanas), e o filtro por tipo
-      // é aplicado no cliente — evita ida ao servidor a cada chip clicado.
-      const semanas = semanasDoMes(mes, INICIO_SEMANA);
-      const inicio = chaveData(semanas[0][0]);
-      const fim = chaveData(semanas[semanas.length - 1][6]);
+      // O filtro por tipo é aplicado no cliente — evita ida ao servidor a
+      // cada chip clicado.
       setEventos(await getEventos(inicio, fim, token));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar o calendário");
@@ -117,7 +213,7 @@ export function CalendarioGeral() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, mes]);
+  }, [token, inicio, fim]);
 
   const porDia = useMemo(() => {
     const mapa = new Map<string, EventoCalendario[]>();
@@ -137,6 +233,18 @@ export function CalendarioGeral() {
     );
   }
 
+  function irAnterior() {
+    if (visao === "mes") setData((d) => addMonths(d, -1));
+    else if (visao === "semana") setData((d) => addDays(d, -7));
+    else setData((d) => addDays(d, -1));
+  }
+
+  function irProximo() {
+    if (visao === "mes") setData((d) => addMonths(d, 1));
+    else if (visao === "semana") setData((d) => addDays(d, 7));
+    else setData((d) => addDays(d, 1));
+  }
+
   if (erro) {
     return (
       <ErrorBlock>
@@ -148,9 +256,29 @@ export function CalendarioGeral() {
     );
   }
 
+  // No mês, a busca traz as bordas das semanas (dias de outro mês) — o
+  // contador só soma o que é de fato do mês corrente. Semana e Dia já
+  // buscam exatamente a janela visível, então tudo que voltou já conta.
   const visiveis = eventos.filter(
-    (e) => tiposAtivos.includes(e.tipo) && isSameMonth(new Date(`${e.data.slice(0, 10)}T12:00:00`), mes),
+    (e) =>
+      tiposAtivos.includes(e.tipo) &&
+      (visao !== "mes" || isSameMonth(new Date(`${e.data.slice(0, 10)}T12:00:00`), data)),
   );
+
+  const rotuloPeriodo =
+    visao === "mes"
+      ? format(data, "MMMM 'de' yyyy", { locale: ptBR })
+      : visao === "dia"
+        ? format(data, "EEEE, d 'de' MMMM", { locale: ptBR })
+        : (() => {
+            const dias = diasDaSemana(data, INICIO_SEMANA);
+            const mesmoMes = isSameMonth(dias[0], dias[6]);
+            const de = format(dias[0], mesmoMes ? "d" : "d 'de' MMM", { locale: ptBR });
+            const ate = format(dias[6], "d 'de' MMM", { locale: ptBR });
+            return `${de} – ${ate}`;
+          })();
+
+  const rotuloContagem = visao === "mes" ? "neste mês" : visao === "semana" ? "nesta semana" : "neste dia";
 
   return (
     <PaginaCalendario>
@@ -158,8 +286,9 @@ export function CalendarioGeral() {
         <PageHeaderText>
           <PageHeading>Calendário</PageHeading>
           <PageSubheading>
-            Bancas, kickoffs, reuniões e entregas {veTudo ? "de todos os projetos" : "dos seus projetos"} ·{" "}
-            {visiveis.length} neste mês
+            Bancas, kickoffs, reuniões, entregas e provas{" "}
+            {veTudo ? "de todos os projetos" : "dos seus projetos"} ·{" "}
+            {visiveis.length} {rotuloContagem}
           </PageSubheading>
         </PageHeaderText>
       </PageHeaderRow>
@@ -167,17 +296,50 @@ export function CalendarioGeral() {
       <CorpoCalendario>
         <Cabecalho>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <PageButtonSm type="button" $variant="ghost" onClick={() => setMes((m) => addMonths(m, -1))}>
+            <PageButtonSm type="button" $variant="ghost" onClick={irAnterior}>
               <ChevronLeft size={14} />
             </PageButtonSm>
-            <MesAtual>{format(mes, "MMMM 'de' yyyy", { locale: ptBR })}</MesAtual>
-            <PageButtonSm type="button" $variant="ghost" onClick={() => setMes((m) => addMonths(m, 1))}>
+            <MesAtual>{rotuloPeriodo}</MesAtual>
+            <PageButtonSm type="button" $variant="ghost" onClick={irProximo}>
               <ChevronRight size={14} />
             </PageButtonSm>
-            <PageButtonSm type="button" $variant="outline" onClick={() => setMes(startOfMonth(new Date()))}>
+            <PageButtonSm type="button" $variant="outline" onClick={() => setData(new Date())}>
               Hoje
             </PageButtonSm>
           </div>
+
+          <ViewToggleRow role="tablist" aria-label="Visão do calendário">
+            <ViewToggleBtn
+              type="button"
+              role="tab"
+              aria-selected={visao === "mes"}
+              $ativo={visao === "mes"}
+              onClick={() => setVisao("mes")}
+            >
+              <Calendar size={14} />
+              Mês
+            </ViewToggleBtn>
+            <ViewToggleBtn
+              type="button"
+              role="tab"
+              aria-selected={visao === "semana"}
+              $ativo={visao === "semana"}
+              onClick={() => setVisao("semana")}
+            >
+              <CalendarDays size={14} />
+              Semana
+            </ViewToggleBtn>
+            <ViewToggleBtn
+              type="button"
+              role="tab"
+              aria-selected={visao === "dia"}
+              $ativo={visao === "dia"}
+              onClick={() => setVisao("dia")}
+            >
+              <CalendarClock size={14} />
+              Dia
+            </ViewToggleBtn>
+          </ViewToggleRow>
 
           <FiltroChips>
             {TIPOS.map((tipo) => (
@@ -185,17 +347,58 @@ export function CalendarioGeral() {
                 key={tipo}
                 type="button"
                 $ativo={tiposAtivos.includes(tipo)}
-                $cor={COR_TIPO[tipo]}
+                $cor={corDoTipo(tipo)}
                 onClick={() => alternarTipo(tipo)}
               >
-                {GLIFO_TIPO[tipo]} {ROTULO_TIPO[tipo]}
+                {ROTULO_TIPO[tipo]}
               </Chip>
             ))}
           </FiltroChips>
+
+          <BotaoCores ref={refPainelCores}>
+            <PageButtonSm
+              type="button"
+              $variant="ghost"
+              aria-expanded={painelCoresAberto}
+              aria-haspopup="dialog"
+              onClick={() => setPainelCoresAberto((v) => !v)}
+            >
+              <Palette size={14} />
+              Cores
+            </PageButtonSm>
+            {painelCoresAberto && (
+              <PainelCores role="dialog" aria-label="Personalizar cores dos eventos">
+                {TIPOS.map((tipo) => (
+                  <LinhaCor key={tipo}>
+                    <ItemCorInput
+                      type="color"
+                      aria-label={`Cor de ${ROTULO_TIPO[tipo]}`}
+                      value={corDoTipo(tipo)}
+                      onChange={(e) => mudarCor(tipo, e.target.value)}
+                    />
+                    <span>{ROTULO_TIPO[tipo]}</span>
+                  </LinhaCor>
+                ))}
+                <PageButtonSm type="button" $variant="outline" onClick={restaurarCoresPadrao}>
+                  Restaurar padrão
+                </PageButtonSm>
+              </PainelCores>
+            )}
+          </BotaoCores>
         </Cabecalho>
 
         {carregando ? (
           <PageLoadingBlock />
+        ) : visao === "dia" ? (
+          <GradeWrap>
+            <DiaViewWrap>
+              <EventosDoDia
+                eventos={porDia.get(chaveData(data)) ?? []}
+                onAbrirEvento={setDetalhe}
+                corDoTipo={corDoTipo}
+              />
+            </DiaViewWrap>
+          </GradeWrap>
         ) : (
           <GradeWrap>
             <MonthGridPreenche>
@@ -204,43 +407,180 @@ export function CalendarioGeral() {
                   <WeekdayCell key={r}>{r}</WeekdayCell>
                 ))}
               </WeekdayRow>
-              {semanasDoMes(mes, INICIO_SEMANA).map((semana) => (
-                <WeekRowPreenche key={chaveData(semana[0])}>
-                  {semana.map((dia) => {
-                    const chave = chaveData(dia);
-                    const doDia = porDia.get(chave) ?? [];
-                    return (
-                      <DayCellPreenche key={chave} $outside={!isSameMonth(dia, mes)}>
-                        <DayNumber $today={isToday(dia)}>{format(dia, "d")}</DayNumber>
-                        <DayEvents>
-                          {doDia.slice(0, MAX_PILULAS).map((e, i) => (
-                            <Pilula
-                              key={`${e.tipo}-${e.referencia_id}-${i}`}
-                              type="button"
-                              $cor={COR_TIPO[e.tipo]}
-                              title={e.titulo}
-                              onClick={() => setDetalhe(e)}
-                            >
-                              <PilulaGlifo>{GLIFO_TIPO[e.tipo]}</PilulaGlifo>
-                              <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
-                            </Pilula>
-                          ))}
-                          {doDia.length > MAX_PILULAS && (
-                            <MaisEventos>+{doDia.length - MAX_PILULAS} mais</MaisEventos>
-                          )}
-                        </DayEvents>
-                      </DayCellPreenche>
-                    );
-                  })}
-                </WeekRowPreenche>
-              ))}
+              {(visao === "semana" ? [diasDaSemana(data, INICIO_SEMANA)] : semanasDoMes(data, INICIO_SEMANA)).map(
+                (semana) => (
+                  <WeekRowPreenche key={chaveData(semana[0])}>
+                    {semana.map((dia) => {
+                      const chave = chaveData(dia);
+                      const doDia = porDia.get(chave) ?? [];
+                      const maxPilulas = visao === "semana" ? MAX_PILULAS_SEMANA : MAX_PILULAS_MES;
+                      const excedentes = doDia.length - maxPilulas;
+                      return (
+                        <DayCellPreenche
+                          key={chave}
+                          $outside={visao === "mes" && !isSameMonth(dia, data)}
+                          $comEventos={doDia.length > 0}
+                          // A célula inteira é o alvo — não só o badge — do
+                          // mesmo jeito que já era antes com o "+N mais":
+                          // clique abre o dia inteiro, hover abre o que
+                          // ficou de fora das pílulas visíveis.
+                          onClick={doDia.length > 0 ? () => setDiaAberto(dia) : undefined}
+                          onMouseEnter={
+                            excedentes > 0
+                              ? (ev) =>
+                                  abrirFlutuante(
+                                    chave,
+                                    doDia.slice(maxPilulas),
+                                    ev.currentTarget.getBoundingClientRect(),
+                                  )
+                              : undefined
+                          }
+                          onMouseLeave={excedentes > 0 ? agendarFechoFlutuante : undefined}
+                        >
+                          <LinhaDia>
+                            <DayNumber $today={isToday(dia)}>{format(dia, "d")}</DayNumber>
+                            {excedentes > 0 && <AvisoMaisEventos>+{excedentes}</AvisoMaisEventos>}
+                          </LinhaDia>
+                          <DayEvents>
+                            <PilulasWrap>
+                              {doDia.slice(0, maxPilulas).map((e, i) => (
+                                <Pilula
+                                  key={`${e.tipo}-${e.referencia_id}-${i}`}
+                                  type="button"
+                                  $cor={corDoTipo(e.tipo)}
+                                  title={e.titulo}
+                                  // Sem isto o clique também borbulharia pro
+                                  // `onClick` da célula: a pessoa clicaria
+                                  // numa banca específica e o dia inteiro
+                                  // abriria por cima do modal de detalhe.
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    setDetalhe(e);
+                                  }}
+                                >
+                                  <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
+                                </Pilula>
+                              ))}
+                            </PilulasWrap>
+                          </DayEvents>
+                        </DayCellPreenche>
+                      );
+                    })}
+                  </WeekRowPreenche>
+                ),
+              )}
             </MonthGridPreenche>
           </GradeWrap>
         )}
       </CorpoCalendario>
 
+      {diaAberto && (
+        <DiaModal
+          dia={diaAberto}
+          eventos={porDia.get(chaveData(diaAberto)) ?? []}
+          corDoTipo={corDoTipo}
+          onClose={() => setDiaAberto(null)}
+          onAbrirEvento={(e) => {
+            setDetalhe(e);
+          }}
+        />
+      )}
+
       {detalhe && <DetalheModal evento={detalhe} onClose={() => setDetalhe(null)} />}
+
+      {flutuante &&
+        createPortal(
+          <FlutuanteEventos
+            style={{ top: flutuante.retangulo.bottom + 4, left: flutuante.retangulo.left }}
+            onMouseEnter={() => abrirFlutuante(flutuante.chave, flutuante.eventos, flutuante.retangulo)}
+            onMouseLeave={agendarFechoFlutuante}
+          >
+            {flutuante.eventos.map((e, i) => (
+              <Pilula
+                key={`${e.tipo}-${e.referencia_id}-${i}`}
+                type="button"
+                $cor={corDoTipo(e.tipo)}
+                title={e.titulo}
+                onClick={() => {
+                  setDetalhe(e);
+                  setFlutuante(null);
+                }}
+              >
+                <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
+              </Pilula>
+            ))}
+          </FlutuanteEventos>,
+          document.body,
+        )}
     </PaginaCalendario>
+  );
+}
+
+/** A lista de eventos de um dia, sem o "+N mais" — cada linha já é o
+ *  evento inteiro, usada dentro do popover de "+N mais" e na visão Dia. */
+function EventosDoDia({
+  eventos,
+  onAbrirEvento,
+  corDoTipo,
+}: {
+  eventos: EventoCalendario[];
+  onAbrirEvento: (e: EventoCalendario) => void;
+  corDoTipo: (tipo: TipoEvento) => string;
+}) {
+  if (eventos.length === 0) {
+    return <EmptyText>Nenhum evento neste dia.</EmptyText>;
+  }
+  return (
+    <ListaEventosDia>
+      {eventos.map((e, i) => (
+        <Pilula
+          key={`${e.tipo}-${e.referencia_id}-${i}`}
+          type="button"
+          $cor={corDoTipo(e.tipo)}
+          title={e.titulo}
+          onClick={() => onAbrirEvento(e)}
+        >
+          <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
+        </Pilula>
+      ))}
+    </ListaEventosDia>
+  );
+}
+
+function DiaModal({
+  dia,
+  eventos,
+  corDoTipo,
+  onClose,
+  onAbrirEvento,
+}: {
+  dia: Date;
+  eventos: EventoCalendario[];
+  corDoTipo: (tipo: TipoEvento) => string;
+  onClose: () => void;
+  onAbrirEvento: (e: EventoCalendario) => void;
+}) {
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog">
+        <ModalHeader>
+          <ModalTitle style={{ textTransform: "capitalize" }}>
+            {format(dia, "EEEE, d 'de' MMMM", { locale: ptBR })}
+          </ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          <EventosDoDia eventos={eventos} onAbrirEvento={onAbrirEvento} corDoTipo={corDoTipo} />
+        </ModalBody>
+        <ModalFooter>
+          <PageButton $variant="outline" type="button" onClick={onClose}>
+            Fechar
+          </PageButton>
+        </ModalFooter>
+      </NarrowModalContent>
+    </ModalOverlay>
   );
 }
 
@@ -249,9 +589,7 @@ function DetalheModal({ evento, onClose }: { evento: EventoCalendario; onClose: 
     <ModalOverlay onClick={onClose} role="presentation">
       <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog">
         <ModalHeader>
-          <ModalTitle>
-            {GLIFO_TIPO[evento.tipo]} {ROTULO_TIPO[evento.tipo]}
-          </ModalTitle>
+          <ModalTitle>{ROTULO_TIPO[evento.tipo]}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>
@@ -259,7 +597,9 @@ function DetalheModal({ evento, onClose }: { evento: EventoCalendario; onClose: 
         <ModalBody>
           <DetailList>
             <DetailRow>
-              <DetailTerm>Projeto</DetailTerm>
+              {/* Prova não tem projeto — o nome que vem do backend ali é o
+                  da FRENTE dona do calendário acadêmico. */}
+              <DetailTerm>{evento.tipo === "prova" ? "Frente" : "Projeto"}</DetailTerm>
               <DetailValue>{evento.projeto_nome || "—"}</DetailValue>
             </DetailRow>
             <DetailRow>
@@ -289,7 +629,11 @@ function DetalheModal({ evento, onClose }: { evento: EventoCalendario; onClose: 
           {/* Só oferece o link quando há projeto: quem não enxerga o projeto
               levaria 404 do `exigir_acesso_ao_projeto`. */}
           {evento.projeto_id && (
-            <PageButton as={Link} to={`/projetos/${evento.projeto_id}`}>
+            <PageButton
+              as={Link}
+              to={`/projetos/${evento.projeto_id}`}
+              state={{ voltarPara: "/calendario", voltarRotulo: "Voltar para o calendário" }}
+            >
               Abrir projeto
             </PageButton>
           )}
