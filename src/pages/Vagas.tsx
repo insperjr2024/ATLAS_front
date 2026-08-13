@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ChevronDown, ChevronRight, Inbox, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS, formatarDataHora } from "@/lib/projetos";
@@ -127,7 +128,11 @@ import {
   CoordVazio,
 } from "./Vagas.styled";
 
-type Aba = "vagas" | "meus" | "coordenados" | "gestao" | "solicitacoes" | "historico";
+/** As abas em lista, e não só em tipo: a vinda da URL precisa ser validada em
+ *  tempo de execução antes de virar `Aba`. */
+const ABAS = ["vagas", "meus", "coordenados", "gestao", "solicitacoes", "historico"] as const;
+
+type Aba = (typeof ABAS)[number];
 
 /** Rótulo do grupo de projetos sem frente cadastrada. Vai por último. */
 const SEM_FRENTE = "Sem frente";
@@ -179,7 +184,21 @@ const HISTORICO_POR_PAGINA = 10;
  */
 export function Vagas() {
   const { token } = useAuth();
-  const [aba, setAba] = useState<Aba | null>(null);
+  /* A notificação manda `/vagas?aba=…`: sem ler isso, o clique abriria a
+     primeira aba disponível e a pessoa teria de achar o pedido sozinha —
+     logo depois de a plataforma ter dito que havia um.
+
+     `null` quando o parâmetro não serve: aí vale a aba derivada do papel,
+     logo abaixo. Um valor inválido não pode prender ninguém numa aba que a
+     posição dele nem tem. */
+  const [searchParams] = useSearchParams();
+  const [aba, setAba] = useState<Aba | null>(() => {
+    const pedida = searchParams.get("aba");
+    // `recebidos` é o nome que a aba de decisão tinha antes desta versão, e
+    // segue vivo nas notificações gravadas até aqui.
+    if (pedida === "recebidos") return "solicitacoes";
+    return ABAS.includes(pedida as Aba) ? (pedida as Aba) : null;
+  });
   const [dados, setDados] = useState<{
     projetos: ProjetoComVaga[];
     minhaCarga: number;
@@ -248,11 +267,26 @@ export function Vagas() {
     setTentativa((n) => n + 1);
   }
 
+  /**
+   * ⚠ **Recarrega mesmo quando falha** — e é o `finally` que importa aqui.
+   *
+   * O pedido é gravado antes de o coordenador ser notificado, então uma falha
+   * depois do commit devolve erro para uma solicitação que EXISTE. Sem o
+   * recarregamento, "Meus pedidos" continuava mostrando a lista velha: a
+   * pessoa via o erro, tentava de novo, ouvia que já tinha um pedido em
+   * análise, e não achava esse pedido em lugar nenhum da tela.
+   *
+   * O `throw` segue para o modal, que é quem mostra a mensagem — mas agora a
+   * lista por trás já está com a verdade.
+   */
   async function enviarPedido(justificativa: string) {
     if (!token || !aberto) return;
-    await criarSolicitacao(aberto.id, justificativa, token);
-    setAberto(null);
-    recarregar();
+    try {
+      await criarSolicitacao(aberto.id, justificativa, token);
+      setAberto(null);
+    } finally {
+      recarregar();
+    }
   }
 
   async function responder(id: number, aprovar: boolean) {

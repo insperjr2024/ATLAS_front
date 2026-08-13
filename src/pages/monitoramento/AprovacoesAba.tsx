@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getAprovacoes, type Aprovacoes } from "@/lib/monitoramento";
-import { formatarData } from "@/lib/projetos";
 import { PedidosDeDiasCard } from "./PedidosDeDiasCard";
 import {
   PageStack,
@@ -22,10 +21,10 @@ import { ItemLista, LinkProjeto, ListaSimples, Pilula } from "./Monitoramento.st
  * ⭐ A fila da diretoria — tudo que espera decisão dela, num lugar só.
  *
  * O problema que esta aba resolve não é de dado, é de descoberta. As decisões
- * estavam espalhadas: o pedido de dias num card da Visão geral, a
- * justificativa de atraso dentro da aba Atrasos, e a classificação de entrega
- * em lugar nenhum. Fila que ninguém sabe que existe é fila parada — dois
- * pedidos chegaram a ficar represados sem ninguém notar.
+ * estavam espalhadas: o pedido de dias num card da Visão geral e a
+ * justificativa de atraso dentro da aba Atrasos. Fila que ninguém sabe que
+ * existe é fila parada — dois pedidos chegaram a ficar represados sem ninguém
+ * notar.
  *
  * ⚠ **Nem toda ação restrita à diretoria é uma aprovação.** Criar formulário,
  * configurar coluna do kanban e excluir usuário também são só dela, e nenhuma
@@ -33,9 +32,8 @@ import { ItemLista, LinkProjeto, ListaSimples, Pilula } from "./Monitoramento.st
  * ela. O critério é ter alguém do outro lado bloqueado enquanto não houver
  * resposta.
  *
- * As duas filas de baixo **não decidem aqui**: elas levam ao lugar onde a
- * decisão tem contexto. Justificar um atraso sem ver os motivos, ou
- * classificar uma entrega sem ver o cronograma, é decidir no escuro. A aba
+ * A fila de atrasos **não decide aqui**: ela leva ao lugar onde a decisão tem
+ * contexto. Justificar um atraso sem ver os motivos é decidir no escuro. A aba
  * responde "o que falta?"; a tela do projeto responde "por quê?".
  */
 export function AprovacoesAba() {
@@ -82,8 +80,8 @@ export function AprovacoesAba() {
         </PageCardHeader>
         <PageCardContent>
           <EmptyText>
-            Nenhum pedido de dias, nenhum atraso sem justificativa e nenhuma entrega sem
-            classificação. Quando algo precisar da sua decisão, aparece aqui.
+            Nenhum pedido de dias e nenhum atraso sem justificativa. Quando algo precisar da
+            sua decisão, aparece aqui.
           </EmptyText>
         </PageCardContent>
       </PageCard>
@@ -133,45 +131,12 @@ export function AprovacoesAba() {
         </PageCardContent>
       </PageCard>
 
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>
-            Entregas sem classificação
-            {dados.entregas_sem_classificacao.length > 0 &&
-              ` (${dados.entregas_sem_classificacao.length})`}
-          </PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          {dados.entregas_sem_classificacao.length === 0 ? (
-            <EmptyText>Toda entrega atrasada já foi classificada.</EmptyText>
-          ) : (
-            <>
-              <EmptyText style={{ marginBottom: "0.75rem" }}>
-                Atraso interno e atraso por agenda do cliente contam diferente na métrica da área.
-                Enquanto a entrega não é classificada, os dois ficam misturados no mesmo número.
-              </EmptyText>
-              <ListaSimples>
-                {dados.entregas_sem_classificacao.map((e) => (
-                  <ItemLista key={e.escopo_id}>
-                    <div>
-                      <LinkProjeto as={Link} to={`/projetos/${e.projeto_id}`}>
-                        {e.projeto_nome} — {e.escopo_nome}
-                      </LinkProjeto>
-                      <EmptyText>
-                        prometida {formatarData(e.data_prometida)} · entregue{" "}
-                        {formatarData(e.data_entrega)}
-                      </EmptyText>
-                    </div>
-                    <Pilula $tom="alerta">
-                      {e.dias_de_atraso} {e.dias_de_atraso === 1 ? "dia" : "dias"}
-                    </Pilula>
-                  </ItemLista>
-                ))}
-              </ListaSimples>
-            </>
-          )}
-        </PageCardContent>
-      </PageCard>
+      {/* ⚠ Havia aqui um terceiro card, "Entregas sem classificação": as
+          entregas atrasadas ainda não marcadas como atraso interno ou por
+          agenda do cliente. Saiu em 2026-08-12 junto com o que lhe dava
+          sentido — o atraso de ENTREGA deixou de ser insight, e com ele a
+          métrica que separava os dois tipos. O card seguia pedindo à diretoria
+          uma classificação que não mudava mais número nenhum. */}
     </PageStack>
   );
 }

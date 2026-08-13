@@ -300,13 +300,16 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
           </PageCardHeader>
           <PageCardContent>
             {dados.tempo_parado.length === 0 ? (
-              <EmptyText>Nenhum projeto parado entre escopos.</EmptyText>
+              <EmptyText>Nenhum vão entre escopos.</EmptyText>
             ) : (
               <>
                 <ConteudoPaginado estado={parados}>
                   <ListaSimples>
                     {parados.visiveis.map((p) => (
-                      <li key={p.projeto_id}>
+                      // A chave é o PAR, não o projeto: um projeto de três
+                      // escopos tem dois vãos, e chavear pelo projeto os
+                      // colapsaria em um.
+                      <li key={`${p.projeto_id}-${p.escopo_entregue}-${p.escopo_seguinte ?? ""}`}>
                         {/* Vai direto para o CRONOGRAMA, não para a visão geral
                             do projeto: o que destrava um projeto parado é dar
                             `data_inicio` ao próximo escopo, e é lá que isso se
@@ -322,7 +325,15 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                           </ItemDestaque>
                           <ItemTexto>
                             <strong>{p.projeto_nome}</strong>
-                            <span>entregou {p.escopo_entregue}</span>
+                            {/* ⭐ O vão inteiro, não só o lado de trás: "de
+                                onde saiu" e "para onde foi". Sem o segundo
+                                nome, um vão FECHADO (o próximo já começou)
+                                ficava indistinguível de um aberto. */}
+                            <span>
+                              {p.aberto
+                                ? `entregou ${p.escopo_entregue} · ninguém começou o próximo`
+                                : `${p.escopo_entregue} → ${p.escopo_seguinte}`}
+                            </span>
                           </ItemTexto>
                           <ChevronRight size={15} aria-hidden="true" />
                         </LinhaItem>

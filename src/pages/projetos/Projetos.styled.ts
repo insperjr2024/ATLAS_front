@@ -688,6 +688,33 @@ export const LegendaTabela = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
+/** §7.4: a célula "Atraso" — o número e, embaixo, o porquê (ou o pedido dele). */
+export const AtrasoCelula = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+`;
+
+/**
+ * A nota do atraso na célula.
+ *
+ * Cortada em duas linhas de propósito: a explicação pode ser longa, e deixá-la
+ * crescer livre esticaria a linha inteira da tabela e empurraria as colunas de
+ * banca e entrega para fora da vista. O texto completo fica no `title` e no
+ * Histórico do projeto, que é onde ele é o assunto.
+ */
+export const JustificativaAtraso = styled.p`
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 16rem;
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
 /** Painel das abas que ainda não existem (F6–F8, F11). */
 export const EmBrevePanel = styled.div`
   display: flex;

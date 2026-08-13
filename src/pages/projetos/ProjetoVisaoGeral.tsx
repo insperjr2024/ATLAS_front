@@ -11,6 +11,7 @@ import {
   formatarDataHora,
   formatarDataHoraBanca,
   marcarKickoff,
+  registrarJustificativaAtraso,
   ROTULO_STATUS_ESCOPO,
   rotuloDiaSemana,
   updateDescricao,
@@ -75,6 +76,8 @@ import {
   ProgressoTexto,
   Cadeado,
   EscopoNome,
+  AtrasoCelula,
+  JustificativaAtraso,
   LegendaTabela,
   FrenteBloco,
   FrenteCabecalho,
@@ -295,18 +298,33 @@ export function ProjetoVisaoGeral() {
  * banca do escopo não estiver aprovada.
  */
 function TabelaEscopos() {
-  const { projeto } = useProjeto();
-  const { usuario } = useAuth();
+  const { projeto, recarregar } = useProjeto();
+  const { usuario, token } = useAuth();
+  /** §7.4: o escopo cujo atraso está sendo justificado. */
+  const [justificando, setJustificando] = useState<{
+    escopoId: number;
+    nome: string;
+    dias: number;
+  } | null>(null);
+  /**
+   * Quem escreve o porquê do atraso: coordenação, gerência e diretoria.
+   *
+   * Espelha o `require_lideranca` da rota — consultor vê o atraso mas não
+   * responde por ele. O front só ESCONDE; quem decide é o backend.
+   */
+  const podeJustificar = !!usuario && usuario.posicao !== "consultor";
   // §6.4: marcar kickoff e data de entrega é dos QUATRO perfis — a
   // responsabilidade é do coordenador, mas o acesso não é exclusivo dele.
   // (O backend usa só `exigir_acesso_ao_projeto` aqui; o front não pode ser
   // mais restrito que ele, ou esconde um botão que a pessoa tem direito de ver.)
   const podeConduzir = !!usuario?.permissoes.pode_marcar_kickoff;
 
-  // ⚠️ Nenhuma escrita aqui: esta tabela só LÊ. Datas de escopo — banca e
-  // entrega — são agendadas no Cronograma, que é onde dá para ver o dia contra
-  // a janela do escopo e o calendário do Insper.
-  // (E por isso não existe estado de erro nesta função: não há o que falhar.)
+  // ⚠️ A única escrita daqui é a JUSTIFICATIVA DO ATRASO (§7.4), e ela é
+  // exceção pelo mesmo motivo que o resto não é: datas de escopo — banca e
+  // entrega — se agendam no Cronograma, onde dá para ver o dia contra a janela
+  // e o calendário do Insper. Já o "por que estourou" não é data nenhuma; é a
+  // resposta ao número que ESTA tabela mostra, e mandar a pessoa para outra
+  // tela para escrevê-la é o que fazia ninguém escrever.
 
   return (
     <PageCard>
@@ -395,9 +413,40 @@ function TabelaEscopos() {
 
                       <TableCell>
                         {escopo.atraso > 0 ? (
-                          <PageBadge $tone="danger">
-                            {escopo.atraso} {escopo.atraso === 1 ? "dia" : "dias"}
-                          </PageBadge>
+                          <AtrasoCelula>
+                            <PageBadge $tone="danger">
+                              {escopo.atraso} {escopo.atraso === 1 ? "dia" : "dias"}
+                            </PageBadge>
+                            {/* ⭐ §7.4: o número diz QUANTO; só a nota diz POR
+                                QUÊ, e é ela que a diretoria lê no Monitoramento.
+                                Pedir aqui é pedir a quem está conduzindo o
+                                escopo, enquanto o motivo ainda está fresco. */}
+                            {escopo.justificativa_atraso ? (
+                              <JustificativaAtraso
+                                title={`${escopo.justificativa_atraso.registrado_por ?? "alguém"} em ${formatarData(escopo.justificativa_atraso.registrado_em)}`}
+                              >
+                                {escopo.justificativa_atraso.texto}
+                              </JustificativaAtraso>
+                            ) : podeJustificar ? (
+                              <PageButtonSm
+                                type="button"
+                                $variant="outline"
+                                onClick={() =>
+                                  setJustificando({
+                                    escopoId: escopo.id,
+                                    nome: escopo.nome,
+                                    dias: escopo.atraso,
+                                  })
+                                }
+                              >
+                                Justificar atraso
+                              </PageButtonSm>
+                            ) : (
+                              // Consultor vê o atraso, mas não escreve a nota
+                              // (o backend cobra `require_lideranca`).
+                              <EmptyText>Sem justificativa</EmptyText>
+                            )}
+                          </AtrasoCelula>
                         ) : (
                           <EmptyText>—</EmptyText>
                         )}
@@ -457,9 +506,12 @@ function TabelaEscopos() {
             </DataTable>
 
             <LegendaTabela>
-              🔒 A entrega fica travada até a banca do escopo ser realizada. Os dias correm apenas
-              enquanto o escopo está iniciado e não entregue — feriados, provas e recessos do
-              calendário do Insper não contam, e o escopo entregue para de consumir.
+              🔒 A entrega fica travada até a banca do escopo ser realizada. Os dias correm da
+              reunião inicial até a <strong>banca ser realizada</strong> — feriados, provas e
+              recessos do calendário do Insper não contam, e o que se faz depois da banca é{" "}
+              <strong>correção</strong>, que tem coluna própria e não consome dias vendidos.
+              <br />▶ Por isso <em>Dias usados</em> e <em>Atraso</em> falam do mesmo estouro: se a
+              barra passa do vendido, a diferença é exatamente o atraso.
               <br />▶ Um escopo começa a contar na <strong>reunião inicial</strong> dele: marque-a
               no <strong>Cronograma</strong>, escolhendo o escopo e clicando no dia. A banca não
               precisa estar marcada antes — é ela que precisa caber na janela que a reunião abre.
@@ -467,7 +519,110 @@ function TabelaEscopos() {
           </>
         )}
       </PageCardContent>
+
+      {justificando && token && (
+        <JustificarAtrasoEscopoModal
+          escopoId={justificando.escopoId}
+          nome={justificando.nome}
+          dias={justificando.dias}
+          projetoId={projeto.id}
+          token={token}
+          onFechar={() => setJustificando(null)}
+          onSalvo={async () => {
+            setJustificando(null);
+            // Recarrega o projeto: a nota volta no escopo e a célula troca o
+            // botão pelo texto, sem a pessoa precisar dar F5 para acreditar.
+            await recarregar();
+          }}
+        />
+      )}
     </PageCard>
+  );
+}
+
+/**
+ * §7.4/§10: por que este escopo passou da janela.
+ *
+ * Escreve na MESMA tabela que a nota da diretoria (`projeto_justificativa_atraso`),
+ * com `motivo_tipo: "escopo"` — o que a faz aparecer no Histórico do projeto
+ * e na aba Atrasos do Monitoramento sem nenhuma fiação nova.
+ *
+ * ⚠ Não é um campo editável: cada envio cria uma nota nova, e a anterior
+ * continua no Histórico. É registro, não formulário — foi assim que o §7.4
+ * definiu, e apagar o que se disse antes tiraria justamente a leitura de como
+ * a explicação mudou ao longo do atraso.
+ */
+function JustificarAtrasoEscopoModal({
+  escopoId,
+  nome,
+  dias,
+  projetoId,
+  token,
+  onFechar,
+  onSalvo,
+}: {
+  escopoId: number;
+  nome: string;
+  dias: number;
+  projetoId: number;
+  token: string;
+  onFechar: () => void;
+  onSalvo: () => void | Promise<void>;
+}) {
+  const [texto, setTexto] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function salvar() {
+    setErro("");
+    setSalvando(true);
+    try {
+      await registrarJustificativaAtraso(projetoId, texto.trim(), token, escopoId, "escopo");
+      await onSalvo();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível salvar a justificativa");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onFechar} role="presentation">
+      <WideModalContent
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="justificar-atraso-titulo"
+      >
+        <ModalHeader>
+          <ModalTitle id="justificar-atraso-titulo">Justificar o atraso</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onFechar}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          <p>
+            <strong>{nome}</strong> passou <strong>{dias} {dias === 1 ? "dia útil" : "dias úteis"}</strong>{" "}
+            além da janela vendida. Explique o motivo — a nota fica no Histórico do
+            projeto e a diretoria a lê no Monitoramento.
+          </p>
+          <FieldTextarea
+            rows={4}
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Ex.: o cliente atrasou o envio dos documentos e a equipe ficou parada duas semanas."
+          />
+          {erro && <FormErrorText>{erro}</FormErrorText>}
+        </ModalBody>
+        <ModalFooter>
+          <PageButton type="button" $variant="ghost" onClick={onFechar}>
+            Cancelar
+          </PageButton>
+          <PageButton type="button" disabled={salvando || !texto.trim()} onClick={salvar}>
+            {salvando ? "Salvando..." : "Salvar"}
+          </PageButton>
+        </ModalFooter>
+      </WideModalContent>
+    </ModalOverlay>
   );
 }
 

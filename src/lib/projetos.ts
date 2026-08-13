@@ -354,10 +354,19 @@ export const ROTULO_STATUS_ESCOPO: Record<string, string> = {
 /** §7.4 — o `tipo` de `MotivoAtraso`, usado tanto na aba Atrasos quanto no
  *  histórico do projeto (pra mostrar a que motivo uma justificativa se
  *  refere). Um só lugar pras duas telas não divergirem no rótulo. */
+/**
+ * Os tipos de motivo de atraso, para rótulo.
+ *
+ * ⚠ `entrega_interna`/`entrega_externa` continuam aqui, mas nenhum motivo NOVO
+ * nasce com eles: o atraso da entrega saiu dos insights em 2026-08-12. Ficam
+ * porque as notas de justificativa já gravadas com esses tipos seguem no banco
+ * e aparecem no Histórico — sem o rótulo, a tela mostraria a chave crua.
+ */
 export const ROTULO_MOTIVO_ATRASO: Record<string, string> = {
   banca: "Banca",
-  entrega_interna: "Entrega",
-  entrega_externa: "Agenda do cliente",
+  escopo: "Janela do escopo",
+  entrega_interna: "Entrega (histórico)",
+  entrega_externa: "Agenda do cliente (histórico)",
 };
 
 /* ------------------------------------------------------------------ */
