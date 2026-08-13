@@ -4,11 +4,11 @@ import type { Posicao } from "@/types/auth";
 import { PageLoadingBlock } from "@/styles/page.styled";
 
 /**
- * Guard por **posição direto** — pra regra que nunca virou caixa de
+ * Guard por **posição direto**, pra regra que nunca virou caixa de
  * permissão (`AdminRoute`), como identidade organizacional (último diretor,
  * elegibilidade de coordenador) em vez de algo delegável.
  *
- * Quem não passa cai em `/projetos`, a nova home — não em `/login`, porque
+ * Quem não passa cai em `/projetos`, a nova home, não em `/login`, porque
  * está logado, só não tem a posição.
  */
 export function RequirePosicao({ posicoes }: { posicoes: Posicao[] }) {

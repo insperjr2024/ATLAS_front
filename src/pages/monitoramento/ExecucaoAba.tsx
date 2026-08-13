@@ -23,7 +23,7 @@ import {
   FaixaResumo,
   ItemAtencao,
   LinkProjeto,
-  ListaSimples,
+  ListaAtencaoGrid,
   NavegacaoSemana,
   ValorDeHoje,
   ResumoItem,
@@ -44,7 +44,7 @@ import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
 /**
- * §7.2 — ver quem não está distribuindo tarefa nem fazendo reunião, sem
+ * , ver quem não está distribuindo tarefa nem fazendo reunião, sem
  * precisar abrir projeto por projeto.
  *
  * **Os dias desta aba são ÚTEIS**, pelo calendário do Insper: mede-se quanto
@@ -67,7 +67,7 @@ export function ExecucaoAba() {
   const [erro, setErro] = useState("");
   /* `null` = semana de hoje. Guardamos um DIA, não a semana: o servidor
      normaliza para a segunda, então o front não precisa saber onde a semana
-     começa — e não corre o risco de discordar dele. */
+     começa, e não corre o risco de discordar dele. */
   const [referencia, setReferencia] = useState<string | null>(null);
 
   async function carregar() {
@@ -104,7 +104,7 @@ export function ExecucaoAba() {
   );
   /* "Sem tarefa atribuída HOJE" são duas situações, não uma: o projeto que
      nunca recebeu tarefa e o que zerou o quadro e não recebeu o próximo lote.
-     Os dois estão parados agora, que é o que a diretoria precisa ver — filtrar
+     Os dois estão parados agora, que é o que a diretoria precisa ver, filtrar
      só por `sem_tarefas` escondia o segundo caso atrás de um título que
      prometia os dois. Continuam distinguidos na linha, porque a ação é
      diferente: um nunca foi destrinchado, o outro terminou e parou. */
@@ -113,7 +113,7 @@ export function ExecucaoAba() {
     [tarefasOrdenadas],
   );
   // Ordenada por severidade logo acima, então cortar esconde a cauda e não o
-  // que pede ação. Fica antes dos `return` de erro e carregando — hook depois
+  // que pede ação. Fica antes dos `return` de erro e carregando, hook depois
   // deles seria condicional.
   const listaSemTarefa = usePaginacao(semTarefa);
   // As duas tabelas da aba passam de 50 linhas com o núcleo cheio. Rolagem
@@ -137,7 +137,7 @@ export function ExecucaoAba() {
   }
 
   /* Esqueleto SÓ na primeira carga. Ao trocar de semana os dados anteriores
-     ficam na tela até os novos chegarem — trocar tudo por um bloco vazio
+     ficam na tela até os novos chegarem, trocar tudo por um bloco vazio
      desmonta a tabela, e o navegador perde a posição do scroll: a pessoa
      clica em "anterior" e é jogada de volta pro topo da página. */
   if (!dados) {
@@ -195,7 +195,7 @@ export function ExecucaoAba() {
           </PageCardHeader>
           <PageCardContent>
             <ConteudoPaginado estado={listaSemTarefa}>
-              <ListaSimples>
+              <ListaAtencaoGrid>
                 {listaSemTarefa.visiveis.map((linha) => (
                   <ItemAtencao key={linha.projeto_id} $nivel={nivelSemTarefa(linha)}>
                     <strong>
@@ -211,7 +211,7 @@ export function ExecucaoAba() {
                     <span>{motivoSemTarefa(linha)}</span>
                   </ItemAtencao>
                 ))}
-              </ListaSimples>
+              </ListaAtencaoGrid>
             </ConteudoPaginado>
             <Paginacao estado={listaSemTarefa} />
           </PageCardContent>
@@ -241,7 +241,7 @@ export function ExecucaoAba() {
             <PageButtonSm
               $variant="outline"
               onClick={() => navegar(7)}
-              /* O backend recusa data futura com 422 — travar aqui evita o
+              /* O backend recusa data futura com 422, travar aqui evita o
                  erro em vez de deixar a pessoa provocá-lo. */
               disabled={carregando || dados.semana.eh_atual}
             >
@@ -301,7 +301,7 @@ export function ExecucaoAba() {
                             /* A explicação vai no tooltip, não em parágrafo:
                                interessa a quem estranhar o selo, e é a minoria
                                das visitas à tela. */
-                            <ValorDeHoje title="Depende de onde a tarefa está no quadro agora — o sistema não guarda o histórico de movimentação entre colunas.">
+                            <ValorDeHoje title="Depende de onde a tarefa está no quadro agora, o sistema não guarda o histórico de movimentação entre colunas.">
                               {linha.ativas}
                             </ValorDeHoje>
                           ) : (
@@ -332,7 +332,7 @@ export function ExecucaoAba() {
                             /* A MESMA coluna conta de dois lugares: da última
                                tarefa criada, ou do kickoff quando o projeto
                                nunca recebeu nenhuma. Só o número não diz qual,
-                               e a diferença muda o que se cobra — por isso a
+                               e a diferença muda o que se cobra, por isso a
                                origem vai no `title`, onde cabe sem espremer
                                uma tabela de 7 colunas. */
                             <CelulaDias
@@ -437,7 +437,7 @@ function plural(dias: number): string {
   return dias === 1 ? " dia" : " dias";
 }
 
-/** 5 dias úteis é uma semana de trabalho inteira sem tarefa nova — o limiar em
+/** 5 dias úteis é uma semana de trabalho inteira sem tarefa nova, o limiar em
  *  que deixa de ser ritmo normal e vira sinal. 10 são duas semanas. */
 function tomDiasSemTarefa(dias: number): TomPilula {
   if (dias >= 10) return "alerta";
@@ -445,7 +445,7 @@ function tomDiasSemTarefa(dias: number): TomPilula {
   return "neutro";
 }
 
-/** Sem kickoff não há o que cobrar ainda (§5.2) — a execução nem começou, e
+/** Sem kickoff não há o que cobrar ainda, a execução nem começou, e
  *  o item já aparece na Visão geral com o motivo certo. */
 function nivelSemTarefa(linha: LinhaTarefas): NivelSeveridade {
   if (linha.dias_uteis_sem_tarefa === null) return "leve";
@@ -460,7 +460,7 @@ function nivelSemTarefa(linha: LinhaTarefas): NivelSeveridade {
  * Vem do backend (`_marco_sem_tarefa`), não é deduzido aqui: o mesmo número de
  * dias pode contar de qualquer um dos dois, e só quem leu o banco sabe qual.
  * Antes o front escrevia "desde o kickoff" fixo e acertava só porque a lista
- * que exibia o texto é filtrada por `sem_tarefas` — bastava mudar o filtro para
+ * que exibia o texto é filtrada por `sem_tarefas`, bastava mudar o filtro para
  * ele passar a mentir com um número plausível e o rótulo errado.
  *
  * As duas leituras da tela (a frase da lista e o `title` da tabela) saem daqui,

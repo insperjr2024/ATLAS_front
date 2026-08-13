@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { ArrowLeft, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFormulario, updateFormulario } from "@/lib/desempenho-formularios";
 import type { DesempenhoPapel, DesempenhoTipo, DesempenhoTipoResposta } from "@/types/desempenho";
@@ -29,8 +29,7 @@ import {
   FormularioAbasRow,
   SecaoCamposProprios,
   SecaoEditorBlock,
-  TabBar,
-  TabLink,
+  VoltarLink,
 } from "./Painel.styled";
 
 interface CriterioEditavel {
@@ -56,7 +55,7 @@ const ABAS: { tipo: DesempenhoTipo; papel: DesempenhoPapel; rotulo: string }[] =
 ];
 
 export function PainelFormularios() {
-  const { token, usuario } = useAuth();
+  const { token } = useAuth();
   const [aba, setAba] = useState(ABAS[0]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -184,25 +183,14 @@ export function PainelFormularios() {
     <PageStack>
       <PageHeader>
         <PageHeaderText>
-          <PageTitle>Painel de Avaliação de Desempenho</PageTitle>
-          <PageSubtitle>Administração de lotes, formulários, mentorias e resultados.</PageSubtitle>
+          <VoltarLink to="/avaliacao-desempenho/painel/lotes">
+            <ArrowLeft size={14} />
+            Voltar para Formulários
+          </VoltarLink>
+          <PageTitle>Editar formulário de avaliação</PageTitle>
+          <PageSubtitle>Seções e critérios de cada combinação de tipo e papel.</PageSubtitle>
         </PageHeaderText>
       </PageHeader>
-
-      {/* Esta página fica fora do shell de abas do painel (rota irmã, só
-          diretor — §4.2), então sem isso as outras abas do painel de AVD
-          somem ao entrar aqui. Repete a mesma TabBar de `PainelDesempenho`. */}
-      <TabBar>
-        <TabLink to="/avaliacao-desempenho/painel/avaliadores">Avaliadores</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/avaliados">Avaliados</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/relatorio">Relatórios</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/lotes">Lotes</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/mentoria">Mentoria</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/pdi">PDI</TabLink>
-        {usuario?.posicao === "diretor" && (
-          <TabLink to="/avaliacao-desempenho/painel/formularios">Formulários</TabLink>
-        )}
-      </TabBar>
 
       <FormularioAbasRow>
         {ABAS.map((a) => (
@@ -292,7 +280,7 @@ export function PainelFormularios() {
                             </PageButtonSm>
                           </CriterioEditorRow>
                           <FieldTextarea
-                            placeholder="Descrição do critério — o texto que a pessoa vê ao responder (opcional)"
+                            placeholder="Descrição do critério, o texto que a pessoa vê ao responder (opcional)"
                             value={criterio.descricao}
                             onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "descricao", e.target.value)}
                           />

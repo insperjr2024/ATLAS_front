@@ -48,10 +48,10 @@ import {
 interface Props {
   tarefa: Tarefa;
   colunas: ColunaTarefa[];
-  /** Quadro inteiro — usado só pra resolver nome (ex.: um responsável que já
+  /** Quadro inteiro, usado só pra resolver nome (ex.: um responsável que já
    *  saiu do projeto ainda precisa aparecer com o nome certo, não "Usuário 7"). */
   usuarios: UsuarioResumo[];
-  /** Só quem está alocado neste projeto — são as opções do select. */
+  /** Só quem está alocado neste projeto, são as opções do select. */
   usuariosAtribuiveis: UsuarioResumo[];
   onClose: () => void;
   /** Recarrega o board depois de editar ou excluir. */
@@ -61,7 +61,7 @@ interface Props {
 /**
  * O detalhe da tarefa: o que o card não mostra.
  *
- * O card na tela tem só nome e responsável — aqui ficam as datas, quem
+ * O card na tela tem só nome e responsável, aqui ficam as datas, quem
  * criou, e a conversa. Editar é da diretoria e de quem criou (o backend
  * revalida); comentar é de quem enxerga o projeto.
  */
@@ -193,7 +193,7 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
                   onChange={(e) => setResponsavel(e.target.value)}
                 >
                   {/* O responsável atual sempre aparece, mesmo se já saiu do
-                      projeto — senão o select troca de valor sem avisar. */}
+                      projeto, senão o select troca de valor sem avisar. */}
                   {!usuariosAtribuiveis.some((u) => u.id === tarefa.responsavel_id) && (
                     <option value={tarefa.responsavel_id}>{nomeUsuario(tarefa.responsavel_id)}</option>
                   )}
@@ -271,7 +271,7 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
             ))}
           </ListaComentarios>
 
-          {/* Comentar é de quem enxerga o projeto — não só de quem criou. */}
+          {/* Comentar é de quem enxerga o projeto, não só de quem criou. */}
           <form onSubmit={comentar}>
             <ComposerLinha>
               <FieldTextarea

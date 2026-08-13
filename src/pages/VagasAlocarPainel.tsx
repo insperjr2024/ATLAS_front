@@ -39,7 +39,7 @@ const TODAS = "__todas__";
 /**
  * Distribui a lista por frente, da frente com mais gente para a com menos.
  *
- * Com uma frente selecionada devolve um grupo só — o cabeçalho some na
+ * Com uma frente selecionada devolve um grupo só, o cabeçalho some na
  * renderização, porque repetiria o que o filtro já diz.
  *
  * Quem tem duas frentes aparece nos dois grupos, de propósito: o gerente que
@@ -65,7 +65,7 @@ function agruparPorFrente(
 /**
  * Uma pessoa na lista: nome e uma linha de apoio em texto corrido.
  *
- * Fora do componente do painel de propósito — declarada dentro, ela seria uma
+ * Fora do componente do painel de propósito, declarada dentro, ela seria uma
  * função nova a cada render e o React remontaria todas as linhas a cada
  * clique, em vez de atualizar.
  */
@@ -153,21 +153,21 @@ interface Props {
   projeto: ProjetoComVaga;
   token: string;
   onFechar: () => void;
-  /** Recarrega a grade — a ocupação do projeto muda a cada alocação. */
+  /** Recarrega a grade, a ocupação do projeto muda a cada alocação. */
   onAlocou: () => void;
 }
 
 /**
- * O painel de alocar gente num projeto (§7.3).
+ * O painel de alocar gente num projeto.
  *
- * A lista vem do back ordenada por carga crescente — a mesma régua do
+ * A lista vem do back ordenada por carga crescente, a mesma régua do
  * `AlocarPessoasModal` das bancas. A decisão que se quer favorecer é
  * distribuir, e ordenar por nome obrigaria a varrer tudo para achar quem está
  * livre.
  *
  * Cada pessoa mostra DUAS linhas: nome e "3 projetos · Carga alta". Antes
  * eram quatro etiquetas soltas por pessoa (carga, situação, posição, "pediu")
- * e a pergunta que o painel existe para responder — quem está mais livre —
+ * e a pergunta que o painel existe para responder, quem está mais livre —
  * se perdia no meio delas. Quem pediu para entrar virou uma seção no topo,
  * que é informação sobre a FILA, não sobre a pessoa.
  */

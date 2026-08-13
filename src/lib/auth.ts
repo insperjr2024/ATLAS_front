@@ -2,7 +2,7 @@ import { apiFetch } from "@/lib/api";
 
 /* Os tipos espelham `use_cases/auth/` do backend.
  *
- * As duas de recuperação são PÚBLICAS — sem `token`, porque quem esqueceu a
+ * As duas de recuperação são PÚBLICAS, sem `token`, porque quem esqueceu a
  * senha não tem como se autenticar para pedir a troca. O `apiFetch` só manda
  * o header `Authorization` quando recebe token, então basta omitir. A
  * `definirSenha` é a exceção: ela acontece com a pessoa já logada. */
@@ -14,7 +14,7 @@ export interface RespostaMensagem {
 /**
  * Pede o e-mail com o link de redefinição.
  *
- * ⚠ Responde a MESMA coisa exista o e-mail ou não — é decisão do backend, para
+ * Responde a MESMA coisa exista o e-mail ou não, é decisão do backend, para
  * a rota não virar um verificador de quem é membro do núcleo. A tela não pode
  * prometer "enviamos para você", só "se estiver cadastrado, enviamos".
  */
@@ -26,9 +26,9 @@ export function solicitarRecuperacao(emailInsper: string) {
 }
 
 /**
- * ⭐ O primeiro acesso: troca a senha provisória do e-mail pela própria.
+ * O primeiro acesso: troca a senha provisória do e-mail pela própria.
  *
- * Esta é a ÚNICA daqui que manda token — a pessoa já está logada (entrou com a
+ * Esta é a ÚNICA daqui que manda token, a pessoa já está logada (entrou com a
  * provisória). Enquanto ela não for chamada, o backend responde 403 em
  * qualquer outra rota.
  */
@@ -48,7 +48,7 @@ export function redefinirSenha(token: string, novaSenha: string) {
   });
 }
 
-/** Primeiros nomes dos membros ativos — só decoração da tela de login (o
+/** Primeiros nomes dos membros ativos, só decoração da tela de login (o
  *  globo), nada de e-mail/cargo/posição. Pública pelo mesmo motivo das
  *  duas de cima: a tela de login não tem token nenhum ainda. */
 export function getPrimeirosNomes() {

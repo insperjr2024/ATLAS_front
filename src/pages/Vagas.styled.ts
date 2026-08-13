@@ -7,7 +7,7 @@ export const VagasGrid = styled.div`
   gap: ${theme.spacing.md};
 `;
 
-/** Cartão do projeto. Sem vaga fica esmaecido em vez de sumir — a pessoa
+/** Cartão do projeto. Sem vaga fica esmaecido em vez de sumir, a pessoa
  *  precisa ver que o projeto existe e está cheio. */
 export const ProjetoCard = styled.button<{ $indisponivel: boolean }>`
   display: flex;
@@ -115,7 +115,7 @@ export const PedidoTopo = styled.div`
   flex-wrap: wrap;
 `;
 
-/** A justificativa é o que o coordenador vem ler — destacada, não escondida
+/** A justificativa é o que o coordenador vem ler, destacada, não escondida
  *  numa linha de meta. */
 export const Justificativa = styled.blockquote`
   margin: 0;
@@ -141,12 +141,12 @@ export const PedidoAcoes = styled.div`
 /**
  * A barra de filtros da página.
  *
- * ⭐ **Os campos não crescem.** Com `flex: 1 1`, um seletor sozinho esticava
- * de ponta a ponta do card — uma faixa larguíssima para escolher entre cinco
+ * **Os campos não crescem.** Com `flex: 1 1`, um seletor sozinho esticava
+ * de ponta a ponta do card, uma faixa larguíssima para escolher entre cinco
  * frentes. Largura fixa de 14rem cabe o nome de frente e de projeto sem
  * reticências e sem virar paisagem.
  *
- * ⭐ **O respiro embaixo é maior que o de dentro.** A barra encostava na
+ * **O respiro embaixo é maior que o de dentro.** A barra encostava na
  * grade, e ao filtrar uma frente o agrupamento sumia e os cartões subiam
  * quase até o seletor. O `margin-bottom` separa o controle do resultado —
  * são coisas diferentes e precisam parecer diferentes.
@@ -211,7 +211,7 @@ export const CoordCard = styled.article`
 `;
 
 /**
- * O título envolve o botão — mesmo padrão de acordeão da lista da gestão:
+ * O título envolve o botão, mesmo padrão de acordeão da lista da gestão:
  * o `h3` mantém o projeto na estrutura de cabeçalhos, o `button` carrega a
  * interação, e nenhum dos dois fica dentro do outro de forma inválida.
  */
@@ -224,8 +224,8 @@ export const CoordCabecalhoTitulo = styled.h3`
 /**
  * Faixa de identificação, e também o que abre e fecha o cartão.
  *
- * Ela continua sendo o resumo do projeto — nome, cliente, status, frentes e
- * ocupação —, então serve de conteúdo fechado sem precisar de uma linha
+ * Ela continua sendo o resumo do projeto, nome, cliente, status, frentes e
+ * ocupação, então serve de conteúdo fechado sem precisar de uma linha
  * separada só para o título. O corpo com time e pedidos é que colapsa.
  */
 export const CoordCabecalho = styled.button`
@@ -319,7 +319,7 @@ export const CoordContagem = styled.span`
   color: ${theme.colors.cardForeground};
 `;
 
-/** A barra é redundante de propósito — o número ao lado é a fonte da verdade
+/** A barra é redundante de propósito, o número ao lado é a fonte da verdade
  *  para quem usa leitor de tela, e por isso ela fica `aria-hidden`. */
 export const CoordBarraTrilho = styled.span`
   display: block;
@@ -347,7 +347,7 @@ export const CoordBarraPreenchida = styled.span<{ $proporcao: number; $cheio: bo
  * Duas colunas em tela larga, empilhadas no celular.
  *
  * Colunas explícitas em vez de `auto-fit`: com a divisória entre elas, o
- * ponto de quebra precisa ser conhecido — `auto-fit` decide sozinho quantas
+ * ponto de quebra precisa ser conhecido, `auto-fit` decide sozinho quantas
  * colunas cabem, e a linha ora apareceria na vertical, ora na horizontal, sem
  * a media query saber qual dos dois casos está na tela.
  *
@@ -369,7 +369,7 @@ export const CoordCorpo = styled.div`
  * borda do contêiner: assim ela existe só quando há de fato duas colunas, e
  * vira linha horizontal quando o cartão empilha, em vez de sumir.
  *
- * O respiro é igual dos dois lados — o `gap` da grade antes da linha, o
+ * O respiro é igual dos dois lados, o `gap` da grade antes da linha, o
  * `padding` depois dela.
  */
 export const CoordColuna = styled.section`
@@ -486,7 +486,7 @@ export const CoordPedidoMeta = styled.span`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** Limite de linha para a justificativa continuar legível — texto corrido de
+/** Limite de linha para a justificativa continuar legível, texto corrido de
  *  ponta a ponta da coluna é onde o olho se perde ao voltar para a esquerda. */
 export const CoordJustificativa = styled.p`
   margin: ${theme.spacing.xs} 0 0;
@@ -519,7 +519,7 @@ export const CoordVazio = styled.p`
  * Com tudo aberto a página crescia por projeto E por pedido: dez projetos com
  * cinco pedidos cada davam cinquenta cartões numa rolagem só, e achar o
  * projeto certo virava caça. Fechado, cada projeto ocupa uma linha e a página
- * inteira cabe na tela — quem decide escolhe onde entrar.
+ * inteira cabe na tela, quem decide escolhe onde entrar.
  */
 export const SolGrupo = styled.section`
   border: 1px solid ${theme.colors.border};
@@ -651,7 +651,7 @@ export const SolMeta = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** A justificativa é o texto que embasa a decisão — limite de linha para não
+/** A justificativa é o texto que embasa a decisão, limite de linha para não
  *  virar uma faixa de ponta a ponta que o olho perde ao voltar. */
 export const SolTexto = styled.p`
   margin: ${theme.spacing.sm} 0 0;
@@ -707,7 +707,7 @@ export const HistDesfecho = styled.span<{ $aprovada: boolean }>`
 `;
 
 /** Duas linhas e corta: no histórico a justificativa é contexto, não a
- *  decisão — quem precisa do texto inteiro procura o pedido, não a lista. */
+ *  decisão, quem precisa do texto inteiro procura o pedido, não a lista. */
 export const HistTexto = styled.p`
   margin: ${theme.spacing.xs} 0 0;
   max-width: 65ch;
@@ -799,7 +799,7 @@ export const PainelLateral = styled.aside`
 /**
  * O nome do projeto e a ocupação, um sobre o outro.
  *
- * `CardNome` e `CardLinha` são spans inline — soltos no cabeçalho eles
+ * `CardNome` e `CardLinha` são spans inline, soltos no cabeçalho eles
  * encostavam um no outro e o texto saía "Fluxo Orion2 de 3 consultores".
  * Empilhar resolve sem depender de `<br>` nem de espaço fabricado.
  */
@@ -877,7 +877,7 @@ export const PainelGrupoTitulo = styled.h4`
  *
  * Cada pessoa ocupa DUAS linhas e nada mais: o nome e uma linha de apoio em
  * texto corrido. A versão anterior empilhava carga, pílula de situação,
- * posição e "pediu" como quatro etiquetas soltas na mesma linha — quatro
+ * posição e "pediu" como quatro etiquetas soltas na mesma linha, quatro
  * caixas coloridas por pessoa, vinte pessoas, e a única coisa que a tela
  * precisava responder ("quem está mais livre?") sumia no meio.
  *
@@ -911,7 +911,7 @@ export const CandidatoTopo = styled.div`
  *
  * Botão de verdade, com aparência de texto: precisa de teclado e de
  * `aria-expanded`, e um `span` com `onClick` não dá nenhum dos dois. A seta
- * é o que avisa que há algo a abrir — sem ela a única pista seria o cursor,
+ * é o que avisa que há algo a abrir, sem ela a única pista seria o cursor,
  * que não existe no celular.
  */
 export const BotaoDeTexto = styled.button`
@@ -977,7 +977,7 @@ export const CandidatoMeta = styled.span`
 
 /**
  * A situação dentro da linha de apoio. A cor reforça, mas quem carrega o
- * significado é a palavra — "Carga alta" continua legível em preto e branco,
+ * significado é a palavra, "Carga alta" continua legível em preto e branco,
  * e por isso ela é `<strong>` e não um ponto colorido.
  */
 export const CandidatoSituacao = styled.strong<{ $tom: "ok" | "atencao" | "alerta" | "neutro" }>`

@@ -33,13 +33,13 @@ export interface EquipeSelecionada {
 }
 
 /**
- * Cada papel do projeto (§6.3) exige posição igual ou acima na hierarquia
+ * Cada papel do projeto exige posição igual ou acima na hierarquia
  * ATÉ gerente (gerente > coordenador > consultor): um gerente que também
  * coordena projeto na prática pode ocupar a vaga de coordenador sem virar
  * "coordenador" de posição de verdade (2026-08-07). Diretor fica de fora das
- * duas — só supervisiona, não é alocado na equipe de execução. O que NUNCA
- * abre, pra ninguém, é o sentido inverso — consultor não vira coordenador
- * sem ser promovido de posição de verdade, isso é o §10. Espelha
+ * duas, só supervisiona, não é alocado na equipe de execução. O que NUNCA
+ * abre, pra ninguém, é o sentido inverso, consultor não vira coordenador
+ * sem ser promovido de posição de verdade, isso é o . Espelha
  * `POSICOES_ELEGIVEIS_CONSULTOR`/`POSICOES_ELEGIVEIS_COORDENADOR` de
  * `src/utils/validacao_equipe.py`.
  */
@@ -48,7 +48,7 @@ export const POSICOES_ELEGIVEIS_CONSULTOR: Posicao[] = ["consultor", "coordenado
 export const POSICOES_ELEGIVEIS_COORDENADOR: Posicao[] = ["coordenador", "gerente"];
 
 /**
- * A regra do coordenador e do mínimo de consultor (§6.3) numa função só,
+ * A regra do coordenador e do mínimo de consultor numa função só,
  * para o formulário de criação e o modal de editar equipe dizerem exatamente
  * a mesma coisa. O backend revalida em `create_projeto.py` e
  * `update_equipe_projeto.py`. Consultor não tem máximo, só o mínimo de 1.
@@ -80,10 +80,10 @@ interface MemberPickerProps {
   valor: EquipeSelecionada;
   onChange: (valor: EquipeSelecionada) => void;
   desabilitado?: boolean;
-  /** Vínculos usuário↔frente — junto com `frentes`/`frenteIdsProjeto`, é o
+  /** Vínculos usuário↔frente, junto com `frentes`/`frenteIdsProjeto`, é o
    *  que filtra as duas listas pra só quem já atua nas frentes marcadas. */
   usuariosFrentes?: UsuarioFrente[];
-  /** Catálogo completo — as opções do filtro (nem toda frente do catálogo
+  /** Catálogo completo, as opções do filtro (nem toda frente do catálogo
    *  precisa ser a do projeto: dá pra somar outras manualmente). */
   frentes?: Frente[];
   frenteIdsProjeto?: number[];
@@ -123,7 +123,7 @@ export function MemberPicker({
 
   const filtroPorFrenteAtivo = frentesFiltro.size > 0;
 
-  // Quem não tem frente cadastrada nenhuma passa direto — o filtro só barra
+  // Quem não tem frente cadastrada nenhuma passa direto, o filtro só barra
   // quem TEM frente e nenhuma delas está marcada no filtro, nunca por falta
   // de dado.
   function atendeFiltroFrente(usuario: UsuarioResumo): boolean {
@@ -134,7 +134,7 @@ export function MemberPicker({
   }
 
   // A carga atual entra no rótulo para a alocação ser decidida sem sair da
-  // tela — 3+ projetos é o limiar de gargalo do §7.3.
+  // tela, 3+ projetos é o limiar de gargalo.
   const metaTexto = (usuario: UsuarioResumo) => {
     const total = usuario.projetos_alocados;
     const carga =
@@ -149,13 +149,13 @@ export function MemberPicker({
 
   // Menos carregado primeiro: quem tem menos projetos abre a lista, para a
   // alocação distribuir a carga em vez de cair sempre em quem já está no
-  // limiar de gargalo do §7.3. Empate desempata por nome — sem isso a ordem
+  // limiar de gargalo. Empate desempata por nome, sem isso a ordem
   // dos que têm a mesma carga varia conforme a API responde.
   const porCargaCrescente = (a: UsuarioResumo, b: UsuarioResumo) =>
     a.projetos_alocados - b.projetos_alocados || a.nome.localeCompare(b.nome, "pt-BR");
 
   // Consultor aceita posição igual ou acima na hierarquia (coordenador,
-  // gerente e diretor também entram — nunca o contrário). Ninguém aparece
+  // gerente e diretor também entram, nunca o contrário). Ninguém aparece
   // duas vezes: quem já foi escolhido sai da lista de opções. O `.filter` já
   // devolve array novo, então o `.sort` não mexe na prop `usuarios`.
   const disponiveisParaConsultor = usuarios
@@ -178,7 +178,7 @@ export function MemberPicker({
 
   function trocarCoordenador(novoId: number | null) {
     // As duas listas são disjuntas por posição, mas equipes salvas antes desta
-    // regra podem ter a mesma pessoa nos dois papéis — tira da lista de baixo.
+    // regra podem ter a mesma pessoa nos dois papéis, tira da lista de baixo.
     onChange({
       coordenadorId: novoId,
       consultorIds: novoId ? consultorIds.filter((x) => x !== novoId) : consultorIds,
@@ -253,7 +253,7 @@ export function MemberPicker({
 /* ------------------------------------------------------------------ */
 
 /**
- * Dropdown único pra coordenador (troca) e consultor (adiciona) — nem select
+ * Dropdown único pra coordenador (troca) e consultor (adiciona), nem select
  * nativo do navegador, nem checkboxes soltas: o filtro de frente mora dentro
  * do próprio painel, bem ao lado de quem está sendo escolhido.
  */
@@ -306,14 +306,14 @@ function PessoaDropdown({
     return () => document.removeEventListener("mousedown", aoClicarFora);
   }, []);
 
-  // Zera a busca a cada abertura — senão o filtro da vez anterior continua
+  // Zera a busca a cada abertura, senão o filtro da vez anterior continua
   // escondendo gente na próxima vez que a lista é aberta.
   useEffect(() => {
     if (aberto) setBusca("");
   }, [aberto]);
 
   // O painel vive num portal em `document.body` (ver comentário do
-  // `DropdownPanel`), então precisa recalcular a própria posição — não
+  // `DropdownPanel`), então precisa recalcular a própria posição, não
   // segue o layout do gatilho sozinho. Mesma lógica do `SelectCustom`: abre
   // pro lado com mais espaço e ancora por `bottom` quando é pra cima, pra
   // não sobrar vão entre o painel e o gatilho quando a lista é curta.

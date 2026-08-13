@@ -3,7 +3,7 @@ import type { Compatibilidade, FaixaDisponivel, FaixaGrade, MinhaGrade } from "@
 
 /**
  * As faixas vêm do backend, e não de uma constante aqui, porque é a mesma
- * lista que valida a gravação (§11). Duas cópias sairiam do ar uma da outra
+ * lista que valida a gravação. Duas cópias sairiam do ar uma da outra
  * no dia em que entrar curso com horário diferente.
  */
 export function getFaixasDisponiveis(token: string) {
@@ -14,7 +14,7 @@ export function getMinhaGrade(token: string) {
   return apiFetch<MinhaGrade>("/grade-horaria", { token });
 }
 
-/** Substitui a grade inteira. Lista vazia limpa — é gravação válida. */
+/** Substitui a grade inteira. Lista vazia limpa, é gravação válida. */
 export function salvarGrade(faixas: FaixaGrade[], token: string) {
   return apiFetch<MinhaGrade>("/grade-horaria", {
     method: "PUT",
@@ -24,7 +24,7 @@ export function salvarGrade(faixas: FaixaGrade[], token: string) {
 }
 
 /**
- * O cruzamento das grades de um grupo — só o resultado, nunca a grade
+ * O cruzamento das grades de um grupo, só o resultado, nunca a grade
  * individual de ninguém.
  */
 export function getCompatibilidade(usuarioIds: number[], token: string) {

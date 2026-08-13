@@ -19,14 +19,14 @@ export {
   NameCell,
 } from "../Bancas.styled";
 
-/** O grid de cards do §6.2, reaproveitado pelo board macro de cronogramas
- *  (§7) — mesma grade responsiva da listagem de projetos. */
+/** O grid de cards, reaproveitado pelo board macro de cronogramas
+ * , mesma grade responsiva da listagem de projetos. */
 export { CardGrid, ProjetoCard, CardTitle, CardCliente } from "../projetos/Projetos.styled";
 
 /**
  * A tabela das abas, um degrau acima da `DataTable` genérica.
  *
- * O cabeçalho vira caixa alta pequena para sair da frente dos números — numa
+ * O cabeçalho vira caixa alta pequena para sair da frente dos números, numa
  * tela de monitoramento o dado é o assunto, o rótulo é só referência. E a
  * linha ganha realce no hover: são tabelas em que a pessoa percorre a linha
  * inteira da esquerda para a direita, e sem realce o olho pula de linha no
@@ -67,8 +67,8 @@ export const DataTable = styled(DataTableBase)`
  * vertical. Não funciona. `overflow-x: auto` faz o `overflow-y` computar para
  * `auto` também (o CSS não deixa um eixo recortar e o outro transbordar), então
  * o container de dentro já é um contexto de rolagem vertical. O `position:
- * sticky` do cabeçalho se ancora nele — que nunca rola, porque não tem altura
- * limitada — e o cabeçalho simplesmente não gruda em nada.
+ * sticky` do cabeçalho se ancora nele, que nunca rola, porque não tem altura
+ * limitada, e o cabeçalho simplesmente não gruda em nada.
  *
  * Com `$max`, a tabela ganha rolagem vertical e o cabeçalho gruda no topo. Sem
  * ele, o comportamento é o de antes: só horizontal, altura livre.
@@ -109,7 +109,7 @@ export const TabelaRolagem = styled.div<{ $min?: string; $max?: string }>`
  * e a seta. Usada pelos cards de **bancas próximas** e **tempo parado**.
  *
  * A linha INTEIRA é o link: o alvo útil é o item todo, e um trecho clicável no
- * meio do texto é difícil de acertar — ainda mais no celular.
+ * meio do texto é difícil de acertar, ainda mais no celular.
  */
 export const LinhaItem = styled(RouterLink)`
   display: flex;
@@ -186,8 +186,8 @@ export const ItemTexto = styled.span`
 `;
 
 /** O contexto do pior caso na tabela por coordenador: projeto em cima, motivo
- *  embaixo. Largura limitada e truncando, senão a descrição do motivo — que é
- *  frase inteira — estica a coluna e espreme as outras quatro. */
+ *  embaixo. Largura limitada e truncando, senão a descrição do motivo, que é
+ *  frase inteira, estica a coluna e espreme as outras quatro. */
 export const PiorCaso = styled.span`
   display: flex;
   flex-direction: column;
@@ -328,13 +328,13 @@ export const ContadorPagina = styled.span`
 `;
 
 /**
- * As abas do §7 como controle segmentado, não como sublinhado.
+ * As abas do  como controle segmentado, não como sublinhado.
  *
  * São 4 recortes da MESMA população de projetos, e o segmentado diz isso: um
  * trilho, uma peça acesa por vez. O sublinhado antigo lia como 4 links soltos
  * e sumia contra o resto da página, que também é branco sobre branco.
  *
- * `inline-flex` de propósito — a barra abraça o conteúdo em vez de esticar
+ * `inline-flex` de propósito, a barra abraça o conteúdo em vez de esticar
  * quatro pílulas gigantes num monitor largo.
  */
 export const TabBar = styled.nav`
@@ -396,7 +396,7 @@ export const TabLink = styled(NavLink)`
  *
  * **Em repouso o link é NEUTRO, não vermelho.** O `primary` é o mesmo vermelho
  * da rampa de severidade, e na aba de Atrasos isso empilhava três vermelhos na
- * mesma linha — o bloco de dias, o nome do projeto e a tag do motivo — sem que
+ * mesma linha, o bloco de dias, o nome do projeto e a tag do motivo, sem que
  * dois deles quisessem dizer "urgente". Quando tudo é vermelho, nada é: o olho
  * perde justamente o único que carrega gravidade. Aqui o vermelho fica
  * reservado para SIGNIFICADO (severidade, alerta); a pista de que isto é um
@@ -479,7 +479,7 @@ export const KpiRotulo = styled.span`
 /**
  * Esmaece o conteúdo enquanto a semana nova carrega.
  *
- * Os dados anteriores continuam na tela de propósito — trocar tudo por um
+ * Os dados anteriores continuam na tela de propósito, trocar tudo por um
  * esqueleto desmonta a tabela e o navegador perde a posição do scroll, jogando
  * a pessoa de volta ao topo a cada clique. Mas sem NENHUM sinal o clique
  * parece não ter funcionado até os números trocarem; o esmaecido preenche esse
@@ -506,7 +506,7 @@ export const NavegacaoSemana = styled.div`
  * Marca a coluna cujo valor é de HOJE, mesmo olhando uma semana passada.
  *
  * `total`, `ativas` e `ultima_movimentacao` dependem da coluna em que a tarefa
- * está agora — reconstruir o passado exigiria histórico de movimentação entre
+ * está agora, reconstruir o passado exigiria histórico de movimentação entre
  * colunas, que o sistema não guarda (`tarefa.movida_em` é só o carimbo da
  * última mudança). Sem a marcação, a linha mistura passado e presente em
  * silêncio: alguém lê "não distribuiu naquela semana, mas tem 5 ativas" e tira
@@ -592,8 +592,8 @@ export type NivelSeveridade = keyof typeof SEVERIDADE;
 /**
  * A mesma rampa, escurecida para uso em TEXTO.
  *
- * As cores acima foram escolhidas para PREENCHIMENTO — ponto de legenda, barra,
- * fundo tingido — onde a área é grande e a saturação é o que identifica o
+ * As cores acima foram escolhidas para PREENCHIMENTO, ponto de legenda, barra,
+ * fundo tingido, onde a área é grande e a saturação é o que identifica o
  * degrau. Como texto elas reprovam em contraste: o `leve` fica perto de 2:1
  * sobre branco, quando o mínimo é 4.5:1, e some para quem lê em tela clara.
  *
@@ -637,7 +637,22 @@ export const LegendaItem = styled.li<{ $nivel: NivelSeveridade }>`
   }
 `;
 
-/** §7.1: cada item traz o MOTIVO e há quanto tempo — nunca rótulo genérico.
+/**
+ * Duas ou mais colunas: uma lista de 15+ itens empilhados numa coluna só
+ * cresce demais verticalmente. Cada `ItemAtencao` já tem borda própria (não
+ * mais uma linha entre vizinhos empilhados), então funciona igual em 1, 2 ou
+ * 3 colunas.
+ */
+export const ListaAtencaoGrid = styled.ul`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+`;
+
+/** cada item traz o MOTIVO e há quanto tempo, nunca rótulo genérico.
  *
  * O marcador é um ponto, não uma barra lateral: a faixa colorida à esquerda
  * pinta a linha inteira de urgência e, numa lista com 15 itens, tudo grita
@@ -647,11 +662,9 @@ export const ItemAtencao = styled.li<{ $nivel?: NivelSeveridade }>`
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  padding: 0.5rem 0 0.5rem 1.125rem;
-
-  & + & {
-    border-top: 1px solid ${theme.colors.border};
-  }
+  padding: 0.5rem 0.75rem 0.5rem 1.125rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
 
   &::before {
     content: "";
@@ -676,13 +689,13 @@ export const ItemAtencao = styled.li<{ $nivel?: NivelSeveridade }>`
 `;
 
 /** `atencao` (âmbar) fica entre `ok` e `alerta`: sinaliza o que merece olhada
- *  sem ser falha — um quadro zerado, por exemplo, não é o mesmo problema que
+ *  sem ser falha, um quadro zerado, por exemplo, não é o mesmo problema que
  *  um projeto que nunca recebeu tarefa. */
 export type TomPilula = "ok" | "alerta" | "atencao" | "neutro";
 
 /* As porcentagens acompanham o `PageBadge` de `page.styled.ts`, que é o badge
    padrão do sistema: 14% para success/destructive, 20% para warning. Antes eram
-   12% e 18% aqui, sem motivo — duas famílias de pílula quase iguais na mesma
+   12% e 18% aqui, sem motivo, duas famílias de pílula quase iguais na mesma
    tela é o tipo de diferença que ninguém nota e todo mundo sente. */
 const FUNDO_PILULA: Record<TomPilula, string> = {
   ok: `color-mix(in srgb, ${theme.colors.success} 14%, white)`,
@@ -730,7 +743,7 @@ export const CelulaDias = styled.span<{ $tom?: TomPilula }>`
   }
 `;
 
-/** O travessão de "não se aplica". Era um `EmptyText`, que é `<p>` — dentro de
+/** O travessão de "não se aplica". Era um `EmptyText`, que é `<p>`, dentro de
  *  `<td>` isso rendia um bloco com margem própria e desalinhava a linha. */
 export const SemDado = styled.span`
   color: ${theme.colors.mutedForeground};
@@ -744,7 +757,7 @@ export const FrenteTravadaAviso = styled.span`
 /* ─── Faixa de números ────────────────────────────────────────────────────
    Usada por Atrasos, Execução e Alocação. São recortes da MESMA população de
    projetos, então precisam ser lidos lado a lado: uma faixa contínua, dividida
-   por filetes, e não uma grade de cards — cards sugeririam assuntos
+   por filetes, e não uma grade de cards, cards sugeririam assuntos
    independentes. O filete sai do `gap: 1px` sobre o fundo da borda, que é o
    único jeito de a divisória continuar certa quando a faixa quebra em duas
    linhas no celular. */
@@ -791,7 +804,7 @@ export const ResumoRotulo = styled.span`
   color: ${theme.colors.mutedForeground};
 `;
 
-/* ─── Atrasos (§7.4) ──────────────────────────────────────────────────────
+/* ─── Atrasos ──────────────────────────────────────────────────────
    A régua desta seção é UMA: dias. Por isso ela não vira grade de cards —
    linhas ranqueadas, todas medidas contra o mesmo máximo. Card por projeto
    quebraria justamente a comparação que a diretoria precisa fazer de
@@ -808,7 +821,7 @@ export const LinhaAtraso = styled.li`
   transition: background ${theme.transitions.fast};
 
   /* Zebra bem sutil: cada projeto pode ter 1 ou vários motivos, então a
-     carga visual da lista varia de linha em linha — a faixa alternada marca
+     carga visual da lista varia de linha em linha, a faixa alternada marca
      onde um projeto termina e o outro começa sem depender só do filete. */
   &:nth-of-type(even) {
     background: ${theme.alpha(theme.colors.foreground, 0.015)};
@@ -837,7 +850,7 @@ export const LinhaAtraso = styled.li`
 /**
  * O número vem primeiro: é o que ordena a lista e o que a diretoria lê antes
  * do nome do projeto. Mas quem carrega a gravidade agora é só o `AtrasoDot`
- * — o MESMO ponto de 0.5rem que a `Legenda` usa (`SEVERIDADE[$nivel]`, igual
+ *, o MESMO ponto de 0.5rem que a `Legenda` usa (`SEVERIDADE[$nivel]`, igual
  * token, igual tamanho). Antes era um bloco inteiro tingido com o número em
  * `xl`/bold na cor da gravidade: competia visualmente com o nome do projeto
  * ao lado e, como usava a cor "cheia" (`SEVERIDADE`) enquanto o resto da
@@ -848,7 +861,7 @@ export const LinhaAtraso = styled.li`
  * mesma cor.
  */
 // $nivel/$externo chegam do chamador mas não pintam nada aqui de propósito
-// (ver o comentário acima) — quem carrega a gravidade agora é só o
+// (ver o comentário acima), quem carrega a gravidade agora é só o
 // `AtrasoDot`. Aceitos e ignorados só para o styled-components não brigar
 // com o TypeScript.
 export const AtrasoDias = styled.div<{ $nivel?: NivelSeveridade; $externo?: boolean }>`
@@ -882,14 +895,14 @@ export const AtrasoDiasTopo = styled.div`
   }
 `;
 
-/* Sem caixa alta: o §4.5 reserva uppercase para label de CATEGORIZAÇÃO, e
+/* Sem caixa alta: o  reserva uppercase para label de CATEGORIZAÇÃO, e
    "dias" é unidade de medida, não categoria. */
 export const AtrasoDiasRotulo = styled.span`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
 `;
 
-/** O único lugar da linha que carrega cor de gravidade — mesmo diâmetro e
+/** O único lugar da linha que carrega cor de gravidade, mesmo diâmetro e
  *  mesma paleta do `LegendaItem::before`, de propósito: são o mesmo sinal. */
 export const AtrasoDot = styled.span<{ $nivel: NivelSeveridade; $externo?: boolean }>`
   flex-shrink: 0;
@@ -915,7 +928,7 @@ export const AtrasoTitulo = styled.div`
   font-size: ${theme.fontSize.sm};
 `;
 
-/** O flag secundário do projeto (hoje só "espera do cliente") — ícone com
+/** O flag secundário do projeto (hoje só "espera do cliente"), ícone com
  *  `title` de tooltip, não uma segunda pílula ao lado do status operacional.
  *  Duas pílulas do mesmo tamanho ao lado do nome competiam por atenção sem
  *  dizer qual é a principal; o status (`Pilula`) continua sendo a única cor
@@ -939,11 +952,11 @@ export const MotivoLista = styled.ul`
 /**
  * Colunas de largura FIXA (tag · escopo · dias · data · ação), não `auto`:
  * cada `<li>` é a sua própria grade, e `auto` deixava cada coluna do tamanho
- * do conteúdo DAQUELE motivo específico — a régua de dias/data/ação flutuava
+ * do conteúdo DAQUELE motivo específico, a régua de dias/data/ação flutuava
  * solta à direita, numa posição diferente a cada linha, com bordas
  * serrilhadas em vez de uma coluna de verdade. Largura fixa é o que faz a
  * régua inteira (de todo motivo, de todo projeto da lista) alinhar na mesma
- * posição — só aí "escanear a coluna de baixo pra cima" funciona.
+ * posição, só aí "escanear a coluna de baixo pra cima" funciona.
  */
 export const MotivoItem = styled.li`
   display: grid;
@@ -961,7 +974,7 @@ export const MotivoItem = styled.li`
 
 /**
  * "Justificar" por motivo: o botão de VERDADE do site (`PageButtonSm`), não
- * uma pílula contornada inventada só pra esta linha — mesmo componente que
+ * uma pílula contornada inventada só pra esta linha, mesmo componente que
  * "Cancelar"/"Tentar novamente"/etc. já usam em qualquer outra tela. Largura
  * mínima igual à de `MotivoJustificadoBadge`, os dois `justify-self: end`
  * dentro da MESMA coluna fixa da grade: "Justificar" (mais curto) e
@@ -973,10 +986,10 @@ export const MotivoJustificarBtn = styled(PageButtonSm)`
   min-width: 6rem;
 `;
 
-/** O "justificado" por motivo — link de texto (não selo cheio), pra
+/** O "justificado" por motivo, link de texto (não selo cheio), pra
  *  `/projetos/{id}/historico#justificativa-{id}`. `AtrasosAba` decide se
  *  renderiza como link ou como span puro (quando não tem `justificativa_id`
- *  pra apontar). Mesma largura mínima do botão ao lado — ver o comentário em
+ *  pra apontar). Mesma largura mínima do botão ao lado, ver o comentário em
  *  `MotivoJustificarBtn`. */
 export const MotivoJustificadoBadge = styled(RouterLink)`
   display: inline-flex;
@@ -1010,7 +1023,7 @@ export const MotivoData = styled.span`
 `;
 
 /**
- * Os dias DESTE motivo — mesma paleta escurecida (`SEVERIDADE_TEXTO`) que a
+ * Os dias DESTE motivo, mesma paleta escurecida (`SEVERIDADE_TEXTO`) que a
  * legenda referencia pra texto pequeno; o `AtrasoDot` ao lado do nome do
  * projeto é quem carrega a cor "cheia" (`SEVERIDADE`) da mesma escala.
  *
@@ -1028,7 +1041,7 @@ export const MotivoDias = styled.span<{ $nivel: NivelSeveridade; $externo?: bool
     $externo ? theme.colors.mutedForeground : SEVERIDADE_TEXTO[$nivel]};
 `;
 
-/** O nome do escopo — coluna flexível da grade (`1fr`), truncada com "…" em
+/** O nome do escopo, coluna flexível da grade (`1fr`), truncada com "…" em
  *  vez de empurrar as colunas de dias/data/ação pra fora quando o nome é
  *  comprido. */
 export const MotivoEscopoNome = styled.span`
@@ -1040,10 +1053,10 @@ export const MotivoEscopoNome = styled.span`
 
 /**
  * Distingue o atraso do TIME (banca, entrega interna) do que veio da agenda
- * do cliente. O §7.4 é explícito que o externo não pode pesar contra o time,
+ * do cliente. O  é explícito que o externo não pode pesar contra o time,
  * então ele não pode ter o mesmo peso visual.
  *
- * Rótulo puro (maiúsculas + espaçamento), sem caixinha nem borda — mesmo
+ * Rótulo puro (maiúsculas + espaçamento), sem caixinha nem borda, mesmo
  * tratamento de `DemandaAltaTitulo`/`TableHeadCell`. A linha já tem o ponto
  * de gravidade, o status do projeto e os selos de Justificado/Justificar;
  * mais uma caixa só pra dizer "banca" era badge empilhado em cima de badge.
@@ -1062,7 +1075,7 @@ export const MotivoTag = styled.span<{ $externo?: boolean }>`
   color: ${({ $externo }) => ($externo ? theme.colors.mutedForeground : theme.colors.foreground)};
 `;
 
-/** Barra dentro da célula da tabela — a coluna vira comparação visual sem
+/** Barra dentro da célula da tabela, a coluna vira comparação visual sem
  *  virar um gráfico separado. O número fica ANTES da barra, com largura fixa,
  *  para que todas as barras comecem no mesmo x; é isso que torna os
  *  comprimentos comparáveis de uma linha para a outra. */
@@ -1149,13 +1162,13 @@ export const NotaRodape = styled.p`
   max-width: 70ch;
 `;
 
-/* ─── Alocação (§7.3) ─────────────────────────────────────────────────────
+/* ─── Alocação ─────────────────────────────────────────────────────
    A carga de uma pessoa só significa alguma coisa contra a das outras: 4
    projetos é muito ou pouco depende de quantos os colegas carregam. Por isso
    a coluna vira barra, medida contra o maior da tabela. */
 
-/* ─── Card "com demanda alta" (§7.3) ──────────────────────────────────────
-   Duas colunas lado a lado — coordenadores e consultores — porque as escalas
+/* ─── Card "com demanda alta" ──────────────────────────────────────
+   Duas colunas lado a lado, coordenadores e consultores, porque as escalas
    são diferentes por papel e comparar um com o outro não faz sentido. Em tela
    estreita empilha. */
 
@@ -1239,7 +1252,7 @@ export const DemandaAltaProjetos = styled.span`
 /** O número de vagas livres de uma frente.
  *
  *  Zero fica apagado em vez de vermelho: "não cabe mais ninguém aqui" é um
- *  fato de planejamento, não um problema a resolver — a frente pode estar
+ *  fato de planejamento, não um problema a resolver, a frente pode estar
  *  cheia justamente porque vendeu bem. */
 export const VagaLivre = styled.span<{ $vazio: boolean }>`
   font-variant-numeric: tabular-nums;
@@ -1255,7 +1268,7 @@ export const ChipsProjetos = styled.div`
   min-width: 12rem;
 `;
 
-/** O chip virou link quando o projeto passou a chegar com id — a tabela dizia
+/** O chip virou link quando o projeto passou a chegar com id, a tabela dizia
  *  em quais projetos a pessoa está e não deixava abrir nenhum deles. */
 export const ChipProjeto = styled(RouterLink)`
   padding: 0.05rem 0.45rem;
@@ -1317,7 +1330,7 @@ export const AvisoSomenteLeitura = styled.p`
 `;
 
 /* ------------------------------------------------------------------ */
-/* Board macro de tarefas — swimlanes por projeto (§7)                 */
+/* Board macro de tarefas, swimlanes por projeto                 */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -1325,7 +1338,7 @@ export const AvisoSomenteLeitura = styled.p`
  * projeto: é o que deixa a coluna "Validação" do projeto A alinhada com a
  * "Validação" do projeto B, faixa embaixo da outra.
  */
-/** As colunas do quadro, na mesma medida no cabeçalho e no corpo — é o que
+/** As colunas do quadro, na mesma medida no cabeçalho e no corpo, é o que
  *  mantém a pílula alinhada com os cards dela. */
 const colunasDoQuadro = css<{ $colunas: number }>`
   display: grid;
@@ -1338,13 +1351,13 @@ const colunasDoQuadro = css<{ $colunas: number }>`
  *
  * **Fica fora do container que rola na horizontal, de propósito.**
  * `position: sticky` se ancora no ancestral que rola, e o corpo do quadro tem
- * `overflow-x: auto` — dentro dele o cabeçalho grudaria no quadro, não na
+ * `overflow-x: auto`, dentro dele o cabeçalho grudaria no quadro, não na
  * página. Já foi tentado limitar a altura do quadro para ele virar a própria
  * janela: funciona, mas cria uma caixa de rolagem dentro da página, e aí a
  * lista deixa de acompanhar o resto da tela.
  *
  * Separado, o alinhamento com as colunas passa a ser responsabilidade do JS,
- * que espelha o `scrollLeft` do corpo aqui — ver `TarefasGeraisAba`.
+ * que espelha o `scrollLeft` do corpo aqui, ver `TarefasGeraisAba`.
  */
 export const CabecalhoQuadro = styled.div`
   position: sticky;
@@ -1360,7 +1373,7 @@ export const LinhaColunas = styled.div<{ $colunas: number }>`
   ${colunasDoQuadro}
 `;
 
-/** O corpo: uma faixa por projeto. Rola só na horizontal — a vertical é a da
+/** O corpo: uma faixa por projeto. Rola só na horizontal, a vertical é a da
  *  página, para o quadro não virar uma janela dentro de outra. */
 export const SwimGrid = styled.div<{ $colunas: number }>`
   ${colunasDoQuadro}
@@ -1390,7 +1403,7 @@ export const SwimGrid = styled.div<{ $colunas: number }>`
   }
 `;
 
-/** Uma célula do cabeçalho. Sem posicionamento próprio — quem gruda é a
+/** Uma célula do cabeçalho. Sem posicionamento próprio, quem gruda é a
  *  `CabecalhoQuadro` inteira. */
 export const SwimHeaderCell = styled.div`
   display: flex;
@@ -1403,7 +1416,7 @@ export const SwimHeaderCell = styled.div`
 `;
 
 /**
- * A etiqueta do projeto — gruda na esquerda ao rolar pro lado, senão some a
+ * A etiqueta do projeto, gruda na esquerda ao rolar pro lado, senão some a
  * única pista de qual linha é qual assim que a coluna A fazer sai da tela.
  *
  * `$cor` é a identidade fixa do projeto: uma barra fininha que não muda
@@ -1414,12 +1427,12 @@ export const SwimHeaderCell = styled.div`
  * cards dele.
  *
  * Já foi coluna congelada à esquerda e não podia continuar sendo: com
- * `position: sticky`, os cards passam POR BAIXO ao rolar para o lado — é o que
+ * `position: sticky`, os cards passam POR BAIXO ao rolar para o lado, é o que
  * o recurso faz, não um defeito de estilo, e nenhuma sombra conserta.
  *
  * Como linha SEM fundo, porém, ela se lia como conteúdo da primeira coluna:
  * o nome aparecia logo abaixo de "A fazer" e parecia pertencer a ela. Aqui a
- * faixa tem fundo, altura própria e uma barra colorida na ponta — a leitura
+ * faixa tem fundo, altura própria e uma barra colorida na ponta, a leitura
  * passa a ser "começou um projeto novo", que é a de um cabeçalho de grupo.
  * É ela que separa uma faixa da outra, então não há mais divisor.
  */
@@ -1436,7 +1449,7 @@ export const SwimLabelCell = styled.div<{ $cor?: string }>`
   cursor: pointer;
   transition: background ${theme.transitions.fast};
 
-  /* A cor do projeto na ponta, a mesma dos cards dele — é o fio que liga o
+  /* A cor do projeto na ponta, a mesma dos cards dele, é o fio que liga o
      cabeçalho do grupo ao conteúdo abaixo. */
   &::before {
     content: "";
@@ -1463,7 +1476,7 @@ export const SwimLabelCell = styled.div<{ $cor?: string }>`
   }
 `;
 
-/** O texto do rótulo gruda à esquerda enquanto a linha rola — assim o nome
+/** O texto do rótulo gruda à esquerda enquanto a linha rola, assim o nome
  *  continua legível com o quadro deslocado, e como a linha está vazia não há
  *  card nenhum para ele tapar. */
 export const SwimLabelTexto = styled.span`
@@ -1482,7 +1495,7 @@ export const SwimLabelNome = styled.span`
 `;
 
 /** O cliente vem depois do nome, na mesma linha, precedido de um separador.
- *  Empilhado ele dobrava a altura de cada faixa de projeto — e agora que o
+ *  Empilhado ele dobrava a altura de cada faixa de projeto, e agora que o
  *  rótulo é uma linha inteira, sobra largura de sobra. */
 export const SwimLabelCliente = styled.span`
   font-size: ${theme.fontSize.xs};
@@ -1513,23 +1526,23 @@ export const SwimCellVazia = styled.p`
   text-align: center;
 `;
 
-/* ─── Gráficos (§7.1 e §7.3) ──────────────────────────────────────────────── */
+/* ─── Gráficos ( e ) ──────────────────────────────────────────────── */
 
 /**
  * A cor de cada etapa do ciclo, na pizza da Visão geral.
  *
  * **Sai da `PALETA` do cronograma, não de uma rampa própria.** Aquela paleta
- * já resolve o mesmo problema — dar cor a etapa — e já foi calibrada: 8 matizes
+ * já resolve o mesmo problema, dar cor a etapa, e já foi calibrada: 8 matizes
  * com a MESMA saturação e a MESMA luminosidade, só a matiz girando. É isso que
  * mantém as fatias com o mesmo peso visual; numa paleta ingênua o amarelo pula
  * à frente do azul e a fatia mais chamativa passa a ser a de cor mais clara, e
- * não a maior — que é a leitura que a pizza precisa entregar.
+ * não a maior, que é a leitura que a pizza precisa entregar.
  *
  * Herda de graça a regra que o docstring de `cores.ts` defende: cor de etapa
  * não encosta na semântica de status do design system, então nenhuma fatia
  * pode ser lida como "tudo bem" ou "atrasado" por causa do tom.
  *
- * Uso `amostra`, o tom saturado — é o mesmo papel que ele tem lá: identificar a
+ * Uso `amostra`, o tom saturado, é o mesmo papel que ele tem lá: identificar a
  * etapa numa legenda. `fundo` é pálido demais para fatia.
  *
  * O índice é fixo por status, e não pela ordem de chegada: "Em andamento" tem
@@ -1550,7 +1563,7 @@ export const COR_ETAPA: Record<string, string> = Object.fromEntries(
 );
 
 /** O container do gráfico. Altura fixa porque o `ResponsiveContainer` do
- *  recharts mede o pai — em altura `auto` ele calcula 0 e o gráfico some. */
+ *  recharts mede o pai, em altura `auto` ele calcula 0 e o gráfico some. */
 export const CaixaGrafico = styled.div<{ $altura?: string }>`
   width: 100%;
   height: ${({ $altura }) => $altura ?? "16rem"};
@@ -1621,7 +1634,7 @@ export const ItemLegendaEtapa = styled.li<{ $ativo: boolean; $vazio: boolean }>`
     text-align: left;
     cursor: pointer;
 
-    /* Etapa vazia continua na lista — some faria parecer que ela não existe —
+    /* Etapa vazia continua na lista, some faria parecer que ela não existe —
        mas recuada, para não competir com as que têm projeto. */
     color: ${({ $vazio }) =>
       $vazio ? theme.colors.mutedForeground : theme.colors.foreground};
@@ -1691,7 +1704,7 @@ export const BotaoAlternativa = styled.button<{ $ativo: boolean }>`
 `;
 
 /** O aviso de filtro ativo. Sem ele o gráfico mostra números menores que a
- *  tabela logo abaixo e parece bug — o filtro fica escondido num `select` que
+ *  tabela logo abaixo e parece bug, o filtro fica escondido num `select` que
  *  ninguém relê depois de escolher. */
 export const FiltroAtivo = styled.span`
   display: inline-flex;
@@ -1707,7 +1720,7 @@ export const FiltroAtivo = styled.span`
 /** O balão que aparece ao passar o mouse numa fatia: a etapa no topo, os
  *  projetos dela embaixo.
  *
- *  Tem sombra e fundo opaco porque flutua sobre o próprio gráfico — com fundo
+ *  Tem sombra e fundo opaco porque flutua sobre o próprio gráfico, com fundo
  *  translúcido as fatias atravessariam o texto. */
 export const BalaoEtapa = styled.div`
   max-width: 18rem;
@@ -1769,11 +1782,11 @@ export const ProjetosDaEtapa = styled.div`
 `;
 
 /* ------------------------------------------------------------------ */
-/* Board macro de cronogramas — mini-calendários por projeto (§7)      */
+/* Board macro de cronogramas, mini-calendários por projeto      */
 /* ------------------------------------------------------------------ */
 
 /** O rodapé do card: o escopo que decide a posição na fila, com a `Pilula`
- *  de urgência ao lado — texto e cor juntos, para não depender só da cor. */
+ *  de urgência ao lado, texto e cor juntos, para não depender só da cor. */
 export const CronogramaCardRodape = styled.p`
   display: flex;
   align-items: center;

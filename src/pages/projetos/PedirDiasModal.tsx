@@ -25,11 +25,11 @@ interface Props {
    * passou da janela; vindo do botão da barra é só um chute editável.
    */
   diasIniciais: number;
-  /** O fim da janela hoje, já formatado — o "de" da conta. */
+  /** O fim da janela hoje, já formatado, o "de" da conta. */
   fimAtual: string;
   /**
    * O último dia alcançado no arrasto, já formatado. `null` quando o pedido
-   * veio do botão e não do calendário — e é isso que decide se a tela fala em
+   * veio do botão e não do calendário, e é isso que decide se a tela fala em
    * "você selecionou até tal dia" ou só pede um número.
    */
   ateDia: string | null;
@@ -39,10 +39,10 @@ interface Props {
 }
 
 /**
- * §8: o coordenador pede dias extras para o escopo.
+ * o coordenador pede dias extras para o escopo.
  *
- * ⭐ **A tela nunca soma os dois números.** Ela mostra *20 vendidos · 10
- * ajustados*, nunca "30 vendidos" — a diferença entre ter vendido 30 e ter
+ * **A tela nunca soma os dois números.** Ela mostra *20 vendidos · 10
+ * ajustados*, nunca "30 vendidos", a diferença entre ter vendido 30 e ter
  * precisado de mais 10 é a informação inteira, e é ela que a diretoria está
  * decidindo aqui.
  *
@@ -90,7 +90,7 @@ export function PedirDiasModal({
 
         <ModalBody>
           <p>
-            <strong>{nomeEscopo}</strong> — {diasVendidos} dias vendidos
+            <strong>{nomeEscopo}</strong>, {diasVendidos} dias vendidos
             {diasAjustados > 0 && ` · ${diasAjustados} já ajustados`}.
           </p>
           <p>
@@ -98,7 +98,7 @@ export function PedirDiasModal({
             passar da janela é atraso do projeto.
           </p>
 
-          {/* ⭐ O que o CALENDÁRIO disse, quando o pedido nasceu de um arrasto.
+          {/* O que o CALENDÁRIO disse, quando o pedido nasceu de um arrasto.
               Some se a pessoa mexer no número: a frase afirma até que dia a
               janela chegaria, e com outro número ela passaria a mentir. */}
           {ateDia && dias === diasIniciais && (

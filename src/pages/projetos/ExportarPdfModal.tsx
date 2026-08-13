@@ -16,7 +16,7 @@ import { X } from "lucide-react";
 import { CheckboxGrid, CheckboxLabel, FieldSelect, FormErrorText } from "./Projetos.styled";
 
 interface Props {
-  /** Os meses do semestre — o recorte que aparece por padrão. */
+  /** Os meses do semestre, o recorte que aparece por padrão. */
   meses: Date[];
   /**
    * Os meses da janela inteira, oferecidos atrás de "Mais meses".
@@ -37,7 +37,7 @@ interface Props {
 /**
  * Escolher o que entra no PDF antes de gerar.
  *
- * Sem isto o export saía do que estivesse na tela — e depois que o cronograma
+ * Sem isto o export saía do que estivesse na tela, e depois que o cronograma
  * ganhou as visões de dia e semana, isso virou uma armadilha: quem estivesse
  * na visão de Dia gerava um PDF de um dia só, sem nada avisando.
  */
@@ -53,7 +53,7 @@ export function ExportarPdfModal({
   const [formato, setFormato] = useState<"pdf" | "png">("pdf");
   const [ampliado, setAmpliado] = useState(false);
   const visiveis = ampliado ? mesesExtras : meses;
-  // Todos marcados por padrão: o caso comum é o cronograma inteiro, e o §6.4
+  // Todos marcados por padrão: o caso comum é o cronograma inteiro, e o 
   // pede o calendário "pronto para apresentações".
   // Só os do semestre nascem marcados. Ampliar mostra o resto DESMARCADO —
   // quem clicou em "mais meses" quer escolher, não levar tudo junto.

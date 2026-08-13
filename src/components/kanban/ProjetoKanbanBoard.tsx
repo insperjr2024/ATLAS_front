@@ -41,7 +41,7 @@ const COLUNAS = (Object.keys(ROTULO_STATUS) as StatusProjeto[]).map((status) => 
 }));
 
 /**
- * Pra onde um projeto no status `atual` pode ir num arrasto — mesma régua
+ * Pra onde um projeto no status `atual` pode ir num arrasto, mesma régua
  * livre do seletor de etapa em `ProjetoPage` (qualquer etapa ativa, nos dois
  * sentidos). `pausado` não entra: o alvo do retomar é decidido no backend,
  * não dá pra adivinhar arrastando pra uma coluna específica.

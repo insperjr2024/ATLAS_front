@@ -58,7 +58,7 @@ import {
 const INICIO_SEMANA = 0;
 const ROTULOS = rotulosDiaSemana(INICIO_SEMANA);
 const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega"];
-/** Reunião é semanal, POR PROJETO — com o portfólio inteiro junto numa grade
+/** Reunião é semanal, POR PROJETO, com o portfólio inteiro junto numa grade
  *  só, ela sozinha lota todos os dias úteis de todas as semanas. Isso é
  *  exatamente o "tem tudo, mas não faz sentido": marco raro (banca, kickoff,
  *  entrega) e rotina recorrente (reunião) pesando igual afogam os marcos que
@@ -66,18 +66,18 @@ const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega"];
  *  liga no filtro. */
 const TIPOS_PADRAO: TipoEvento[] = TIPOS.filter((t) => t !== "reuniao");
 /** A célula agora tem altura FLEXÍVEL (encolhe pra caber as 5-6 semanas do
- *  mês na tela, sem empurrar a página) — 3, não 4, porque numa célula mais
+ *  mês na tela, sem empurrar a página), 3, não 4, porque numa célula mais
  *  baixa é o que sobra de espaço com folga pro "+N mais" sempre caber
  *  embaixo, em vez de arriscar cortar o próprio texto do evento. */
 const MAX_PILULAS = 3;
 
 /**
- * O calendário geral do §6.5 — bancas, kickoffs, reuniões e entregas.
+ * O calendário geral do , bancas, kickoffs, reuniões e entregas.
  *
  * Recorta por posição, como o resto do site: diretor vê o portfólio
  * inteiro, gerente só a própria frente, coordenador/consultor só os
- * projetos em que estão alocados. O §6.5 original pedia "acessível a todos,
- * sem recorte" — decisão revista depois: só quem já enxerga tudo em toda
+ * projetos em que estão alocados. O  original pedia "acessível a todos,
+ * sem recorte", decisão revista depois: só quem já enxerga tudo em toda
  * tela (a diretoria) tira proveito de ver o portfólio inteiro aqui também;
  * pra quem está em poucos projetos, o resto vira ruído. O recorte é feito
  * no backend (`GetEventosCalendarioUseCase`), a página só mostra o que
@@ -85,7 +85,7 @@ const MAX_PILULAS = 3;
  */
 export function CalendarioGeral() {
   const { token, usuario } = useAuth();
-  // Só diretor e gerente enxergam o portfólio inteiro (§3/§6.5) — o texto
+  // Só diretor e gerente enxergam o portfólio inteiro, o texto
   // reflete o que a pessoa está de fato vendo, em vez de prometer "todos os
   // projetos" pra quem só vê os próprios.
   const veTudo = usuario?.posicao === "diretor" || usuario?.posicao === "gerente";
@@ -102,7 +102,7 @@ export function CalendarioGeral() {
     setErro("");
     try {
       // Busca o mês inteiro (com as bordas das semanas), e o filtro por tipo
-      // é aplicado no cliente — evita ida ao servidor a cada chip clicado.
+      // é aplicado no cliente, evita ida ao servidor a cada chip clicado.
       const semanas = semanasDoMes(mes, INICIO_SEMANA);
       const inicio = chaveData(semanas[0][0]);
       const fim = chaveData(semanas[semanas.length - 1][6]);

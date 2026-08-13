@@ -71,7 +71,7 @@ export function useProjeto() {
 }
 
 /**
- * O shell da página do projeto (§6.4). As abas são **sub-rotas**, não estado
+ * O shell da página do projeto. As abas são **sub-rotas**, não estado
  * local: é isso que deixa uma notificação abrir direto em
  * `/projetos/42/tarefas`.
  */
@@ -87,7 +87,7 @@ interface VoltarState {
  *
  * Sem isto o link era fixo em `/projetos`, então quem chegava aqui a partir
  * do board macro de Tarefas ou Cronogramas gerais (Monitoramento) e clicava
- * em Voltar caía na listagem de projetos — perdendo o filtro/aba de onde
+ * em Voltar caía na listagem de projetos, perdendo o filtro/aba de onde
  * tinha vindo, em vez de voltar pra lá. Quem navega passa `state` com o
  * destino (`TarefasGeraisAba`, `CronogramasGeraisAba`); sem `state`, o
  * padrão de sempre continua sendo a listagem.
@@ -109,7 +109,7 @@ export function ProjetoPage() {
   /**
    * Capturado só na ENTRADA no projeto (quando `id` muda), não a cada
    * navegação. As abas internas (Cronograma, Tarefas...) trocam de rota sem
-   * levar `state` — recalcular a cada `location` perderia o destino assim
+   * levar `state`, recalcular a cada `location` perderia o destino assim
    * que a pessoa clicasse em outra aba dentro do mesmo projeto.
    */
   const [voltar, setVoltar] = useState(() => voltarDoLocation(location.state));
@@ -153,10 +153,10 @@ export function ProjetoPage() {
     }
   }, [projetoId, token]);
 
-  // ⭐ Revalida a cada troca de aba, e não só na montagem.
+  // Revalida a cada troca de aba, e não só na montagem.
   //
   // As abas são SUB-ROTAS: o shell não remonta ao ir do Cronograma para a
-  // Visão geral, então o `projeto` continuava o da primeira visita — a banca
+  // Visão geral, então o `projeto` continuava o da primeira visita, a banca
   // que acabara de ser marcada no calendário aparecia como "não marcada" ali,
   // e os dias do escopo ficavam em "não iniciado". Como só o Cronograma
   // escreve datas hoje, revalidar na navegação é o que mantém as duas telas
@@ -248,11 +248,11 @@ export function ProjetoPage() {
   const podeArquivar = pode(usuario, "arquivar_projeto");
   const podeExcluir = pode(usuario, "apagar_projeto_permanente");
   // Mesma permissão que já gatilhava a edição do nome quando ela morava no
-  // card de Descrição — só mudou de lugar, não de regra.
+  // card de Descrição, só mudou de lugar, não de regra.
   const podeRenomear = !!usuario?.permissoes.pode_editar_equipe;
   const temKickoff = !!projeto.data_kickoff;
 
-  // ✋ Livre entre as etapas ativas, nos dois sentidos — não só a vizinha.
+  // Livre entre as etapas ativas, nos dois sentidos, não só a vizinha.
   // Pausado é um estado à parte: só o retomar aparece. Vendido só oferece
   // Ambientação, e só quando já existe uma data de kickoff marcada.
   const opcoesEtapa: EtapaOpcao[] =
@@ -329,7 +329,7 @@ export function ProjetoPage() {
             {projeto.frente_ids.map((frenteId) => (
               <FrenteTag key={frenteId}>{nomeFrente(frenteId)}</FrenteTag>
             ))}
-            {projeto.sinergico && <FrenteTag>🔗 sinérgico</FrenteTag>}
+            {projeto.sinergico && <FrenteTag>sinérgico</FrenteTag>}
           </TagRow>
         </PageHeaderText>
 
@@ -373,23 +373,23 @@ export function ProjetoPage() {
       {erroStatus && <FormErrorText>{erroStatus}</FormErrorText>}
 
       {projeto.arquivado_em && (
-        <AvisoBanner>📦 Projeto arquivado — não aparece nas listagens normais.</AvisoBanner>
+        <AvisoBanner>Projeto arquivado, não aparece nas listagens normais.</AvisoBanner>
       )}
 
       {projeto.kickoff_pendente && (
         <AvisoBanner>
-          ⚠ Kickoff pendente — combine a data com o cliente e marque na aba Visão geral.
+          Kickoff pendente, combine a data com o cliente e marque na aba Visão geral.
         </AvisoBanner>
       )}
 
-      {/* ⚠ Estado que o §4 não prevê mais: marcar o kickoff JÁ move para
+      {/* Estado que o  não prevê mais: marcar o kickoff JÁ move para
           Ambientação. Sobra só quem foi marcado antes dessa regra existir —
           por isso o texto explica o que fazer, em vez de descrever um passo
           normal do fluxo. */}
       {projeto.status === "vendido" && projeto.data_kickoff && (
         <AvisoBanner>
-          🗓 Kickoff marcado para {formatarData(projeto.data_kickoff)}, mas o projeto ainda está em
-          Vendido — marcações feitas antes da regra atual pararam aqui. Escolha "Ambientação" no
+          Kickoff marcado para {formatarData(projeto.data_kickoff)}, mas o projeto ainda está em
+          Vendido, marcações feitas antes da regra atual pararam aqui. Escolha "Ambientação" no
           seletor de etapa para acertar.
         </AvisoBanner>
       )}
@@ -415,7 +415,7 @@ export function ProjetoPage() {
           mensagem={
             projeto.arquivado_em
               ? "Desarquivar este projeto? Ele volta a aparecer nas listagens normais."
-              : "Arquivar este projeto? Ele some das listagens normais, mas nada é apagado — dá pra desarquivar depois."
+              : "Arquivar este projeto? Ele some das listagens normais, mas nada é apagado, dá pra desarquivar depois."
           }
           rotuloConfirmar={projeto.arquivado_em ? "Desarquivar" : "Arquivar"}
           onCancelar={() => setConfirmandoArquivamento(false)}
@@ -442,13 +442,13 @@ interface EtapaOpcao {
   /** O valor que `aplicarStatus` espera: a etapa de destino, `"pausado"` ou `"retomar"`. */
   chave: string;
   rotulo: string;
-  /** `null` pro Retomar — não dá pra saber a cor de destino sem reconsultar o histórico. */
+  /** `null` pro Retomar, não dá pra saber a cor de destino sem reconsultar o histórico. */
   cor: string | null;
 }
 
 /**
  * Escolher a etapa como lista, não como botõezinhos de avançar/voltar/pausar
- * espalhados — a pílula usa a MESMA cor do kanban de projetos (`CORES_STATUS`),
+ * espalhados, a pílula usa a MESMA cor do kanban de projetos (`CORES_STATUS`),
  * pra não parecer um controle diferente do kanban.
  */
 function EtapaSeletor({

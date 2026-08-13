@@ -1,8 +1,8 @@
 import { apiFetch } from "@/lib/api";
 
 /**
- * As colunas do kanban — **de cada projeto**, configuráveis pela diretoria
- * (§3: gerir é dela).
+ * As colunas do kanban, **de cada projeto**, configuráveis pela diretoria
+ * (gerir é dela).
  *
  * Eram um ENUM de 5 valores no backend, depois uma configuração global. Hoje
  * pertencem ao projeto: a diretora monta o fluxo de UM projeto sem mexer nos
@@ -13,11 +13,11 @@ export interface ColunaTarefa {
   /** Slug das 5 originais; vazio nas criadas pela diretoria. */
   chave: string | null;
   nome: string;
-  /** `#RRGGBB` — a cor "cheia". Os tons pálidos saem de `tonsDaColuna`. */
+  /** `#RRGGBB`, a cor "cheia". Os tons pálidos saem de `tonsDaColuna`. */
   cor: string;
   ordem: number;
   /**
-   * ⭐ Tarefa que chega aqui está encerrada: não fica vencida nem conta como
+   * Tarefa que chega aqui está encerrada: não fica vencida nem conta como
    * trabalho ativo no monitoramento. É o campo que segura a regra de negócio
    * quando as colunas deixam de ser uma lista fixa.
    */
@@ -63,7 +63,7 @@ export function reordenarColunas(projetoId: number, ids: number[], token: string
   });
 }
 
-/** `moverPara` é obrigatório quando a coluna tem tarefas — elas nunca são
+/** `moverPara` é obrigatório quando a coluna tem tarefas, elas nunca são
  *  apagadas junto. */
 export function deleteColuna(
   projetoId: number,
@@ -80,7 +80,7 @@ export function deleteColuna(
 /* ------------------------------------------------------------------ */
 
 export interface TonsColuna {
-  /** O ponto do rótulo — a cor cheia, como veio. */
+  /** O ponto do rótulo, a cor cheia, como veio. */
   ponto: string;
   /** Fundo da pílula e dos cards: bem claro. */
   fundo: string;
@@ -94,7 +94,7 @@ export interface TonsColuna {
  *
  * A diretoria escolhe uma cor só; fundo, borda e texto saem dela mantendo a
  * matiz e mexendo na luminosidade. É o que garante contraste sem obrigar
- * ninguém a escolher quatro valores — e o que impede uma cor escolhida de
+ * ninguém a escolher quatro valores, e o que impede uma cor escolhida de
  * ficar ilegível como fundo de card.
  */
 export function tonsDaColuna(cor: string): TonsColuna {

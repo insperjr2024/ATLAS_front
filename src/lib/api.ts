@@ -88,7 +88,7 @@ export async function apiFetch<T>(endpoint: string, options: ApiOptions = {}): P
     const mensagem = formatApiDetail(erro?.detail);
 
     // O JWT tem prazo (ACCESS_TOKEN_EXPIRE_MINUTES, hoje 7 dias) e o
-    // AuthContext só revalida no mount — sem isto, uma sessão que expira no
+    // AuthContext só revalida no mount, sem isto, uma sessão que expira no
     // meio do uso deixa a pessoa presa numa página mostrando "Token inválido
     // ou expirado" em vez de voltar pro login pra entrar de novo. O caminho
     // normal é este 401 nunca acontecer: `/auth/renovar` estende o prazo a

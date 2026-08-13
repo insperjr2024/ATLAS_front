@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, ReactNode 
 import { useAuth } from "@/context/AuthContext";
 import { getContagemNotificacoes } from "@/lib/notificacoes";
 
-/** ~60s, como o §6.6 pede — sem websocket. Curto o bastante para o aviso
+/** ~60s, como o  pede, sem websocket. Curto o bastante para o aviso
  *  chegar na mesma sessão, longo o bastante para não pesar no backend. */
 const INTERVALO_MS = 60_000;
 

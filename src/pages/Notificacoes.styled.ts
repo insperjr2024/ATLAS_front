@@ -15,7 +15,7 @@ export {
 /* embaixo. Aqui são duas dimensões diferentes em UMA linha: o estado   */
 /* de leitura vira segmentado (2 opções, exclusivas) e o tipo vira      */
 /* dropdown (8 opções, combináveis). O dropdown cresce para baixo, não  */
-/* para os lados — não importa quantos tipos existam.                   */
+/* para os lados, não importa quantos tipos existam.                   */
 /* ------------------------------------------------------------------ */
 
 export const FiltroBar = styled.div`
@@ -103,7 +103,7 @@ export const OpcaoLinha = styled.button<{ $vazio: boolean }>`
   text-align: left;
   cursor: pointer;
   /* Zerado fica apagado, mas continua clicável: some da atenção sem sumir da
-     lista — é ela que informa quais alertas existem. */
+     lista, é ela que informa quais alertas existem. */
   opacity: ${({ $vazio }) => ($vazio ? 0.5 : 1)};
 
   &:hover {
@@ -178,7 +178,7 @@ export const Lista = styled.ul`
   flex-direction: column;
 `;
 
-/** O item inteiro é clicável — cada notificação abre direto na rota do
+/** O item inteiro é clicável, cada notificação abre direto na rota do
  *  problema, que é o motivo de as abas do projeto serem sub-rotas. */
 export const Item = styled.li<{ $lida: boolean }>`
   display: flex;
@@ -187,7 +187,7 @@ export const Item = styled.li<{ $lida: boolean }>`
   padding: ${theme.spacing.md} ${theme.spacing.lg};
   border-bottom: 1px solid ${theme.colors.border};
   /* Lida fica esmaecida, mas CONTINUA na lista: marcar como lida não resolve
-     o problema — quem tira "Alfa sem kickoff" daqui é marcar o kickoff. */
+     o problema, quem tira "Alfa sem kickoff" daqui é marcar o kickoff. */
   opacity: ${({ $lida }) => ($lida ? 0.55 : 1)};
 
   &:last-child {

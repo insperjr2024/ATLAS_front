@@ -11,7 +11,7 @@ export const CronogramaScroll = styled.div<{ $semScrollProprio?: boolean }>`
 
   /* O teto de altura existe para o cronograma, onde a legenda fica grudada ao
      lado e precisa continuar visível enquanto se rola o calendário.
-     Onde não há legenda ao lado, ele só produz scroll dentro de scroll — e aí
+     Onde não há legenda ao lado, ele só produz scroll dentro de scroll, e aí
      quem rola é a página. */
   ${({ $semScrollProprio }) =>
     !$semScrollProprio &&
@@ -40,7 +40,7 @@ export const CronogramaScroll = styled.div<{ $semScrollProprio?: boolean }>`
 export const BlocoMes = styled(MonthGrid)`
   /* Atenção: "CronogramaScroll" é um flex column com max-height. Sem o shrink: 0, o
      flex COMPRIME os blocos para caberem em 60vh em vez de deixar o container
-     rolar — as semanas viram tiras de poucos pixels e os números do dia se
+     rolar, as semanas viram tiras de poucos pixels e os números do dia se
      sobrepõem. O bloco tem altura de conteúdo; quem rola é o pai. */
   flex-shrink: 0;
   border: 1px solid ${theme.colors.border};
@@ -81,13 +81,13 @@ export const TituloMes = styled.h3`
 
 /**
  * A célula pintável. Herda a grade compartilhada e acrescenta só o que é do
- * cronograma — a primitiva continua limpa para a tela de bancas.
+ * cronograma, a primitiva continua limpa para a tela de bancas.
  */
-/** A altura da célula em cada visão — é o "expandir" ao descer o zoom.
+/** A altura da célula em cada visão, é o "expandir" ao descer o zoom.
  *
- *  O mês tem 6rem para o box de marco caber com o número do dia. A §6.4 pede um
+ *  O mês tem 6rem para o box de marco caber com o número do dia. A  pede um
  *  calendário "compacto", e 6rem ainda é compacto perto das 7.5rem da grade de
- *  bancas — mas é o preço de o marco ter nome escrito em vez de um glifo. */
+ *  bancas, mas é o preço de o marco ter nome escrito em vez de um glifo. */
 const ALTURA_CELULA: Record<string, string> = {
   mes: "6rem",
   semana: "9rem",
@@ -118,7 +118,7 @@ export const PaintedDayCell = styled(DayCell)<{
     $vazia &&
     css`
       /* Dia de mês vizinho: some por completo. Com meses empilhados, a mesma
-         data apareceria em DOIS blocos — o que quebra o hit-test e fica feio
+         data apareceria em DOIS blocos, o que quebra o hit-test e fica feio
          no PNG. */
       background: transparent;
       border-color: transparent;
@@ -129,7 +129,7 @@ export const PaintedDayCell = styled(DayCell)<{
     $naoUtil &&
     css`
       /* A hachura é o que sobrevive à impressão em preto-e-branco e ao PNG
-         exportado — cor sozinha não. */
+         exportado, cor sozinha não. */
       background-color: ${COR_NAO_UTIL};
       background-image: repeating-linear-gradient(
         45deg,
@@ -181,7 +181,7 @@ export const MarcosDoDia = styled.div`
 `;
 
 /**
- * O box do marco — borda colorida, fundo quase branco e o nome escrito.
+ * O box do marco, borda colorida, fundo quase branco e o nome escrito.
  *
  * Substituiu os antigos glifos de símbolo. O motivo original deles era o export
  * impresso em preto-e-branco, e o nome escrito atende isso melhor do que um
@@ -209,7 +209,7 @@ export const MarcoBox = styled.span<{
   white-space: nowrap;
 
   /* Marco que abre ficha vira <button> (ver \`onClick\` em MarcoRenderizavel).
-     Sem afordância nenhuma ninguém descobre que dá para clicar — e o box é
+     Sem afordância nenhuma ninguém descobre que dá para clicar, e o box é
      pequeno demais para um ícone caber junto do rótulo. */
   ${({ $clicavel }) =>
     $clicavel &&
@@ -310,7 +310,7 @@ export const BotaoBarra = styled.button<{ $variant?: "outline" | "ghost" }>`
   }
 `;
 
-/** O seletor de visão — dia · semana · mês, como um segmented control. */
+/** O seletor de visão, dia · semana · mês, como um segmented control. */
 export const GrupoVisao = styled.div`
   display: inline-flex;
   height: 2.25rem;
@@ -431,9 +431,9 @@ export const ContadorDias = styled.span`
 `;
 
 /**
- * "Como funciona" — destacado de propósito.
+ * "Como funciona", destacado de propósito.
  *
- * 📐 Não é um `BotaoVisao` como os outros: perdido entre os modos de marcação
+ * Não é um `BotaoVisao` como os outros: perdido entre os modos de marcação
  * ele virava mais um botão cinza numa fileira de botões cinza, e quem não
  * conhece a tela não achava justamente o que existe para essa pessoa. Fica
  * ao lado da data, em vermelho claro, lido como ajuda e não como ação.
@@ -451,7 +451,7 @@ export const BotaoAjuda = styled.button`
   font-weight: ${theme.fontWeight.medium};
   white-space: nowrap;
   cursor: pointer;
-  /* O espacamento do NavPeriodo e de 0.25rem, pensado para as setas — sem
+  /* O espacamento do NavPeriodo e de 0.25rem, pensado para as setas, sem
      isto o botao encosta no rotulo da data. */
   margin-left: ${theme.spacing.sm};
 
@@ -468,7 +468,7 @@ export const BotaoAjuda = styled.button`
 /**
  * A caixa que ocupa o lugar dos botões escondidos.
  *
- * 📐 Botão desabilitado com tooltip não serve para quem não conhece a tela:
+ * Botão desabilitado com tooltip não serve para quem não conhece a tela:
  * a explicação só aparece no hover, e no celular nunca aparece. Aqui o texto
  * fica visível e diz a AÇÃO a tomar ("escolha um escopo"), não só que algo
  * está indisponível.
@@ -649,7 +649,7 @@ export const LegendaItem = styled.button<{ $ativa?: boolean }>`
 `;
 
 /**
- * ⭐ O alerta de estouro **ao lado do calendário** — um por escopo, dentro da
+ * O alerta de estouro **ao lado do calendário**, um por escopo, dentro da
  * legenda.
  *
  * Fica aqui, e não só no banner do topo, porque a pergunta que ele responde é
@@ -659,7 +659,7 @@ export const LegendaItem = styled.button<{ $ativa?: boolean }>`
  * cada um.
  *
  * Âmbar, não vermelho: passar do previsto é um aviso para negociar dias, não
- * um erro — e vermelho é a cor de `destructive` no tema.
+ * um erro, e vermelho é a cor de `destructive` no tema.
  */
 export const AvisoEscopo = styled.div<{ $tom?: "alerta" | "atraso" }>`
   display: flex;
@@ -683,12 +683,12 @@ export const AvisoEscopo = styled.div<{ $tom?: "alerta" | "atraso" }>`
 /**
  * A etiqueta "correção" no trecho da legenda.
  *
- * ⭐ Depois que a banca do escopo é realizada, tudo que se pinta ali é correção
- * do que ela apontou — e sem rótulo os dois ficam indistinguíveis: o mesmo
+ * Depois que a banca do escopo é realizada, tudo que se pinta ali é correção
+ * do que ela apontou, e sem rótulo os dois ficam indistinguíveis: o mesmo
  * retângulo colorido pode ser o trabalho vendido ou a correção. É a diferença
  * entre "o escopo levou 14 dias" e "levou 10 + 4 de correção".
  *
- * ⚠️ Correção não é "dia de ajuste": ajuste aumenta a JANELA do escopo e é
+ * Correção não é "dia de ajuste": ajuste aumenta a JANELA do escopo e é
  * pedido à diretoria nos 3 primeiros dias úteis depois da largada.
  */
 export const TagCorrecao = styled.span`
@@ -715,7 +715,7 @@ export const Amostra = styled.span<{ $cor: string }>`
 /**
  * O seletor de cor da etapa: as 8 amostras da `PALETA`, e só elas.
  *
- * Sem color picker livre de propósito — a paleta é fechada justamente para o
+ * Sem color picker livre de propósito, a paleta é fechada justamente para o
  * cronograma não virar arco-íris e para nenhuma etapa cair na matiz que o
  * design system reserva para status (vermelho = atrasado, verde = ok).
  */
@@ -783,9 +783,9 @@ export const AmostraHachurada = styled.span`
 /**
  * A barra de desfazer, fixa no rodapé.
  *
- * 📐 Flutuante e não dentro da barra de ferramentas: quem acabou de clicar
+ * Flutuante e não dentro da barra de ferramentas: quem acabou de clicar
  * num dia está olhando para o calendário, não para o topo da tela. A janela
- * é curta de propósito — desfazer eterno viraria mais um estado para a
+ * é curta de propósito, desfazer eterno viraria mais um estado para a
  * pessoa administrar.
  */
 export const BarraDesfazer = styled.div`

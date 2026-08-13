@@ -23,9 +23,9 @@ export {
 
 /**
  * O calendário deve caber na altura da tela, não empurrar a página pra
- * rolar — é a diferença entre "abrir e já ver o mês inteiro" e "abrir e
+ * rolar, é a diferença entre "abrir e já ver o mês inteiro" e "abrir e
  * primeiro descobrir que o mês continua mais embaixo". `100vh` menos o
- * padding vertical do `<Main>` (1.5rem em cima, 1.5rem embaixo — ver
+ * padding vertical do `<Main>` (1.5rem em cima, 1.5rem embaixo, ver
  * `Layout.styled.ts`) é a altura de verdade disponível; o cabeçalho e a
  * barra de filtros ficam do tamanho que precisam, e só a grade do mês
  * (`GradeWrap`, com `flex: 1`) usa o resto.
@@ -41,14 +41,14 @@ export const MonthGridPreenche = styled(MonthGrid)`
 `;
 
 /** A grade de 7 dias precisa de uma altura de LINHA de verdade (não `auto`)
- *  pra sobrar espaço pro `DayCell` esticar — sem isto, `flex: 1` no
+ *  pra sobrar espaço pro `DayCell` esticar, sem isto, `flex: 1` no
  *  container não desce pras células, e a grade continua do tamanho do
  *  conteúdo mesmo com espaço livre embaixo. */
 export const WeekRowPreenche = styled(WeekRow)`
   grid-template-rows: 1fr;
 `;
 
-/** Sem o piso de `7.5rem` do `DayCell` padrão — aqui a célula encolhe ou
+/** Sem o piso de `7.5rem` do `DayCell` padrão, aqui a célula encolhe ou
  *  cresce pra caber exatamente nas 5 ou 6 semanas do mês dentro da altura
  *  disponível, em vez de empurrar a página quando o mês tem 6 linhas. */
 export const DayCellPreenche = styled(DayCell)`
@@ -77,8 +77,7 @@ export const MesAtual = styled.strong`
 
 /** Envolve `Cabecalho` + `GradeWrap`: precisa ser flex-column com `flex: 1`
  *  pra que o `flex: 1` do `GradeWrap` logo abaixo tenha um pai que de fato
- *  sobra espaço pra distribuir — sem isto, "crescer" não tem o que crescer
- *  dentro de. */
+ *  sobra espaço pra distribuir, sem isto, "crescer" não tem o que crescer. */
 export const CorpoCalendario = styled.div`
   display: flex;
   flex-direction: column;
@@ -103,7 +102,7 @@ export const FiltroChips = styled.div`
   gap: 0.375rem;
 `;
 
-/** Filtro por tipo — glifo + cor, para funcionar impresso também. */
+/** Filtro por tipo, glifo + cor, para funcionar impresso também. */
 export const Chip = styled.button<{ $ativo: boolean; $cor: string }>`
   display: inline-flex;
   align-items: center;
@@ -124,7 +123,7 @@ export const Chip = styled.button<{ $ativo: boolean; $cor: string }>`
 `;
 
 /**
- * A linha de um evento dentro da célula do dia — pintada com a cor do tipo
+ * A linha de um evento dentro da célula do dia, pintada com a cor do tipo
  * (fundo tingido + friso à esquerda), não mais uma caixa cheia com borda
  * inteira. O calendário é a única tela do site em que a cor É o conteúdo —
  * é ela que deixa ver, sem clicar em nada, "essa semana tem duas bancas e
@@ -141,7 +140,7 @@ export const Pilula = styled.button<{ $cor: string }>`
   padding: 0.1rem 0.4rem;
   border: none;
   border-radius: ${theme.borderRadius.full};
-  /* Forte só na extremidade esquerda — um corte seco, não um degradê. Os
+  /* Forte só na extremidade esquerda, um corte seco, não um degradê. Os
      dois stops repetidos na MESMA posição (3px, 3px) são o que faz o
      "gradiente" parar de misturar e virar duas cores lado a lado. */
   background: linear-gradient(

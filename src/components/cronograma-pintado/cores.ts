@@ -3,19 +3,19 @@
  *
  * Por que não usar as cores do `theme.ts`: o tema tem essencialmente uma
  * matiz (vermelho) mais success/warning/info, e as três semânticas apontam
- * para significados já ocupados — vermelho é primary/destructive/atrasado,
+ * para significados já ocupados, vermelho é primary/destructive/atrasado,
  * verde é sucesso, âmbar é alerta. Cor de etapa **não pode encostar na
  * semântica de status do design system**, ou uma etapa verde vira "tudo bem"
  * num cronograma que está atrasado.
  *
  * A regra que impede o arco-íris: 8 matizes fixas, **mesma saturação e mesma
- * luminosidade** — só a matiz gira. E o formulário oferece exatamente essas 8
+ * luminosidade**, só a matiz gira. E o formulário oferece exatamente essas 8
  * amostras, sem color picker livre.
  *
  * Os valores são hex literais gerados uma vez a partir da fórmula HSL
  * (matiz variável; amostra 62%/52%, fundo 62%/80%, texto 55%/25%). Literais
  * porque são mais fáceis de revisar num diff do que uma conversão em runtime
- * — e porque `cronograma_etapa.cor` é `CHAR(7)`, que só cabe `#RRGGBB`.
+ *, e porque `cronograma_etapa.cor` é `CHAR(7)`, que só cabe `#RRGGBB`.
  *
  * O fundo já foi 92% de luminosidade, quase branco. Subiu para 80% para as
  * etapas pintarem de verdade. O texto teve que escurecer junto (era 45%/35%):
@@ -24,7 +24,7 @@
  */
 
 export interface CorEtapa {
-  /** Preenchimento da célula — pálido, para o calendário continuar um
+  /** Preenchimento da célula, pálido, para o calendário continuar um
    *  documento branco com células tingidas, não um mosaico de blocos. */
   fundo: string;
   /** A amostra da legenda, saturada. É este o valor GRAVADO no banco. */
@@ -45,7 +45,7 @@ export const PALETA: CorEtapa[] = [
   { amostra: "#D0AB39", fundo: "#ECDCAC", texto: "#63521D" }, // mostarda
 ];
 
-/** A cor sugerida para a próxima etapa — determinística pela ordem, e então
+/** A cor sugerida para a próxima etapa, determinística pela ordem, e então
  *  PERSISTIDA: apagar uma etapa anterior não pode deslizar as cores das
  *  outras, senão o PNG de agosto deixa de bater com a legenda de agosto. */
 export function corSugerida(ordem: number): string {
@@ -64,7 +64,7 @@ export function tonsDaCor(cor: string): CorEtapa {
 /**
  * O fundo de um dia disputado por N etapas: fatias diagonais de tamanho igual.
  *
- * Com uma cor só devolve o próprio hex — célula chapada, sem gradiente, que é
+ * Com uma cor só devolve o próprio hex, célula chapada, sem gradiente, que é
  * o caso esmagadoramente comum e não deve pagar por este recurso.
  *
  * Atenção: as paradas são DUPLAS (`cor A% B%`), não simples. Com uma parada só o CSS
@@ -72,7 +72,7 @@ export function tonsDaCor(cor: string): CorEtapa {
  * própria fatia a transição vira um corte seco, que é o que dá o triângulo.
  *
  * 135deg aponta o eixo para o canto inferior direito, então a divisa corre de
- * baixo-esquerda para cima-direita — a diagonal "/".
+ * baixo-esquerda para cima-direita, a diagonal "/".
  */
 export function fundoDiagonal(cores: string[]): string {
   if (cores.length === 1) return cores[0];
@@ -93,7 +93,7 @@ export const COR_PAUSA = "#E9EAED";
 export const COR_NAO_UTIL = "#F0F0F0";
 
 /**
- * O período de cada escopo — da reunião inicial até a banca (§5.4).
+ * O período de cada escopo, da reunião inicial até a banca.
  *
  * Mesmas 8 matizes da paleta, na MESMA ordem, mas a 92% de luminosidade
  * (contra os 80% do fundo de etapa). A faixa é o pano de fundo do escopo e as
@@ -120,7 +120,7 @@ export function corPeriodoEscopo(indice: number): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Marcos (§6.4)                                                       */
+/* Marcos                                                       */
 /* ------------------------------------------------------------------ */
 
 export type TipoMarco =
@@ -131,8 +131,8 @@ export type TipoMarco =
   | "visita_presencial"
   // As reuniões semanais viraram marcações do cronograma quando a aba
   // Reuniões deixou de existir: elas são marcadas aqui e precisam aparecer
-  // aqui. Não são `cronograma_marco` — moram em `reuniao_semanal`, que é
-  // quem dá a largada da contagem do escopo (§5.4).
+  // aqui. Não são `cronograma_marco`, moram em `reuniao_semanal`, que é
+  // quem dá a largada da contagem do escopo.
   | "reuniao_geral"
   | "reuniao_inicial"
   // ⭐ A PROMESSA ao cliente (`projeto.data_entrega_prevista_cliente`), não a
@@ -143,7 +143,7 @@ export type TipoMarco =
 /**
  * Um vermelho só para todos os marcos.
  *
- * A distinção entre eles é o NOME escrito dentro do box, não a cor — por isso
+ * A distinção entre eles é o NOME escrito dentro do box, não a cor, por isso
  * não há legenda de marcos: não existe código de cor a decifrar. O vermelho
  * fica fora da rampa das etapas, então marco nunca se confunde com etapa.
  *

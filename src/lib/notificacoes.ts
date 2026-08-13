@@ -5,7 +5,7 @@ export function getNotificacoes(token: string | null) {
   return apiFetch<ListaNotificacoes>("/notificacoes", { token });
 }
 
-/** Só o número, para o polling do sino — não carrega tarefa, banca nem
+/** Só o número, para o polling do sino, não carrega tarefa, banca nem
  *  escopo de projeto nenhum. */
 export function getContagemNotificacoes(token: string | null) {
   return apiFetch<{ nao_lidas: number }>("/notificacoes/contagem", { token });
@@ -14,8 +14,8 @@ export function getContagemNotificacoes(token: string | null) {
 /**
  * Marca uma como lida.
  *
- * O backend aceita `id` **ou** `chave` porque só o 📌 evento tem linha no
- * banco: a 🔄 condição é recalculada a cada leitura e só ganha linha no
+ * O backend aceita `id` **ou** `chave` porque só o evento tem linha no
+ * banco: a condição é recalculada a cada leitura e só ganha linha no
  * instante em que alguém a dispensa. Mandar a chave é o que faz essa linha
  * nascer.
  */

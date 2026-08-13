@@ -65,8 +65,8 @@ export {
 /**
  * A página tem cards demais para uma pilha só: sem agrupamento, "Situações de
  * carga" e "Permissões por posição" ficam a mesma distância uma da outra que
- * "Frentes" e "Escopos", que são o mesmo assunto. O grupo é só visual — os
- * cards continuam independentes —, mas separa o que se lê junto do que não.
+ * "Frentes" e "Escopos", que são o mesmo assunto. O grupo é só visual, os
+ * cards continuam independentes, mas separa o que se lê junto do que não.
  *
  * O respiro entre grupos (`& + &`) é maior que o de dentro do grupo, senão a
  * hierarquia depende só do título e some quando a pessoa rola a página.

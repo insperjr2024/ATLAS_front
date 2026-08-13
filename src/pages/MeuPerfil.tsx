@@ -44,10 +44,10 @@ function iniciais(nome: string): string {
 }
 
 /**
- * Meu perfil (§11) — os dados do pré-cadastro e a grade de aulas do semestre.
+ * Meu perfil, os dados do pré-cadastro e a grade de aulas do semestre.
  *
  * É de todo mundo: não há trava de cargo nem de posição. Cada um vê e edita a
- * própria grade, e o backend nem aceita id de outra pessoa — o usuário sai
+ * própria grade, e o backend nem aceita id de outra pessoa, o usuário sai
  * sempre do token.
  */
 export function MeuPerfil() {
