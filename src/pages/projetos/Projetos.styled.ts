@@ -446,7 +446,7 @@ export const DataLabel = styled.span`
  */
 export const DatasGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
   gap: ${theme.spacing.lg} ${theme.spacing.xl};
 `;
 
