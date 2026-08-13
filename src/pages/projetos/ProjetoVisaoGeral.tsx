@@ -532,9 +532,11 @@ function TabelaEscopos() {
             <LegendaTabela>
               🔒 A entrega fica travada até a banca do escopo ser <strong>aprovada</strong> — quem
               decide é a maioria dos votos de quem participou dela. Os dias correm da
-              reunião inicial até a <strong>banca ser realizada</strong> — feriados, provas e
-              recessos do calendário do Insper não contam, e o que se faz depois da banca é{" "}
-              <strong>correção</strong>, que tem coluna própria e não consome dias vendidos.
+              reunião inicial até a <strong>primeira banca acontecer</strong> — feriados, provas e
+              recessos do calendário do Insper não contam, e o que se faz depois dela é{" "}
+              <strong>correção</strong>, que tem coluna própria e não consome dias vendidos. Vale
+              para o retrabalho entre uma banca reprovada e a seguinte: esses dias continuam
+              aparecendo pintados no cronograma, mas ficam fora da conta.
               <br />▶ Por isso <em>Dias usados</em> e <em>Atraso</em> falam do mesmo estouro: se a
               barra passa do vendido, a diferença é exatamente o atraso.
               <br />▶ Um escopo começa a contar na <strong>reunião inicial</strong> dele: marque-a

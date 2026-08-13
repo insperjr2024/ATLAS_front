@@ -90,6 +90,7 @@ import {
   type Visao,
 } from "@/components/cronograma-pintado/visao";
 import type { CronogramaResposta } from "@/types/cronograma";
+import type { EscopoVendido } from "@/types/projeto";
 import {
   PageStack,
   PageButton,
@@ -150,6 +151,70 @@ function hojeIso(): string {
   const mes = String(agora.getMonth() + 1).padStart(2, "0");
   const dia = String(agora.getDate()).padStart(2, "0");
   return `${agora.getFullYear()}-${mes}-${dia}`;
+}
+
+
+/**
+ * ⭐ Um período por BANCA REALIZADA — e o rótulo que o retrabalho dela recebe.
+ *
+ * ⚠ **Correção ≠ ajuste, e o resultado da banca é que separa os dois.**
+ *
+ * - banca **reprovada** → o que vem depois é **correção**, e numerada: o time
+ *   está consertando o que aquela banca apontou. "correção 1" e "correção 2"
+ *   contam a história de um escopo que precisou de duas tentativas.
+ * - banca **aprovada** → o trabalho passou; o que vem depois são **ajustes**
+ *   finos antes de entregar ao cliente, não conserto de reprovação.
+ *
+ * Chamar tudo de "correção" acusava de reprovação um escopo que passou de
+ * primeira, e um único rótulo não distinguia o retrabalho da 1ª banca do da 2ª.
+ *
+ * ⚠ Sem veredito ainda, o rótulo é "ajustes": é o neutro. "correção" afirmaria
+ * uma reprovação que ninguém decidiu.
+ *
+ * Cada período vai do dia SEGUINTE à realização até a véspera da próxima
+ * (a última fica aberta). O dia da banca é dela, não do conserto que ela pediu.
+ */
+interface PeriodoPosBanca {
+  /** `yyyy-MM-dd` — o primeiro dia que já é retrabalho. */
+  inicio: string;
+  /** `yyyy-MM-dd` da próxima banca, ou `null` na última (fica aberta). */
+  fim: string | null;
+  rotulo: string;
+}
+
+function derivarPeriodosPosBanca(escopo: EscopoVendido): PeriodoPosBanca[] {
+  const sessoes = escopo.banca?.sessoes ?? [];
+  const realizadas = sessoes
+    .filter((s) => s.realizado_em)
+    .map((s) => ({ dia: s.realizado_em!.slice(0, 10), resultado: s.resultado }))
+    .sort((a, b) => a.dia.localeCompare(b.dia));
+
+  // Banca anterior a `banca_sessao`, ou escopo antigo entregue sem registro de
+  // realização: cai na régua de sempre, com o rótulo genérico.
+  if (realizadas.length === 0) {
+    const marco = escopo.banca?.realizado_em?.slice(0, 10) ?? escopo.data_entrega_real?.slice(0, 10);
+    return marco ? [{ inicio: marco, fim: null, rotulo: "correção" }] : [];
+  }
+
+  return realizadas.map((r, i) => ({
+    inicio: r.dia,
+    fim: realizadas[i + 1]?.dia ?? null,
+    // Sem numeração: o que importa é a NATUREZA do retrabalho, não a ordem.
+    // "correção 1" e "correção 2" faziam a legenda parecer um índice, e o
+    // número já está no calendário — a banca que o precede tem marcação
+    // própria no dia.
+    rotulo: r.resultado === "nao_aprovada" ? "correção" : "ajustes",
+  }));
+}
+
+/** O período em que este trecho TERMINA — `null` se ele acabou antes de
+ *  qualquer banca, ou seja, ainda é trabalho vendido. */
+function periodoDoTrecho(periodos: PeriodoPosBanca[], dataFim: string): PeriodoPosBanca | null {
+  // De trás para frente: o trecho pertence ao último período que ele alcança.
+  for (let i = periodos.length - 1; i >= 0; i--) {
+    if (dataFim > periodos[i].inicio) return periodos[i];
+  }
+  return null;
 }
 
 export function ProjetoCronograma() {
@@ -1677,8 +1742,7 @@ export function ProjetoCronograma() {
              * mesmo retângulo colorido pode ser o trabalho vendido ou a
              * correção, e o calendário deixa de contar a história certa.
              */
-            const marcoCorrecoes =
-              esc.banca?.realizado_em?.slice(0, 10) ?? esc.data_entrega_real?.slice(0, 10) ?? null;
+            const periodosPosBanca = derivarPeriodosPosBanca(esc);
             return (
               <LegendaGrupo key={esc.id}>
                 <LegendaTitulo>{esc.nome}</LegendaTitulo>
@@ -1738,14 +1802,16 @@ export function ProjetoCronograma() {
                           const uteis = diasDoIntervalo(t.data_inicio, t.data_fim).filter(
                             (d) => !diasNaoUteis.has(d),
                           ).length;
-                          // Trecho que TERMINA depois do marco tem correção
-                          // dentro dele — inclusive o que atravessa a data.
-                          const ehCorrecao = !!marcoCorrecoes && t.data_fim > marcoCorrecoes;
+                          // ⭐ Qual banca precede este trecho, e como ela
+                          // terminou — é o que decide entre "correção N" e
+                          // "ajustes". Trecho que TERMINA depois do marco tem
+                          // retrabalho dentro dele, inclusive o que o atravessa.
+                          const posBanca = periodoDoTrecho(periodosPosBanca, t.data_fim);
                           return (
                             <small key={t.id}>
                               {semAno(t.data_inicio)} – {semAno(t.data_fim)} · {uteis}{" "}
                               {uteis === 1 ? "dia útil" : "dias úteis"}
-                              {ehCorrecao && <TagCorrecao>correção</TagCorrecao>}
+                              {posBanca && <TagCorrecao>{posBanca.rotulo}</TagCorrecao>}
                             </small>
                           );
                         })}
