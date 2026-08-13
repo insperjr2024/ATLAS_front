@@ -1364,6 +1364,51 @@ export function ProjetoCronograma() {
   }
 
   /**
+   * ⭐ A pessoa tentou pintar um dia travado — e agora a tela diz por quê.
+   *
+   * ⚠ **Antes isto era silêncio.** O calendário desistia do arrasto e não
+   * acontecia nada: nem pintava, nem avisava. Quem tentava pintar antes da
+   * reunião inicial ficava clicando numa parede muda, sem descobrir que existe
+   * uma ordem a seguir — e o backend, que tem a explicação pronta, nunca era
+   * chamado, porque a requisição não chegava a sair.
+   *
+   * 📐 A frase é montada AQUI, e não no calendário, porque ela precisa do nome
+   * do escopo, das datas da janela e de saber se ainda dá para pedir dias. O
+   * calendário só sabe que o dia está travado.
+   */
+  function explicarBloqueio(_dia: string, motivo: { tipo: string; descricao: string | null }) {
+    const alvo = escopoDoPincel;
+
+    if (motivo.tipo === "sem_janela") {
+      setAviso(
+        `${alvo ? `O escopo "${alvo.nome}"` : "Este escopo"} ainda não teve reunião ` +
+          "inicial, e é ela que abre a janela de dias vendidos. Marque a reunião inicial " +
+          "primeiro — só depois dá para pintar etapas e marcar a banca.",
+      );
+      return;
+    }
+
+    if (motivo.tipo === "fora_da_janela") {
+      const ate = alvo?.fim_janela ? ` A janela termina em ${formatarData(alvo.fim_janela)}.` : "";
+      // O pedido de dias só existe enquanto o prazo dele está aberto — oferecer
+      // a saída fora do prazo seria mandar a pessoa levar outra recusa.
+      const saida =
+        diasNegociaveis.size > 0
+          ? " Para esticar, arraste além do fim da janela: isso abre um pedido de dias à diretoria."
+          : " O prazo para pedir dias de ajuste já passou, então a janela deste escopo não muda mais.";
+      return setAviso(
+        `Este dia está fora da janela${alvo ? ` de "${alvo.nome}"` : ""}.${ate}${saida}`,
+      );
+    }
+
+    // Fim de semana, feriado, recesso: fato, não regra negociável.
+    setAviso(
+      `${motivo.descricao ?? "Este dia não é útil"} — as etapas contam só dias úteis, ` +
+        "então feriados e fins de semana ficam de fora da contagem.",
+    );
+  }
+
+  /**
    * Gera o PDF ou a imagem a partir de uma cópia FORA DA TELA com os meses
    * escolhidos.
    *
@@ -1697,6 +1742,7 @@ export function ProjetoCronograma() {
           onNegociar={negociarDias}
           onArrasteMudou={setPreviewIntervalo}
           onDiaClicado={modoMarcacao ? marcarDia : undefined}
+          onBloqueado={explicarBloqueio}
           semScrollProprio
         />
 
