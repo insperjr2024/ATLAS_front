@@ -17,7 +17,7 @@ export interface ProjetoComVaga {
   /**
    * Por que ESTA pessoa não pode pedir agora. `null` = pode.
    *
-   * 📐 Vem preenchido em vez de o projeto sumir da lista: projeto que some
+   * Vem preenchido em vez de o projeto sumir da lista: projeto que some
    * sem explicação gera "por que não aparece o X?" e ninguém sabe responder.
    */
   impedimento: string | null;
@@ -42,16 +42,16 @@ export interface ListaVagas {
   situacao: SituacaoDeCarga | null;
   /** Só consultor pede para entrar. As outras posições são alocadas. */
   pode_solicitar: boolean;
-  /** Monta equipe (gerência e diretoria) — decide os pedidos. */
+  /** Monta equipe (gerência e diretoria), decide os pedidos. */
   pode_responder: boolean;
-  /** Coordena algum projeto — vê o time e os pedidos, sem decidir. */
+  /** Coordena algum projeto, vê o time e os pedidos, sem decidir. */
   coordena_projeto: boolean;
   /**
    * Se a grade da gestão deve oferecer filtro e agrupamento por frente.
    *
    * Falso para o gerente de uma frente só: a lista já vem recortada nela, e o
    * seletor teria uma opção. Vem do back porque quem decide é o recorte do
-   * §3, não as frentes que por acaso apareceram na lista.
+   * , não as frentes que por acaso apareceram na lista.
    */
   filtra_por_frente: boolean;
 }
@@ -90,13 +90,13 @@ export interface SolicitacaoRecebida {
   id: number;
   projeto_id: number;
   projeto_nome: string;
-  /** As frentes do projeto — é por elas que a tela filtra. */
+  /** As frentes do projeto, é por elas que a tela filtra. */
   frentes: string[];
   usuario_id: number;
   usuario_nome: string | null;
   /** Em quantos projetos o solicitante já está. */
   carga_do_solicitante: number;
-  /** Como a diretoria classifica essa carga — a mesma escala do painel. */
+  /** Como a diretoria classifica essa carga, a mesma escala do painel. */
   situacao_do_solicitante: SituacaoDeCarga | null;
   justificativa: string;
   status: "pendente" | "aprovada" | "recusada";
@@ -126,7 +126,7 @@ export function getMinhasSolicitacoes(token: string) {
 }
 
 /**
- * Os pedidos que o usuário pode responder — pendentes e já respondidos.
+ * Os pedidos que o usuário pode responder, pendentes e já respondidos.
  *
  * Só gerência e diretoria; o gerente fica na frente dele. Coordenador recebe
  * lista vazia: a visão dele é `getProjetosCoordenados`.
@@ -141,7 +141,7 @@ export interface CandidatoAlocacao {
   nome: string;
   posicao: "diretor" | "gerente" | "coordenador" | "consultor";
   frentes: string[];
-  /** Quantos projetos ativos ocupa hoje — a régua do §7.3. */
+  /** Quantos projetos ativos ocupa hoje, a régua. */
   carga: number;
   /** Quais são eles. Sem recorte de frente: quem aloca vê onde a pessoa
    *  está mesmo em frente que não acompanha (decisão de 2026-08-13). */

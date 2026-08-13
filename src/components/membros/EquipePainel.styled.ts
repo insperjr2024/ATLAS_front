@@ -2,7 +2,7 @@ import styled, { css } from "styled-components";
 import { theme } from "@/styles/theme";
 
 /* ------------------------------------------------------------------ */
-/* O campo na página — dois blocos, um por papel                       */
+/* O campo na página, dois blocos, um por papel                       */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -10,7 +10,7 @@ import { theme } from "@/styles/theme";
  *
  * Empilhados eles se liam como dois campos independentes de um formulário
  * longo, e a pergunta que importa ("o time está de pé?") exigia rolar. Lado
- * a lado o time inteiro cabe num olhar — e some no celular, onde não cabe.
+ * a lado o time inteiro cabe num olhar, e some no celular, onde não cabe.
  */
 export const EquipeGrade = styled.div`
   display: grid;
@@ -47,7 +47,7 @@ export const PapelNome = styled.h4`
   color: ${theme.colors.foreground};
 `;
 
-/** "2 de 3" / "opcional". Conta, não decora — por isso texto e não pílula. */
+/** "2 de 3" / "opcional". Conta, não decora, por isso texto e não pílula. */
 export const PapelContagem = styled.span`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
@@ -74,7 +74,7 @@ export const PessoaCard = styled.li`
 `;
 
 /**
- * As iniciais no lugar de foto — não existe foto no cadastro, e um ícone de
+ * As iniciais no lugar de foto, não existe foto no cadastro, e um ícone de
  * pessoa genérico repetido em cinco linhas vira ruído. A inicial diferencia.
  */
 export const PessoaIniciais = styled.span`
@@ -152,7 +152,7 @@ export const PessoaRemover = styled.button`
  *
  * Tracejado e ocupando a largura toda quando o papel está vazio: é o lugar
  * onde a pessoa VAI entrar, e a borda tracejada é a convenção de "vaga". Com
- * gente escolhida ele encolhe para um botão comum — a vaga já não está lá.
+ * gente escolhida ele encolhe para um botão comum, a vaga já não está lá.
  */
 export const AbrirPainel = styled.button<{ $vazio?: boolean }>`
   display: inline-flex;

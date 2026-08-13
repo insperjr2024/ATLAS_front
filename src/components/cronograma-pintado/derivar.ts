@@ -12,15 +12,15 @@ export interface CronogramaGeralDerivado {
 }
 
 /**
- * A derivação do modo "Geral" — todos os escopos do projeto juntos.
+ * A derivação do modo "Geral", todos os escopos do projeto juntos.
  *
  * Extraída de `ProjetoCronograma.tsx` (que também usa, quando `modoGeral` é
- * true) para o mini-calendário do board macro de cronogramas (§7) não
+ * true) para o mini-calendário do board macro de cronogramas não
  * duplicar as mesmas ~60 linhas: as duas telas leem `escopo.banca`,
  * `data_entrega_real ?? data_entrega_planejada` e `projeto.data_kickoff` do
  * mesmo jeito, e precisam continuar concordando se essa regra mudar.
  *
- * Função pura: sem estado de edição (rascunhos, pincel) — quem chama é
+ * Função pura: sem estado de edição (rascunhos, pincel), quem chama é
  * sempre leitura.
  */
 export function derivarCronogramaGeral(dados: CronogramaResposta): CronogramaGeralDerivado {

@@ -59,6 +59,7 @@ import {
   DatasGrid,
   DataItem,
   DataItemLabel,
+  DataItemNota,
   DataItemValor,
   EdicaoBotoes,
   EquipeList,
@@ -235,22 +236,26 @@ export function ProjetoVisaoGeral() {
               <DataItemLabel>Criado em</DataItemLabel>
               <DataItemValor>{formatarDataHora(projeto.criado_em)}</DataItemValor>
             </DataItem>
-            {/* ⭐ Datas são AGENDADAS no Cronograma, e só LIDAS aqui — a mesma
+            {/* Datas são AGENDADAS no Cronograma, e só LIDAS aqui, a mesma
                 data com duas portas de escrita foi o que se quis acabar.
-                ⚠️ O KICKOFF é a exceção deliberada: é a única das seis datas
+                O KICKOFF é a exceção deliberada: é a única das seis datas
                 sem regra de janela (não cai dentro nem fora de nada, não pede
                 justificativa e não depende de banca), então nada se ganha em
                 obrigar a ir ao calendário só para digitá-la. Ele aceita os dois
                 caminhos. */}
             <DataEditavelKickoff projeto={projeto} token={token} recarregar={recarregar} />
-            {/* ⭐ DERIVADA: entrega ao cliente e entrega do escopo são a mesma
-                coisa — o cliente recebe quando o escopo é entregue. Esta é a do
+            {/* DERIVADA: entrega ao cliente e entrega do escopo são a mesma
+                coisa, o cliente recebe quando o escopo é entregue. Esta é a do
                 último escopo entregue; as individuais estão na tabela abaixo. */}
             <DataItem>
               <DataItemLabel>Entrega ao cliente</DataItemLabel>
               <DataItemValor>
                 <span>{formatarData(projeto.data_entrega_cliente)}</span>
               </DataItemValor>
+              <DataItemNota>
+                É a entrega do último escopo, cada escopo tem a sua, registrada em{" "}
+                <strong>Entrega</strong>, no calendário do Cronograma.
+              </DataItemNota>
             </DataItem>
             {/* ⭐ A PROMESSA, ao lado do fato. Duas datas de propósito: a de
                 cima é o que aconteceu (derivada dos escopos), esta é o que foi
@@ -270,12 +275,12 @@ export function ProjetoVisaoGeral() {
 
       <TabelaEscopos />
 
-      {/* §5.5: uma banca por escopo, e o escopo é de uma frente — daí o
+      {/* uma banca por escopo, e o escopo é de uma frente, daí o
           recorte por frente, que é como a coordenação se organiza. */}
       <BancasPorFrente />
 
       {/* Pausa para pensar: a contagem é do backend (`utils/contagem_dias.py`).
-          O front nunca recalcula dia útil — só desenha o que recebe. */}
+          O front nunca recalcula dia útil, só desenha o que recebe. */}
 
       {editandoEquipe && token && (
         <EditarEquipeModal
@@ -297,34 +302,34 @@ export function ProjetoVisaoGeral() {
 /* ------------------------------------------------------------------ */
 
 /**
- * Por que ESTA entrega está travada — os quatro degraus do §5.5.
+ * Por que ESTA entrega está travada, os quatro degraus.
  *
- * ⭐ Um texto único ("a entrega só libera depois da banca ser aprovada") deixa
+ * Um texto único ("a entrega só libera depois da banca ser aprovada") deixa
  * quem lê sem próximo passo: marcar a banca, esperar os votos e marcar uma
  * segunda banca são ações diferentes, e o cadeado é o único lugar onde essa
  * diferença aparece na tela.
  */
 function motivoDaTrava(banca: BancaDoEscopo | null): string {
-  if (!banca) return "Este escopo ainda não tem banca marcada — marque-a no Cronograma.";
+  if (!banca) return "Este escopo ainda não tem banca marcada, marque-a no Cronograma.";
   if (!banca.realizado_em) return "A banca deste escopo ainda não foi realizada.";
   if (banca.resultado === "nao_aprovada")
-    return "A banca não foi aprovada — é preciso marcar uma nova banca antes de entregar ao cliente.";
+    return "A banca não foi aprovada, é preciso marcar uma nova banca antes de entregar ao cliente.";
   if (!banca.resultado)
     return "A banca aconteceu, mas ainda não tem resultado: a entrega libera quando os avaliadores votarem.";
   return "A entrega só é liberada depois da banca do escopo ser aprovada.";
 }
 
 /**
- * A tabela do §6.4: escopo · status · dias usados · banca · entrega.
+ * A tabela do escopo · status · dias usados · banca · entrega.
  *
- * 🔒 O cadeado na entrega é conveniência de UI — quem barra de verdade é
+ * O cadeado na entrega é conveniência de UI, quem barra de verdade é
  * `RegistrarEntregaEscopoUseCase` no backend, que devolve 422 enquanto a
  * banca do escopo não estiver aprovada.
  */
 function TabelaEscopos() {
   const { projeto, recarregar } = useProjeto();
   const { usuario, token } = useAuth();
-  /** §7.4: o escopo cujo atraso está sendo justificado. */
+  /** o escopo cujo atraso está sendo justificado. */
   const [justificando, setJustificando] = useState<{
     escopoId: number;
     nome: string;
@@ -333,19 +338,19 @@ function TabelaEscopos() {
   /**
    * Quem escreve o porquê do atraso: coordenação, gerência e diretoria.
    *
-   * Espelha o `require_lideranca` da rota — consultor vê o atraso mas não
+   * Espelha o `require_lideranca` da rota, consultor vê o atraso mas não
    * responde por ele. O front só ESCONDE; quem decide é o backend.
    */
   const podeJustificar = !!usuario && usuario.posicao !== "consultor";
-  // §6.4: marcar kickoff e data de entrega é dos QUATRO perfis — a
+  // marcar kickoff e data de entrega é dos QUATRO perfis, a
   // responsabilidade é do coordenador, mas o acesso não é exclusivo dele.
   // (O backend usa só `exigir_acesso_ao_projeto` aqui; o front não pode ser
   // mais restrito que ele, ou esconde um botão que a pessoa tem direito de ver.)
   const podeConduzir = !!usuario?.permissoes.pode_marcar_kickoff;
 
-  // ⚠️ A única escrita daqui é a JUSTIFICATIVA DO ATRASO (§7.4), e ela é
-  // exceção pelo mesmo motivo que o resto não é: datas de escopo — banca e
-  // entrega — se agendam no Cronograma, onde dá para ver o dia contra a janela
+  // A única escrita daqui é a JUSTIFICATIVA DO ATRASO, e ela é
+  // exceção pelo mesmo motivo que o resto não é: datas de escopo, banca e
+  // entrega, se agendam no Cronograma, onde dá para ver o dia contra a janela
   // e o calendário do Insper. Já o "por que estourou" não é data nenhuma; é a
   // resposta ao número que ESTA tabela mostra, e mandar a pessoa para outra
   // tela para escrevê-la é o que fazia ninguém escrever.
@@ -366,8 +371,8 @@ function TabelaEscopos() {
                   <TableHeadCell>Escopo</TableHeadCell>
                   <TableHeadCell>Status</TableHeadCell>
                   <TableHeadCell>Dias usados</TableHeadCell>
-                  {/* Atraso é o §10 (dias úteis além da janela) e Correções é o
-                      §11 (dias pintados depois da banca). O número da seção
+                  {/* Atraso é o  (dias úteis além da janela) e Correções é o
+                       (dias pintados depois da banca). O número da seção
                       fica aqui, no comentário: texto que o usuário lê não cita
                       parágrafo de documento interno. */}
                   <TableHeadCell title="Dias úteis além da janela">Atraso</TableHeadCell>
@@ -380,7 +385,7 @@ function TabelaEscopos() {
               </TableHead>
               <TableBody>
                 {projeto.escopos.map((escopo) => {
-                  // ⭐ A barra mede contra a JANELA (vendidos + ajustados):
+                  // A barra mede contra a JANELA (vendidos + ajustados):
                   // quem ganhou 10 dias tem 10 dias a mais para gastar, senão a
                   // autorização não teria efeito nenhum na tela.
                   const janela = escopo.dias_uteis_vendidos + escopo.dias_uteis_ajustados;
@@ -423,7 +428,7 @@ function TabelaEscopos() {
                             {escopo.consumidos}/{janela}
                             {escopo.estourou && ` (+${Math.abs(escopo.restantes)})`}
                           </ProgressoTexto>
-                          {/* ⚠ Vendidos e ajustados NUNCA aparecem somados num
+                          {/* Vendidos e ajustados NUNCA aparecem somados num
                               número só: a diferença entre ter vendido 30 e ter
                               vendido 20 e precisado de mais 10 é a informação
                               inteira. A barra usa a soma; o texto, a separação. */}
@@ -441,7 +446,7 @@ function TabelaEscopos() {
                             <PageBadge $tone="danger">
                               {escopo.atraso} {escopo.atraso === 1 ? "dia" : "dias"}
                             </PageBadge>
-                            {/* ⭐ §7.4: o número diz QUANTO; só a nota diz POR
+                            {/* o número diz QUANTO; só a nota diz POR
                                 QUÊ, e é ela que a diretoria lê no Monitoramento.
                                 Pedir aqui é pedir a quem está conduzindo o
                                 escopo, enquanto o motivo ainda está fresco. */}
@@ -505,7 +510,7 @@ function TabelaEscopos() {
                             /* Leva para o calendário em vez de gravar HOJE
                                em silêncio: a entrega quase nunca é no dia em
                                que alguém lembra de registrá-la, e a data certa
-                               é escolhida onde ela é vista — no Cronograma. */
+                               é escolhida onde ela é vista, no Cronograma. */
                             <PageButtonSm
                               as={Link}
                               to={`/projetos/${projeto.id}/cronograma`}
@@ -530,16 +535,15 @@ function TabelaEscopos() {
             </DataTable>
 
             <LegendaTabela>
-              🔒 A entrega fica travada até a banca do escopo ser <strong>aprovada</strong> — quem
-              decide é a maioria dos votos de quem participou dela. Os dias correm da
-              reunião inicial até a <strong>banca ser realizada</strong> — feriados, provas e
+              A entrega fica travada até a banca do escopo ser realizada. Os dias correm da
+              reunião inicial até a <strong>banca ser realizada</strong>, feriados, provas e
               recessos do calendário do Insper não contam, e o que se faz depois da banca é{" "}
               <strong>correção</strong>, que tem coluna própria e não consome dias vendidos.
               <br />▶ Por isso <em>Dias usados</em> e <em>Atraso</em> falam do mesmo estouro: se a
               barra passa do vendido, a diferença é exatamente o atraso.
               <br />▶ Um escopo começa a contar na <strong>reunião inicial</strong> dele: marque-a
               no <strong>Cronograma</strong>, escolhendo o escopo e clicando no dia. A banca não
-              precisa estar marcada antes — é ela que precisa caber na janela que a reunião abre.
+              precisa estar marcada antes, é ela que precisa caber na janela que a reunião abre.
             </LegendaTabela>
           </>
         )}
@@ -566,14 +570,14 @@ function TabelaEscopos() {
 }
 
 /**
- * §7.4/§10: por que este escopo passou da janela.
+ * /por que este escopo passou da janela.
  *
  * Escreve na MESMA tabela que a nota da diretoria (`projeto_justificativa_atraso`),
- * com `motivo_tipo: "escopo"` — o que a faz aparecer no Histórico do projeto
+ * com `motivo_tipo: "escopo"`, o que a faz aparecer no Histórico do projeto
  * e na aba Atrasos do Monitoramento sem nenhuma fiação nova.
  *
- * ⚠ Não é um campo editável: cada envio cria uma nota nova, e a anterior
- * continua no Histórico. É registro, não formulário — foi assim que o §7.4
+ * Não é um campo editável: cada envio cria uma nota nova, e a anterior
+ * continua no Histórico. É registro, não formulário, foi assim que o 
  * definiu, e apagar o que se disse antes tiraria justamente a leitura de como
  * a explicação mudou ao longo do atraso.
  */
@@ -627,7 +631,7 @@ function JustificarAtrasoEscopoModal({
         <ModalBody>
           <p>
             <strong>{nome}</strong> passou <strong>{dias} {dias === 1 ? "dia útil" : "dias úteis"}</strong>{" "}
-            além da janela vendida. Explique o motivo — a nota fica no Histórico do
+            além da janela vendida. Explique o motivo, a nota fica no Histórico do
             projeto e a diretoria a lê no Monitoramento.
           </p>
           <FieldTextarea
@@ -654,17 +658,17 @@ function JustificarAtrasoEscopoModal({
 /* ------------------------------------------------------------------ */
 
 /**
- * As bancas do projeto, uma seção por frente (§5.5 + §8).
+ * As bancas do projeto, uma seção por frente.
  *
- * "Cada escopo tem a sua própria banca" (§5.5) e cada escopo pertence a uma
- * frente — então um projeto sinérgico de Business + Direito tem a banca de
+ * "Cada escopo tem a sua própria banca" e cada escopo pertence a uma
+ * frente, então um projeto sinérgico de Business + Direito tem a banca de
  * Análise Mercadológica **em Business** e a de Revisão Contratual **em
  * Direito**, com composições e pisos diferentes. A tabela de escopos mostra
  * a banca como uma coluna no meio de dias e entrega; aqui o recorte é o que
  * a coordenação usa para se organizar: o que cada frente tem pela frente.
  *
  * Frente que o projeto contempla mas ainda não tem escopo aparece assim
- * mesmo, vazia — é informação, não erro: alguém vendeu a frente e ainda não
+ * mesmo, vazia, é informação, não erro: alguém vendeu a frente e ainda não
  * cadastrou o escopo dela.
  */
 function BancasPorFrente() {
@@ -673,7 +677,7 @@ function BancasPorFrente() {
 
   const nomeFrente = (id: number) => frentes.find((f) => f.id === id)?.nome ?? `Frente ${id}`;
 
-  // §5.6: marcar/remarcar banca é de liderança — o backend usa
+  // marcar/remarcar banca é de liderança, o backend usa
   // `require_lideranca` e cobra justificativa da diretoria na remarcação.
   const podeMarcar = !!usuario?.permissoes.pode_definir_cronograma;
 
@@ -712,7 +716,7 @@ function BancasPorFrente() {
 
                 {escoposDaFrente.length === 0 ? (
                   <EmptyText>
-                    A frente foi vendida, mas ainda não há escopo cadastrado nela — e é o escopo que
+                    A frente foi vendida, mas ainda não há escopo cadastrado nela, e é o escopo que
                     tem banca.
                   </EmptyText>
                 ) : (
@@ -721,7 +725,7 @@ function BancasPorFrente() {
                       <BancaEscopo>
                         {escopo.nome}
                         {/* Sem esta linha, a mesma data repetida em dois
-                            escopos pareceria cadastro duplicado — e não é:
+                            escopos pareceria cadastro duplicado, e não é:
                             é uma banca só avaliando os dois. */}
                         {escopo.banca && escopo.banca.escopo_ids.length > 1 && (
                           <small>
@@ -753,7 +757,7 @@ function BancasPorFrente() {
                       {podeMarcar && (
                         /* A data da banca é agendada no Cronograma, onde dá
                            para ver se ela cai dentro da janela do escopo —
-                           que é a regra que a governa (§5.5). */
+                           que é a regra que a governa. */
                         <PageButtonSm
                           as={Link}
                           to={`/projetos/${projeto.id}/cronograma`}
@@ -772,7 +776,7 @@ function BancasPorFrente() {
 
         <LegendaTabela>
           Cada escopo tem no máximo uma banca, mas uma banca pode avaliar vários escopos do
-          projeto — quem marca escolhe quais, no <strong>Cronograma</strong>. A banca herda as
+          projeto, quem marca escolhe quais, no <strong>Cronograma</strong>. A banca herda as
           frentes dos escopos que cobre, e são elas que definem a composição exigida e quem pode ser
           escalado. A data é a mesma que aparece em Bancas e no cronograma: um registro só, lido de
           três lugares.
@@ -791,7 +795,7 @@ function BancasPorFrente() {
 /* ------------------------------------------------------------------ */
 
 /**
- * O kickoff — editável aqui **e** marcável no calendário.
+ * O kickoff, editável aqui **e** marcável no calendário.
  *
  * A exceção às outras datas do projeto: sem janela para respeitar, sem
  * justificativa, sem gate de diretoria. Digitar direto é o caminho curto de
@@ -809,7 +813,7 @@ function DataEditavelKickoff({
 }) {
   const { usuario } = useAuth();
   // Mesma permissão do backend (`require_pode_marcar_kickoff` em
-  // `routers/projetos.py`) — sem esse gate o botão aparecia pra qualquer um,
+  // `routers/projetos.py`), sem esse gate o botão aparecia pra qualquer um,
   // que só descobria que não podia depois de preencher e salvar (403).
   const podeEditar = !!usuario?.permissoes.pode_marcar_kickoff;
   const [editando, setEditando] = useState(false);
@@ -1044,12 +1048,12 @@ function DataEditavelDiasAmbientacao({
           </>
         )}
       </DataItemValor>
-      {/* 🤖 A única etapa do ciclo que sai sozinha (§5.3): ela tem data de
+      {/* A única etapa do ciclo que sai sozinha: ela tem data de
           fim calculável, as outras dependem de alguém decidir. A data vem
-          pronta do backend — o front não conta dia útil. */}
+          pronta do backend, o front não conta dia útil. */}
       {projeto.status === "ambientacao" && projeto.fim_ambientacao && (
         <EmptyText>
-          🤖 até {formatarData(projeto.fim_ambientacao)} — depois disso o projeto passa para{" "}
+          até {formatarData(projeto.fim_ambientacao)}, depois disso o projeto passa para{" "}
           <strong>Em andamento</strong> automaticamente.
         </EmptyText>
       )}

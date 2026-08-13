@@ -24,7 +24,7 @@ interface Props {
   onChange: (event: { target: { value: string } }) => void;
   disabled?: boolean;
   /** Aceito por compatibilidade com o `<select>` nativo que este componente
-   *  substitui — sem elemento de formulário real por trás, a validação
+   *  substitui, sem elemento de formulário real por trás, a validação
    *  HTML5 nunca dispara sozinha; quem chama já valida manualmente. */
   required?: boolean;
   children: ReactNode;
@@ -38,7 +38,7 @@ interface Props {
 }
 
 /**
- * Drop-in pro `<select>` nativo do navegador — mesma API (`value`,
+ * Drop-in pro `<select>` nativo do navegador, mesma API (`value`,
  * `onChange`, filhos `<option>`), painel próprio no estilo do app. Ninguém
  * precisa trocar import: é a implementação por trás de `FieldSelect`,
  * reexportado em `Bancas.styled.ts`, usado em todo o app.
@@ -68,7 +68,7 @@ export function SelectCustom({
   const ref = useRef<HTMLDivElement>(null);
   const painelRef = useRef<HTMLDivElement>(null);
 
-  // Recalcula sempre que abre e a cada scroll/resize — o painel vive fora da
+  // Recalcula sempre que abre e a cada scroll/resize, o painel vive fora da
   // árvore do gatilho (portal), então não segue o layout sozinho.
   useLayoutEffect(() => {
     if (!aberto) return;
@@ -76,10 +76,10 @@ export function SelectCustom({
       const retangulo = ref.current?.getBoundingClientRect();
       if (!retangulo) return;
       // Sem isto, um gatilho perto do fim da tela abria o painel pra baixo
-      // do mesmo jeito — e como ele é `position: fixed`, a parte que sobrava
+      // do mesmo jeito, e como ele é `position: fixed`, a parte que sobrava
       // fora da janela ficava simplesmente inalcançável (scroll da página
       // não move elemento fixo). Abre pro lado com mais espaço, e limita a
-      // altura ao que cabe ali — o `overflow-y: auto` do painel faz o resto.
+      // altura ao que cabe ali, o `overflow-y: auto` do painel faz o resto.
       const margem = 8;
       const alturaPreferida = 256; // mesmo valor do `max-height: 16rem` do CSS
       const espacoAbaixo = window.innerHeight - retangulo.bottom - margem;
@@ -93,7 +93,7 @@ export function SelectCustom({
       // enche a `alturaDisponivel` inteira, e ancorar por `top` supondo que
       // ela enche deixava um vão entre o painel e o gatilho. Com `bottom` o
       // painel cresce PRA CIMA a partir da borda de baixo, do tamanho que
-      // for — sem precisar adivinhar a altura antes de renderizar.
+      // for, sem precisar adivinhar a altura antes de renderizar.
       setPosicao(
         abrePraCima
           ? {
@@ -129,7 +129,7 @@ export function SelectCustom({
     return () => document.removeEventListener("mousedown", aoClicarFora);
   }, []);
 
-  // Zera a busca a cada abertura — senão o filtro da vez anterior continua
+  // Zera a busca a cada abertura, senão o filtro da vez anterior continua
   // escondendo opção na próxima vez que a lista é aberta.
   useEffect(() => {
     if (aberto) setBusca("");

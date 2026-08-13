@@ -34,7 +34,7 @@ import {
 } from "./Kanban.styled";
 
 interface KanbanBoardProps {
-  /** Vêm da API — a diretoria configura em /config. */
+  /** Vêm da API, a diretoria configura em /config. */
   colunas: ColunaTarefa[];
   tarefas: Tarefa[];
   nomeUsuario: (id: number) => string;
@@ -44,12 +44,12 @@ interface KanbanBoardProps {
 }
 
 /**
- * O kanban (§4, §6.4). As colunas são dados, não código: quantidade, nome,
+ * O kanban (, ). As colunas são dados, não código: quantidade, nome,
  * cor e ordem vêm de `tarefa_coluna`.
  *
  * `@dnd-kit` e não `react-beautiful-dnd`: o segundo está sem manutenção e
  * quebra sob StrictMode do React 18+, que é o caso aqui (React 19). O dnd-kit
- * também traz arrasto por teclado de graça — `KeyboardSensor` abaixo.
+ * também traz arrasto por teclado de graça, `KeyboardSensor` abaixo.
  */
 export function KanbanBoard({
   colunas,
@@ -92,7 +92,7 @@ export function KanbanBoard({
   return (
     // collisionDetection padrão do dnd-kit é rectIntersection, que só conta
     // como "sobre" a coluna quando o retângulo do card ainda se sobrepõe ao
-    // dela — em colunas estreitas/altas isso falha ao arrastar por várias de
+    // dela, em colunas estreitas/altas isso falha ao arrastar por várias de
     // uma vez. closestCenter resolve pelo centro mais próximo, então soltar
     // longe da coluna de origem também é reconhecido.
     <DndContext
@@ -215,7 +215,7 @@ function CardArrastavel({
       }}
     >
       {/* A face do card tem só NOME e RESPONSÁVEL. Datas, autoria e
-          comentários ficam no detalhe — o único indício de prazo aqui é o
+          comentários ficam no detalhe, o único indício de prazo aqui é o
           sinal de urgência, que só aparece quando o prazo aperta. */}
       <CardTopo>
         <CardTitulo>{tarefa.titulo}</CardTitulo>

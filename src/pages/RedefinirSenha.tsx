@@ -25,7 +25,7 @@ import {
 } from "./Auth.styled";
 
 /** Espelha `TAMANHO_MINIMO_SENHA` do backend. Validar aqui também é só
- *  conveniência — quem manda é o servidor; isto evita a ida e volta. */
+ *  conveniência, quem manda é o servidor; isto evita a ida e volta. */
 const TAMANHO_MINIMO = 8;
 
 /**
@@ -33,7 +33,7 @@ const TAMANHO_MINIMO = 8;
  *
  * O token vem na query string do link do e-mail. Esta rota precisa estar
  * registrada como PÚBLICA no `App.tsx`: rota não declarada cai no catch-all,
- * que redireciona para `/projetos`, que exige login — e o link do e-mail nunca
+ * que redireciona para `/projetos`, que exige login, e o link do e-mail nunca
  * abriria para quem justamente não consegue entrar.
  */
 export function RedefinirSenha() {
@@ -76,7 +76,7 @@ export function RedefinirSenha() {
     }
   }
 
-  // Sem token não há o que fazer — mostrar o formulário só levaria a pessoa a
+  // Sem token não há o que fazer, mostrar o formulário só levaria a pessoa a
   // preencher duas senhas para receber erro no final.
   if (!token) {
     return (

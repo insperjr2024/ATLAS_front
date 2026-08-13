@@ -32,7 +32,7 @@ interface Props {
   }) => Promise<void>;
 }
 
-/** Os tipos que o banco aceita. "Aulas canceladas" não é um deles — vira
+/** Os tipos que o banco aceita. "Aulas canceladas" não é um deles, vira
  *  `recesso` com a descrição preservada, igual ao que a importação do PDF faz. */
 const TIPOS: { valor: TipoDiaNaoLetivo; rotulo: string }[] = [
   { valor: "feriado", rotulo: "Feriado" },
@@ -44,7 +44,7 @@ const TIPOS: { valor: TipoDiaNaoLetivo; rotulo: string }[] = [
  * Acrescentar um dia não útil sem passar pelo PDF.
  *
  * O calendário do Insper não cobre tudo: a diretoria precisa poder bloquear um
- * dia que só ela sabe — uma data institucional da Jr, um evento interno.
+ * dia que só ela sabe, uma data institucional da Jr, um evento interno.
  */
 export function AdicionarDiaModal({ nomeFrente, semestre, onCancelar, onSalvar }: Props) {
   const [data, setData] = useState("");
@@ -132,7 +132,7 @@ export function AdicionarDiaModal({ nomeFrente, semestre, onCancelar, onSalvar }
               <FieldInput
                 id="dia-descricao"
                 value={descricao}
-                placeholder="Aparece no calendário — ex.: Aulas canceladas"
+                placeholder="Aparece no calendário, ex.: Aulas canceladas"
                 onChange={(e) => setDescricao(e.target.value)}
               />
             </FieldGroup>

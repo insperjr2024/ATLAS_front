@@ -18,9 +18,9 @@ interface Props {
 }
 
 /**
- * Abrir uma gestão nova (§12).
+ * Abrir uma gestão nova.
  *
- * Sem campo de status: toda gestão nasce ativa — é o backend que arquiva a
+ * Sem campo de status: toda gestão nasce ativa, é o backend que arquiva a
  * anterior sozinho quando esta é criada, então não tem sentido perguntar.
  */
 export function NovoSemestreModal({ onCancelar, onSalvar }: Props) {

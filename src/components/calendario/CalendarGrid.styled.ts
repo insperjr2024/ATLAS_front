@@ -2,12 +2,12 @@
  * As primitivas da grade de calendário, compartilhadas pelo calendário geral
  * (`pages/Calendario.tsx`) e pelo cronograma pintado.
  *
- * Saíram de `Calendario.styled.ts`, que passou a re-exportá-las — por isso
+ * Saíram de `Calendario.styled.ts`, que passou a re-exportá-las, por isso
  * `Calendario.tsx` não precisou mudar uma linha. Código novo importa DAQUI
  * direto, nunca de `Calendario.styled`, senão a aba de cronograma arrasta a
  * cadeia inteira de modais de bancas junto.
  *
- * `EventPill` **não** veio: é a pílula de banca, não primitiva de grade — o
+ * `EventPill` **não** veio: é a pílula de banca, não primitiva de grade, o
  * cronograma pinta a célula, não empilha pílulas.
  */
 
@@ -43,7 +43,7 @@ export const WeekRow = styled.div`
 
 /**
  * `$compacto` existe para o cronograma, cujas células são pintadas e não
- * empilham pílulas — sem ele, um bloco de mês ocuparia meia tela. O default
+ * empilham pílulas, sem ele, um bloco de mês ocuparia meia tela. O default
  * mantém exatamente o comportamento antigo da tela de bancas.
  */
 export const DayCell = styled.div<{ $outside?: boolean; $today?: boolean; $compacto?: boolean }>`
@@ -57,7 +57,7 @@ export const DayCell = styled.div<{ $outside?: boolean; $today?: boolean; $compa
   gap: 0.25rem;
   overflow: hidden;
 
-  /* nth-child é índice de coluna, não dia da semana — continua correto com
+  /* nth-child é índice de coluna, não dia da semana, continua correto com
      qualquer início de semana. */
   &:nth-child(7n) {
     border-right: none;

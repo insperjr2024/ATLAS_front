@@ -41,7 +41,7 @@ export {
 } from "../Bancas.styled";
 
 /**
- * O `FormStack` só espaça os filhos DIRETOS do <form> — e num card eles são
+ * O `FormStack` só espaça os filhos DIRETOS do <form>, e num card eles são
  * o conteúdo e o rodapé. Este é o empilhamento dos campos lá dentro.
  */
 export const FormFields = styled.div`
@@ -50,14 +50,14 @@ export const FormFields = styled.div`
   gap: ${theme.spacing.lg};
 `;
 
-/** O toggle "Link" / "Anexar PDF" do campo de proposta — um ou outro. */
+/** O toggle "Link" / "Anexar PDF" do campo de proposta, um ou outro. */
 export const ModoPropostaRow = styled.div`
   display: flex;
   gap: ${theme.spacing.sm};
 `;
 
 /* ------------------------------------------------------------------ */
-/* Lista — os cards do §6.2                                            */
+/* Lista, os cards do                                             */
 /* ------------------------------------------------------------------ */
 
 export const CardGrid = styled.div`
@@ -120,7 +120,7 @@ export const FrenteTag = styled.span`
 `;
 
 /**
- * A pílula de status/etapa — mesma borda arredondada e tamanho de fonte da
+ * A pílula de status/etapa, mesma borda arredondada e tamanho de fonte da
  * `FrenteTag`, em QUALQUER lugar que mostre uma cor de status: card da lista
  * de projetos, cabeçalho de coluna do kanban (de projeto ou de tarefa),
  * timeline do histórico, seletor de etapa. Um formato só, pra cor de status
@@ -151,7 +151,7 @@ export const CardEquipe = styled.p`
   }
 `;
 
-/** O ícone antes de "Arquivado em ..." — em linha com o texto, não numa
+/** O ícone antes de "Arquivado em ...", em linha com o texto, não numa
  *  linha própria: o SVG do ícone é um elemento de bloco por padrão, e sem
  *  esse wrapper `inline-flex` ele empurrava o texto pra baixo dele. */
 export const ArquivadoEmLinha = styled.span`
@@ -160,7 +160,7 @@ export const ArquivadoEmLinha = styled.span`
   gap: 0.25rem;
 `;
 
-/** ⚠ kickoff pendente — o único alerta que o card carrega hoje. */
+/** kickoff pendente, o único alerta que o card carrega hoje. */
 export const CardAlerta = styled.p`
   display: flex;
   align-items: center;
@@ -258,7 +258,7 @@ export const FrenteFilterDivisor = styled.div`
   margin: 0.125rem 0;
 `;
 
-/** O rótulo de cada grupo dentro do dropdown de filtro — "Frentes", "Ordem",
+/** O rótulo de cada grupo dentro do dropdown de filtro, "Frentes", "Ordem",
  *  "Arquivados". */
 export const FrenteFilterSecao = styled.p`
   margin: 0;
@@ -270,7 +270,7 @@ export const FrenteFilterSecao = styled.p`
 `;
 
 /** Uma opção clicável dentro do dropdown que não é checkbox (ex.: a direção
- *  da ordenação) — mesma tipografia do `CheckboxLabel` ao lado, só sem o
+ *  da ordenação), mesma tipografia do `CheckboxLabel` ao lado, só sem o
  *  quadradinho. */
 export const FrenteFilterOpcao = styled.button`
   display: flex;
@@ -341,7 +341,7 @@ export const StatusRow = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
-/** O banner de kickoff pendente — some assim que a data é marcada. */
+/** O banner de kickoff pendente, some assim que a data é marcada. */
 export const AvisoBanner = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -439,14 +439,14 @@ export const DataLabel = styled.span`
 `;
 
 /**
- * O card de Datas em grade, não em linhas empilhadas — uma linha por campo
+ * O card de Datas em grade, não em linhas empilhadas, uma linha por campo
  * deixava letra minúscula boiando numa fileira inteira de espaço vazio à
  * direita. Aqui cada campo é uma célula (rótulo em cima, valor embaixo),
  * então o card usa a largura toda em vez de só a coluna da esquerda.
  */
 export const DatasGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
   gap: ${theme.spacing.lg} ${theme.spacing.xl};
 `;
 
@@ -466,7 +466,7 @@ export const DataItemLabel = styled.span`
 /**
  * Troca de etapa como lista, não como botõezinhos de avançar/voltar. A cor
  * mora só na `StatusPilula` (a MESMA pílula do card de Projetos, do kanban e
- * da timeline) — o botão e as linhas do menu em volta dela são neutros. Pintar
+ * da timeline), o botão e as linhas do menu em volta dela são neutros. Pintar
  * o CONTROLE inteiro da cor da etapa (fundo colorido de ponta a ponta) era o
  * que destoava do resto do site, onde a cor sempre fica presa numa pílula
  * pequena sobre uma superfície neutra, nunca vaza pro contêiner inteiro.
@@ -539,7 +539,7 @@ export const EdicaoBotoes = styled.div`
   margin-top: ${theme.spacing.sm};
 `;
 
-/** O nome do projeto é o título da página (`PageHeading`) — o lápis de
+/** O nome do projeto é o título da página (`PageHeading`), o lápis de
  *  editar mora ao lado dele, não escondido dentro do card de Descrição. */
 export const NomeEditavel = styled.div`
   display: flex;
@@ -617,7 +617,7 @@ export const PapelTag = styled.span<{ $coordenador?: boolean }>`
 `;
 
 /* ------------------------------------------------------------------ */
-/* Tabela de escopos vendidos (§6.4)                                   */
+/* Tabela de escopos vendidos                                   */
 /* ------------------------------------------------------------------ */
 
 export const ProgressoWrap = styled.div`
@@ -636,7 +636,7 @@ export const ProgressoTrilha = styled.div`
   overflow: hidden;
 `;
 
-/** Clampa em 100% na largura — mas o RÓTULO ao lado mostra o número real
+/** Clampa em 100% na largura, mas o RÓTULO ao lado mostra o número real
  *  (18/15), porque estourar o vendido é a informação, não um detalhe. */
 export const ProgressoBarra = styled.div<{ $percentual: number; $estourou?: boolean }>`
   height: 100%;
@@ -656,7 +656,7 @@ export const ProgressoTexto = styled.span<{ $estourou?: boolean }>`
     $estourou ? theme.fontWeight.semibold : theme.fontWeight.normal};
 `;
 
-/** 🔒 O cadeado da entrega travada — conveniência de UI; quem barra é o backend. */
+/** O cadeado da entrega travada, conveniência de UI; quem barra é o backend. */
 export const Cadeado = styled.span`
   display: inline-flex;
   align-items: center;
@@ -688,7 +688,7 @@ export const LegendaTabela = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** §7.4: a célula "Atraso" — o número e, embaixo, o porquê (ou o pedido dele). */
+/** a célula "Atraso", o número e, embaixo, o porquê (ou o pedido dele). */
 export const AtrasoCelula = styled.div`
   display: flex;
   flex-direction: column;
@@ -799,7 +799,7 @@ export const HistoricoResumoBarraFill = styled.div<{ $percent: number; $cor: str
 `;
 
 /**
- * Uma linha de filtros dentro do card "Filtros" do histórico — Etapa sozinha
+ * Uma linha de filtros dentro do card "Filtros" do histórico, Etapa sozinha
  * numa linha (pode ter muitas pílulas), Quem alterou/Período/De/Até juntos
  * na linha de baixo, separadas por `FrenteFilterDivisor`. Duas linhas com
  * propósito claro, em vez de tudo espremido junto sem agrupamento.
@@ -881,7 +881,7 @@ export const HistoricoAutorChip = styled.span`
   font-weight: ${theme.fontWeight.medium};
 `;
 
-/* Timeline vertical — uma linha contínua com um ponto por mudança,
+/* Timeline vertical, uma linha contínua com um ponto por mudança,
    conectados. O agrupamento por dia é um rótulo leve dentro da própria
    linha, não uma caixa separada. */
 
@@ -953,15 +953,15 @@ const realce = keyframes`
 `;
 
 /**
- * $destaque/$realcado (§7.4/§5.6): uma nota de atraso ou remarcação de
- * banca — em vez de uma transição de status — ganha uma faixa à esquerda pra
+ * $destaque/$realcado: uma nota de atraso ou remarcação de
+ * banca, em vez de uma transição de status, ganha uma faixa à esquerda pra
  * se destacar na timeline, e pulsa quando a pessoa chega aqui direto pelo
  * link "Justificar atraso" (#justificativa-N/#remarcacao-N).
  */
 export const HistoricoTimelineConteudo = styled.div<{
   $destaque?: boolean;
   $realcado?: boolean;
-  /** A cor da borda esquerda do cartão — neutra por padrão.
+  /** A cor da borda esquerda do cartão, neutra por padrão.
    *
    *  Era vermelha cravada, de quando só a remarcação usava o destaque. Com
    *  seis naturezas de evento na timeline, colorir a moldura enchia a coluna
@@ -975,7 +975,7 @@ export const HistoricoTimelineConteudo = styled.div<{
   padding-bottom: ${theme.spacing.lg};
   min-width: 0;
   /* Espaço pro scroll não esconder o item embaixo de nada quando a gente
-     pula direto pra ele vindo de "Justificar atraso" (§7.4/§5.6). */
+     pula direto pra ele vindo de "Justificar atraso". */
   scroll-margin-top: 2rem;
 
   ${({ $destaque, $corDestaque }) =>
@@ -1010,7 +1010,7 @@ export const HistoricoTimelineMeta = styled.div`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** §7.4 — a linha de nota de atraso ocupa a largura toda: é texto livre da
+/** , a linha de nota de atraso ocupa a largura toda: é texto livre da
  *  diretoria, não cabe ao lado de uma pílula de status como a transição. */
 export const HistoricoNotaLinha = styled.div`
   display: flex;
@@ -1025,7 +1025,7 @@ export const HistoricoNotaCabecalho = styled.div`
   gap: 0.5rem;
 `;
 
-/** Mesma proporção de `StatusPilula`/`FrenteTag` — antes era bem maior e mais
+/** Mesma proporção de `StatusPilula`/`FrenteTag`, antes era bem maior e mais
  *  pesada que as pílulas de etapa ao lado dela na timeline, duas linguagens
  *  visuais diferentes na mesma lista. */
 export const HistoricoNotaTag = styled.span`
@@ -1042,7 +1042,7 @@ export const HistoricoNotaTag = styled.span`
 
 /**
  * O contexto da nota (tipo do motivo + escopo), texto corrido separado por
- * "·" — não uma segunda pílula ao lado de `HistoricoNotaTag`. Duas caixas e
+ * "·", não uma segunda pílula ao lado de `HistoricoNotaTag`. Duas caixas e
  * um texto solto na mesma linha (o formato antigo) misturava linguagens
  * visuais diferentes pro mesmo tipo de informação; "Remarcação de Banca" já
  * mostrava o escopo assim, isto só alinha "Justificativa de Atraso" ao
@@ -1061,7 +1061,7 @@ export const HistoricoNotaTexto = styled.p`
   white-space: pre-wrap;
 `;
 
-/** Excluir uma nota (§7.4/§5.6) — não é edição de rotina, então fica discreto
+/** Excluir uma nota, não é edição de rotina, então fica discreto
  *  e vermelho, só pra quem tem a permissão (a mesma trava de quem registra). */
 export const HistoricoExcluirBtn = styled.button`
   align-self: flex-start;
@@ -1105,7 +1105,7 @@ export const HeaderAcoes = styled.div`
 `;
 
 /* ------------------------------------------------------------------ */
-/* Bancas por frente (§5.5 + §8)                                       */
+/* Bancas por frente                                       */
 /* ------------------------------------------------------------------ */
 
 /** Um bloco por frente que o projeto contempla. */
@@ -1150,7 +1150,7 @@ export const BancaLinha = styled.div`
 
 /** O nome do escopo, que ocupa a folga e empurra data e status para a direita.
  *
- * O `small` é o aviso de banca compartilhada — quando a mesma banca avalia
+ * O `small` é o aviso de banca compartilhada, quando a mesma banca avalia
  * mais de um escopo, cada linha diz com quem divide, senão a data repetida em
  * duas linhas pareceria erro de cadastro. */
 export const BancaEscopo = styled.span`
@@ -1222,7 +1222,7 @@ export const EscopoOpcao = styled.label<{ $bloqueado?: boolean }>`
 /**
  * A etiqueta de tipo das linhas do Histórico, com a cor passada por quem usa.
  *
- * `HistoricoNotaTag` existe desde antes, mas com o vermelho cravado — servia a
+ * `HistoricoNotaTag` existe desde antes, mas com o vermelho cravado, servia a
  * um tipo só (remarcação). Com seis fontes na timeline, a cor precisa dizer
  * de que natureza é o evento: pedido é neutro, aprovação é verde, recusa é
  * vermelha, anotação de reunião é azul. Mesma forma, cor por parâmetro.
@@ -1240,7 +1240,7 @@ export const HistoricoTipoTag = styled.span<{ $cor: string }>`
   font-weight: ${theme.fontWeight.medium};
 `;
 
-/** "aguardando a diretoria" — o estado de um pedido ainda sem resposta. */
+/** "aguardando a diretoria", o estado de um pedido ainda sem resposta. */
 export const HistoricoAguardando = styled.span`
   font-size: ${theme.fontSize.xs};
   font-style: italic;

@@ -42,15 +42,15 @@ const PAPEIS: { chave: PapelCarga; titulo: string }[] = [
 ];
 
 /**
- * A escala de carga por papel (§7.3).
+ * A escala de carga por papel.
  *
- * A diretoria descreve o que cada quantidade de projetos significa — "0 a 1
+ * A diretoria descreve o que cada quantidade de projetos significa, "0 a 1
  * disponível, 2 é o ideal, 3 ou mais é demanda alta". Não é um limite único: um
  * número só não distingue "está no ponto" de "passou do ponto", e o ponto de
  * saturação muda entre frentes e entre gestões.
  *
  * São sempre três faixas, e a tela só edita: nome, a partir de quantos projetos
- * e a cor. Sem criar nem excluir, a faixa mais alta existe por construção — é
+ * e a cor. Sem criar nem excluir, a faixa mais alta existe por construção, é
  * ela que alimenta o card de demanda alta do monitoramento, que assim nunca
  * fica vazio porque alguém apagou a faixa errada.
  */
@@ -133,7 +133,7 @@ function TabelaPapel({
     [situacoes],
   );
 
-  // A escala não precisa começar em zero — subir o mínimo da primeira faixa
+  // A escala não precisa começar em zero, subir o mínimo da primeira faixa
   // deixa os menos carregados sem rótulo, e eles aparecem com um travessão no
   // monitoramento. Isso não é óbvio olhando só a tabela.
   const comecaEm = ordenadas[0]?.min_projetos ?? 0;
@@ -169,7 +169,7 @@ function TabelaPapel({
                     }
                   }}
                 />
-                {/* Texto de apoio, não editável — só traduz o número acima
+                {/* Texto de apoio, não editável, só traduz o número acima
                     em "vale até onde": um "3" sozinho não diz se é "só 3" ou
                     "3 pra cima". Antes isso era uma coluna própria ("Faixa"),
                     que duplicava a mesma informação lado a lado com o campo

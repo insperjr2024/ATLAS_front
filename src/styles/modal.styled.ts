@@ -1,8 +1,8 @@
 /**
- * O chrome de modal compartilhado do app — overlay, caixa, cabeçalho, corpo e
+ * O chrome de modal compartilhado do app, overlay, caixa, cabeçalho, corpo e
  * rodapé.
  *
- * Saiu de `pages/Calendario.styled.ts`, que passou a re-exportá-lo — por isso
+ * Saiu de `pages/Calendario.styled.ts`, que passou a re-exportá-lo, por isso
  * os 11 arquivos que já importavam de lá não precisaram mudar uma linha. É o
  * mesmo movimento que `components/calendario/CalendarGrid.styled.ts` fez com
  * as primitivas de grade, e pelo mesmo motivo: código novo importa DAQUI, e

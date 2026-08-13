@@ -20,15 +20,15 @@ import {
 import { ItemLista, LinkProjeto, ListaSimples, Pilula } from "./Monitoramento.styled";
 
 /**
- * ⭐ A fila da diretoria — tudo que espera decisão dela, num lugar só.
+ * A fila da diretoria, tudo que espera decisão dela, num lugar só.
  *
  * O problema que esta aba resolve não é de dado, é de descoberta. As decisões
  * estavam espalhadas: o pedido de dias num card da Visão geral e a
  * justificativa de atraso dentro da aba Atrasos. Fila que ninguém sabe que
- * existe é fila parada — dois pedidos chegaram a ficar represados sem ninguém
+ * existe é fila parada, dois pedidos chegaram a ficar represados sem ninguém
  * notar.
  *
- * ⚠ **Nem toda ação restrita à diretoria é uma aprovação.** Criar formulário,
+ * **Nem toda ação restrita à diretoria é uma aprovação.** Criar formulário,
  * configurar coluna do kanban e excluir usuário também são só dela, e nenhuma
  * entra aqui: são coisas que ela FAZ quando quer, não coisas que esperam por
  * ela. O critério é ter alguém do outro lado bloqueado enquanto não houver
@@ -111,8 +111,8 @@ export function AprovacoesAba() {
           ) : (
             <>
               <EmptyText style={{ marginBottom: "0.75rem" }}>
-                §7.4: o alerta de atraso é automático, mas o motivo é você quem escreve — e é ele
-                que explica o vermelho para quem olha o portfólio depois.
+                O alerta de atraso é automático, mas o motivo é você quem escreve, e é ele que
+                explica o vermelho para quem olha o portfólio depois.
               </EmptyText>
               <ListaSimples>
                 {dados.atrasos_sem_justificativa.map((a) => (
@@ -134,85 +134,12 @@ export function AprovacoesAba() {
         </PageCardContent>
       </PageCard>
 
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>
-            Solicitações de entrada em projeto
-            {dados.solicitacoes_de_entrada.length > 0 &&
-              ` (${dados.solicitacoes_de_entrada.length})`}
-          </PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          {dados.solicitacoes_de_entrada.length === 0 ? (
-            <EmptyText>Ninguém esperando para entrar num projeto.</EmptyText>
-          ) : (
-            <>
-              <EmptyText style={{ marginBottom: "0.75rem" }}>
-                Quem pediu para entrar fica parado até alguém responder, e a vaga segue
-                aberta. Responder é em <strong>Vagas em projetos</strong>, onde dá para ver
-                a carga de quem pediu.
-              </EmptyText>
-              <ListaSimples>
-                {dados.solicitacoes_de_entrada.map((s) => (
-                  <ItemLista key={s.id}>
-                    <div>
-                      <LinkProjeto as={Link} to="/vagas">
-                        {s.usuario_nome ?? "Alguém"} → {s.projeto_nome}
-                      </LinkProjeto>
-                      <EmptyText>{s.justificativa}</EmptyText>
-                    </div>
-                    {/* A carga é o contexto da decisão: aceitar alguém que já
-                        está em quatro projetos é outra conversa. */}
-                    <Pilula $tom="neutro">
-                      {s.carga_do_solicitante}{" "}
-                      {s.carga_do_solicitante === 1 ? "projeto" : "projetos"}
-                    </Pilula>
-                  </ItemLista>
-                ))}
-              </ListaSimples>
-            </>
-          )}
-        </PageCardContent>
-      </PageCard>
-
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>
-            Bancas sem resultado
-            {dados.bancas_sem_resultado.length > 0 && ` (${dados.bancas_sem_resultado.length})`}
-          </PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          {dados.bancas_sem_resultado.length === 0 ? (
-            <EmptyText>Toda banca realizada já tem o veredito registrado.</EmptyText>
-          ) : (
-            <>
-              <EmptyText style={{ marginBottom: "0.75rem" }}>
-                A banca aconteceu e ninguém registrou se foi aprovada. O registro é na tela
-                de <strong>Bancas</strong>.
-              </EmptyText>
-              <ListaSimples>
-                {dados.bancas_sem_resultado.map((b) => (
-                  <ItemLista key={b.banca_id}>
-                    <div>
-                      <LinkProjeto as={Link} to="/bancas">
-                        {b.projeto_nome} — {b.escopo_nome}
-                      </LinkProjeto>
-                      <EmptyText>realizada em {formatarData(b.realizado_em)}</EmptyText>
-                    </div>
-                  </ItemLista>
-                ))}
-              </ListaSimples>
-            </>
-          )}
-        </PageCardContent>
-      </PageCard>
-
-      {/* ⚠ Havia aqui um card "Entregas sem classificação": as entregas
-          atrasadas ainda não marcadas como atraso interno ou por agenda do
-          cliente. Saiu em 2026-08-12 junto com o que lhe dava sentido — o
-          atraso de ENTREGA deixou de ser insight, e com ele a métrica que
-          separava os dois tipos. */}
+      {/* Havia aqui um terceiro card, "Entregas sem classificação": as
+          entregas atrasadas ainda não marcadas como atraso interno ou por
+          agenda do cliente. Saiu em 2026-08-12 junto com o que lhe dava
+          sentido, o atraso de ENTREGA deixou de ser insight, e com ele a
+          métrica que separava os dois tipos. O card seguia pedindo à diretoria
+          uma classificação que não mudava mais número nenhum. */}
     </PageStack>
   );
 }

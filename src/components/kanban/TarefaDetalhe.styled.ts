@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
-/** A linha de urgência no topo do detalhe — o mesmo glifo do card, agora com
+/** A linha de urgência no topo do detalhe, o mesmo glifo do card, agora com
  *  o texto por extenso ("vence em 2 dias"). */
 export const SinalLinha = styled.p<{ $cor: string }>`
   display: flex;

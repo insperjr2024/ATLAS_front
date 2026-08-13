@@ -11,7 +11,7 @@ export const Board = styled.div<{ $colunas: number }>`
   padding-bottom: ${theme.spacing.sm};
   align-items: start;
 
-  /* A barra padrão do SO (grossa, com setinha) destoa do resto da UI — aqui
+  /* A barra padrão do SO (grossa, com setinha) destoa do resto da UI, aqui
      fica fina e some quando não tem o quê rolar. Firefox usa as propriedades
      scrollbar-width/scrollbar-color; o resto, os pseudo-elementos
      ::-webkit-scrollbar. */
@@ -43,7 +43,7 @@ export const Coluna = styled.div<{ $sobre?: boolean; $cor?: TonsColuna }>`
   min-height: 8rem;
   padding: ${theme.spacing.sm};
   border-radius: ${theme.borderRadius.lg};
-  /* Ao arrastar por cima, a coluna acende na PRÓPRIA cor — assim o alvo do
+  /* Ao arrastar por cima, a coluna acende na PRÓPRIA cor, assim o alvo do
      drop diz para onde a tarefa está indo, não só que há um alvo. */
   border: 1px solid
     ${({ $sobre, $cor }) => ($sobre ? ($cor?.ponto ?? theme.colors.ring) : theme.colors.border)};
@@ -62,7 +62,7 @@ export const ColunaTitulo = styled.h3`
 `;
 
 /** O texto do rótulo dentro da pílula (`StatusPilula`, de `Projetos.styled`,
- *  usada em todo cabeçalho de coluna do board) — é ele que trunca com
+ *  usada em todo cabeçalho de coluna do board), é ele que trunca com
  *  reticências quando não cabe, não a pílula inteira nem o contador ao lado. */
 export const ColunaRotuloTexto = styled.span`
   overflow: hidden;
@@ -79,7 +79,7 @@ export const Ponto = styled.span<{ $cor: string }>`
   background: ${({ $cor }) => $cor};
 `;
 
-/** `flex-shrink: 0` — o número nunca perde espaço; quem trunca é o rótulo. */
+/** `flex-shrink: 0`, o número nunca perde espaço; quem trunca é o rótulo. */
 export const Contador = styled.span`
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
@@ -87,7 +87,7 @@ export const Contador = styled.span`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** A contagem de vencidas, separada — vermelho não pode virar cor de coluna. */
+/** A contagem de vencidas, separada, vermelho não pode virar cor de coluna. */
 export const ContadorVencidas = styled.span`
   margin-left: auto;
   font-size: ${theme.fontSize.xs};
@@ -108,7 +108,7 @@ export const Card = styled.div<{
   padding: ${theme.spacing.sm};
   border-radius: ${theme.borderRadius.md};
   /* A borda vermelha de VENCIDA vence a cor da coluna: é sinal de problema,
-     não de estado — precisa continuar aparecendo sobre qualquer tinta. */
+     não de estado, precisa continuar aparecendo sobre qualquer tinta. */
   border: 1px solid
     ${({ $vencida, $cor }) =>
       $vencida ? theme.colors.destructive : ($cor?.borda ?? theme.colors.border)};
@@ -125,7 +125,7 @@ export const Card = styled.div<{
     `}
 
   /* Card sem transição manual válida (ex.: Vendido) ou cujo destino é
-     ambíguo pra arrastar (Pausado — retoma pelo botão da página do
+     ambíguo pra arrastar (Pausado, retoma pelo botão da página do
      projeto): mesma cor de sempre, só sem convite a arrastar. */
   ${({ $bloqueada }) =>
     $bloqueada &&
@@ -172,7 +172,7 @@ export const BotaoExcluir = styled.button`
   }
 `;
 
-/** Kickoff pendente — o mesmo alerta do card em lista, só que aqui cabe só o
+/** Kickoff pendente, o mesmo alerta do card em lista, só que aqui cabe só o
  *  ícone: o card do kanban é compacto demais pro texto "Kickoff pendente". */
 export const AlertaKickoff = styled.span`
   display: inline-flex;
@@ -188,7 +188,7 @@ export const CardTitulo = styled.span`
 `;
 
 /**
- * O cliente — texto corrido, sempre em linha própria (nunca dividindo
+ * O cliente, texto corrido, sempre em linha própria (nunca dividindo
  * espaço com outra informação de largura variável: era isso que fazia o
  * mesmo card quebrar diferente dependendo da coluna). Trunca com
  * reticências se não couber; o nome completo fica no title (tooltip).
@@ -202,7 +202,7 @@ export const CardMeta = styled.div`
 `;
 
 /**
- * As frentes do projeto — pílulas, não texto corrido, pra não se confundir
+ * As frentes do projeto, pílulas, não texto corrido, pra não se confundir
  * visualmente com o cliente logo acima (mesma cor/tamanho de fonte, só a
  * posição os diferenciava, o que sumia quando um dos dois quebrava linha).
  */
@@ -227,8 +227,8 @@ export const CardFrenteTag = styled.span`
 `;
 
 /**
- * A data da próxima banca (§6.2), quando o projeto tem uma marcada. Sem
- * reticências aqui — cortar o texto escondia o horário, que é o dado que
+ * A data da próxima banca, quando o projeto tem uma marcada. Sem
+ * reticências aqui, cortar o texto escondia o horário, que é o dado que
  * essa linha existe pra mostrar. Deixa quebrar pra uma segunda linha se
  * precisar; o componente troca o espaço entre data e hora por um espaço
  * inquebrável, pra nunca cortar bem no meio do "hh:mm".
@@ -243,7 +243,7 @@ export const CardBanca = styled.div`
  * ⏰ O sinal de urgência no card.
  *
  * O card mostra só NOME e RESPONSÁVEL; a data fica no detalhe. Este glifo é
- * o único indício de prazo na face — some quando falta tempo (`normal`) e
+ * o único indício de prazo na face, some quando falta tempo (`normal`) e
  * fica mais forte conforme aperta.
  */
 export const SinalUrgencia = styled.span<{ $cor: string }>`
@@ -265,7 +265,7 @@ export const ColunaVazia = styled.p`
 `;
 
 /* ------------------------------------------------------------------ */
-/* Faixa da reunião semanal (§6.4)                                     */
+/* Faixa da reunião semanal                                     */
 /* ------------------------------------------------------------------ */
 
 export const FaixaSemana = styled.div`
@@ -336,7 +336,7 @@ export const SemanaRotulo = styled.span`
 `;
 
 /* ------------------------------------------------------------------ */
-/* "Sobre qual escopo foi?" — o que dá a largada na contagem (§5.4)     */
+/* "Sobre qual escopo foi?", o que dá a largada na contagem     */
 /* ------------------------------------------------------------------ */
 
 export const EscolhaEscopoPainel = styled.div`

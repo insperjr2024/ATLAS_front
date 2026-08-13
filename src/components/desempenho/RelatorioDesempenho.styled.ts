@@ -13,7 +13,7 @@ export const RelatorioTopoRow = styled.div`
 `;
 
 // Agrupa tudo que entra no PDF (cabeçalho, abas, notas, comentários) num único
-// nó — é o que a exportação (`exportarPDF`) fotografa. Precisa do próprio
+// nó, é o que a exportação (`exportarPDF`) fotografa. Precisa do próprio
 // flex+gap porque, sem isso, virar filho único do RelatorioStack colapsaria o
 // espaçamento entre as seções internas.
 export const RelatorioConteudo = styled.div`

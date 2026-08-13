@@ -34,14 +34,14 @@ const ROTULO_RESULTADO: Record<NonNullable<BancaDetalhes["resultado"]>, string> 
 /**
  * A ficha da banca, aberta clicando no marco do cronograma.
  *
- * ⭐ **Busca sozinha, e é de propósito.** O cronograma já carrega `escopo.banca`
- * (`BancaDoEscopo`), mas ali só há ids e datas — nome de coordenador, equipe,
+ * **Busca sozinha, e é de propósito.** O cronograma já carrega `escopo.banca`
+ * (`BancaDoEscopo`), mas ali só há ids e datas, nome de coordenador, equipe,
  * avaliadores e frentes não estão lá, e enfiá-los no `GET /cronograma` os
  * faria viajar em toda abertura da aba para servir a um clique que quase nunca
  * acontece. Uma chamada sob demanda paga só quem abre.
  *
  * O ✕ e o clique fora fecham; não há ação de escrita aqui. Editar e excluir
- * continuam na tela `/bancas`, que é onde a banca é gerida — esta ficha
+ * continuam na tela `/bancas`, que é onde a banca é gerida, esta ficha
  * responde "o que é esta banca?", que é a pergunta de quem está lendo o
  * cronograma.
  */
@@ -122,8 +122,8 @@ export function BancaDetalhesModal({
                 <DetailTerm>Status</DetailTerm>
                 <DetailValue>{ROTULO_STATUS[banca.status]}</DetailValue>
               </DetailRow>
-              {/* O resultado só existe depois da banca — e é ele que libera a
-                  entrega ao cliente (§5.5). Some enquanto não há, para não
+              {/* O resultado só existe depois da banca, e é ele que libera a
+                  entrega ao cliente. Some enquanto não há, para não
                   virar um "—" que parece reprovação. */}
               {banca.resultado && (
                 <DetailRow>

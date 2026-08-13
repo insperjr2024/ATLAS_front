@@ -1,7 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import type { Escopo } from "@/types/banca";
 
-/** `frenteId` filtra o catálogo pela frente — o §6.3 mostra só os escopos
+/** `frenteId` filtra o catálogo pela frente, o  mostra só os escopos
  *  das frentes marcadas no formulário. A rota já aceita o parâmetro. */
 export function getEscopos(token: string, frenteId?: number | null) {
   const query = frenteId ? `?frente_id=${frenteId}` : "";

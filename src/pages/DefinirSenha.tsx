@@ -24,15 +24,15 @@ import {
   LoginSuccessMessage,
 } from "./Auth.styled";
 
-/** Espelha `TAMANHO_MINIMO_SENHA` do backend — validar aqui evita a ida à rede. */
+/** Espelha `TAMANHO_MINIMO_SENHA` do backend, validar aqui evita a ida à rede. */
 const TAMANHO_MINIMO = 8;
 
 /**
- * ⭐ O primeiro acesso: quem entrou com a senha provisória do e-mail define a
+ * O primeiro acesso: quem entrou com a senha provisória do e-mail define a
  * sua antes de usar a plataforma.
  *
  * Irmã de `RedefinirSenha.tsx`, com uma diferença: lá o segredo é o token da
- * URL; aqui é a própria sessão — a pessoa já está logada. Por isso não há
+ * URL; aqui é a própria sessão, a pessoa já está logada. Por isso não há
  * "voltar para o login" nem link de fuga: sair daqui é definir a senha (ou
  * deslogar). O backend responde 403 em qualquer outra rota enquanto isso não
  * acontece, então um atalho na tela só levaria a uma tela vazia.
@@ -48,7 +48,7 @@ export function DefinirSenha() {
   const [pronto, setPronto] = useState(false);
   const [carregando, setCarregando] = useState(false);
 
-  // Quem já tem senha própria não tem o que fazer aqui — inclusive logo depois
+  // Quem já tem senha própria não tem o que fazer aqui, inclusive logo depois
   // de definir, quando o `recarregarUsuario` derruba o flag.
   if (usuario && !usuario.senha_provisoria) return <Navigate to="/projetos" replace />;
 

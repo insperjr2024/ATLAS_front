@@ -58,7 +58,7 @@ function corPorNota(nota: number): "danger" | "default" {
   return nota < 3 ? "danger" : "default";
 }
 
-/** Vermelho abaixo do esperado, âmbar no meio, verde acima — mesma leitura
+/** Vermelho abaixo do esperado, âmbar no meio, verde acima, mesma leitura
  *  rápida de "isso é bom ou ruim" da escala 1-5 do formulário de origem. */
 function corDaNota(nota: number): string {
   if (nota < 3) return theme.colors.destructive;
@@ -130,7 +130,7 @@ export function PainelAvaliadores() {
     [usuarios],
   );
 
-  // Só a(s) frente(s) que a PESSOA integra hoje (`usuario_frente`) — nunca a
+  // Só a(s) frente(s) que a PESSOA integra hoje (`usuario_frente`), nunca a
   // união das frentes dos projetos que ela avaliou/foi avaliada, que pode
   // juntar frentes de rodadas diferentes e não bate com "a pessoa está em
   // 1 ou 2 frentes, nunca mais".
@@ -150,7 +150,7 @@ export function PainelAvaliadores() {
   }
 
   // O resumo de contexto que aparece do lado do nome: a frente que a pessoa
-  // integra hoje e o semestre da graduação dela — atributos DA PESSOA, não
+  // integra hoje e o semestre da graduação dela, atributos DA PESSOA, não
   // da rodada de avaliação.
   function resumoContexto(pessoaId: number): string {
     const frentesPessoa = frentesDoUsuario(usuariosFrentes, frentes, pessoaId);
@@ -172,7 +172,7 @@ export function PainelAvaliadores() {
       grupos.set(a.avaliador_id, lista);
     }
     // O filtro de frente/semestre é sobre QUEM avaliou, não sobre a
-    // avaliação em si — aplicado depois de agrupar, senão um filtro
+    // avaliação em si, aplicado depois de agrupar, senão um filtro
     // removeria linhas individuais e deixaria o grupo com contagem errada.
     return Array.from(grupos.entries())
       .filter(([avaliadorId]) => {
