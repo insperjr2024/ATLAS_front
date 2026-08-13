@@ -134,7 +134,11 @@ export type TipoMarco =
   // aqui. Não são `cronograma_marco`, moram em `reuniao_semanal`, que é
   // quem dá a largada da contagem do escopo.
   | "reuniao_geral"
-  | "reuniao_inicial";
+  | "reuniao_inicial"
+  // ⭐ A PROMESSA ao cliente (`projeto.data_entrega_prevista_cliente`), não a
+  // entrega de um escopo. É do PROJETO, então só aparece na visão Geral —
+  // dentro de um escopo ela pareceria a data dele.
+  | "entrega_prevista_cliente";
 
 /**
  * Um vermelho só para todos os marcos.
@@ -165,4 +169,8 @@ export const ROTULOS_MARCO: Record<TipoMarco, string> = {
   // Curto de propósito: na visão de mês a célula não cabe "Reunião inicial",
   // e é a largada do escopo que interessa distinguir da reunião de rotina.
   reuniao_inicial: "Largada",
+  // "Prevista" e não "Entrega prevista": na visão de mês a célula não cabe o
+  // nome inteiro, e o título completo fica no `title` e no box das visões
+  // maiores.
+  entrega_prevista_cliente: "Prevista",
 };

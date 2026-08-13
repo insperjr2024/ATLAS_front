@@ -11,7 +11,10 @@ import {
 } from "@/styles/modal.styled";
 import { PageButton } from "@/styles/page.styled";
 import { formatarData } from "@/lib/projetos";
+import { solicitarExcecaoChoque } from "@/lib/bancas";
+import { useAuth } from "@/context/AuthContext";
 import {
+  AvisoBanner,
   EscopoOpcao,
   EscopoPicker,
   FieldGroup,
@@ -100,6 +103,7 @@ export function MarcarBancaModal({
    * significa: uma banca que cobre dois escopos precisa caber na janela dos
    * dois, e a composição exigida passa a somar as frentes dos dois.
    */
+  const { token } = useAuth();
   const [cobertos, setCobertos] = useState<number[]>(
     escoposDoProjeto.filter((e) => e.id !== escopoId && e.bancaId && e.bancaId === bancaAtualId)
       .map((e) => e.id),
@@ -110,6 +114,17 @@ export function MarcarBancaModal({
   const [horario, setHorario] = useState("14:00");
   const [erro, setErro] = useState("");
   const [enviando, setEnviando] = useState(false);
+  /**
+   * ⭐ Ligado quando o backend recusa por CHOQUE de horário (§8).
+   *
+   * ⚠ Reagir à recusa, e não antecipá-la: o front não tem a lista de bancas de
+   * todos os projetos — só o backend sabe se aquele horário está ocupado. Sem
+   * isto, a pessoa lia "a exceção é da diretoria" e não tinha o que fazer, que
+   * é exatamente o beco que este fluxo fecha.
+   */
+  const [choque, setChoque] = useState(false);
+  const [pedindo, setPedindo] = useState(false);
+  const [pedido, setPedido] = useState(false);
 
   const foraDaJanela = !!fimJanela && dia > fimJanela;
   const emCimaDaHora =
@@ -141,9 +156,46 @@ export function MarcarBancaModal({
         ...new Set([escopoId, ...cobertos]),
       ]);
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Não foi possível marcar a banca");
+      const mensagem = err instanceof Error ? err.message : "Não foi possível marcar a banca";
+      setErro(mensagem);
+      // A mensagem do backend é a única pista de QUAL regra barrou — não há
+      // código de erro por regra. Casar pelo texto é frágil de propósito: uma
+      // mudança de texto some com o botão, não abre um caminho errado.
+      setChoque(mensagem.includes("Já existe uma banca marcada para este horário"));
     } finally {
       setEnviando(false);
+    }
+  }
+
+  async function pedirExcecao() {
+    if (!token) return;
+    setPedindo(true);
+    setErro("");
+    try {
+      await solicitarExcecaoChoque(
+        {
+          projeto_escopo_id: escopoId,
+          // ⚠ **Exatamente a mesma conversão que a MARCAÇÃO usa**
+          // (`ProjetoCronograma.confirmarBanca`). A exceção é aprovada para um
+          // instante específico, e o backend casa pedido e marcação por
+          // `data_hora` EXATA: um formato diferente aqui e a exceção aprovada
+          // nunca destrava a marcação que ela deveria destravar.
+          //
+          // Era o que acontecia: este lado mandava a hora local crua e o outro
+          // mandava UTC. No Brasil (-03:00) são 3h de diferença — o pedido ia
+          // para a fila da diretoria apontando um horário em que não havia
+          // choque nenhum, e o botão que existe para destravar o beco não
+          // destravava nada.
+          data_hora_pretendida: new Date(`${dia}T${horario}:00`).toISOString(),
+          justificativa: justificativa.trim(),
+        },
+        token,
+      );
+      setPedido(true);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível enviar o pedido");
+    } finally {
+      setPedindo(false);
     }
   }
 
@@ -244,6 +296,32 @@ export function MarcarBancaModal({
           )}
 
           {erro && <FormErrorText>{erro}</FormErrorText>}
+
+          {/* A saída para o choque: pedir, sem sair do modal nem perder o que
+              já foi preenchido. A justificativa é a mesma do formulário — o
+              motivo de querer aquele horário é o que a diretoria vai ler. */}
+          {choque && !pedido && (
+            <FieldGroup>
+              <AvisoBanner>
+                Você pode pedir uma exceção à diretoria para marcar mesmo assim. Explique acima
+                por que este horário é necessário — é o que ela vai ler para decidir.
+              </AvisoBanner>
+              <PageButton
+                type="button"
+                $variant="outline"
+                disabled={pedindo || !justificativa.trim()}
+                onClick={pedirExcecao}
+              >
+                {pedindo ? "Enviando pedido..." : "Pedir exceção à diretoria"}
+              </PageButton>
+            </FieldGroup>
+          )}
+          {pedido && (
+            <AvisoBanner>
+              Pedido enviado. A diretoria decide na aba <strong>Monitoramento → Aprovações</strong>;
+              se liberar, volte aqui para marcar a banca neste horário.
+            </AvisoBanner>
+          )}
         </ModalBody>
 
         <ModalFooter>

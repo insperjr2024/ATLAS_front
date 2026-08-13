@@ -69,6 +69,8 @@ export interface CreateProjetoPayload {
   max_consultores: number;
   equipe: MembroEquipePayload[];
   dia_reuniao_padrao?: number | null;
+  /** A promessa ao cliente, registrada já na venda. */
+  data_entrega_prevista_cliente?: string | null;
   escopos?: EscopoVendidoPayload[];
 }
 

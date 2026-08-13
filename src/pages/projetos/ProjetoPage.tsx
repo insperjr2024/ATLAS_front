@@ -399,6 +399,10 @@ export function ProjetoPage() {
           Visão geral
         </TabLink>
         <TabLink to={`/projetos/${projeto.id}/cronograma`}>Cronograma</TabLink>
+        {/* Depois do Cronograma: é lá que a banca é marcada, e daqui se vê
+            como ela foi. Antes de Tarefas porque a banca é marco do projeto,
+            não rotina de execução. */}
+        <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
         <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
         <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
       </TabBar>

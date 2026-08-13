@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getAprovacoes, type Aprovacoes } from "@/lib/monitoramento";
+import { formatarData } from "@/lib/projetos";
+import { ExcecoesDeChoqueCard } from "./ExcecoesDeChoqueCard";
 import { PedidosDeDiasCard } from "./PedidosDeDiasCard";
 import {
   PageStack,
@@ -32,9 +34,17 @@ import { ItemLista, LinkProjeto, ListaSimples, Pilula } from "./Monitoramento.st
  * ela. O critério é ter alguém do outro lado bloqueado enquanto não houver
  * resposta.
  *
- * A fila de atrasos **não decide aqui**: ela leva ao lugar onde a decisão tem
- * contexto. Justificar um atraso sem ver os motivos é decidir no escuro. A aba
- * responde "o que falta?"; a tela do projeto responde "por quê?".
+ * ⭐ **As cinco filas aparecem sempre, mesmo vazias.** Uma tela que só surge
+ * quando há problema não ensina o que ela cobre — e era isso que acontecia
+ * quando tudo resolvido virava um único "Nada esperando por você".
+ *
+ * Três delas **não decidem aqui**: levam ao lugar onde a decisão tem
+ * contexto. Justificar um atraso sem ver os motivos, aceitar alguém sem ver a
+ * carga dele, ou dar veredito sem ver a banca é decidir no escuro. A aba
+ * responde "o que falta?"; a tela de destino responde "por quê?". Só o pedido
+ * de dias e a exceção de choque se decidem na própria lista, porque o motivo
+ * escrito (e, no choque, com qual banca ela conflita) é todo o contexto de que
+ * a decisão precisa.
  */
 export function AprovacoesAba() {
   const { token } = useAuth();
@@ -72,27 +82,20 @@ export function AprovacoesAba() {
 
   if (carregando || !dados) return <PageLoadingBlock />;
 
-  if (dados.total === 0) {
-    return (
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>Nada esperando por você</PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          <EmptyText>
-            Nenhum pedido de dias e nenhum atraso sem justificativa. Quando algo precisar da
-            sua decisão, aparece aqui.
-          </EmptyText>
-        </PageCardContent>
-      </PageCard>
-    );
-  }
-
+  // ⭐ **As quatro filas aparecem SEMPRE, mesmo vazias.**
+  //
+  // Antes, com tudo resolvido, a aba inteira era substituída por um card
+  // "Nada esperando por você". Isso escondia o que a tela cobre: quem abrisse
+  // num dia calmo não tinha como saber que ela também vigia solicitações de
+  // entrada ou bancas sem resultado. Fila que só existe quando há problema não
+  // ensina ninguém a confiar nela — e o vazio de cada card já diz "aqui está
+  // limpo" com mais precisão do que um vazio único dizia.
   return (
     <PageStack>
       {/* Decide na própria lista: o pedido traz o motivo escrito, que é todo o
           contexto de que a decisão precisa. */}
       <PedidosDeDiasCard onDecidiu={carregar} />
+      <ExcecoesDeChoqueCard onDecidiu={carregar} />
 
       <PageCard>
         <PageCardHeader>
