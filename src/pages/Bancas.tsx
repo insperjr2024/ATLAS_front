@@ -52,7 +52,14 @@ import {
   createSolicitacaoTroca,
   getSolicitacoesTroca,
 } from "@/lib/solicitacoes-troca";
-import { getProjetos, getEscoposProjeto, marcarBancaDoEscopo, paraDataUtc } from "@/lib/projetos";
+import {
+  formatarDataHora,
+  getProjetos,
+  getEscoposProjeto,
+  marcarBancaDoEscopo,
+  paraDataUtc,
+} from "@/lib/projetos";
+import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import type { EscopoVendido, ProjetoResumo } from "@/types/projeto";
 import type {
   Banca,
@@ -837,6 +844,27 @@ function SecaoBancas({
               const prazo = acao === "avaliar" ? contexto.prazosAvaliacao[banca.id] : undefined;
               const prazoExpirado = !!prazo?.prazoExpirado;
 
+              /**
+               * ⭐ Por que o botão está cinza — e, principalmente, **o que
+               * fazer agora**.
+               *
+               * O rótulo já dizia "Lotada" e "Prazo esgotado", que nomeiam o
+               * estado e deixam a pessoa exatamente onde ela estava: sem saber
+               * se é definitivo, se dá para contornar, ou com quem falar. As
+               * três partes de toda mensagem da plataforma são o que está
+               * bloqueado, por quê, e a saída.
+               */
+              const motivoBloqueio = lotada
+                ? `Esta banca já tem ${banca.vagas} avaliadores, que é o máximo. ` +
+                  "Peça troca a quem já está alocado, ou volte se alguém se desalocar."
+                : prazoExpirado
+                  ? "O prazo de 2 dias corridos para avaliar acabou" +
+                    (prazo?.prazoAvaliacao
+                      ? ` em ${formatarDataHora(prazo.prazoAvaliacao)}. `
+                      : ". ") +
+                    "A plataforma não aceita mais o envio — avise a diretoria se esta avaliação ainda precisa entrar."
+                  : null;
+
               // Qualquer clique dentro do rodapé de ações não deve também
               // disparar o clique do card inteiro (que abre "Ver mais").
               function pararPropagacao<T extends unknown[]>(fn?: (...args: T) => void) {
@@ -1003,22 +1031,24 @@ function SecaoBancas({
                     </BancaAcoesSecundarias>
 
                     {acao !== "nenhuma" && onAcao && (
-                      <PageButtonSm
-                        $variant={acao === "deslocar" ? "outline" : "primary"}
-                        type="button"
-                        disabled={lotada || prazoExpirado}
-                        onClick={pararPropagacao(() => onAcao(banca.id))}
-                      >
-                        {lotada
-                          ? "Lotada"
-                          : prazoExpirado
-                            ? "Prazo esgotado"
-                            : acao === "alocar"
-                              ? "Alocar-se"
-                              : acao === "deslocar"
-                                ? "Deslocar-se"
-                                : "Avaliar"}
-                      </PageButtonSm>
+                      <MotivoDesabilitado motivo={motivoBloqueio}>
+                        <PageButtonSm
+                          $variant={acao === "deslocar" ? "outline" : "primary"}
+                          type="button"
+                          disabled={lotada || prazoExpirado}
+                          onClick={pararPropagacao(() => onAcao(banca.id))}
+                        >
+                          {lotada
+                            ? "Lotada"
+                            : prazoExpirado
+                              ? "Prazo esgotado"
+                              : acao === "alocar"
+                                ? "Alocar-se"
+                                : acao === "deslocar"
+                                  ? "Deslocar-se"
+                                  : "Avaliar"}
+                        </PageButtonSm>
+                      </MotivoDesabilitado>
                     )}
                   </BancaCardFooter>
                 </BancaCard>
