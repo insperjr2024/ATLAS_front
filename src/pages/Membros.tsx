@@ -99,11 +99,11 @@ export function Membros() {
   const [filtroFrente, setFiltroFrente] = useState("");
 
   // `mostrarCarregando=false` é pra recarregar em silêncio, sem acionar o
-  // `if (carregando) return <PageLoadingBlock />` lá embaixo — esse early
+  // `if (carregando) return <PageLoadingBlock />` lá embaixo, esse early
   // return troca a PÁGINA INTEIRA pelo esqueleto de carregamento, o que
   // desmonta qualquer modal aberto por cima. "Adicionar membro" e "Reenviar
   // senha" recarregam a lista sem fechar o próprio modal (pra mostrar a
-  // senha emitida) — sem o flag, o modal sumia e voltava do zero (sem a
+  // senha emitida), sem o flag, o modal sumia e voltava do zero (sem a
   // senha) assim que o carregamento terminava.
   async function carregarMembros(mostrarCarregando = true) {
     if (!token) return;
@@ -174,7 +174,7 @@ export function Membros() {
             {membros.length} usuários cadastrados · {membrosAtivos} ativos
           </PageSubheading>
         </PageHeaderText>
-        {/* §10: ninguém se auto-registra — só a diretoria pré-cadastra. */}
+        {/* ninguém se auto-registra, só a diretoria pré-cadastra. */}
         {usuario?.posicao === "diretor" && (
           <HeaderActions>
             <PageButton $variant="outline" type="button" onClick={() => setTransferindo(true)}>
@@ -260,7 +260,7 @@ export function Membros() {
                       <TableCell>{frentes.length > 0 ? frentes.join(", ") : "—"}</TableCell>
                       <TableCell>{membro.semestre_graduacao ? `${membro.semestre_graduacao}º` : "—"}</TableCell>
                       <TableCell>
-                        {/* Os 3 estados do §10, não um booleano: ex-membro e
+                        {/* Os 3 estados, não um booleano: ex-membro e
                             desligado são situações diferentes. */}
                         <StatusBadge $ativo={membro.status === "ativo"}>
                           {ROTULO_STATUS_USUARIO[membro.status] ?? membro.status}
@@ -274,7 +274,7 @@ export function Membros() {
                         )}
                       </TableCell>
                       <ActionsCell>
-                        {/* 🔒 Reemitir derruba a senha da pessoa — por isso é
+                        {/* Reemitir derruba a senha da pessoa, por isso é
                             da diretoria, a mesma régua do cadastro. */}
                         {usuario?.posicao === "diretor" && membro.ativo && (
                           <PageButtonSm
@@ -327,7 +327,7 @@ export function Membros() {
           token={token}
           onClose={() => setCriandoMembro(false)}
           // Não fecha o modal: quem cadastrou precisa VER a senha provisória
-          // antes de sair da tela — ela não existe em mais lugar nenhum.
+          // antes de sair da tela, ela não existe em mais lugar nenhum.
           onCriado={() => carregarMembros(false)}
         />
       )}
@@ -358,10 +358,10 @@ export function Membros() {
 }
 
 /**
- * §10 — a virada de gestão. Antes disto a troca eram duas edições soltas
+ * , a virada de gestão. Antes disto a troca eram duas edições soltas
  * (promover uma, rebaixar a outra) e entre elas a plataforma podia ficar com
  * dois diretores ou com nenhum. Aqui é um passo só: o backend promove antes de
- * desligar, e quem sai vira ex-membro — o caso de "fim de gestão".
+ * desligar, e quem sai vira ex-membro, o caso de "fim de gestão".
  */
 function TransferirDiretoriaModal({
   membros,
@@ -442,7 +442,7 @@ function TransferirDiretoriaModal({
                 {escolhido ? (
                   <>
                     <strong>{escolhido.nome}</strong> passa a ser Diretor(a) e você vira{" "}
-                    <strong>Ex-membro</strong> — o fim de gestão. Você sai da plataforma
+                    <strong>Ex-membro</strong>, o fim de gestão. Você sai da plataforma
                     na hora, mas todo o seu histórico é preservado.
                   </>
                 ) : (
@@ -473,10 +473,10 @@ function TransferirDiretoriaModal({
 /* ------------------------------------------------------------------ */
 
 /**
- * ⭐ A senha de primeiro acesso, na tela de quem acabou de emiti-la.
+ * A senha de primeiro acesso, na tela de quem acabou de emiti-la.
  *
  * Ela aparece aqui porque **esta é a única vez que ela existe fora do
- * e-mail** — o banco só guarda o hash. Fechar esta tela sem anotá-la não é um
+ * e-mail**, o banco só guarda o hash. Fechar esta tela sem anotá-la não é um
  * problema quando o e-mail saiu; quando não saiu, é a diferença entre o membro
  * ter acesso ou não, e por isso o aviso muda de tom nos dois casos.
  */
@@ -507,13 +507,13 @@ function PainelSenhaProvisoria({
 
       {resultado.email_enviado ? (
         <EmptyText>
-          ✉ Enviada para <strong>{email}</strong>. No primeiro login o ATLAS obriga a pessoa a
-          escolher a senha dela — até lá, o resto da plataforma fica bloqueado para ela.
+          Enviada para <strong>{email}</strong>. No primeiro login o ATLAS obriga a pessoa a
+          escolher a senha dela, até lá, o resto da plataforma fica bloqueado para ela.
         </EmptyText>
       ) : (
         <FormErrorText>
           Não foi possível enviar o e-mail (SMTP fora do ar ou não configurado). O membro está
-          cadastrado — repasse a senha acima por outro canal, porque ela não aparece de novo.
+          cadastrado, repasse a senha acima por outro canal, porque ela não aparece de novo.
           Depois é só usar "Reenviar senha" nesta tela.
         </FormErrorText>
       )}
@@ -524,7 +524,7 @@ function PainelSenhaProvisoria({
 /**
  * Reemitir a senha de primeiro acesso.
  *
- * 🔒 O aviso antes de confirmar não é decoração: reenviar **derruba a senha
+ * O aviso antes de confirmar não é decoração: reenviar **derruba a senha
  * atual da pessoa**. Para quem ainda não fez o primeiro acesso isso não custa
  * nada; para quem já usa o ATLAS, é tirar o acesso até ela ler o e-mail.
  */
@@ -579,7 +579,7 @@ function ReenviarSenhaModal({
                   <>a anterior deixa de valer.</>
                 ) : (
                   <>
-                    <strong>a senha atual de {membro.nome} deixa de valer</strong> — ele(a) só
+                    <strong>a senha atual de {membro.nome} deixa de valer</strong>, ele(a) só
                     volta a entrar com a senha nova, e vai ter que escolher outra no primeiro
                     acesso.
                   </>
@@ -632,7 +632,7 @@ function NovoMembroModal({
   /** Preenchido depois do cadastro: a senha de primeiro acesso e se o e-mail saiu. */
   const [emitida, setEmitida] = useState<SenhaProvisoriaEmitida | null>(null);
 
-  // §3: o recorte de visão do gerente sai de `usuario_frente` — sem nenhuma
+  // o recorte de visão do gerente sai de `usuario_frente`, sem nenhuma
   // frente marcada ele entra na plataforma sem enxergar projeto nenhum. E só
   // UMA: `aplicar_recorte_visao` trava numa frente só, então mais de uma
   // vira ambiguidade sobre o que ele deveria enxergar (o backend também
@@ -642,7 +642,7 @@ function NovoMembroModal({
   function trocarPosicao(nova: Posicao) {
     setPosicao(nova);
     // Muda o que a frente SIGNIFICA (trava de acesso pro gerente vs. mero
-    // metadado de alocação pros outros) — a seleção anterior não deveria
+    // metadado de alocação pros outros), a seleção anterior não deveria
     // sobreviver a essa troca sem a pessoa confirmar de novo.
     setFrenteIds([]);
   }
@@ -658,7 +658,7 @@ function NovoMembroModal({
   async function handleCriar(e: React.FormEvent) {
     e.preventDefault();
     if (frenteObrigatoria && frenteIds.length === 0) {
-      setErro("Selecione a frente — é ela que define os projetos que o gerente enxerga.");
+      setErro("Selecione a frente, é ela que define os projetos que o gerente enxerga.");
       return;
     }
     setSalvando(true);
@@ -849,8 +849,8 @@ function MembroModal({
 
   const frentesMembro = frentesDoUsuario(contexto.usuariosFrentes, contexto.frentes, membro.id);
 
-  // §3: promover a gerente sem vincular frente deixa a conta sem enxergar
-  // nada. E só UMA — ver o comentário equivalente em `NovoMembroModal`.
+  // promover a gerente sem vincular frente deixa a conta sem enxergar
+  // nada. E só UMA, ver o comentário equivalente em `NovoMembroModal`.
   const frenteObrigatoria = posicao === "gerente";
 
   function trocarPosicao(nova: Posicao) {
@@ -869,7 +869,7 @@ function MembroModal({
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (frenteObrigatoria && frenteIds.length === 0) {
-      setErro("Selecione a frente — é ela que define os projetos que o gerente enxerga.");
+      setErro("Selecione a frente, é ela que define os projetos que o gerente enxerga.");
       return;
     }
     setSalvando(true);
@@ -881,7 +881,7 @@ function MembroModal({
           nome: nome.trim(),
           posicao,
           status,
-          // `ativo` é espelho de `status` (F2) — mandado junto para o front
+          // `ativo` é espelho de `status` (F2), mandado junto para o front
           // legado que ainda lê o booleano não divergir.
           ativo: status === "ativo",
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
@@ -973,7 +973,7 @@ function MembroModal({
             {confirmandoExclusao && (
               <ConfirmarModal
                 titulo="Apagar membro para sempre"
-                mensagem={`Apagar "${membro.nome}" para sempre? Tarefas, bancas coordenadas, avaliações, candidaturas e vínculos dela são todos apagados junto — inclusive registros que envolvem outras pessoas, como bancas que ela coordenou. Essa ação não pode ser desfeita.`}
+                mensagem={`Apagar "${membro.nome}" para sempre? Tarefas, bancas coordenadas, avaliações, candidaturas e vínculos dela são todos apagados junto, inclusive registros que envolvem outras pessoas, como bancas que ela coordenou. Essa ação não pode ser desfeita.`}
                 rotuloConfirmar="Apagar para sempre"
                 onCancelar={() => setConfirmandoExclusao(false)}
                 onConfirmar={confirmarExclusao}
@@ -998,8 +998,8 @@ function MembroModal({
                 </FieldGroup>
 
                 <FieldGroup>
-                  {/* §10: "na troca de gestão, muitos consultores viram
-                      coordenadores ou gerentes" — a promoção da virada é
+                  {/* "na troca de gestão, muitos consultores viram
+                      coordenadores ou gerentes", a promoção da virada é
                       feita por aqui. */}
                   <FieldLabel htmlFor="posicao-membro">Posição na plataforma</FieldLabel>
                   <FieldSelect
@@ -1065,7 +1065,7 @@ function MembroModal({
                     ))}
                   </FieldSelect>
                   <EmptyText style={{ fontSize: "0.7rem" }}>
-                    <strong>Ex-membro</strong>: saiu por vontade própria ou fim de gestão — perde o
+                    <strong>Ex-membro</strong>: saiu por vontade própria ou fim de gestão, perde o
                     acesso, mantém o histórico. <strong>Desligado</strong>: removido da plataforma.
                     Em ambos, a participação em projetos passados permanece íntegra.
                   </EmptyText>

@@ -80,7 +80,7 @@ interface PendenciasDoAvaliador {
   itens: DesempenhoPendencia[];
 }
 
-// Agrupa por AVALIADOR (quem falta preencher), não por par — um card por
+// Agrupa por AVALIADOR (quem falta preencher), não por par, um card por
 // pessoa com todo mundo que falta avaliar junto é o que dá pra escanear
 // rápido; uma linha por par vira uma parede de texto repetindo nomes.
 function agruparPendenciasPorAvaliador(pendencias: DesempenhoPendencia[]): PendenciasDoAvaliador[] {
@@ -151,7 +151,7 @@ export function PainelLotes() {
   // Um projeto conta como "finalizado" pra esta tela se: (a) já está
   // marcado como finalizado no sistema de bancas, ou (b) já foi coberto por
   // um lote de finalização que fechou. Nos dois casos ele continua
-  // escolhível manualmente — só não vem pré-marcado numa periódica nova.
+  // escolhível manualmente, só não vem pré-marcado numa periódica nova.
   const projetosFinalizados = useMemo(() => {
     const finalizados = new Set<number>();
     for (const p of projetos) {
@@ -180,7 +180,7 @@ export function PainelLotes() {
     // Começa vazio nos dois tipos. Antes a periódica vinha com TODOS os
     // projetos marcados, e a tela abria como um paredão vermelho onde não se
     // distinguia o que estava escolhido do que era só o padrão. O atalho de
-    // marcar todos continua existindo — agora como botão, escolha explícita.
+    // marcar todos continua existindo, agora como botão, escolha explícita.
     setProjetoIds([]);
   }
 
@@ -220,7 +220,7 @@ export function PainelLotes() {
     if (!token) return;
     const atualizado = await abrirLote(loteId, token);
     setLotes((atual) => atual.map((l) => (l.id === loteId ? atualizado : l)));
-    // Reabriu: pendências deixam de fazer sentido pra este lote — some o botão,
+    // Reabriu: pendências deixam de fazer sentido pra este lote, some o botão,
     // então fecha o painel se estivesse aberto.
     setPendenciasLoteId((atual) => (atual === loteId ? null : atual));
   }
@@ -454,7 +454,7 @@ export function PainelLotes() {
                         </PageButtonSm>
                       )}
                       {/* Só faz sentido cobrar "quem não preencheu" depois que o
-                          prazo fechou — com o lote aberto, todo mundo que ainda
+                          prazo fechou, com o lote aberto, todo mundo que ainda
                           não respondeu é só gente que ainda tem tempo. */}
                       {!lote.aberto && (
                         <PageButtonSm type="button" onClick={() => handleVerPendencias(lote.id)}>

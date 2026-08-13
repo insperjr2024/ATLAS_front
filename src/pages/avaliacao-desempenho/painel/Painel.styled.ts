@@ -9,7 +9,7 @@ export const FiltrosRow = styled.div`
   gap: ${theme.spacing.sm};
   margin-bottom: ${theme.spacing.md};
 
-  /* Sem isso, cada select estica pra ocupar a largura toda do card — bonito
+  /* Sem isso, cada select estica pra ocupar a largura toda do card, bonito
      num formulário de 1 campo, ruim numa fileira de 3 filtros lado a lado. */
   & > * {
     flex: 0 1 12rem;
@@ -83,7 +83,7 @@ export const PessoaResumo = styled.span`
   font-weight: ${theme.fontWeight.normal};
 `;
 
-/** Frente(s) e semestre da pessoa — vermelho claro de propósito: é contexto
+/** Frente(s) e semestre da pessoa, vermelho claro de propósito: é contexto
  *  pra ler o nome, não um alerta nem um dado igual aos outros da linha. */
 export const PessoaContexto = styled.span`
   font-size: ${theme.fontSize.xs};
@@ -114,7 +114,7 @@ export const SubItemMeta = styled.span`
 `;
 
 // "Quem não preencheu": um card por avaliador (não uma linha por par), com
-// todo mundo que falta avaliar reunido numa frase só — escaneia muito mais
+// todo mundo que falta avaliar reunido numa frase só, escaneia muito mais
 // rápido que uma lista plana de "Fulano → Beltrano" repetindo o mesmo nome.
 export const PendenciaCard = styled.div`
   display: flex;
@@ -165,7 +165,7 @@ export const AvaliacaoDetalheBlock = styled.div`
   box-shadow: ${theme.shadows.sm};
 `;
 
-/** A nota geral (`corDaNota`) puxa a cor da borda inteira — é a primeira
+/** A nota geral (`corDaNota`) puxa a cor da borda inteira, é a primeira
  *  coisa que quem está lendo precisa saber antes de entrar nos critérios. */
 export const DetalheNotaGeralDestaque = styled.div<{ $cor: string }>`
   display: flex;
@@ -392,8 +392,8 @@ export const SeletorContagem = styled.span`
 /**
  * Cada mentor vira um cartão com os seus mentorados pendurados.
  *
- * 📐 Antes era um `h4` com linhas soltas embaixo, e lia como título e
- * subtítulo — nada dizia que uma pessoa orienta a outra. Agora as iniciais e
+ * Antes era um `h4` com linhas soltas embaixo, e lia como título e
+ * subtítulo, nada dizia que uma pessoa orienta a outra. Agora as iniciais e
  * o fio à esquerda dos mentorados desenham a relação.
  */
 export const MentoriaGrupo = styled.div`
@@ -514,7 +514,7 @@ export const SecaoEditorBlock = styled.div`
   background: ${theme.colors.card};
 `;
 
-/** Só os campos DA SEÇÃO (título + descrição) — separado da lista de
+/** Só os campos DA SEÇÃO (título + descrição), separado da lista de
  *  critérios por `CriteriosLista` logo abaixo, pra não virar uma pilha só
  *  de campo atrás de campo sem dizer o que é o quê. */
 export const SecaoCamposProprios = styled.div`
@@ -538,7 +538,7 @@ export const CriterioEditorRow = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
-/** O rótulo do critério é o campo mais importante da linha — sem largura
+/** O rótulo do critério é o campo mais importante da linha, sem largura
  *  mínima própria, ele encolhia até truncar o texto ao dividir espaço com o
  *  select de tipo e o botão de remover. */
 export const CriterioLabelInput = styled(FieldInput)`
@@ -546,7 +546,7 @@ export const CriterioLabelInput = styled(FieldInput)`
   min-width: 10rem;
 `;
 
-/** Um critério é um card À PARTE dentro da seção — fundo próprio, não só
+/** Um critério é um card À PARTE dentro da seção, fundo próprio, não só
  *  uma linha separada por borda (que sumia visualmente entre tantos campos
  *  parecidos). É isso que faz "onde começa o critério 2" ficar óbvio. */
 export const CriterioEditorBlock = styled.div`

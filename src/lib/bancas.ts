@@ -14,15 +14,15 @@ import type {
 } from "@/types/banca";
 
 /**
- * Marca que a banca ACONTECEU — o passo que separa "a data passou" de "foi
- * feita". Sem ele a banca fica `atrasada` para sempre e o §7.4 conta isso
+ * Marca que a banca ACONTECEU, o passo que separa "a data passou" de "foi
+ * feita". Sem ele a banca fica `atrasada` para sempre e o  conta isso
  * como atraso do projeto.
  *
  * `presentes` é a lista de quem compareceu; o backend confirma essas
  * candidaturas e desmarca o resto.
  *
- * `forcar` registra mesmo abaixo do mínimo de alocados — o backend só aceita
- * de diretor (§8: a exceção de composição é da diretoria).
+ * `forcar` registra mesmo abaixo do mínimo de alocados, o backend só aceita
+ * de diretor (a exceção de composição é da diretoria).
  */
 export function realizarBanca(
   bancaId: number,
@@ -39,8 +39,8 @@ export function realizarBanca(
 /**
  * Aprovada ou não aprovada.
  *
- * 🔒 É este resultado que libera a entrega ao cliente (§5.5). Enquanto ele não
- * existe, o escopo não pode ser entregue — a trava vive no backend.
+ * É este resultado que libera a entrega ao cliente. Enquanto ele não
+ * existe, o escopo não pode ser entregue, a trava vive no backend.
  */
 export function registrarResultado(
   bancaId: number,
@@ -56,8 +56,8 @@ export function registrarResultado(
 
 
 /**
- * O relato do coordenador do projeto sobre a banca — ele não é avaliador
- * dela (ver §8: "ninguém avalia o próprio grupo"), então isto substitui o
+ * O relato do coordenador do projeto sobre a banca, ele não é avaliador
+ * dela (ver "ninguém avalia o próprio grupo"), então isto substitui o
  * formulário de avaliação/notas pra ele, não se soma a ele. Só aceito depois
  * de `realizado_em` e só pelo próprio `banca.coordenador_id` (o backend
  * confere os dois).
@@ -71,7 +71,7 @@ export function registrarDescricaoCoordenador(bancaId: number, descricao: string
 }
 
 /**
- * A escalação automática do §8: uma semana antes, preenche as bancas que ainda
+ * A escalação automática do uma semana antes, preenche as bancas que ainda
  * estão sem gente, por rodízio e priorizando a mesma frente.
  */
 export interface ResultadoPush {
@@ -87,8 +87,8 @@ export function pushAlocacao(token: string) {
 }
 
 /**
- * Aloca OUTRA pessoa numa banca. Só a diretoria — escalar alguém mexe na
- * agenda dele sem que tenha pedido (§8).
+ * Aloca OUTRA pessoa numa banca. Só a diretoria, escalar alguém mexe na
+ * agenda dele sem que tenha pedido.
  */
 export function alocarUsuario(bancaId: number, usuarioId: number, token: string) {
   return apiFetch("/candidaturas", {
@@ -103,9 +103,9 @@ export function getBancas(token: string) {
 }
 
 /**
- * A ficha da banca com os NOMES já resolvidos — uma chamada só.
+ * A ficha da banca com os NOMES já resolvidos, uma chamada só.
  *
- * ⚠ Não confundir com `getBancas()` + os cruzamentos de `lib/nucleo.ts`, que é
+ * Não confundir com `getBancas()` + os cruzamentos de `lib/nucleo.ts`, que é
  * como a tela `/bancas` monta a mesma informação. Lá o custo já foi pago (ela
  * carrega usuários, frentes, candidaturas e equipes para desenhar os cards);
  * em qualquer outra tela, puxar cinco listagens inteiras para escrever sete
@@ -163,7 +163,7 @@ export interface CreateBancaPayload {
   data_hora: string;
   consultor_ids: number[];
   frente_ids: number[];
-  /** Só a diretoria manda isto — ver `require_diretor` no backend. */
+  /** Só a diretoria manda isto, ver `require_diretor` no backend. */
   piso_minimo_override?: number | null;
 }
 
@@ -274,7 +274,7 @@ export const ROTULO_STATUS_BANCA: Record<StatusBanca, string> = {
   atrasada: "Atrasada",
 };
 
-/** Vermelho só para `atrasada` — é o estado que precisa gritar na tela. */
+/** Vermelho só para `atrasada`, é o estado que precisa gritar na tela. */
 export function tomDoStatusBanca(status: StatusBanca): "default" | "success" | "muted" | "danger" {
   if (status === "atrasada") return "danger";
   if (status === "realizada") return "success";

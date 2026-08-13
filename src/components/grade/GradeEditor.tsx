@@ -18,17 +18,17 @@ import {
 
 interface Props {
   faixasDisponiveis: FaixaDisponivel[];
-  /** O que está gravado hoje — é a partir daqui que se sabe o que mudou. */
+  /** O que está gravado hoje, é a partir daqui que se sabe o que mudou. */
   salvas: FaixaGrade[];
   onSalvar: (faixas: FaixaGrade[]) => Promise<void>;
 }
 
 /**
- * O quadro da grade de aulas (§11).
+ * O quadro da grade de aulas.
  *
- * 📐 Marca ocupado, e só. Não guarda nome de matéria: o que a plataforma
+ * Marca ocupado, e só. Não guarda nome de matéria: o que a plataforma
  * precisa saber é quando a pessoa NÃO pode ser escalada, e nome de disciplina
- * não muda essa resposta — só daria trabalho de digitar em 10 células.
+ * não muda essa resposta, só daria trabalho de digitar em 10 células.
  *
  * O estado vive aqui e é comparado com `salvas` para saber se há mudança
  * pendente. Gravar é explícito: clique errado no quadro não vira escrita no

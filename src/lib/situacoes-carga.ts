@@ -1,11 +1,11 @@
 import { apiFetch } from "@/lib/api";
 
-/* A escala de carga da aba de Alocação (§7.3), definida pela diretoria.
+/* A escala de carga da aba de Alocação, definida pela diretoria.
  * Espelha `use_cases/situacao_carga/`.
  *
  * São sempre TRÊS faixas por papel: só existe editar, não criar nem excluir.
  * É o que garante que o card de demanda alta nunca fique vazio por
- * configuração — a faixa mais alta existe por construção. */
+ * configuração, a faixa mais alta existe por construção. */
 
 export type PapelCarga = "coordenador" | "consultor";
 /** Escolha fechada, não cor livre: a rampa do monitoramento carrega
@@ -18,7 +18,7 @@ export interface SituacaoCarga {
   papel: PapelCarga;
   nome: string;
   /** A partir de quantos projetos esta situação vale. Ela cobre até o mínimo
-   *  da próxima — por isso não existe campo de máximo, e por isso não há como
+   *  da próxima, por isso não existe campo de máximo, e por isso não há como
    *  configurar faixa com buraco ou sobreposta. */
   min_projetos: number;
   tom: TomSituacao;

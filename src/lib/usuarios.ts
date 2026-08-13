@@ -8,11 +8,11 @@ export function getUsuarios(token: string) {
 export interface UpdateUsuarioPayload {
   nome?: string;
   email_insper?: string;
-  /** §10: a promoção da virada de gestão — consultor vira coordenador. */
+  /** a promoção da virada de gestão, consultor vira coordenador. */
   posicao?: Posicao;
   /**
-   * §10: sair por vontade própria (`ex_membro`) é diferente de ser desligado.
-   * Em ambos os casos o histórico de participação em projetos permanece — é
+   * sair por vontade própria (`ex_membro`) é diferente de ser desligado.
+   * Em ambos os casos o histórico de participação em projetos permanece, é
    * por isso que `projeto_membro` fecha com `saiu_em` em vez de apagar linha.
    */
   status?: StatusUsuario;
@@ -29,7 +29,7 @@ export function updateUsuario(usuarioId: number, dados: UpdateUsuarioPayload, to
   });
 }
 
-/** Sem volta — o backend só aceita se o usuário já estiver desligado. */
+/** Sem volta, o backend só aceita se o usuário já estiver desligado. */
 export function deletarUsuarioPermanente(usuarioId: number, token: string) {
   return apiFetch<{ nome: string }>(`/usuarios/${usuarioId}/permanente`, {
     method: "DELETE",
@@ -45,10 +45,10 @@ export interface RegistrarUsuarioPayload {
 }
 
 /**
- * ⭐ O que volta ao cadastrar (e ao reenviar): a senha de primeiro acesso EM
+ * O que volta ao cadastrar (e ao reenviar): a senha de primeiro acesso EM
  * CLARO e se o e-mail saiu.
  *
- * Esta é a única vez que essa senha existe fora do e-mail — o banco só guarda
+ * Esta é a única vez que essa senha existe fora do e-mail, o banco só guarda
  * o hash. Se `email_enviado` for `false` (SMTP fora do ar ou não configurado),
  * a tela precisa mostrá-la para quem cadastrou repassar; e quem fechar a tela
  * sem anotar não a recupera, só reemite.
@@ -64,7 +64,7 @@ export interface TransferirDiretoriaPayload {
 }
 
 /**
- * §10 — a passagem de bastão da virada de gestão, num passo só. O backend
+ * A passagem de bastão da virada de gestão, num passo só. O backend
  * promove antes de desligar, para nunca existir um instante sem diretoria, e
  * quem sai vira ex-membro (o caso de "fim de gestão").
  */
@@ -76,7 +76,7 @@ export function transferirDiretoria(dados: TransferirDiretoriaPayload, token: st
 }
 
 /**
- * §10: ninguém se auto-registra — só a diretoria pré-cadastra um membro.
+ * ninguém se auto-registra, só a diretoria pré-cadastra um membro.
  *
  * Sem campo de senha: quem cadastra não escolhe a senha de ninguém. O backend
  * sorteia uma provisória, manda por e-mail e devolve aqui.
@@ -90,10 +90,10 @@ export function registrarUsuario(dados: RegistrarUsuarioPayload, token: string) 
 }
 
 /**
- * Reemite a senha de primeiro acesso — e-mail perdido, caixa cheia, ou membro
+ * Reemite a senha de primeiro acesso, e-mail perdido, caixa cheia, ou membro
  * trancado para fora.
  *
- * 🔒 Só diretoria, e **derruba a senha atual da pessoa**: é o caminho de
+ * Só diretoria, e **derruba a senha atual da pessoa**: é o caminho de
  * devolver acesso, não um "reenviar e-mail" inofensivo.
  */
 export function reenviarSenhaProvisoria(usuarioId: number, token: string) {

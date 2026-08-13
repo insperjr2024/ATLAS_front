@@ -29,7 +29,7 @@ export function createTarefa(projetoId: number, dados: CreateTarefaPayload, toke
   });
 }
 
-/** Move (arrastar) e edita — a mesma rota. */
+/** Move (arrastar) e edita, a mesma rota. */
 export function updateTarefa(
   tarefaId: number,
   dados: Partial<CreateTarefaPayload>,
@@ -71,12 +71,12 @@ export function deleteComentario(comentarioId: number, token: string) {
 /* ------------------------------------------------------------------ */
 
 /**
- * ✏️ Editar o CONTEÚDO da tarefa (título, responsável, prazo) é da diretoria
+ * Editar o CONTEÚDO da tarefa (título, responsável, prazo) é da diretoria
  * e de quem criou.
  *
- * ⚠ Mover no kanban NÃO passa por aqui: o §3 dá isso aos quatro perfis, e
+ * Mover no kanban NÃO passa por aqui: o  dá isso aos quatro perfis, e
  * travar o arrasto quebraria o board como ferramenta de equipe. O backend
- * aplica exatamente a mesma separação — aqui é só para a tela não oferecer
+ * aplica exatamente a mesma separação, aqui é só para a tela não oferecer
  * um botão que vai voltar 403.
  */
 export function podeEditarTarefa(
@@ -87,7 +87,7 @@ export function podeEditarTarefa(
   return usuario.posicao === "diretor" || tarefa.criado_por === usuario.id;
 }
 
-/** O símbolo e a cor de cada nível — glifo junto da cor, nunca cor sozinha. */
+/** O símbolo e a cor de cada nível, glifo junto da cor, nunca cor sozinha. */
 export const SINAL_URGENCIA: Record<
   Urgencia,
   { glifo: string; cor: string; rotulo: (dias: number | null) => string } | null
@@ -117,15 +117,15 @@ export function getReunioes(projetoId: number, token: string) {
 }
 
 /**
- * ⭐ `escopoId` decide o TIPO da reunião, e as duas são marcadas no calendário
- * do cronograma (§12):
+ * `escopoId` decide o TIPO da reunião, e as duas são marcadas no calendário
+ * do cronograma:
  *
  * - preenchido → **reunião inicial**, que abre a janela daquele escopo e faz a
  *   contagem correr;
- * - vazio → **reunião geral** do projeto, que conta para o §7.2 ("projeto sem
+ * - vazio → **reunião geral** do projeto, que conta para o  ("projeto sem
  *   reunião na semana") mas não mexe em contagem nenhuma.
  *
- * As duas cabem no mesmo dia — o backend só recusa duas do mesmo tipo.
+ * As duas cabem no mesmo dia, o backend só recusa duas do mesmo tipo.
  */
 export function createReuniao(
   projetoId: number,

@@ -190,7 +190,7 @@ export function PainelFormularios() {
       </PageHeader>
 
       {/* Esta página fica fora do shell de abas do painel (rota irmã, só
-          diretor — §4.2), então sem isso as outras abas do painel de AVD
+          diretor, ), então sem isso as outras abas do painel de AVD
           somem ao entrar aqui. Repete a mesma TabBar de `PainelDesempenho`. */}
       <TabBar>
         <TabLink to="/avaliacao-desempenho/painel/avaliadores">Avaliadores</TabLink>
@@ -292,7 +292,7 @@ export function PainelFormularios() {
                             </PageButtonSm>
                           </CriterioEditorRow>
                           <FieldTextarea
-                            placeholder="Descrição do critério — o texto que a pessoa vê ao responder (opcional)"
+                            placeholder="Descrição do critério, o texto que a pessoa vê ao responder (opcional)"
                             value={criterio.descricao}
                             onChange={(e) => atualizarCriterio(secaoIndex, criterioIndex, "descricao", e.target.value)}
                           />

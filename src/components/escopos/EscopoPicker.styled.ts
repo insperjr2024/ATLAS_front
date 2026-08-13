@@ -19,7 +19,7 @@ export const EscopoLinha = styled.div`
   }
 `;
 
-/** As duas setinhas empilhadas — reordena a lista antes de criar o projeto,
+/** As duas setinhas empilhadas, reordena a lista antes de criar o projeto,
  *  não depois: mudar a ordem de escopo já salvo é outra tela, outro botão. */
 export const MoverBotoes = styled.div`
   display: flex;

@@ -2,7 +2,7 @@ import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
 /** O topo do card de Cadastro: avatar + nome + posição, como cabeçalho de
- *  perfil de verdade — em vez de o nome só aparecer perdido dentro da
+ *  perfil de verdade, em vez de o nome só aparecer perdido dentro da
  *  mesma grade rótulo/valor que e-mail e cargo. */
 export const PerfilCabecalho = styled.div`
   display: flex;
@@ -13,7 +13,7 @@ export const PerfilCabecalho = styled.div`
   border-bottom: 1px solid ${theme.colors.border};
 `;
 
-/** Sem foto ainda — as iniciais em círculo já dão o "isto é uma pessoa" que
+/** Sem foto ainda, as iniciais em círculo já dão o "isto é uma pessoa" que
  *  a lista de dados sozinha não dava, e deixam o lugar reservado pronto pro
  *  dia em que upload de foto entrar. */
 export const Avatar = styled.div`
@@ -74,7 +74,7 @@ export const DadoValor = styled.dd`
   overflow-wrap: anywhere;
 `;
 
-/** Explicação curta acima do quadro — o membro precisa saber para que serve
+/** Explicação curta acima do quadro, o membro precisa saber para que serve
  *  marcar isso, senão o campo fica vazio para sempre. */
 export const Explicacao = styled.p`
   margin: 0 0 ${theme.spacing.md};

@@ -12,7 +12,7 @@ import {
 } from "./NotaButtons.styled";
 
 // Nota de desempenho é discreta (1 a 5, de 1 em 1) e a interação real no
-// protótipo era botões clicáveis lado a lado — diferente do `NotaSlider`
+// protótipo era botões clicáveis lado a lado, diferente do `NotaSlider`
 // (contínuo, 0-5 de 0,5 em 0,5, usado só na avaliação de banca).
 const NOTAS = [1, 2, 3, 4, 5] as const;
 
@@ -24,7 +24,7 @@ interface NotaButtonsProps {
   onChange?: (value: number) => void;
   disabled?: boolean;
   /** Quando o critério é o único da seção e repete o título dela (comum no
-   * formulário de coordenador), o rótulo vira redundante — some da tela mas
+   * formulário de coordenador), o rótulo vira redundante, some da tela mas
    * continua no DOM pra acessibilidade (aria-label/htmlFor). */
   esconderLabel?: boolean;
 }

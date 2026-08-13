@@ -13,7 +13,7 @@ export {
 /** Máximo de linhas visíveis em listas/tabelas antes de ativar scroll. */
 export const LIST_MAX_VISIVEIS = 4;
 
-/** Bloco de texto livre (relato, descrição) em destaque — nunca `DetailValue`,
+/** Bloco de texto livre (relato, descrição) em destaque, nunca `DetailValue`,
  *  que é para pares chave/valor curtos e alinha à direita: um parágrafo ali
  *  fica torto. Usado em Bancas (descrição do coordenador) e Avaliações
  *  (o mesmo texto, lido pela diretoria). */
@@ -59,7 +59,7 @@ export const ListScrollWrap = styled.div<{ $scrollable?: boolean }>`
   `}
 `;
 
-// Grid de 2 colunas — alias semântico usado por Desempenho.
+// Grid de 2 colunas, alias semântico usado por Desempenho.
 export const TopGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr;

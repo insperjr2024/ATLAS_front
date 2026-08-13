@@ -21,12 +21,12 @@ import {
 interface RelatorioPdiProps {
   usuarioId: number;
   /** Quem está vendo pode enviar/reenviar/remover itens do "PDI inicial"?
-   *  Só a diretoria — o mentor não tem essa pasta liberada (backend recusa
+   *  Só a diretoria, o mentor não tem essa pasta liberada (backend recusa
    *  mesmo se o botão aparecesse, mas não faz sentido oferecer um botão
    *  fadado a dar erro). */
   podeEnviarInicial: boolean;
   /** E os itens de "Encontro"? Diretoria sempre; o mentor só quando é o
-   *  mentor DESTE mentorado — quem chama já garante isso (a tela "Meus
+   *  mentor DESTE mentorado, quem chama já garante isso (a tela "Meus
    *  Mentorados" só abre com o próprio mentorado da pessoa logada). */
   podeEnviarEncontro: boolean;
 }

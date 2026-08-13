@@ -6,7 +6,7 @@ import { PaintedCalendar } from "./PaintedCalendar";
 import { blocosDaVisao } from "./visao";
 
 /** A largura em que o calendário é renderizado em tamanho NATURAL antes de
- *  medir e encolher — arbitrária, só precisa ser larga o bastante para as 7
+ *  medir e encolher, arbitrária, só precisa ser larga o bastante para as 7
  *  colunas não espremerem o número do dia. */
 const LARGURA_REFERENCIA = 640;
 
@@ -22,14 +22,14 @@ interface MiniPaintedCalendarProps {
 
 /**
  * O mês atual do projeto inteiro (todos os escopos juntos, como o modo
- * "Geral" da aba Cronograma), em miniatura e só leitura — um card do board
- * macro de cronogramas (§7).
+ * "Geral" da aba Cronograma), em miniatura e só leitura, um card do board
+ * macro de cronogramas.
  *
  * A escala é medida, não chutada: o calendário é montado em tamanho real
  * numa largura de referência fixa, a altura resultante é lida do DOM, e só
  * então o conjunto encolhe para caber na largura do card. Um `zoom` CSS fixo
  * cortava o mês pela metade sempre que a altura natural variava (mês de 5 x
- * 6 semanas, ou fonte carregando depois) — medir é o que garante o mês
+ * 6 semanas, ou fonte carregando depois), medir é o que garante o mês
  * inteiro visível em qualquer card.
  */
 export function MiniPaintedCalendar({ cronograma }: MiniPaintedCalendarProps) {

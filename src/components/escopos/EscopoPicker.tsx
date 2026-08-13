@@ -25,7 +25,7 @@ const ORDEM_PADRAO_BUSINESS: Record<string, number> = {
 
 /** Um escopo sendo montado no formulário, antes de virar `projeto_escopo`. */
 export interface EscopoEmEdicao {
-  /** Vazio = é um "Outro" (§4), com o nome digitado à mão. */
+  /** Vazio = é um "Outro", com o nome digitado à mão. */
   escopo_id: number | null;
   nome_customizado: string;
   frente_id: number;
@@ -75,7 +75,7 @@ export function EscopoPicker({
   desabilitado,
 }: EscopoPickerProps) {
   const nomeFrente = (id: number) => frentes.find((f) => f.id === id)?.nome ?? `Frente ${id}`;
-  // Um escopo do catálogo só entra uma vez por projeto — "Outro" fica de
+  // Um escopo do catálogo só entra uma vez por projeto, "Outro" fica de
   // fora dessa checagem porque cada um tem nome próprio, não colide.
   const idsJaEscolhidos = new Set(valor.map((e) => e.escopo_id).filter((id) => id !== null));
   const disponiveis = catalogo.filter(
@@ -90,7 +90,7 @@ export function EscopoPicker({
     onChange(valor.filter((_, i) => i !== indice));
   }
 
-  /** Troca de posição com o vizinho — é isso que "ordem" significa aqui: a
+  /** Troca de posição com o vizinho, é isso que "ordem" significa aqui: a
    *  sequência em que a lista vai ser enviada na criação do projeto. */
   function mover(indice: number, direcao: -1 | 1) {
     const alvo = indice + direcao;
@@ -111,7 +111,7 @@ export function EscopoPicker({
     };
 
     // Um dos 4 clássicos da Business: entra já no lugar certo da hierarquia
-    // em vez de sempre no fim — antes do primeiro que já esteja na lista com
+    // em vez de sempre no fim, antes do primeiro que já esteja na lista com
     // ordem maior que a dele. Escopo "Outro" ou de catálogo fora dessa lista
     // simplesmente vai pro fim, como sempre foi.
     const ordemNovo = catalogoItem ? ORDEM_PADRAO_BUSINESS[catalogoItem.nome] : undefined;
@@ -233,7 +233,7 @@ export function EscopoPicker({
               {escopo.nome} · {nomeFrente(escopo.frente_id!)}
             </option>
           ))}
-          {/* §4: além dos padrão, sempre existe a opção "Outro". */}
+          {/* além dos padrão, sempre existe a opção "Outro". */}
           <option value="outro">+ Outro (nome customizado)</option>
         </FieldSelect>
         <PageButtonSm

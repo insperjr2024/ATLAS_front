@@ -117,7 +117,7 @@ export function MeusMentorados() {
               carregandoRelatorio || !relatorio ? (
                 <PageLoadingBlock />
               ) : (
-                // Mentorado é sempre consultor (regra 2.5 — mentor=coordenador).
+                // Mentorado é sempre consultor (regra 2.5, mentor=coordenador).
                 <RelatorioDesempenho
                   relatorio={relatorio}
                   pessoa={{ nome: selecionado.mentorado_nome ?? "", posicao: "consultor" }}
@@ -142,7 +142,7 @@ export function MeusMentorados() {
                 <TipoCardHeader>
                   <TipoCardTitulo>Relatório das avaliações</TipoCardTitulo>
                 </TipoCardHeader>
-                <TipoCardDescricao>Periódica e finalização — notas e comentários recebidos.</TipoCardDescricao>
+                <TipoCardDescricao>Periódica e finalização, notas e comentários recebidos.</TipoCardDescricao>
               </TipoCard>
               <TipoCard type="button" $disabled={false} onClick={() => abrirModo("pdi")}>
                 <TipoCardHeader>

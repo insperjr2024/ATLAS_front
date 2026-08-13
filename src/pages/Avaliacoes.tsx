@@ -427,7 +427,7 @@ function VerAvaliacoesModal({
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="avaliacoes-banca-titulo">
         <ModalHeader>
-          <ModalTitle id="avaliacoes-banca-titulo">Avaliações — {banca.nome_projeto}</ModalTitle>
+          <ModalTitle id="avaliacoes-banca-titulo">Avaliações, {banca.nome_projeto}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>
@@ -508,7 +508,7 @@ function VerAvaliacoesModal({
 /** Seção "Geral" (Bloco 1/3, sem escopo) mais uma por escopo do catálogo,
  *  agrupadas por frente. Escopo sem pergunta ainda (ex.: Simulação e
  *  Otimização de Processos) aparece do mesmo jeito, com a seção vazia e o
- *  botão de adicionar — a diretoria cadastra as dela quando quiser. */
+ *  botão de adicionar, a diretoria cadastra as dela quando quiser. */
 function agruparPorFrente(escopos: Escopo[], frentes: Frente[]) {
   const porFrente = new Map<number, Escopo[]>();
   for (const escopo of escopos) {
@@ -569,7 +569,7 @@ function EditarFormularioModal({
   }
 
   /** Reordena dentro do mesmo escopo (a ordem só importa entre perguntas do
-   *  mesmo bloco — Geral e cada escopo são exibidos e reagrupados por tipo
+   *  mesmo bloco. Geral e cada escopo são exibidos e reagrupados por tipo
    *  separadamente na hora da avaliação). */
   function mover(escopoId: number | null, posicaoNaSecao: number, direcao: -1 | 1) {
     setPerguntas((lista) => {
@@ -638,7 +638,7 @@ function EditarFormularioModal({
                 onChange={(e) => atualizar(index, "tipo_resposta", e.target.value)}
                 aria-label="Tipo da pergunta"
               >
-                <option value="nota">Nota — escala de 1 a 5</option>
+                <option value="nota">Nota, escala de 1 a 5</option>
                 <option value="texto">Texto</option>
               </FieldSelect>
               <MoveButtonGroup>
@@ -673,7 +673,7 @@ function EditarFormularioModal({
     );
   }
 
-  /** Mesma seção, mas como quem vai preencher a avaliação vai ver — os
+  /** Mesma seção, mas como quem vai preencher a avaliação vai ver, os
    *  componentes reais do formulário (NotaEscala) desabilitados, sem os
    *  controles de edição. */
   function renderSecaoPreview(titulo: string, escopoId: number | null) {

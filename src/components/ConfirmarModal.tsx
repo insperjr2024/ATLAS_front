@@ -13,7 +13,7 @@ import { FormErrorText } from "@/pages/Bancas.styled";
 
 interface Props {
   titulo: string;
-  /** O que exatamente vai acontecer — não "tem certeza?", que não informa nada. */
+  /** O que exatamente vai acontecer, não "tem certeza?", que não informa nada. */
   mensagem: ReactNode;
   rotuloConfirmar?: string;
   onConfirmar: () => Promise<void> | void;
