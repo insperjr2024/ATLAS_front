@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Download,
   HelpCircle,
+  Info,
   Lock,
   Plus,
   Trash2,
@@ -1534,9 +1535,17 @@ export function ProjetoCronograma() {
           </GrupoVisao>
         )}
 
+        {/* Só quando realmente não há escopo escolhido: com um selecionado os
+            botões voltam e a caixa não teria o que explicar. */}
         {podeEditar && !escopo && (
           <DicaEscopo>
-            Escolha um escopo acima para marcar reunião inicial, banca e entrega.
+            <Info size={15} aria-hidden />
+            <span>
+              <strong>Escolha um escopo acima para continuar.</strong> Reunião inicial, banca e
+              entrega pertencem a um escopo específico — cada um tem a própria janela de dias
+              vendidos. Os botões deles aparecem assim que você escolher um. Kickoff e reunião
+              geral são do projeto inteiro e já estão disponíveis aqui.
+            </span>
           </DicaEscopo>
         )}
 

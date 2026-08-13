@@ -26,6 +26,7 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import {
   ModalOverlay,
   ModalContent,
@@ -351,7 +352,11 @@ export function AtrasosAba() {
         </PageCardHeader>
         <PageCardContent>
           {coordenadores.length === 0 ? (
-            <EmptyText>Nenhum coordenador na sua visão.</EmptyText>
+            <EstadoVazio
+              causa="acesso"
+              titulo="Nenhum coordenador para mostrar"
+              motivo="Esta tabela lista os coordenadores dos projetos das frentes que você acompanha. Vazia significa que nenhum projeto seu tem coordenador definido, ou que você ainda não acompanha frente nenhuma."
+            />
           ) : (
             <TabelaRolagem $min="34rem" $max="26rem">
               <DataTable>
