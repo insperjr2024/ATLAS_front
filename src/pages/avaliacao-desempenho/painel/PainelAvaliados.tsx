@@ -123,6 +123,7 @@ export function PainelAvaliados() {
   const tipoPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.tipo])), [lotes]);
   const projetoIdsPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.projeto_ids])), [lotes]);
   const nomeProjetoPorId = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
+  const projetoPorId = useMemo(() => new Map(projetos.map((p) => [p.id, p])), [projetos]);
   const semestrePorUsuario = useMemo(
     () => new Map(usuarios.map((u) => [u.id, u.semestre_graduacao])),
     [usuarios],
@@ -138,9 +139,18 @@ export function PainelAvaliados() {
     return mapa;
   }, [usuariosFrentes]);
 
-  function projetosDoLote(loteId: number): string {
-    const ids = projetoIdsPorLote.get(loteId) ?? [];
-    return ids.map((id) => nomeProjetoPorId.get(id)).filter(Boolean).join(", ") || "—";
+  // O lote cobre MUITOS projetos (a rodada inteira), mas uma avaliação é
+  // sempre sobre um par específico, o que se quer mostrar é só o(s)
+  // projeto(s) que ligam avaliador e avaliado, não a lista inteira da rodada.
+  function projetosDaAvaliacao(a: DesempenhoAvaliacao): string {
+    const idsDoLote = projetoIdsPorLote.get(a.lote_id) ?? [];
+    const comuns = idsDoLote.filter((id) => {
+      const projeto = projetoPorId.get(id);
+      if (!projeto) return false;
+      const membros = new Set([projeto.coordenador_id, ...projeto.consultor_ids]);
+      return membros.has(a.avaliador_id) && membros.has(a.avaliado_id);
+    });
+    return comuns.map((id) => nomeProjetoPorId.get(id)).filter(Boolean).join(", ") || "—";
   }
 
   function resumoContexto(pessoaId: number): string {
@@ -271,7 +281,7 @@ export function PainelAvaliados() {
                               <span>
                                 {nomes.get(a.avaliador_id) ?? `Usuário ${a.avaliador_id}`}
                                 {" · "}
-                                {projetosDoLote(a.lote_id)}
+                                {projetosDaAvaliacao(a)}
                                 {" · "}
                                 {formatarData(a.criado_em)}
                               </span>

@@ -1,7 +1,21 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 import { NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import { FieldInput } from "@/pages/Bancas.styled";
+
+export const VoltarLink = styled(NavLink)`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  align-self: flex-start;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  text-decoration: none;
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+`;
 
 export const FiltrosRow = styled.div`
   display: flex;
@@ -307,6 +321,74 @@ export const LoteCardAcoes = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: ${theme.spacing.xs};
+`;
+
+/**
+ * As pastas de PDI como cards curtos numa grade, no espírito das etapas de
+ * um processo seletivo: cada pasta é um cartão fechado (número, nome, prazo),
+ * não uma linha de lista. Editar UMA pasta expande só o cartão dela pra
+ * largura cheia (`$expandido`), revelando o formulário e a checklist — as
+ * outras continuam fechadas do lado.
+ */
+export const PastasGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: ${theme.spacing.md};
+`;
+
+export const PastaCard = styled.div<{ $expandido?: boolean }>`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+
+  ${({ $expandido }) =>
+    $expandido &&
+    css`
+      grid-column: 1 / -1;
+    `}
+`;
+
+export const PastaCardTopo = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+`;
+
+export const PastaNumeroENome = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  min-width: 0;
+`;
+
+/** O número de ordem da pasta, mesma ideia visual das `Iniciais` de mentor,
+ *  só que com o número no lugar da sigla. */
+export const PastaNumero = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: ${theme.borderRadius.full};
+  background: color-mix(in srgb, ${theme.colors.primary} 12%, white);
+  color: ${theme.colors.primary};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+`;
+
+export const PastaCardTitulo = styled.span`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
 `;
 
 /** Rolagem própria: com 20 projetos a lista empurrava o botão "Criar lote"

@@ -637,6 +637,21 @@ export const LegendaItem = styled.li<{ $nivel: NivelSeveridade }>`
   }
 `;
 
+/**
+ * Duas ou mais colunas: uma lista de 15+ itens empilhados numa coluna só
+ * cresce demais verticalmente. Cada `ItemAtencao` já tem borda própria (não
+ * mais uma linha entre vizinhos empilhados), então funciona igual em 1, 2 ou
+ * 3 colunas.
+ */
+export const ListaAtencaoGrid = styled.ul`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+`;
+
 /** cada item traz o MOTIVO e há quanto tempo, nunca rótulo genérico.
  *
  * O marcador é um ponto, não uma barra lateral: a faixa colorida à esquerda
@@ -647,11 +662,9 @@ export const ItemAtencao = styled.li<{ $nivel?: NivelSeveridade }>`
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  padding: 0.5rem 0 0.5rem 1.125rem;
-
-  & + & {
-    border-top: 1px solid ${theme.colors.border};
-  }
+  padding: 0.5rem 0.75rem 0.5rem 1.125rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
 
   &::before {
     content: "";
