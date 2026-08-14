@@ -184,6 +184,15 @@ export const PageHeaderRow = styled.div`
   gap: ${theme.spacing.md};
 `;
 
+/** Os botões do cabeçalho, lado a lado — quebram na largura estreita em vez
+ *  de espremer o rótulo. */
+export const PageHeaderAcoes = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
 export const PageHeaderText = styled.div`
   display: flex;
   flex-direction: column;

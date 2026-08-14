@@ -282,10 +282,22 @@ export function tomDoStatusBanca(status: StatusBanca): "default" | "success" | "
   return "default";
 }
 
-export function podeGerenciarBanca(banca: Banca, usuarioId: number): boolean {
+export function podeGerenciarBanca(
+  banca: Banca,
+  usuarioId: number,
+  ehDiretor = false,
+): boolean {
   // Banca atrasada continua gerenciável: é justamente quando o coordenador
   // precisa entrar para marcar que ela aconteceu (ou remarcar).
-  return banca.coordenador_id === usuarioId && aceitaInscricao(banca.status);
+  //
+  // ⭐ A diretoria também. A banca nasce com o coordenador do PROJETO como
+  // dono, mesmo quando quem a criou foi a diretoria pela tela de Bancas — e
+  // então quem acabara de criá-la não via Editar nem Excluir no próprio card.
+  // O backend sempre permitiu (`require_pode_definir_cronograma` + acesso ao
+  // projeto); era só a tela que escondia.
+  return (
+    (banca.coordenador_id === usuarioId || ehDiretor) && aceitaInscricao(banca.status)
+  );
 }
 
 export function toDateInputValue(iso: string): string {
