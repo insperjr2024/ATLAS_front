@@ -1,4 +1,4 @@
-import styled, { css } from "styled-components";
+import styled from "styled-components";
 import { NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import { FieldInput } from "@/pages/Bancas.styled";
@@ -326,9 +326,8 @@ export const LoteCardAcoes = styled.div`
 /**
  * As pastas de PDI como cards curtos numa grade, no espírito das etapas de
  * um processo seletivo: cada pasta é um cartão fechado (número, nome, prazo),
- * não uma linha de lista. Editar UMA pasta expande só o cartão dela pra
- * largura cheia (`$expandido`), revelando o formulário e a checklist — as
- * outras continuam fechadas do lado.
+ * não uma linha de lista. Editar uma pasta abre o formulário e a checklist
+ * em modal, o mesmo padrão de "Adicionar pasta", não expande o cartão.
  */
 export const PastasGrid = styled.div`
   display: grid;
@@ -336,7 +335,7 @@ export const PastasGrid = styled.div`
   gap: ${theme.spacing.md};
 `;
 
-export const PastaCard = styled.div<{ $expandido?: boolean }>`
+export const PastaCard = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.sm};
@@ -344,12 +343,6 @@ export const PastaCard = styled.div<{ $expandido?: boolean }>`
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.border};
   background: ${theme.colors.card};
-
-  ${({ $expandido }) =>
-    $expandido &&
-    css`
-      grid-column: 1 / -1;
-    `}
 `;
 
 export const PastaCardTopo = styled.div`
