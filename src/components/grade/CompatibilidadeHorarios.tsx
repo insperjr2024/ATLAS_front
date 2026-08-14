@@ -107,7 +107,7 @@ export function CompatibilidadeHorarios({ consultorIds, usuarios }: Props) {
         <Titulo>Horários livres em comum</Titulo>
         <Selo $teor={teor}>
           {ROTULO_TEOR[teor]}
-          {teor !== "desconhecida" && ` · ${dados.total_livres}`}
+          {dados.nota != null && ` · nota ${dados.nota.toFixed(1)}`}
         </Selo>
       </Topo>
 

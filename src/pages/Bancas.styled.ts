@@ -120,6 +120,8 @@ export const FieldInput = styled.input`
 `;
 
 export const FieldTextarea = styled.textarea`
+  width: 100%;
+  box-sizing: border-box;
   min-height: 5rem;
   padding: 0.625rem 0.75rem;
   border-radius: ${theme.borderRadius.lg};

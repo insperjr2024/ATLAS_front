@@ -30,6 +30,10 @@ export interface Compatibilidade {
   /** O teto realista contra o qual o percentual é medido (20, não 30). */
   teto: number;
   percentual: number;
+  /** Nota de 0 a 10 (percentual / 10). `null` quando ninguém preencheu a
+   *  grade, o mesmo caso do teor "desconhecida" — sem dado nenhum, 0 seria
+   *  lido como "time sem hora em comum", que é outra coisa. */
+  nota: number | null;
   /** "desconhecida" quando ninguém preencheu a grade, aí não há o que medir. */
   teor: "alta" | "boa" | "media" | "baixa" | "nenhuma" | "desconhecida";
   teor_texto: string;

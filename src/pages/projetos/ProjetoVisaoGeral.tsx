@@ -42,6 +42,7 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  FieldGroup,
   FieldInput,
   FieldSelect,
   FieldTextarea,
@@ -85,6 +86,7 @@ import {
   BancaLinha,
   BancaEscopo,
   BancaData,
+  HeaderAcoes,
 } from "./Projetos.styled";
 import { useProjeto } from "./ProjetoPage";
 
@@ -136,40 +138,44 @@ export function ProjetoVisaoGeral() {
         <PageCard>
           <PageCardHeader>
             <PageCardTitle>Descrição</PageCardTitle>
-            {projeto.link_proposta && (
-              <LinkExterno href={projeto.link_proposta} target="_blank" rel="noreferrer">
-                Abrir proposta
-                <ExternalLink size={14} />
-              </LinkExterno>
-            )}
-            {projeto.anexo_proposta_nome && (
-              <PageButtonSm type="button" $variant="outline" onClick={handleBaixarAnexo} disabled={baixandoAnexo}>
-                <Download size={14} />
-                {baixandoAnexo ? "Baixando…" : "Baixar proposta"}
-              </PageButtonSm>
-            )}
-            {podeEditarEquipe && !editandoDescricao && (
-              <PageButtonSm
-                type="button"
-                $variant="outline"
-                onClick={() => {
-                  setDescricao(projeto.descricao ?? "");
-                  setEditandoDescricao(true);
-                }}
-              >
-                Editar
-              </PageButtonSm>
-            )}
+            <HeaderAcoes>
+              {projeto.link_proposta && (
+                <LinkExterno href={projeto.link_proposta} target="_blank" rel="noreferrer">
+                  Abrir proposta
+                  <ExternalLink size={14} />
+                </LinkExterno>
+              )}
+              {projeto.anexo_proposta_nome && (
+                <PageButtonSm type="button" $variant="outline" onClick={handleBaixarAnexo} disabled={baixandoAnexo}>
+                  <Download size={14} />
+                  {baixandoAnexo ? "Baixando…" : "Baixar proposta"}
+                </PageButtonSm>
+              )}
+              {podeEditarEquipe && !editandoDescricao && (
+                <PageButtonSm
+                  type="button"
+                  $variant="outline"
+                  onClick={() => {
+                    setDescricao(projeto.descricao ?? "");
+                    setEditandoDescricao(true);
+                  }}
+                >
+                  Editar
+                </PageButtonSm>
+              )}
+            </HeaderAcoes>
           </PageCardHeader>
           <PageCardContent>
             {editandoDescricao ? (
               <>
-                <FieldTextarea
-                  value={descricao}
-                  onChange={(e) => setDescricao(e.target.value)}
-                  rows={5}
-                  aria-label="Descrição do projeto"
-                />
+                <FieldGroup>
+                  <FieldTextarea
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    rows={5}
+                    aria-label="Descrição do projeto"
+                  />
+                </FieldGroup>
                 {erroDescricao && <FormErrorText>{erroDescricao}</FormErrorText>}
                 <EdicaoBotoes>
                   <PageButtonSm type="button" disabled={salvandoDescricao} onClick={handleSalvarDescricao}>

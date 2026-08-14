@@ -1013,13 +1013,19 @@ function SecaoBancas({
                                 <PageButtonSm
                                   $variant="outline"
                                   type="button"
+                                  title="Abre o pedido pra qualquer pessoa elegível: quem confirmar primeiro assume sua vaga."
                                   onClick={pararPropagacao(() => onPedirTroca(banca.id))}
                                 >
                                   Pedir troca
                                 </PageButtonSm>
                               )}
                               {onConvidar && (
-                                <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onConvidar(banca))}>
+                                <PageButtonSm
+                                  $variant="outline"
+                                  type="button"
+                                  title="Convida uma pessoa específica pra assumir sua vaga — só ela pode confirmar."
+                                  onClick={pararPropagacao(() => onConvidar(banca))}
+                                >
                                   Convidar alguém
                                 </PageButtonSm>
                               )}
