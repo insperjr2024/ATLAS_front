@@ -71,14 +71,19 @@ import {
 
 const INICIO_SEMANA = 0;
 const ROTULOS = rotulosDiaSemana(INICIO_SEMANA);
-const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega", "prova"];
-/** Reunião é semanal, POR PROJETO — com o portfólio inteiro junto numa grade
- *  só, ela sozinha lota todos os dias úteis de todas as semanas. Isso é
- *  exatamente o "tem tudo, mas não faz sentido": marco raro (banca, kickoff,
- *  entrega, prova) e rotina recorrente (reunião) pesando igual afogam os
- *  marcos que a pessoa realmente veio procurar. Reunião começa OFF; quem
- *  quiser ligar, liga no filtro. */
-const TIPOS_PADRAO: TipoEvento[] = TIPOS.filter((t) => t !== "reuniao");
+// "prova" fora de propósito, falta a plataforma ter de onde tirar o curso
+// de cada usuário antes do filtro voltar a fazer sentido (ver
+// `GetEventosCalendarioUseCase`, que também não gera esse tipo hoje).
+const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega"];
+/** Reunião é semanal, POR PROJETO. Quem vê o portfólio inteiro (diretor,
+ *  gerente) numa grade só leva reunião de TODOS os projetos junto, e ela
+ *  sozinha lota todos os dias úteis de todas as semanas: o marco raro
+ *  (banca, kickoff, entrega) e a rotina recorrente pesando igual afogam o
+ *  que a pessoa realmente veio procurar. Reunião começa OFF só pra esses
+ *  dois; coordenador/consultor está em poucos projetos (o recorte do
+ *  backend já garante isso), a lista de reuniões deles é curta o bastante
+ *  pra começar ligada. */
+const TIPOS_PADRAO_PORTFOLIO: TipoEvento[] = TIPOS.filter((t) => t !== "reuniao");
 /**
  * A célula tem altura FLEXÍVEL (encolhe pra caber as 5-6 semanas do mês na
  * tela, sem empurrar a página). Duas pílulas cabem com folga agora que o
@@ -95,9 +100,7 @@ const MAX_PILULAS_SEMANA = 8;
 type Visao = "mes" | "semana" | "dia";
 
 /**
- * O calendário geral do §6.5 — bancas, kickoffs, reuniões, entregas e provas
- * (semanas de avaliação do calendário acadêmico da(s) frente(s) dos projetos
- * visíveis).
+ * O calendário geral do §6.5 — bancas, kickoffs, reuniões e entregas.
  *
  * Recorta por posição, como o resto do site: diretor vê o portfólio
  * inteiro, gerente só a própria frente, coordenador/consultor só os
@@ -117,7 +120,9 @@ export function CalendarioGeral() {
   const [visao, setVisao] = useState<Visao>("mes");
   const [data, setData] = useState(() => new Date());
   const [eventos, setEventos] = useState<EventoCalendario[]>([]);
-  const [tiposAtivos, setTiposAtivos] = useState<TipoEvento[]>(TIPOS_PADRAO);
+  const [tiposAtivos, setTiposAtivos] = useState<TipoEvento[]>(() =>
+    veTudo ? TIPOS_PADRAO_PORTFOLIO : TIPOS,
+  );
   const [detalhe, setDetalhe] = useState<EventoCalendario | null>(null);
   const [diaAberto, setDiaAberto] = useState<Date | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -168,6 +173,11 @@ export function CalendarioGeral() {
     chave: string;
     eventos: EventoCalendario[];
     retangulo: DOMRect;
+    /** Célula perto do rodapé da tela (última linha do mês): sem espaço
+     *  embaixo pra lista abrir pra baixo como sempre, e nada aqui tem scroll
+     *  (é um portal em `position: fixed`). Sem isso a lista simplesmente
+     *  nascia fora da viewport, impossível de ver ou rolar até ela. */
+    abrirParaCima: boolean;
   } | null>(null);
   const fecharFlutuanteRef = useRef<number | null>(null);
 
@@ -176,7 +186,12 @@ export function CalendarioGeral() {
       window.clearTimeout(fecharFlutuanteRef.current);
       fecharFlutuanteRef.current = null;
     }
-    setFlutuante({ chave, eventos, retangulo });
+    // Estimativa de altura pela quantidade de eventos: não dá pra medir o
+    // popover antes dele existir no DOM, e refazer a posição só depois de
+    // montado pisca na tela.
+    const alturaEstimada = eventos.length * 30 + 16;
+    const abrirParaCima = window.innerHeight - retangulo.bottom < alturaEstimada;
+    setFlutuante({ chave, eventos, retangulo, abrirParaCima });
   }
 
   function agendarFechoFlutuante() {
@@ -295,7 +310,7 @@ export function CalendarioGeral() {
         <PageHeaderText>
           <PageHeading>Calendário</PageHeading>
           <PageSubheading>
-            Bancas, kickoffs, reuniões, entregas e provas{" "}
+            Bancas, kickoffs, reuniões e entregas{" "}
             {veTudo ? "de todos os projetos" : "dos seus projetos"} ·{" "}
             {visiveis.length} {rotuloContagem}
           </PageSubheading>
@@ -502,7 +517,11 @@ export function CalendarioGeral() {
       {flutuante &&
         createPortal(
           <FlutuanteEventos
-            style={{ top: flutuante.retangulo.bottom + 4, left: flutuante.retangulo.left }}
+            style={
+              flutuante.abrirParaCima
+                ? { bottom: window.innerHeight - flutuante.retangulo.top + 4, left: flutuante.retangulo.left }
+                : { top: flutuante.retangulo.bottom + 4, left: flutuante.retangulo.left }
+            }
             onMouseEnter={() => abrirFlutuante(flutuante.chave, flutuante.eventos, flutuante.retangulo)}
             onMouseLeave={agendarFechoFlutuante}
           >
@@ -608,9 +627,7 @@ function DetalheModal({ evento, onClose }: { evento: EventoCalendario; onClose: 
         <ModalBody>
           <DetailList>
             <DetailRow>
-              {/* Prova não tem projeto — o nome que vem do backend ali é o
-                  da FRENTE dona do calendário acadêmico. */}
-              <DetailTerm>{evento.tipo === "prova" ? "Frente" : "Projeto"}</DetailTerm>
+              <DetailTerm>Projeto</DetailTerm>
               <DetailValue>{evento.projeto_nome || "—"}</DetailValue>
             </DetailRow>
             <DetailRow>
