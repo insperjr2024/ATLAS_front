@@ -1,19 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { pode } from "@/utils/permissoes";
 import { getAtrasos, type Atrasos } from "@/lib/monitoramento";
-import {
-  formatarData,
-  registrarJustificativaAtraso,
-  ROTULO_MOTIVO_ATRASO,
-  ROTULO_STATUS,
-} from "@/lib/projetos";
-import type { StatusProjeto } from "@/types/projeto";
-
-type LinhaProjeto = Atrasos["por_projeto"][number];
-type Motivo = LinhaProjeto["motivos"][number];
-import { ConteudoPaginado, Paginacao, usePaginacao } from "./Paginacao";
+import { formatarData, registrarJustificativaAtraso } from "@/lib/projetos";
+import { useFiltroFrente } from "./FiltroFrente";
+import { useFiltroEscopo } from "./FiltroEscopo";
 import {
   PageStack,
   PageCard,
@@ -21,6 +12,7 @@ import {
   PageCardTitle,
   PageCardContent,
   PageButton,
+  PageButtonSm,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
@@ -28,57 +20,40 @@ import {
 } from "@/styles/page.styled";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import {
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalTitle,
-  ModalClose,
-  ModalBody,
-  ModalFooter,
-} from "@/styles/modal.styled";
-import { FieldTextarea, FormErrorText } from "@/pages/Bancas.styled";
-import {
-  AtrasoCorpo,
-  AtrasoDias,
+  AprovacaoCitacao,
+  AprovacaoMeta,
   AtrasoTitulo,
-  BarraCelula,
-  BarraCelulaPreenchida,
-  BarraCelulaTrilho,
   DataTable,
-  EstadoLimpo,
-  EstadoLimpoIcone,
-  FaixaResumo,
   Legenda,
   LegendaItem,
-  LinhaAtraso,
   LinkProjeto,
   ListaSimples,
-  MotivoData,
-  MotivoDias,
-  MotivoEscopoNome,
-  MotivoItem,
-  MotivoJustificadoBadge,
-  MotivoJustificarBtn,
-  MotivoLista,
-  MotivoTag,
+  NotaRodape,
   Pilula,
-  PiorCaso,
-  ResumoItem,
-  ResumoRotulo,
-  ResumoValor,
-  SemDado,
-  TabelaRolagem,
   TableBody,
   TableCell,
   TableHead,
   TableHeadCell,
   TableRow,
-  type NivelSeveridade,
 } from "./Monitoramento.styled";
-import { useFiltroFrente } from "./FiltroFrente";
-import { useFiltroEscopo } from "./FiltroEscopo";
+import { AprovacaoLinha, FormDecisao } from "./AprovacaoLinha";
 
 /**
+ * §7.4 — o que já devia ter acontecido e não aconteceu.
+ *
+ * ⭐ **UMA régua carrega a palavra "atrasado", e é a banca.** O §7.4 é
+ * explícito: "um escopo está atrasado quando passa da data da sua banca sem
+ * que ela tenha acontecido — o marco sob controle do time".
+ *
+ * ⚠ **A aba media DUAS coisas e chamava as duas de atraso**, e era a raiz de
+ * todo o resto. Ela dizia "Nenhum projeto atrasado" logo acima de "Escopos que
+ * passaram da janela (4)": uma pergunta é *o marco não aconteceu*, a outra é
+ * *o trabalho custou mais dias do que foi vendido*. Um escopo pode estourar a
+ * janela com a banca feita e em dia, e vice-versa — os números nunca se somam
+ * e nunca se contradizem, mas ninguém tinha como saber isso olhando a tela.
+ *
+ * A separação aqui é deliberada e vale em quatro camadas, porque só o título
+ * não bastava:
  * , o pilar é a BANCA: "um escopo está atrasado quando passa da data da
  * sua banca sem que ela tenha acontecido".
  *
@@ -96,34 +71,29 @@ import { useFiltroEscopo } from "./FiltroEscopo";
  *
  * **A tela mostra o PIOR CASO, não a soma**, decisão de 2026-08-06.
  *
- * `dias_totais` continua existindo e é uma SOMA: três escopos com 4 dias cada
- * somam 12 sem que nada esteja parado há 12 dias. Serve para volume acumulado,
- * mas não responde "qual é o maior buraco", que é a pergunta desta aba.
+ * | | Bancas vencidas | Além do vendido |
+ * |---|---|---|
+ * | pergunta | o marco não aconteceu | o trabalho custou mais |
+ * | conta | **bancas** | **escopos** |
+ * | unidade | "N dias vencida" | "+N dias além" |
+ * | fecha quando | a banca acontece | nunca (é histórico do escopo) |
  *
+ * ⭐ **A palavra "atraso" só aparece do lado esquerdo dessa tabela.** O card da
+ * direita se chama "Além do vendido" e o número dele vem com `+`.
  * Antes o número grande era a soma e a COR vinha do pior motivo isolado, dois
  * elementos do mesmo bloco falando de coisas diferentes. Hoje os dois saem do
  * pior caso, e a lista é ordenada por ele: o número em destaque é o mesmo que
  * define a ordem, então ninguém precisa adivinhar o critério.
  */
-// Mesmo padrão de `TarefasGeraisAba`/`CronogramasGeraisAba`: sem isto, o link
-// "Voltar" da página do projeto caía sempre em `/projetos`, perdendo a aba de
-// Monitoramento de onde a pessoa realmente veio.
-const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/atrasos", voltarRotulo: "Voltar para Atrasos" };
-
 export function AtrasosAba() {
-  const { token, usuario } = useAuth();
-  const navigate = useNavigate();
-  const { frenteId, seletor: seletorFrente } = useFiltroFrente();
-  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
-  const seletor = (
-    <>
-      {seletorFrente}
-      {seletorEscopo}
-    </>
-  );
+  const { token } = useAuth();
   const [dados, setDados] = useState<Atrasos | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  // Mesmo par de hooks das outras abas: eles guardam o estado, montam o
+  // seletor e cuidam do recorte de visão (o gerente não escolhe frente).
+  const { frenteId, seletor: seletorFrente } = useFiltroFrente();
+  const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   // , o alerta é automático; só a diretoria digita o porquê aqui. A
   // justificativa é POR MOTIVO (escopo + tipo), e não por projeto: uma nota
   // genérica não diria a qual dos motivos do projeto ela responde.
@@ -132,9 +102,8 @@ export function AtrasosAba() {
     null,
   );
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
     if (!token) return;
-    setCarregando(true);
     setErro("");
     try {
       setDados(await getAtrasos(token, frenteId, escopoId));
@@ -143,10 +112,12 @@ export function AtrasosAba() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, [token, frenteId, escopoId]);
 
   useEffect(() => {
+    setCarregando(true);
     carregar();
+  }, [carregar]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, frenteId, escopoId]);
 
@@ -172,29 +143,37 @@ export function AtrasosAba() {
 
   if (erro) {
     return (
-      <PageStack>
-        {seletor}
-        <ErrorBlock>
-          <ErrorText>{erro}</ErrorText>
-          <PageButton $variant="outline" onClick={carregar}>
-            Tentar novamente
-          </PageButton>
-        </ErrorBlock>
-      </PageStack>
+      <ErrorBlock>
+        <ErrorText>{erro}</ErrorText>
+        <PageButton $variant="outline" onClick={carregar}>
+          Tentar novamente
+        </PageButton>
+      </ErrorBlock>
     );
   }
 
-  if (carregando || !dados) {
-    return (
-      <PageStack>
-        {seletor}
-        <PageLoadingBlock />
-      </PageStack>
-    );
-  }
+  if (carregando || !dados) return <PageLoadingBlock />;
+
+  // Uma linha por BANCA vencida, não por projeto: é a banca que venceu, e é
+  // sobre ela que a nota da diretoria é escrita. O aninhamento projeto →
+  // motivos existia para acomodar dois tipos de motivo, e sobrou um só.
+  const bancasVencidas = dados.por_projeto.flatMap((p) =>
+    p.motivos.map((m) => ({ ...m, projeto_id: p.projeto_id, projeto_nome: p.projeto_nome, status: p.status })),
+  );
+  const alemDoVendido = dados.escopos_atrasados;
+  // Só quem tem algo em alguma das duas réguas. A tabela listava TODO
+  // coordenador, e por isso "Pior caso" e "Qual é" ficavam sempre em branco.
+  const coordenadores = dados.por_coordenador.filter((c) => c.atrasados > 0);
 
   return (
     <PageStack>
+      <>
+        {seletorFrente}
+        {seletorEscopo}
+      </>
+
+      <CardBancasVencidas itens={bancasVencidas} onJustificou={carregar} />
+      <CardAlemDoVendido itens={alemDoVendido} onJustificou={carregar} />
       {seletor}
       {resumo && projetos.length > 0 && (
         <FaixaResumo>
@@ -352,19 +331,24 @@ export function AtrasosAba() {
         </PageCardHeader>
         <PageCardContent>
           {coordenadores.length === 0 ? (
+            <EmptyText>Nenhum coordenador com banca vencida no recorte.</EmptyText>
             <EstadoVazio
               causa="acesso"
               titulo="Nenhum coordenador para mostrar"
               motivo="Esta tabela lista os coordenadores dos projetos das frentes que você acompanha. Vazia significa que nenhum projeto seu tem coordenador definido, ou que você ainda não acompanha frente nenhuma."
             />
           ) : (
-            <TabelaRolagem $min="34rem" $max="26rem">
+            <>
+              <EmptyText style={{ marginBottom: "0.75rem" }}>
+                §7.4: o objetivo é achar padrão recorrente, não julgar um caso isolado. Só
+                aparece quem tem banca vencida agora.
+              </EmptyText>
               <DataTable>
                 <TableHead>
                   <TableRow>
                     <TableHeadCell>Coordenador</TableHeadCell>
-                    <TableHeadCell>Projetos</TableHeadCell>
-                    <TableHeadCell>Atrasados</TableHeadCell>
+                    <TableHeadCell>Projetos em curso</TableHeadCell>
+                    <TableHeadCell>Com banca vencida</TableHeadCell>
                     <TableHeadCell>Pior caso</TableHeadCell>
                     <TableHeadCell>Qual é</TableHeadCell>
                   </TableRow>
@@ -375,63 +359,91 @@ export function AtrasosAba() {
                       <TableCell>{c.nome}</TableCell>
                       <TableCell>{c.projetos}</TableCell>
                       <TableCell>
-                        {c.atrasados > 0 ? (
-                          <Pilula $tom="alerta">
-                            {c.atrasados} de {c.projetos}
-                          </Pilula>
-                        ) : (
-                          <Pilula $tom="ok">Nenhum</Pilula>
-                        )}
+                        <Pilula $tom={c.atrasados > 1 ? "alerta" : "atencao"}>
+                          {c.atrasados}
+                        </Pilula>
                       </TableCell>
+                      <TableCell>{c.pior_dias} dias</TableCell>
                       <TableCell>
-                        {c.pior_dias === 0 ? (
-                          <SemDado>—</SemDado>
-                        ) : (
-                          /* A barra é decorativa: o número ao lado já diz o
-                             valor, e sem `aria-hidden` o leitor de tela
-                             anuncia uma div vazia no meio da célula. */
-                          <BarraCelula>
-                            <strong>{c.pior_dias}</strong>
-                            <BarraCelulaTrilho aria-hidden="true">
-                              <BarraCelulaPreenchida
-                                $pct={(c.pior_dias / piorCoordenador) * 100}
-                                $nivel={nivel(c.pior_dias)}
-                              />
-                            </BarraCelulaTrilho>
-                          </BarraCelula>
-                        )}
-                      </TableCell>
-                      {/* O contexto do pior caso: sem ele o número obriga a
-                          procurar na tabela de cima qual dos projetos dele é o
-                          tal, e o motivo fica sem resposta. */}
-                      <TableCell>
-                        {c.pior_dias === 0 ? (
-                          <SemDado>—</SemDado>
-                        ) : (
-                          <PiorCaso>
-                            <strong>{c.pior_projeto}</strong>
-                            <span>{c.pior_motivo}</span>
-                          </PiorCaso>
-                        )}
+                        {c.pior_projeto}
+                        {c.pior_motivo ? ` — ${c.pior_motivo}` : ""}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </DataTable>
-            </TabelaRolagem>
+            </>
           )}
         </PageCardContent>
       </PageCard>
 
-      {/* escopos que passaram da JANELA, outra pergunta que a lista
-          acima não responde.
+      {/* ⭐ A nota que impede a leitura errada de voltar. Sem ela, quem vê
+          "0 bancas vencidas" e "2 escopos além do vendido" na mesma tela lê
+          contradição — foi exatamente o que a tela antiga produzia. */}
+      <NotaRodape>
+        <strong>Atrasado</strong> = a data da banca passou e ela não foi registrada como
+        realizada. Dias úteis pelo calendário do Insper; dias de projeto pausado não contam.{" "}
+        <strong>Além do vendido</strong> = dias úteis consumidos acima de vendidos + ajustados;
+        não é atraso de marco, para de correr quando a banca acontece, e não entra na conta de
+        projetos atrasados. Os dois números medem coisas diferentes e não se somam. Projeto
+        finalizado, pausado ou arquivado, escopo cancelado, entregue ou ainda sem reunião
+        inicial ficam de fora das duas listas.
+      </NotaRodape>
+    </PageStack>
+  );
+}
 
-          Os `motivos` de cima perguntam "o que venceu e não aconteceu?" e
-          fecham quando o fato acontece. Este pergunta "o trabalho passou do
-          tempo que foi vendido?": um escopo pode estourar a janela com a banca
-          já realizada e a entrega em dia, e aí o projeto nem aparece lá em
-          cima.
+/* ------------------------------------------------------------------ */
 
+type BancaVencida = Atrasos["por_projeto"][number]["motivos"][number] & {
+  projeto_id: number;
+  projeto_nome: string;
+  status: string;
+};
+
+/** Os mesmos cortes do resto do Monitoramento. */
+function nivel(dias: number) {
+  if (dias > 10) return "critica" as const;
+  if (dias > 3) return "media" as const;
+  return "leve" as const;
+}
+
+function CardBancasVencidas({
+  itens,
+  onJustificou,
+}: {
+  itens: BancaVencida[];
+  onJustificou: () => void;
+}) {
+  const { token } = useAuth();
+  const [justificando, setJustificando] = useState<BancaVencida | null>(null);
+
+  return (
+    <PageCard id="bancas-vencidas">
+      <PageCardHeader>
+        <PageCardTitle>Bancas vencidas{itens.length > 0 && ` (${itens.length})`}</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
+        {itens.length === 0 ? (
+          // ⚠ O texto antigo dizia "Todas as bancas E ENTREGAS da sua visão
+          // estão dentro da data planejada" — afirmava duas coisas falsas: que
+          // a aba mede entregas (deixou de medir em 12/08) e que estava tudo
+          // em dia, com escopos além do vendido logo abaixo.
+          <EmptyText>
+            Nenhuma banca venceu sem acontecer. Escopos que passaram do tempo vendido, se
+            houver, aparecem no card abaixo — é outra medida.
+          </EmptyText>
+        ) : (
+          <>
+            <EmptyText style={{ marginBottom: "0.5rem" }}>
+              A data passou e a banca não foi registrada como realizada. O alerta é automático;
+              o porquê é você quem escreve, e ele fica no histórico do projeto.
+            </EmptyText>
+            <Legenda>
+              <LegendaItem $nivel="leve">até 3 dias</LegendaItem>
+              <LegendaItem $nivel="media">4 a 10</LegendaItem>
+              <LegendaItem $nivel="critica">mais de 10</LegendaItem>
+            </Legenda>
           Sem botão de justificar aqui: quem escreve é quem conduz o escopo, na
           Visão geral do projeto. Esta é a leitura da diretoria, e o que falta
           explicação vem primeiro, porque é o que ela precisa cobrar. */}
@@ -444,16 +456,47 @@ export function AtrasosAba() {
           </PageCardHeader>
           <PageCardContent>
             <ListaSimples>
-              {dados.escopos_atrasados.map((e) => (
-                <LinhaAtraso key={e.projeto_escopo_id}>
-                  <AtrasoDias $nivel={nivel(e.dias)}>{e.dias}</AtrasoDias>
-                  <AtrasoCorpo>
+              {itens.map((m) => (
+                <AprovacaoLinha
+                  key={`${m.projeto_id}-${m.projeto_escopo_id}-${m.tipo}`}
+                  dias={m.dias}
+                  unidade={m.dias === 1 ? "dia" : "dias"}
+                  titulo={
                     <AtrasoTitulo>
-                      <LinkProjeto to={`/projetos/${e.projeto_id}`}>
-                        {e.projeto_nome}
+                      <LinkProjeto to={`/projetos/${m.projeto_id}/cronograma`}>
+                        {m.projeto_nome} — {m.escopo}
                       </LinkProjeto>
-                      <MotivoEscopoNome>{e.escopo_nome}</MotivoEscopoNome>
+                      <Pilula $tom={nivel(m.dias) === "critica" ? "alerta" : "atencao"}>
+                        banca vencida
+                      </Pilula>
                     </AtrasoTitulo>
+                  }
+                  acoes={
+                    justificando === m ? (
+                      <FormDecisao
+                        rotuloConfirmar="Registrar o porquê"
+                        onCancelar={() => setJustificando(null)}
+                        onConfirmar={async (texto) => {
+                          if (!token) return;
+                          await registrarJustificativaAtraso(
+                            m.projeto_id,
+                            texto,
+                            token,
+                            m.projeto_escopo_id ?? undefined,
+                            m.tipo,
+                          );
+                          setJustificando(null);
+                          onJustificou();
+                        }}
+                      />
+                    ) : m.justificado ? (
+                      <PageButtonSm
+                        as={Link}
+                        to={`/projetos/${m.projeto_id}/historico`}
+                        $variant="ghost"
+                      >
+                        ✓ já justificado
+                      </PageButtonSm>
                     <MotivoData>
                       {e.dias_vendidos} dias vendidos
                       {e.dias_ajustados > 0 && ` · ${e.dias_ajustados} ajustados`}
@@ -464,14 +507,37 @@ export function AtrasosAba() {
                         {e.registrado_por && `, ${e.registrado_por}`}
                       </MotivoData>
                     ) : (
-                      /* Sem selo verde: o vazio aqui é uma pendência, e é o
-                         coordenador que a resolve na tela do projeto. */
-                      <SemDado>Ainda sem justificativa do coordenador.</SemDado>
-                    )}
-                  </AtrasoCorpo>
-                </LinhaAtraso>
+                      <PageButtonSm
+                        type="button"
+                        $variant="outline"
+                        onClick={() => setJustificando(m)}
+                      >
+                        Justificar
+                      </PageButtonSm>
+                    )
+                  }
+                >
+                  <AprovacaoMeta>
+                    <span>
+                      venceu em <strong>{m.data_referencia ? formatarData(m.data_referencia) : "—"}</strong>
+                    </span>
+                    <span>projeto em {m.status.replace(/_/g, " ")}</span>
+                  </AprovacaoMeta>
+                </AprovacaoLinha>
               ))}
             </ListaSimples>
+          </>
+        )}
+      </PageCardContent>
+    </PageCard>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function CardAlemDoVendido({
+  itens,
+  onJustificou,
           </PageCardContent>
         </PageCard>
       )}
@@ -511,40 +577,113 @@ function JustificarAtrasoModal({
   onClose,
   onSalvo,
 }: {
-  projeto: LinhaProjeto;
-  motivo: Motivo;
-  token: string;
-  onClose: () => void;
-  onSalvo: (criadaId: number) => void;
+  itens: Atrasos["escopos_atrasados"];
+  onJustificou: () => void;
 }) {
-  const [texto, setTexto] = useState("");
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState("");
-
-  async function salvar() {
-    if (!texto.trim()) {
-      setErro("Digite a justificativa antes de salvar");
-      return;
-    }
-    setSalvando(true);
-    setErro("");
-    try {
-      const criada = await registrarJustificativaAtraso(
-        projeto.projeto_id,
-        texto.trim(),
-        token,
-        motivo.projeto_escopo_id ?? undefined,
-        motivo.tipo,
-      );
-      onSalvo(Number(criada.id));
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao registrar a justificativa");
-    } finally {
-      setSalvando(false);
-    }
-  }
+  const { token } = useAuth();
+  const [justificando, setJustificando] = useState<number | null>(null);
 
   return (
+    <PageCard id="alem-do-vendido">
+      <PageCardHeader>
+        <PageCardTitle>Além do vendido{itens.length > 0 && ` (${itens.length})`}</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
+        {itens.length === 0 ? (
+          <EmptyText>Nenhum escopo passou do tempo que foi vendido.</EmptyText>
+        ) : (
+          <>
+            <EmptyText style={{ marginBottom: "0.5rem" }}>
+              Dias úteis consumidos acima de vendidos + ajustados, descontando pausas. A
+              contagem congela quando a banca acontece. <strong>Não é atraso de marco</strong> —
+              nenhum destes escopos entra na conta de projetos atrasados.
+            </EmptyText>
+            <ListaSimples>
+              {itens.map((e) => (
+                <AprovacaoLinha
+                  key={e.projeto_escopo_id}
+                  dias={e.dias}
+                  // A unidade que separa esta régua da outra, no próprio número.
+                  unidade="além"
+                  titulo={
+                    <AtrasoTitulo>
+                      <LinkProjeto to={`/projetos/${e.projeto_id}/cronograma`}>
+                        {e.projeto_nome} — {e.escopo_nome}
+                      </LinkProjeto>
+                      <Pilula $tom="neutro">
+                        +{e.dias} sobre {e.dias_vendidos + e.dias_ajustados}
+                      </Pilula>
+                    </AtrasoTitulo>
+                  }
+                  acoes={
+                    justificando === e.projeto_escopo_id ? (
+                      <FormDecisao
+                        rotuloConfirmar="Registrar o porquê"
+                        onCancelar={() => setJustificando(null)}
+                        onConfirmar={async (texto) => {
+                          if (!token) return;
+                          await registrarJustificativaAtraso(
+                            e.projeto_id,
+                            texto,
+                            token,
+                            e.projeto_escopo_id,
+                            "escopo",
+                          );
+                          setJustificando(null);
+                          onJustificou();
+                        }}
+                      />
+                    ) : e.justificativa ? (
+                      <PageButtonSm
+                        as={Link}
+                        to={`/projetos/${e.projeto_id}/historico`}
+                        $variant="ghost"
+                      >
+                        ✓ já justificado
+                      </PageButtonSm>
+                    ) : (
+                      <PageButtonSm
+                        type="button"
+                        $variant="outline"
+                        onClick={() => setJustificando(e.projeto_escopo_id)}
+                      >
+                        Justificar
+                      </PageButtonSm>
+                    )
+                  }
+                >
+                  <AprovacaoMeta>
+                    {/* Vendidos e ajustados nunca somados num número só: a
+                        diferença entre ter vendido 30 e ter vendido 20 e
+                        precisado de mais 10 é a informação inteira. */}
+                    <span>
+                      <strong>{e.dias_vendidos}</strong> vendidos
+                      {e.dias_ajustados > 0 && (
+                        <>
+                          {" "}
+                          + <strong>{e.dias_ajustados}</strong> ajustados
+                        </>
+                      )}
+                    </span>
+                    {e.registrado_em && (
+                      <span>explicado em {formatarData(e.registrado_em)}</span>
+                    )}
+                  </AprovacaoMeta>
+
+                  {e.justificativa && (
+                    <AprovacaoCitacao>
+                      {e.justificativa}
+                      {e.registrado_por ? ` — ${e.registrado_por}` : ""}
+                    </AprovacaoCitacao>
+                  )}
+                </AprovacaoLinha>
+              ))}
+            </ListaSimples>
+          </>
+        )}
+      </PageCardContent>
+    </PageCard>
+  );
     <ModalOverlay onClick={onClose} role="presentation">
       <ModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <ModalHeader>

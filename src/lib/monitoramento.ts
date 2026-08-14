@@ -469,6 +469,36 @@ export interface AprovacaoDiasDeAjuste {
   motivo: string;
   solicitado_por_nome: string | null;
   criado_em: string;
+  /** O fim da janela como está hoje. `null` = escopo sem reunião inicial. */
+  fim_janela: string | null;
+  /**
+   * ⭐ O fim da janela SE a diretoria aprovar — a resposta à pergunta que a
+   * decisão faz de verdade. Não é somar: são N dias ÚTEIS a partir da reunião
+   * inicial, pulando feriado, prova e recesso, e essa conta ninguém faz de
+   * cabeça olhando "+5 sobre 8 vendidos".
+   */
+  fim_se_aprovar: string | null;
+  /** §8: último dia em que ainda cabia pedir. Passou, o pedido é fora do prazo. */
+  prazo_pedido_ajuste: string | null;
+}
+
+/** Um motivo de atraso — a mesma forma que a aba Atrasos consome. */
+export interface MotivoDeAtraso {
+  tipo: string;
+  descricao: string;
+  dias: number;
+  escopo: string | null;
+  projeto_escopo_id: number | null;
+  data_referencia: string | null;
+  /** §7.4: já existe nota da diretoria cobrindo ESTE motivo. */
+  justificado: boolean;
+  justificativa_id: number | null;
+  /**
+   * §7.4: quando a diretoria PEDIU a explicação ao coordenador. `null` =
+   * ninguém cobrou ainda. Com data, a fila mostra "aguardando o coordenador"
+   * em vez de oferecer o pedido de novo.
+   */
+  pedido_em: string | null;
 }
 
 export interface AprovacaoAtraso {
@@ -476,7 +506,13 @@ export interface AprovacaoAtraso {
   projeto_nome: string;
   status: string;
   dias_totais: number;
-  motivos: string[];
+  /** ⭐ O pior motivo isolado — é ele que ordena, nunca a soma. */
+  pior_motivo: number;
+  /**
+   * Estruturados, não frases. Sem o escopo e os dias de cada um, a diretoria
+   * não tinha como escrever uma nota específica sem abrir o projeto.
+   */
+  motivos: MotivoDeAtraso[];
 }
 
 /** Alguém pediu para entrar num projeto e está parado esperando resposta. */
@@ -497,8 +533,42 @@ export interface AprovacaoBancaSemResultado {
   banca_id: number;
   projeto_id: number;
   projeto_nome: string;
+  /** O primeiro escopo — mantido para quem já lê o campo. */
   escopo_nome: string;
+  /** Todos os escopos que esta banca cobre: a decisão destrava a entrega de cada um. */
+  escopos: { projeto_escopo_id: number; nome: string }[];
   realizado_em: string;
+  prazo_avaliacao_em: string;
+  /** Passou o prazo de 2 dias sem a urna fechar. */
+  prazo_vencido: boolean;
+  /**
+   * ⭐ A urna. Sem ela, duas situações que exigem respostas OPOSTAS ficavam
+   * idênticas na tela: "ninguém votou e o prazo venceu" (a diretoria decide
+   * no lugar deles) e "falta um voto e o prazo corre" (cobra, não decide).
+   */
+  apuracao: {
+    recebidos: number;
+    esperados: number;
+    aprovacoes: number;
+    reprovacoes: number;
+    /** "maioria" | "empate" | "sem_votos" | "aguardando" */
+    motivo: string;
+  };
+}
+
+/** §8: um pedido para marcar banca em horário já ocupado. */
+export interface AprovacaoExcecaoChoque {
+  id: number;
+  projeto_id: number;
+  projeto_nome: string;
+  projeto_escopo_id: number | null;
+  escopo_nome: string | null;
+  data_hora_pretendida: string;
+  /** O nome do projeto da banca que já ocupa o horário. */
+  conflita_com: string | null;
+  justificativa: string;
+  solicitado_por_nome: string | null;
+  criado_em: string;
 }
 
 /**
@@ -510,7 +580,11 @@ export interface AprovacaoBancaSemResultado {
 export interface Aprovacoes {
   dias_de_ajuste: AprovacaoDiasDeAjuste[];
   atrasos_sem_justificativa: AprovacaoAtraso[];
-  /** Servido pronto pelo backend, o badge da aba precisa dele antes de
+  solicitacoes_de_entrada: AprovacaoEntrada[];
+  bancas_sem_resultado: AprovacaoBancaSemResultado[];
+  /** §8: pedidos para marcar banca em horário já ocupado. */
+  excecoes_de_choque: AprovacaoExcecaoChoque[];
+  /** Servido pronto pelo backend — o badge da aba precisa dele antes de
    *  qualquer render, e somar no front duplicaria a conta. */
   total: number;
 }

@@ -12,7 +12,6 @@ import { paraDataUtc } from "@/lib/projetos";
 // `formatarData`/`formatarDataHora` saíram no merge de propósito: os dois
 // únicos lugares que formatavam data crua aqui (o sparkline de entregas e a
 // lista antiga de bancas) viraram `LinhaEntregas` e `diaDaSemana`/`horaDaBanca`.
-import { PedidosDeDiasCard } from "./PedidosDeDiasCard";
 
 // Sob demanda: o recharts pesa ~450KB num bundle que já está acima do limite
 // de aviso do Vite, e os gráficos só existem dentro do monitoramento.
@@ -38,6 +37,7 @@ import {
   // A main tirou `ItemLista` daqui porque converteu bancas e tempo parado para
   // `LinhaItem`; o card "Janela dos escopos" da `ajustes` ainda usa a linha
   // simples (nome + resumo, sem navegação por linha inteira), então volta.
+  AprovacaoDetalhe,
   ItemLista,
   ItemTexto,
   KpiCard,
@@ -170,7 +170,18 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
   );
 
   // Estes três crescem com o tamanho do núcleo e não têm teto no backend.
-  const atencao = usePaginacao(filtrados, POR_PAGINA);
+  // Motivo → itens, na ordem em que o backend já ordenou (pior primeiro).
+  const grupos = useMemo(() => {
+    const mapa = new Map<string, typeof filtrados>();
+    for (const item of filtrados) {
+      const lista = mapa.get(item.tipo) ?? [];
+      lista.push(item);
+      mapa.set(item.tipo, lista);
+    }
+    // Grupo menor primeiro: um caso isolado é mais acionável que vinte, e a
+    // pilha de vinte não pode empurrar o item único para fora da vista.
+    return [...mapa.entries()].sort((a, b) => a[1].length - b[1].length);
+  }, [filtrados]);
   const bancas = usePaginacao(dados.bancas_proximas, POR_PAGINA);
   const parados = usePaginacao(dados.tempo_parado, POR_PAGINA);
   // A janela do escopo, por projeto: dias ajustados, atraso e dias
@@ -184,18 +195,38 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
   return (
     <PageStack>
       {seletor}
+      {/* ⭐ **Quatro caixas, não cinco, e cada uma responde a uma pergunta.**
+          Havia "0% Atrasados" e "100% Placar da gestão" lado a lado: desde que
+          o pilar de ENTREGA saiu do cálculo (2026-08-12), o único motivo de
+          atraso é a banca — que é exatamente o que o placar mede. Os dois
+          somavam 100 sempre, e o comentário que jurava o contrário ficou para
+          trás. Ficou o placar, que é o número que o §7.1 pede por nome.
+
+          ⚠ E o "29" ganhou nota: a tela mostrava 29, 21 e 26 em lugares
+          diferentes sem dizer que 26 é o denominador de tudo. */}
       <KpiGrid>
         <KpiCard>
           <KpiValor>{dados.kpis.total}</KpiValor>
           <KpiRotulo>Projetos</KpiRotulo>
+          <KpiNota>
+            {dados.placar_gestao.total_ativos} em curso
+            {dados.kpis.pausados > 0 && ` · ${dados.kpis.pausados} pausado${dados.kpis.pausados > 1 ? "s" : ""}`}
+            {dados.kpis.finalizados > 0 && ` · ${dados.kpis.finalizados} finalizado${dados.kpis.finalizados > 1 ? "s" : ""}`}
+          </KpiNota>
         </KpiCard>
         <KpiCard>
           <KpiValor>{dados.kpis.em_execucao}</KpiValor>
           <KpiRotulo>Em execução</KpiRotulo>
+          <KpiNota>ambientação, andamento e bancas</KpiNota>
         </KpiCard>
         <KpiCard>
           <KpiValor>{dados.kpis.perto_de_finalizar}</KpiValor>
           <KpiRotulo>Perto de finalizar</KpiRotulo>
+          <KpiNota>TEP e período de ajustes</KpiNota>
+        </KpiCard>
+        <KpiCard>
+          {/* §7.1: "a saúde geral da área num número só". Só as bancas contam —
+              a entrega ao cliente depende da agenda dele e fica à parte. */}
         </KpiCard>
         <KpiCard $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined}>
           {/* Percentual como valor grande, contagem na nota, mesmo formato do
@@ -220,7 +251,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
           </KpiValor>
           <KpiRotulo>Placar da gestão</KpiRotulo>
           <KpiNota>
-            {dados.placar_gestao.no_prazo}/{dados.placar_gestao.total_ativos} com bancas em dia
+            {dados.placar_gestao.no_prazo}/{dados.placar_gestao.total_ativos} sem banca vencida
           </KpiNota>
         </KpiCard>
       </KpiGrid>
@@ -358,17 +389,26 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
             escopos?", o outro "está andando?". */}
         <PageCard>
           <PageCardHeader>
-            <PageCardTitle>Janela dos escopos</PageCardTitle>
+            <PageCardTitle>Tempo dos escopos</PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
             {comJanela.length === 0 ? (
-              <EmptyText>Nenhum projeto com dias ajustados, atraso ou parada.</EmptyText>
+              <EmptyText>Nenhum projeto com dias ajustados, tempo além do vendido ou vão sem planejamento.</EmptyText>
             ) : (
               <>
+                {/* ⚠ **A palavra "atraso" saiu deste card.** Ela tem dono: na
+                    aba Atrasos, "atrasado" é banca vencida. O número daqui é
+                    outro — dias consumidos além do vendido — e chamá-lo de
+                    atraso fazia esta tela dizer "0 atrasados" no topo e
+                    "19 em atraso" no meio.
+
+                    ⚠ **E o total sumiu.** "352 parados na gestão" somava dias
+                    de projetos diferentes: não existe pergunta cuja resposta
+                    seja esse número. Cada projeto tem o seu, e é por projeto
+                    que se age. */}
                 <KpiNota>
-                  {dados.janela.totais.dias_ajustados} dias ajustados ·{" "}
-                  {dados.janela.totais.dias_de_atraso} em atraso ·{" "}
-                  {dados.janela.totais.dias_parados} parados na gestão
+                  {comJanela.length} projeto{comJanela.length > 1 ? "s" : ""} com algum desses
+                  números — clique para ver o cronograma
                 </KpiNota>
                 <ConteudoPaginado estado={janela}>
                   <ListaSimples>
@@ -380,8 +420,8 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                         <small>
                           {[
                             p.dias_ajustados && `+${p.dias_ajustados} ajustados`,
-                            p.dias_de_atraso && `${p.dias_de_atraso} em atraso`,
-                            p.dias_parados && `${p.dias_parados} parados`,
+                            p.dias_de_atraso && `${p.dias_de_atraso} além do vendido`,
+                            p.dias_parados && `${p.dias_parados} sem planejamento`,
                           ]
                             .filter(Boolean)
                             .join(" · ")}
@@ -397,9 +437,12 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
         </PageCard>
       </PainelGrid>
 
-      {/* Antes de "Atenção agora" de propósito: pedido pendente é uma decisão
-          esperando pessoa, não um alerta para observar. */}
-      <PedidosDeDiasCard />
+      {/* ⚠ Havia aqui um card "Pedidos de dias de ajuste", o MESMO componente
+          da aba Aprovações. Saiu: pedido pendente é uma decisão esperando
+          pessoa, e a fila de decisões tem uma aba inteira dedicada a ela desde
+          que Aprovações passou a existir. Duplicá-lo aqui obrigava a manter
+          dois lugares em sincronia, e este ignorava os dois seletores do topo
+          — o mesmo pedido aparecia mesmo com a frente filtrada. */}
 
       <PageCard>
         <PageCardHeader>
@@ -432,6 +475,20 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                 </FieldSelect>
               </ControlesGrafico>
 
+              {/* ⭐ **Agrupado por motivo, não uma linha por projeto.**
+                  Numa quinta-feira típica a lista abria com 20 cópias exatas de
+                  "sem reunião registrada esta semana" — o mesmo texto, o mesmo
+                  ponto colorido, mudando só o nome do projeto. Card que repete
+                  a mesma frase vinte vezes deixa de ser lido.
+
+                  O sino de notificações já resolvia isso agregando por tipo
+                  (`listar_notificacoes`), com a MESMA detecção por baixo. Aqui
+                  a diferença é que o detalhe continua a um clique: cada grupo
+                  abre e mostra os projetos. */}
+              {grupos.map(([tipo, itens]) => (
+                <AprovacaoDetalhe key={tipo} open={itens.length <= 3 || !!motivo}>
+                  <summary>
+                    <ItemAtencao as="span" $nivel={nivelAtencao(itens[0].dias)}>
               <ConteudoPaginado estado={atencao}>
                 <ListaAtencaoGrid>
                   {atencao.visiveis.map((item, i) => (
@@ -440,24 +497,29 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                        começar. */
                     <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
                       <strong>
-                        <LinkProjeto to={`/projetos/${item.projeto_id}`}>
-                          {item.projeto_nome}
-                        </LinkProjeto>
+                        {itens.length} {ROTULO_ATENCAO[tipo as TipoAtencao] ?? tipo}
                       </strong>
-                      {/* O motivo vem pronto e específico do backend,  é
-                          explícito que não pode ser rótulo genérico. */}
-                      <span>
-                        {item.motivo}
-                        {item.dias != null && ` · há ${item.dias} dias`}
-                      </span>
                     </ItemAtencao>
-                  ))}
-                </ListaAtencaoGrid>
-              </ConteudoPaginado>
-              {/* Este é o card que mais cresce da tela: 77 itens com o núcleo
-                  cheio. A lista vem ordenada por gravidade, então a página 1 é
-                  o que pede ação e as seguintes são a cauda. */}
-              <Paginacao estado={atencao} />
+                  </summary>
+                  <ListaSimples>
+                    {itens.map((item, i) => (
+                      <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
+                        <strong>
+                          <LinkProjeto to={`/projetos/${item.projeto_id}`}>
+                            {item.projeto_nome}
+                          </LinkProjeto>
+                        </strong>
+                        {/* O motivo vem pronto e específico do backend — §7.1 é
+                            explícito que não pode ser rótulo genérico. */}
+                        <span>
+                          {item.motivo}
+                          {item.dias != null && ` · há ${item.dias} dias`}
+                        </span>
+                      </ItemAtencao>
+                    ))}
+                  </ListaSimples>
+                </AprovacaoDetalhe>
+              ))}
             </>
           )}
         </PageCardContent>

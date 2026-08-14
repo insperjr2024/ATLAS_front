@@ -16,6 +16,12 @@ interface Props {
   /** O que exatamente vai acontecer, não "tem certeza?", que não informa nada. */
   mensagem: ReactNode;
   rotuloConfirmar?: string;
+  /**
+   * O rótulo enquanto a ação roda. O padrão é "Excluindo…" porque a maioria
+   * dos usos é destrutiva — mas nem todo uso é: confirmar uma entrega não
+   * exclui nada, e o botão não pode dizer que exclui.
+   */
+  rotuloProcessando?: string;
   onConfirmar: () => Promise<void> | void;
   onCancelar: () => void;
 }
@@ -36,6 +42,7 @@ export function ConfirmarModal({
   titulo,
   mensagem,
   rotuloConfirmar = "Excluir",
+  rotuloProcessando = "Excluindo…",
   onConfirmar,
   onCancelar,
 }: Props) {
@@ -80,7 +87,7 @@ export function ConfirmarModal({
             Cancelar
           </PageButton>
           <PageButton type="button" disabled={processando} onClick={confirmar}>
-            {processando ? "Excluindo…" : rotuloConfirmar}
+            {processando ? rotuloProcessando : rotuloConfirmar}
           </PageButton>
         </ModalFooter>
       </ModalContent>

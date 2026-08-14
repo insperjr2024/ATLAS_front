@@ -1,170 +1,147 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import {
-  decidirExcecaoChoque,
-  getExcecoesChoquePendentes,
-  type ExcecaoChoquePendente,
-} from "@/lib/bancas";
-import { formatarDataHora } from "@/lib/projetos";
+import { decidirExcecaoChoque } from "@/lib/bancas";
+import { formatarData, formatarDataHora } from "@/lib/projetos";
+import type { AprovacaoExcecaoChoque } from "@/lib/monitoramento";
 import {
   PageCard,
   PageCardHeader,
   PageCardTitle,
   PageCardContent,
-  PageButton,
+  PageButtonSm,
   EmptyText,
-  ErrorText,
 } from "@/styles/page.styled";
-import { FieldGroup, FieldInput, FieldLabel } from "@/pages/projetos/Projetos.styled";
-import { ItemLista, LinkProjeto, ListaSimples } from "./Monitoramento.styled";
+import {
+  AprovacaoCitacao,
+  AprovacaoMeta,
+  AtrasoTitulo,
+  LinkProjeto,
+  ListaSimples,
+  Pilula,
+} from "./Monitoramento.styled";
+import { AprovacaoLinha, FormDecisao } from "./AprovacaoLinha";
 
 /**
  * ⭐ §8: a fila de exceções de choque de horário, para quem as decide.
  *
- * ⚠ **A regra existia sem via de cumprimento.** O backend recusa duas bancas no
- * mesmo horário dizendo que a exceção é da diretoria — e não havia como pedi-la
- * nem como concedê-la: a rota que gravava a liberação não tinha chamador
- * nenhum. Quem esbarrava no choque só podia mudar o horário ou resolver por
- * fora do sistema.
+ * ⚠ **A regra existia sem via de cumprimento.** O backend recusa duas bancas
+ * no mesmo horário dizendo que a exceção é da diretoria — e não havia como
+ * pedi-la nem como concedê-la. Quem esbarrava no choque só podia mudar o
+ * horário ou resolver por fora do sistema.
  *
- * **Decide-se AQUI, não em outra tela** — ao contrário de três das outras filas
- * desta aba. O contexto de que a decisão precisa é curto e cabe na linha: qual
- * projeto quer o horário, com qual banca ele choca, e por quê. Mandar a
- * diretoria abrir o cronograma para isso seria um desvio sem ganho.
+ * ⭐ **É a fila que APODRECE.** As outras quatro só acumulam; esta tem uma
+ * data marcada, e passado o horário pretendido a decisão vira lixo — o pedido
+ * não tem mais o que liberar. Por isso é o primeiro card da aba, e por isso a
+ * pílula avisa quando o horário já passou em vez de mostrar a data crua.
  *
  * A resposta é obrigatória nos dois sentidos: recusar sem motivo deixa quem
  * pediu sem saber o que mudar, e aprovar sem motivo apaga por que a regra foi
- * aberta naquele caso — que é justamente o que se vai querer saber depois.
+ * aberta naquele caso.
  */
-export function ExcecoesDeChoqueCard({ onDecidiu }: { onDecidiu?: () => void } = {}) {
-  const { token, usuario } = useAuth();
-  const [pedidos, setPedidos] = useState<ExcecaoChoquePendente[]>([]);
-  const [erro, setErro] = useState("");
+export function ExcecoesDeChoqueCard({
+  itens,
+  onDecidiu,
+}: {
+  itens: AprovacaoExcecaoChoque[];
+  onDecidiu: () => void;
+}) {
+  const { token } = useAuth();
   const [decidindo, setDecidindo] = useState<{ id: number; aprovar: boolean } | null>(null);
-  const [resposta, setResposta] = useState("");
-  const [enviando, setEnviando] = useState(false);
-
-  // Mesma régua do `PedidosDeDiasCard`: a POSIÇÃO, que é o que a rota cobra
-  // com `require_diretor`.
-  const podeDecidir = usuario?.posicao === "diretor";
-
-  const carregar = useCallback(async () => {
-    if (!token || !podeDecidir) return;
-    try {
-      setPedidos(await getExcecoesChoquePendentes(token));
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao carregar os pedidos");
-    }
-  }, [token, podeDecidir]);
-
-  useEffect(() => {
-    carregar();
-  }, [carregar]);
-
-  // Some inteiro para quem não decide — lista que a pessoa não pode responder
-  // é só ansiedade.
-  if (!podeDecidir) return null;
-
-  async function responder() {
-    if (!token || !decidindo) return;
-    setErro("");
-    setEnviando(true);
-    try {
-      await decidirExcecaoChoque(
-        decidindo.id,
-        { aprovar: decidindo.aprovar, resposta: resposta.trim() },
-        token,
-      );
-      setDecidindo(null);
-      setResposta("");
-      await carregar();
-      onDecidiu?.();
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Não foi possível responder o pedido");
-    } finally {
-      setEnviando(false);
-    }
-  }
 
   return (
-    <PageCard>
+    <PageCard id="fila-choque">
       <PageCardHeader>
-        <PageCardTitle>Exceções de choque de horário ({pedidos.length})</PageCardTitle>
+        <PageCardTitle>
+          Exceções de choque de horário{itens.length > 0 && ` (${itens.length})`}
+        </PageCardTitle>
       </PageCardHeader>
       <PageCardContent>
-        {erro && <ErrorText>{erro}</ErrorText>}
-        {pedidos.length === 0 ? (
-          <EmptyText>Nenhum pedido para marcar banca em horário já ocupado.</EmptyText>
+        {itens.length === 0 ? (
+          <EmptyText>Nenhum pedido de exceção aguardando decisão.</EmptyText>
         ) : (
           <ListaSimples>
-            {pedidos.map((p) => (
-              <ItemLista key={p.id}>
-                <div>
-                  <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`}>
-                    {p.projeto_nome}
-                  </LinkProjeto>
-                  {/* O horário e o conflito na mesma linha: é a comparação
-                      que a decisão é. */}
-                  <small>
-                    quer {formatarDataHora(p.data_hora_pretendida)} · choca com a banca de{" "}
-                    <strong>{p.conflita_com}</strong>
-                  </small>
-                  <small>
-                    {p.solicitado_por_nome ?? "coordenador"} · {p.justificativa}
-                  </small>
-                </div>
-
-                {decidindo?.id === p.id ? (
-                  <FieldGroup>
-                    <FieldLabel htmlFor={`resposta-choque-${p.id}`}>
-                      Motivo da decisão
-                    </FieldLabel>
-                    <FieldInput
-                      as="textarea"
-                      id={`resposta-choque-${p.id}`}
-                      rows={2}
-                      value={resposta}
-                      onChange={(e) => setResposta(e.target.value)}
-                    />
-                    <div>
-                      <PageButton
+            {itens.map((p) => {
+              const quando = new Date(p.data_hora_pretendida);
+              const jaPassou = quando.getTime() < Date.now();
+              const faltamDias = Math.ceil((quando.getTime() - Date.now()) / 86_400_000);
+              return (
+                <AprovacaoLinha
+                  key={p.id}
+                  desde={p.criado_em}
+                  titulo={
+                    <AtrasoTitulo>
+                      <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`}>
+                        {p.projeto_nome}
+                        {p.escopo_nome ? ` — ${p.escopo_nome}` : ""}
+                      </LinkProjeto>
+                      {jaPassou ? (
+                        <Pilula $tom="alerta">o horário já passou</Pilula>
+                      ) : faltamDias <= 2 ? (
+                        <Pilula $tom="atencao">
+                          {faltamDias <= 1 ? "é amanhã" : `daqui a ${faltamDias} dias`}
+                        </Pilula>
+                      ) : (
+                        <Pilula $tom="neutro">{formatarDataHora(p.data_hora_pretendida)}</Pilula>
+                      )}
+                    </AtrasoTitulo>
+                  }
+                  acoes={
+                    decidindo?.id === p.id ? (
+                      <FormDecisao
+                        rotuloConfirmar={decidindo.aprovar ? "Confirmar liberação" : "Confirmar recusa"}
+                        onCancelar={() => setDecidindo(null)}
+                        onConfirmar={async (texto) => {
+                          if (!token) return;
+                          await decidirExcecaoChoque(p.id, { aprovar: decidindo.aprovar, resposta: texto }, token);
+                          setDecidindo(null);
+                          onDecidiu();
+                        }}
+                      />
+                    ) : jaPassou ? (
+                      // Liberar um horário que já passou não destrava nada.
+                      <PageButtonSm
                         type="button"
-                        disabled={enviando || !resposta.trim()}
-                        onClick={responder}
+                        $variant="ghost"
+                        onClick={() => setDecidindo({ id: p.id, aprovar: false })}
                       >
-                        {decidindo.aprovar ? "Confirmar liberação" : "Confirmar recusa"}
-                      </PageButton>
-                      <PageButton type="button" $variant="ghost" onClick={() => setDecidindo(null)}>
-                        Cancelar
-                      </PageButton>
-                    </div>
-                  </FieldGroup>
-                ) : (
-                  <div>
-                    <PageButton
-                      type="button"
-                      $variant="outline"
-                      onClick={() => {
-                        setResposta("");
-                        setDecidindo({ id: p.id, aprovar: true });
-                      }}
-                    >
-                      Liberar
-                    </PageButton>
-                    <PageButton
-                      type="button"
-                      $variant="ghost"
-                      onClick={() => {
-                        setResposta("");
-                        setDecidindo({ id: p.id, aprovar: false });
-                      }}
-                    >
-                      Negar
-                    </PageButton>
-                  </div>
-                )}
-              </ItemLista>
-            ))}
+                        Encerrar pedido
+                      </PageButtonSm>
+                    ) : (
+                      <>
+                        <PageButtonSm
+                          type="button"
+                          $variant="outline"
+                          onClick={() => setDecidindo({ id: p.id, aprovar: true })}
+                        >
+                          Liberar
+                        </PageButtonSm>
+                        <PageButtonSm
+                          type="button"
+                          $variant="ghost"
+                          onClick={() => setDecidindo({ id: p.id, aprovar: false })}
+                        >
+                          Negar
+                        </PageButtonSm>
+                      </>
+                    )
+                  }
+                >
+                  <AprovacaoMeta>
+                    <span>
+                      quer <strong>{formatarDataHora(p.data_hora_pretendida)}</strong>
+                    </span>
+                    <span>
+                      choca com <strong>{p.conflita_com ?? "outra banca"}</strong>
+                    </span>
+                    <span>
+                      {p.solicitado_por_nome ?? "coordenador"} em {formatarData(p.criado_em)}
+                    </span>
+                  </AprovacaoMeta>
+
+                  <AprovacaoCitacao>{p.justificativa}</AprovacaoCitacao>
+                </AprovacaoLinha>
+              );
+            })}
           </ListaSimples>
         )}
       </PageCardContent>
