@@ -33,6 +33,9 @@ export interface ProjetoResumo {
   sinergico: boolean;
   coordenador_id: number | null;
   consultor_ids: number[];
+  /** Teto de consultores da equipe, escolhido na criação do projeto. O
+   *  backend já mandava; faltava declarar aqui. */
+  max_consultores: number | null;
   data_kickoff: string | null;
   kickoff_pendente: boolean;
   /** Arquivar não é excluir, só some das listagens normais. */

@@ -1200,9 +1200,25 @@ export function ProjetoCronograma() {
       const inicial = modoMarcacao === "reuniao_inicial";
       if (inicial && !escopo) return;
       const escopoId = inicial ? (escopo?.id ?? null) : null;
-      const existente = (dados?.reunioes ?? []).find(
-        (r) => r.data_reuniao.slice(0, 10) === dia && (r.projeto_escopo_id ?? null) === escopoId,
-      );
+      /**
+       * ⭐ A reunião INICIAL é uma só por escopo — clicar noutro dia MOVE a
+       * que existe, não cria outra.
+       *
+       * ⚠ Antes a busca era só por dia, então clicar num dia diferente caía no
+       * caminho de criação e nascia uma segunda "reunião inicial" para o mesmo
+       * escopo. Pior que a duplicata na tela: `data_inicio` do escopo deriva da
+       * reunião mais antiga, então marcar uma segunda numa data anterior movia
+       * a janela inteira para trás — prazos, banca e atraso recalculados sem
+       * ninguém ter pedido.
+       *
+       * A geral continua por dia: ela é semanal, e o projeto tem várias.
+       */
+      const existente = inicial
+        ? (dados?.reunioes ?? []).find((r) => (r.projeto_escopo_id ?? null) === escopoId)
+        : (dados?.reunioes ?? []).find(
+            (r) =>
+              r.data_reuniao.slice(0, 10) === dia && (r.projeto_escopo_id ?? null) === escopoId,
+          );
       setReuniaoAberta({
         dia,
         tipo: inicial ? "inicial" : "geral",
