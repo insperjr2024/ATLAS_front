@@ -2,7 +2,7 @@ import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
 /**
- * O quadro é desenhado para lembrar a grade do próprio Insper — mesma
+ * O quadro é desenhado para lembrar a grade do próprio Insper, mesma
  * disposição de "Horário Início / Horário Término" à esquerda e os dias em
  * colunas. É o formato que o membro já lê todo semestre; copiar a forma evita
  * ter que explicar como preencher.
@@ -56,7 +56,7 @@ export const CelulaDia = styled.td`
 `;
 
 /**
- * A célula clicável ocupa a área inteira — o alvo é o bloco todo, não um
+ * A célula clicável ocupa a área inteira, o alvo é o bloco todo, não um
  * quadradinho no meio. `button` de verdade para o quadro andar no teclado e
  * ser lido por leitor de tela.
  */

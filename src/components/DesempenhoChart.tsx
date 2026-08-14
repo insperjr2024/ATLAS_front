@@ -11,7 +11,7 @@ import {
 
 // Donut "part-to-whole": fatias somam ao total de bancas atendidas no
 // semestre, uma fatia por frente. Cores fixas na ordem categórica validada
-// (ver skill de dataviz) — nunca cicladas, sempre a mesma frente = mesma cor.
+// (ver skill de dataviz), nunca cicladas, sempre a mesma frente = mesma cor.
 // Cap em 3 frentes (validado all-pairs); o resto agrupa em "Outros" cinza.
 const CORES = ["--chart-series-1", "--chart-series-2", "--chart-series-3"] as const;
 

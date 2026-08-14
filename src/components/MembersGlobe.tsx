@@ -3,7 +3,7 @@ import { theme } from "@/styles/theme";
 import { Globe, NameSlot, Stage, Wire } from "./MembersGlobe.styled";
 
 /**
- * O globo de nomes da tela de login — adaptado do globo de logos de
+ * O globo de nomes da tela de login, adaptado do globo de logos de
  * parceiros de outra plataforma da Jr, trocando "logo da empresa" por
  * "primeiro nome de um membro ativo" (vindo de `GET /auth/membros-nomes`,
  * ver `src/lib/auth.ts`). Mantém a mecânica 3D (esfera de Fibonacci,
@@ -37,7 +37,7 @@ function equatorPoints(n: number): Point[] {
   return pts;
 }
 
-/** Fixos, sempre no globo — o resto vem de `GET /auth/membros-nomes`. Um
+/** Fixos, sempre no globo, o resto vem de `GET /auth/membros-nomes`. Um
  *  nome que colidisse com o do polo norte (José) durante a rotação some
  *  sozinho pelo sistema de colisão abaixo (prioridade + fade), então não
  *  precisa mais ficar de fora daqui por causa disso. */
@@ -203,7 +203,7 @@ export function MembersGlobe({ nomes }: MembersGlobeProps) {
   }
 
   /** Fixos na linha do equador + o resto da esfera pros nomes vindos do
-   *  banco — duas distribuições distintas, uma lista só de pontos. */
+   *  banco, duas distribuições distintas, uma lista só de pontos. */
   const entries = useMemo(() => {
     const fixos = equatorPoints(NOMES_FIXOS.length).map((p, i) => ({
       ponto: p,
@@ -243,7 +243,7 @@ export function MembersGlobe({ nomes }: MembersGlobeProps) {
     const blur = (1 - depth) * 2.2;
     const zIndex = Math.round(proj.z * 1000);
     // Estimativa de largura do rótulo (não temos medida real de texto aqui)
-    // pra decidir colisão — negrito dos fixos é um pouco mais largo por letra.
+    // pra decidir colisão, negrito dos fixos é um pouco mais largo por letra.
     const largura = entry.nome.length * (entry.fixo ? 8.5 : 7.5) + 14;
     return {
       idx: i,
@@ -260,18 +260,18 @@ export function MembersGlobe({ nomes }: MembersGlobeProps) {
   });
 
   // Nenhum nome pode sobrepor outro: prioridade pros fixos, depois por
-  // ordem fixa de índice — cada candidato só fica visível se não colidir
+  // ordem fixa de índice, cada candidato só fica visível se não colidir
   // (bounding box) com um rótulo de prioridade maior que já ficou.
   //
   // A prioridade NÃO pode depender de profundidade (z): dois nomes cruzando
   // caminho têm profundidades quase iguais, e um empate que troca de lado a
-  // cada frame troca o "vencedor" da colisão — cada um pisca no lugar do
+  // cada frame troca o "vencedor" da colisão, cada um pisca no lugar do
   // outro, mesmo com a histerese abaixo (que só protege contra o PRÓPRIO
   // limiar de cada nome, não contra trocar de vencedor). Índice fixo garante
   // que, entre dois que colidem, sempre é o mesmo que aparece.
   //
   // Com histerese: o limiar pra ESCONDER quem já estava visível é mais
-  // apertado, e pra MOSTRAR quem já estava escondido é mais largo — sem
+  // apertado, e pra MOSTRAR quem já estava escondido é mais largo, sem
   // isso, um nome bem em cima da borda do limiar pisca a cada frame durante
   // o arrasto (a posição varia 1px e ele cruza o limiar pra lá e pra cá).
   const HISTERESE = 10;

@@ -1,12 +1,12 @@
 /**
- * Export do cronograma em PDF ou imagem (§6.4: "pronto para apresentações").
+ * Export do cronograma em PDF ou imagem ("pronto para apresentações").
  *
- * A rasterização é sempre por `toPng` — o PDF só embute essa imagem numa
+ * A rasterização é sempre por `toPng`, o PDF só embute essa imagem numa
  * página; a saída em PNG é o mesmo dataUrl baixado direto, sem o jsPDF.
  *
  * Atenção: `html-to-image`, não `html2canvas`: o segundo reimplementa um
  * renderizador de CSS e engasga com `color-mix(in srgb, …)`, que este código
- * usa em vários lugares — aquelas células sairiam transparentes.
+ * usa em vários lugares, aquelas células sairiam transparentes.
  * `html-to-image` serializa o DOM num `<foreignObject>` de SVG e deixa o
  * próprio navegador rasterizar: o que o navegador pinta, ele exporta.
  *

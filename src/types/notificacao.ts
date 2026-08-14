@@ -1,24 +1,35 @@
-/** Espelha `src/use_cases/notificacao/listar_notificacoes.py`. */
+/** Espelha o enum `tipo_notificacao` do backend (ver `models/notificacao_model.py`).
+ *
+ * ⚠ **Esta lista precisa estar completa, e não é decoração.** O `APARENCIA` de
+ * `pages/Notificacoes.tsx` é um `Record<TipoNotificacao, …>`: é este tipo que
+ * faz o TypeScript exigir uma entrada para cada valor. Quando três valores
+ * ficaram de fora daqui, o mapa passou a compilar incompleto e a tela quebrava
+ * ao receber qualquer notificação desses tipos.
+ */
 
 export type TipoNotificacao =
-  // 📌 eventos da plataforma (§6.6)
+  // eventos da plataforma
   | "alocado_em_projeto"
   | "entrega_registrada"
-  // 📌 o plano mudou depois de combinado — §5.6 e a data prometida ao cliente
+  | "solicitacao_projeto"
+  // pedido de dias de ajuste no cronograma (§13)
+  | "reajuste_solicitado"
+  | "reajuste_respondido"
+  // o plano mudou depois de combinado,  e a data prometida ao cliente
   | "banca_remarcada"
   | "entrega_alterada"
-  // 📌 Avaliação de Desempenho (Prioridade 2) — não é de projeto
+  // Avaliação de Desempenho (Prioridade 2), não é de projeto
   | "lote_desempenho_aberto"
-  // 📌 PDI (relatório de mentoria) — mesmo motivo
+  // PDI (relatório de mentoria), mesmo motivo
   | "pdi_prazo_proximo"
   | "pdi_prazo_vencido"
-  // 📌 eventos de bancas (§8) — entram por `utils/notificar.py` no backend
+  // eventos de bancas, entram por `utils/notificar.py` no backend
   | "escalacao_banca"
   | "troca_banca"
   | "avaliacao_pendente"
   | "descricao_coordenador_pendente"
   | "banca_aviso"
-  // 🔄 condições — recalculadas a cada GET; somem sozinhas quando resolvidas
+  // condições, recalculadas a cada GET; somem sozinhas quando resolvidas
   | "kickoff_pendente"
   | "tarefa_vencida"
   | "banca_nao_marcada"
@@ -26,8 +37,8 @@ export type TipoNotificacao =
   | "banca_hoje";
 
 export interface Notificacao {
-  /** Só o 📌 evento tem linha no banco. Condição vem com `null` e é
-   *  identificada pela `chave` — é ela que o PATCH manda de volta. */
+  /** Só o evento tem linha no banco. Condição vem com `null` e é
+   *  identificada pela `chave`, é ela que o PATCH manda de volta. */
   id: number | null;
   chave: string;
   tipo: TipoNotificacao;
@@ -57,7 +68,7 @@ export interface SolicitacaoTroca {
   usuario_original_id: number;
   candidatura_id: number | null;
   /** Nulo = pedido aberto, qualquer elegível confirma. Preenchido = convite
-   *  direto pra essa pessoa — só ela pode confirmar. */
+   *  direto pra essa pessoa, só ela pode confirmar. */
   usuario_convidado_id: number | null;
   status: StatusSolicitacaoTroca;
   criado_em: string;

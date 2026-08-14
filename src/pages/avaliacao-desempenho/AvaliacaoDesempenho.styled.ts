@@ -26,7 +26,7 @@ export const InfoBannerLinha = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** Formulário(s) que fecharam antes da pessoa responder — precisa gritar
+/** Formulário(s) que fecharam antes da pessoa responder, precisa gritar
  *  mais que o InfoBannerCard normal, por isso o tom destrutivo. */
 export const AvisoFechadoCard = styled.div`
   display: flex;

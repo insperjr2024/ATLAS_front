@@ -1,17 +1,17 @@
 /**
- * Montagem de semanas e meses — a fonte ÚNICA do "quando a semana começa".
+ * Montagem de semanas e meses, a fonte ÚNICA do "quando a semana começa".
  *
- * ⚠ O motivo de existir: antes disso, `Calendario.tsx` tinha o `weekStartsOn`
+ * O motivo de existir: antes disso, `Calendario.tsx` tinha o `weekStartsOn`
  * cravado dentro de `semanasDoMes` e, separadamente, um array literal
  * `["Dom","Seg",…]` para o cabeçalho. Os dois concordavam por coincidência.
- * Mudar um sem o outro desalinha o cabeçalho em uma coluna — a coluna de
- * segunda passa a dizer "Dom" — e isso **não aparece** numa revisão de
+ * Mudar um sem o outro desalinha o cabeçalho em uma coluna, a coluna de
+ * segunda passa a dizer "Dom", e isso **não aparece** numa revisão de
  * screenshot.
  *
  * Aqui os dois saem do mesmo parâmetro, então não há como dessincronizar.
  *
  * O calendário geral segue em domingo-primeiro (`0`); o cronograma pintado e
- * a faixa de reunião usam seg–dom (`1`), como o §6.4 pede.
+ * a faixa de reunião usam seg–dom (`1`), como o  pede.
  */
 
 import {
@@ -55,7 +55,7 @@ export function diasDaSemana(ref: Date, inicioSemana: InicioSemana): Date[] {
  *
  * Tudo no cronograma trafega como string nesse formato, e comparações de
  * intervalo são comparações de string. É o que mantém o componente livre de
- * fuso — `new Date("2026-08-10")` é lido como UTC e volta um dia no Brasil.
+ * fuso, `new Date("2026-08-10")` é lido como UTC e volta um dia no Brasil.
  */
 export function chaveData(data: Date): string {
   return format(data, "yyyy-MM-dd");

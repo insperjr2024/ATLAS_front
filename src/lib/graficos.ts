@@ -8,7 +8,7 @@ export interface ColunaFonte {
   rotulo: string;
   /**
    * `relacao` vem de outra tabela por junção (Projetos por frente, por
-   * exemplo). Agrupa igual, mas só aceita contagem — somar dias de ambientação
+   * exemplo). Agrupa igual, mas só aceita contagem, somar dias de ambientação
    * "por frente" contaria o mesmo projeto uma vez por frente.
    */
   papel: PapelColuna;
@@ -17,7 +17,7 @@ export interface ColunaFonte {
 export interface FonteGrafico {
   tabela: string;
   rotulo: string;
-  /** Texto curto explicando a tabela — quem monta o gráfico não conhece o banco. */
+  /** Texto curto explicando a tabela, quem monta o gráfico não conhece o banco. */
   descricao: string;
   colunas: ColunaFonte[];
 }
@@ -39,7 +39,7 @@ export type Granularidade = "mes" | "ano";
 /**
  * As tabelas liberadas para gráfico.
  *
- * ⚠ A lista é curada no backend (`src/use_cases/monitoramento/graficos.py`) e
+ * A lista é curada no backend (`src/use_cases/monitoramento/graficos.py`) e
  * o front não tem cópia dela. Qualquer tabela ou coluna fora do catálogo é
  * recusada lá, então não há como esta tela pedir algo que não deveria.
  */

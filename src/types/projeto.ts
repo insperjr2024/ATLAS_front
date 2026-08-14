@@ -1,5 +1,5 @@
 /**
- * O projeto e sua equipe (§4, §6.2–6.4).
+ * O projeto e sua equipe (, –6.4).
  *
  * As formas aqui espelham os dois serializers do backend
  * (`use_cases/projeto/get_projeto.py`): o **resumo**, que alimenta os cards da
@@ -8,7 +8,7 @@
 
 import type { ResultadoBanca, StatusBanca } from "@/types/banca";
 
-/** Os 7 status do ciclo de vida + Pausado, que é um estado à parte (§4). */
+/** Os 7 status do ciclo de vida + Pausado, que é um estado à parte. */
 export type StatusProjeto =
   | "vendido"
   | "ambientacao"
@@ -21,7 +21,7 @@ export type StatusProjeto =
 
 export type PapelProjeto = "coordenador" | "consultor";
 
-/** A forma enxuta — cards da lista (§6.2). */
+/** A forma enxuta, cards da lista. */
 export interface ProjetoResumo {
   id: number;
   nome: string;
@@ -35,14 +35,14 @@ export interface ProjetoResumo {
   consultor_ids: number[];
   data_kickoff: string | null;
   kickoff_pendente: boolean;
-  /** Arquivar não é excluir — só some das listagens normais (§6.2). */
+  /** Arquivar não é excluir, só some das listagens normais. */
   arquivado_em: string | null;
   /** A banca ainda não realizada mais próxima, de qualquer escopo deste
    *  projeto. `null` se nenhuma estiver marcada ou todas já aconteceram. */
   proxima_banca: string | null;
   /** "Limpar histórico": corte de exibição da timeline (aba Histórico) —
    *  não apaga nada, as linhas anteriores continuam usadas na contagem de
-   *  dias (§5.4). `null` = nada oculto, mostra a timeline inteira. */
+   *  dias. `null` = nada oculto, mostra a timeline inteira. */
   historico_oculto_ate: string | null;
 }
 
@@ -61,7 +61,7 @@ export interface BancaDoEscopo {
   realizado_em: string | null;
   resultado: ResultadoBanca | null;
   status: StatusBanca;
-  /** Todos os escopos que esta banca cobre, este incluído — uma banca pode
+  /** Todos os escopos que esta banca cobre, este incluído, uma banca pode
    *  avaliar mais de um escopo do projeto de uma vez. */
   escopo_ids: number[];
   /**
@@ -90,9 +90,9 @@ export interface SessaoDaBanca {
 }
 
 /**
- * Um escopo vendido, com a contagem do §5.4 **já calculada pelo backend**.
+ * Um escopo vendido, com a contagem do  **já calculada pelo backend**.
  *
- * O front nunca recalcula dias úteis — só desenha a barra. É a mesma doutrina
+ * O front nunca recalcula dias úteis, só desenha a barra. É a mesma doutrina
  * de `permissoes.ts`: a regra mora num lugar só.
  */
 export interface EscopoVendido {
@@ -103,42 +103,42 @@ export interface EscopoVendido {
   /** Já resolvido: o nome do catálogo, ou o digitado quando é um "Outro". */
   nome: string;
   frente_id: number;
-  /** Ordem de exibição na tela do projeto — setinhas trocam este valor
+  /** Ordem de exibição na tela do projeto, setinhas trocam este valor
    *  entre vizinhos, não é a ordem de criação (`id`). */
   ordem: number;
-  /** ⭐ Imutável — o registro comercial. Nunca vira "vendidos + ajustados". */
+  /** Imutável, o registro comercial. Nunca vira "vendidos + ajustados". */
   dias_uteis_vendidos: number;
-  /** Dias extras autorizados pela diretoria (§8). Somam com os vendidos para
+  /** Dias extras autorizados pela diretoria. Somam com os vendidos para
    *  formar a janela, mas são mostrados à parte: a tela diz
    *  *20 vendidos · 10 ajustados*, nunca "30 vendidos". */
   dias_uteis_ajustados: number;
   status: StatusEscopo;
-  /** A reunião inicial — é ela que abre a janela do escopo. */
+  /** A reunião inicial, é ela que abre a janela do escopo. */
   data_inicio: string | null;
   data_entrega_planejada: string | null;
   data_entrega_real: string | null;
   tipo_atraso_entrega: "interno" | "externo" | null;
   /**
-   * Carimbo do `POST /escopos-projeto/{id}/oficializar` (§5.3) — informativo,
+   * Carimbo do `POST /escopos-projeto/{id}/oficializar`, informativo,
    * só alimenta o banner "Cronograma oficializado em …".
    *
-   * ⚠️ Não confundir com a JANELA do escopo (`data_inicio` → `fim_janela`):
+   * Não confundir com a JANELA do escopo (`data_inicio` → `fim_janela`):
    * são conceitos que convivem e não se consultam. A janela abre na reunião
    * inicial e não pergunta se o cronograma foi oficializado; oficializar não
    * mexe em dia nenhum da contagem. O merge do reajuste apagou este campo sem
-   * querer — ele fica, o backend manteve a coluna e a rota.
+   * querer, ele fica, o backend manteve a coluna e a rota.
    */
   cronograma_oficializado_em: string | null;
   consumidos: number;
-  /** Pode ser negativo — é o "estourou em N dias". Medido contra
+  /** Pode ser negativo, é o "estourou em N dias". Medido contra
    *  *vendidos + ajustados*. */
   restantes: number;
   estourou: boolean;
   em_contagem: boolean;
-  /** §10 — dias úteis além da janela, derivados. Zero enquanto ela não estoura. */
+  /** , dias úteis além da janela, derivados. Zero enquanto ela não estoura. */
   atraso: number;
   /**
-   * §7.4: o "porquê" do `atraso` acima, escrito por quem conduz o projeto.
+   * o "porquê" do `atraso` acima, escrito por quem conduz o projeto.
    *
    * `null` = ainda não justificado, e é o que faz o card "Escopos vendidos"
    * PEDIR a nota em vez de só mostrar o número. Só a mais recente vem aqui —
@@ -151,12 +151,12 @@ export interface EscopoVendido {
     registrado_em: string;
   } | null;
   /**
-   * §11 — dias úteis pintados depois de a BANCA ser realizada: as
+   * , dias úteis pintados depois de a BANCA ser realizada: as
    * **correções** que ela apontou.
    *
-   * ⚠️ **Não confundir com `dias_uteis_ajustados`.** Dias de ajuste aumentam a
+   * **Não confundir com `dias_uteis_ajustados`.** Dias de ajuste aumentam a
    * JANELA do escopo e são pedidos à diretoria nos 3 primeiros dias úteis
-   * depois da largada — é trabalho vendido que faltou. Correção é o tempo
+   * depois da largada, é trabalho vendido que faltou. Correção é o tempo
    * gasto depois da banca arrumando o que ela apontou: não aumenta janela, não
    * se pede a ninguém, e não conta como atraso.
    */
@@ -164,12 +164,12 @@ export interface EscopoVendido {
   /** O último dia da janela: início + vendidos + ajustados dias úteis.
    *  `null` enquanto o escopo não tem reunião inicial. */
   fim_janela: string | null;
-  /** §8: último dia em que ainda cabe PEDIR dias de ajuste. */
+  /** último dia em que ainda cabe PEDIR dias de ajuste. */
   prazo_pedido_ajuste: string | null;
   /** O prazo ainda está aberto hoje. */
   pedido_ajuste_aberto: boolean;
   banca: BancaDoEscopo | null;
-  /** 🔒 §5.5: só true quando a banca do escopo saiu aprovada. */
+  /** só true quando a banca do escopo saiu aprovada. */
   entrega_liberada: boolean;
   /**
    * ⭐ Quando alguém **confirmou** que a entrega foi ao cliente — o ato que
@@ -187,7 +187,7 @@ export interface EscopoVendido {
   reajuste_pendente: PedidoDeDias | null;
 }
 
-/** §8: um pedido de dias de ajuste aguardando decisão. */
+/** um pedido de dias de ajuste aguardando decisão. */
 export interface PedidoDeDias {
   id: number;
   dias_solicitados: number;
@@ -197,7 +197,7 @@ export interface PedidoDeDias {
   criado_em: string;
 }
 
-/** A forma completa — página do projeto, aba Visão geral (§6.4). */
+/** A forma completa, página do projeto, aba Visão geral. */
 export interface ProjetoCompleto extends ProjetoResumo {
   escopos: EscopoVendido[];
   descricao: string | null;
@@ -205,7 +205,7 @@ export interface ProjetoCompleto extends ProjetoResumo {
   anexo_proposta_nome: string | null;
   dias_ambientacao: number;
   /**
-   * 🤖 O último dia de ambientação (§5.3) — kickoff + `dias_ambientacao` dias
+   * O último dia de ambientação, kickoff + `dias_ambientacao` dias
    * ÚTEIS, calculado pelo backend. Passado ele, o projeto vira Em andamento
    * sozinho. `null` = sem janela (sem kickoff ou zero dias), e aí a saída de
    * Ambientação continua sendo pela mão de alguém.
@@ -228,7 +228,7 @@ export interface ProjetoCompleto extends ProjetoResumo {
 }
 
 /**
- * Uma linha de `projeto_status_historico`. `alterado_por` vazio = 🤖 o sistema
+ * Uma linha de `projeto_status_historico`. `alterado_por` vazio = o sistema
  * mudou sozinho (o kickoff, por exemplo), não uma pessoa clicando.
  */
 export interface StatusHistorico {
@@ -241,9 +241,9 @@ export interface StatusHistorico {
 }
 
 /**
- * A nota de atraso da diretoria (§7.4) — `projeto_justificativa_atraso`, na
+ * A nota de atraso da diretoria, `projeto_justificativa_atraso`, na
  * mesma linha do tempo do histórico de status. `alterado_em` aqui é quando a
- * nota foi registrada, não uma "mudança" — o nome é o mesmo do status pra dar
+ * nota foi registrada, não uma "mudança", o nome é o mesmo do status pra dar
  * uma chave só pra ordenar/agrupar por dia.
  */
 export interface JustificativaAtrasoHistorico {
@@ -254,17 +254,17 @@ export interface JustificativaAtrasoHistorico {
    *  insights em 2026-08-12, mas notas antigas ainda os carregam. */
   motivo_tipo: string | null;
   /**
-   * ⚠ **O texto da nota vem em `detalhe`, não aqui.**
+   * **O texto da nota vem em `detalhe`, não aqui.**
    *
    * O backend unificou as fontes do histórico num envelope com `titulo` e
    * `detalhe` prontos, e parou de emitir `texto`. O campo continua declarado
-   * — opcional — porque declará-lo obrigatório foi o que escondeu o bug: a
+   *, opcional, porque declará-lo obrigatório foi o que escondeu o bug: a
    * tela lia `linha.texto`, o `tsc` aprovava, e a nota renderizava vazia.
    */
   texto?: string;
   registrado_por: number;
   alterado_em: string;
-  //: O campo de autoria comum a todas as cinco fontes — o backend o emite
+  //: O campo de autoria comum a todas as cinco fontes, o backend o emite
   //: junto de `registrado_por` para a tela não precisar saber de qual veio.
   alterado_por?: number | null;
   titulo?: string;
@@ -272,16 +272,16 @@ export interface JustificativaAtrasoHistorico {
 }
 
 /**
- * ⭐ O que TODA linha do histórico carrega, qualquer que seja o tipo.
+ * O que TODA linha do histórico carrega, qualquer que seja o tipo.
  *
  * O backend compõe a lista de cinco fontes e devolve `titulo`/`detalhe` já
- * escritos — é o que deixa a tela renderizar um tipo novo sem saber nada
+ * escritos, é o que deixa a tela renderizar um tipo novo sem saber nada
  * sobre ele. Antes disto, um tipo não previsto caía no ramo de status,
  * tentava ler `status_novo` inexistente e derrubava a PÁGINA INTEIRA.
  */
 interface LinhaBase {
   id: number | string;
-  /** Frase pronta: "Status: X → Y", "+5 dias de ajuste aprovados — escopo". */
+  /** Frase pronta: "Status: X → Y", "+5 dias de ajuste aprovados, escopo". */
   titulo?: string;
   /** O texto livre por baixo: justificativa, motivo, observação. */
   detalhe?: string | null;
@@ -290,41 +290,41 @@ interface LinhaBase {
   alterado_por?: number | null;
 }
 
-/** §8: o PEDIDO de dias, com o texto que o coordenador escreveu. */
+/** o PEDIDO de dias, com o texto que o coordenador escreveu. */
 export interface PedidoDeDiasHistorico extends LinhaBase {
   tipo: "pedido_de_dias";
-  /** Ainda sem resposta da diretoria — a linha aparece assim mesmo. */
+  /** Ainda sem resposta da diretoria, a linha aparece assim mesmo. */
   aguardando?: boolean;
 }
 
-/** §8: a DECISÃO sobre o pedido, com o texto que a diretoria escreveu. */
+/** a DECISÃO sobre o pedido, com o texto que a diretoria escreveu. */
 export interface DiasDeAjusteHistorico extends LinhaBase {
   tipo: "dias_de_ajuste";
   aprovado?: boolean;
 }
 
-/** §6.4: o que ficou combinado numa reunião — só as que têm anotação. */
+/** o que ficou combinado numa reunião, só as que têm anotação. */
 export interface ReuniaoHistorico extends LinhaBase {
   tipo: "reuniao";
 }
 
-/** §13: uma data de entrega prometida que mudou (ou foi registrada). */
+/** uma data de entrega prometida que mudou (ou foi registrada). */
 export interface EntregaAlteradaHistorico extends LinhaBase {
   tipo: "entrega_alterada";
   autorizado_por?: number | null;
 }
 
-/** A remarcação de uma banca (§5.6). */
+/** A remarcação de uma banca. */
 export interface RemarcacaoBancaHistorico {
-  //: ⚠ O backend emite `banca_remarcada`. A tela chamava isto de
-  //: `remarcacao_banca` e o `if` nunca casava — a linha caía no ramo de
+  //: O backend emite `banca_remarcada`. A tela chamava isto de
+  //: `remarcacao_banca` e o `if` nunca casava, a linha caía no ramo de
   //: status e quebrava a página.
   tipo: "banca_remarcada";
   id: number;
   projeto_escopo_id: number | null;
   data_anterior: string;
   data_nova: string;
-  /** ⚠ Mesmo caso de `texto` na justificativa de atraso: o motivo escrito vem
+  /** Mesmo caso de `texto` na justificativa de atraso: o motivo escrito vem
    *  em `detalhe`. Opcional para o `tsc` cobrar quem tentar lê-lo. */
   justificativa?: string;
   registrado_por: number | null;
@@ -361,7 +361,7 @@ export type HistoricoEntrada =
   | ReuniaoHistorico
   | EntregaAlteradaHistorico;
 
-/** O que o formulário de equipe manda de volta — sem `entrou_em`, que é do backend. */
+/** O que o formulário de equipe manda de volta, sem `entrou_em`, que é do backend. */
 export interface MembroEquipePayload {
   usuario_id: number;
   papel: PapelProjeto;

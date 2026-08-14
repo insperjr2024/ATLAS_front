@@ -14,9 +14,9 @@ import type {
 /* ------------------------------------------------------------------ */
 
 /**
- * O recorte de visão é do backend (§3): esta chamada devolve coisas
+ * O recorte de visão é do backend: esta chamada devolve coisas
  * diferentes para diretor, gerente e consultor com o mesmo endereço. O
- * `frenteId` só é aceito para diretor — para o gerente ele no máximo
+ * `frenteId` só é aceito para diretor, para o gerente ele no máximo
  * restringe dentro das frentes dele, nunca amplia.
  */
 export function getProjetos(
@@ -35,7 +35,7 @@ export function getProjeto(projetoId: number, token: string) {
   return apiFetch<ProjetoCompleto>(`/projetos/${projetoId}`, { token });
 }
 
-/** Arquivar não é excluir (§6.2) — só some das listagens normais. */
+/** Arquivar não é excluir, só some das listagens normais. */
 export function arquivarProjeto(projetoId: number, token: string) {
   return apiFetch<{ id: number; arquivado_em: string }>(`/projetos/${projetoId}/arquivar`, {
     method: "PATCH",
@@ -50,7 +50,7 @@ export function desarquivarProjeto(projetoId: number, token: string) {
   });
 }
 
-/** Sem volta — o backend só aceita se o projeto já estiver arquivado. */
+/** Sem volta, o backend só aceita se o projeto já estiver arquivado. */
 export function deletarProjetoPermanente(projetoId: number, token: string) {
   return apiFetch<{ nome: string }>(`/projetos/${projetoId}`, {
     method: "DELETE",
@@ -65,7 +65,7 @@ export interface CreateProjetoPayload {
   link_proposta?: string | null;
   frente_ids: number[];
   dias_ambientacao: number;
-  /** Teto de consultores — decide quando o projeto sai da lista de vagas. */
+  /** Teto de consultores, decide quando o projeto sai da lista de vagas. */
   max_consultores: number;
   equipe: MembroEquipePayload[];
   dia_reuniao_padrao?: number | null;
@@ -82,7 +82,7 @@ export function createProjeto(dados: CreateProjetoPayload, token: string) {
   });
 }
 
-/** A proposta é ou link (mandado junto no `createProjeto`), ou este PDF — nunca os dois. */
+/** A proposta é ou link (mandado junto no `createProjeto`), ou este PDF, nunca os dois. */
 export function uploadAnexoProposta(projetoId: number, arquivo: File, token: string) {
   const formData = new FormData();
   formData.append("arquivo", arquivo);
@@ -94,7 +94,7 @@ export function uploadAnexoProposta(projetoId: number, arquivo: File, token: str
 }
 
 /**
- * A rota exige Bearer token, então um `<a href>` direto não funciona — baixa
+ * A rota exige Bearer token, então um `<a href>` direto não funciona, baixa
  * como blob e dispara o download via um link temporário.
  */
 export async function baixarAnexoProposta(projetoId: number, nomeArquivo: string, token: string) {
@@ -120,12 +120,12 @@ export function updateEquipe(projetoId: number, equipe: MembroEquipePayload[], t
 }
 
 /**
- * Marcar o kickoff só registra a data — quem move Vendido → Ambientação é
- * uma pessoa, no seletor de etapa (§5.2); o kickoff apenas habilita o destino.
+ * Marcar o kickoff só registra a data, quem move Vendido → Ambientação é
+ * uma pessoa, no seletor de etapa; o kickoff apenas habilita o destino.
  *
  * A resposta traz o `status` porque ele PODE ter mudado mesmo assim: um
  * projeto já em Ambientação com o kickoff corrigido para trás pode ter a
- * janela vencida na hora e virar Em andamento sozinho (§5.3).
+ * janela vencida na hora e virar Em andamento sozinho.
  */
 export function marcarKickoff(projetoId: number, dataKickoff: string, token: string) {
   return apiFetch<{ id: number; data_kickoff: string; status: StatusProjeto }>(
@@ -134,16 +134,16 @@ export function marcarKickoff(projetoId: number, dataKickoff: string, token: str
   );
 }
 
-// ⭐ Não existe `marcarEntregaCliente`: a entrega ao cliente REALIZADA e a
-// entrega do escopo são a MESMA data (§5.5) — quem a escreve é
-// `marcarEntregaEscopo`, e a do projeto é derivada da última pelo backend.
+// Não existe `marcarEntregaCliente`: entrega ao cliente e entrega do escopo
+// são a MESMA data, quem a escreve é `marcarEntregaEscopo`, e a do
+// projeto é derivada da última pelo backend.
 //
 // O que existe é a PROMESSA, abaixo: outra pergunta, outro campo.
 
 /**
  * A data combinada com o cliente na venda.
  *
- * `null` limpa a promessa. Não toca na entrega realizada — aquela é derivada
+ * `null` limpa a promessa. Não toca na entrega realizada, aquela é derivada
  * dos escopos e não passa por aqui.
  */
 export function updateEntregaPrevistaCliente(
@@ -176,7 +176,7 @@ export function updateDescricao(projetoId: number, descricao: string, token: str
   );
 }
 
-/** Renomear é separado da descrição (mesma rota, mas só o campo `nome`) — o
+/** Renomear é separado da descrição (mesma rota, mas só o campo `nome`), o
  *  nome é o título da página, não um conteúdo do card de Descrição, então
  *  a edição mora no cabeçalho, ao lado do título. */
 export function renomearProjeto(projetoId: number, nome: string, token: string) {
@@ -187,7 +187,7 @@ export function renomearProjeto(projetoId: number, nome: string, token: string) 
 }
 
 /** A resposta traz o `status`: encurtar a ambientação pode encerrá-la agora
- *  e virar o projeto para Em andamento (§5.3). */
+ *  e virar o projeto para Em andamento. */
 export function updateDiasAmbientacao(projetoId: number, diasAmbientacao: number, token: string) {
   return apiFetch<{ id: number; dias_ambientacao: number; status: StatusProjeto }>(
     `/projetos/${projetoId}/dias-ambientacao`,
@@ -206,7 +206,7 @@ export function getHistoricoProjeto(projetoId: number, token: string) {
   return apiFetch<HistoricoEntrada[]>(`/projetos/${projetoId}/historico`, { token });
 }
 
-/** §7.4 — só a diretoria; o backend recusa com 403 quem não for. */
+/** Só a diretoria; o backend recusa com 403 quem não for. */
 export function registrarJustificativaAtraso(
   projetoId: number,
   texto: string,
@@ -255,7 +255,7 @@ export function excluirJustificativaAtraso(projetoId: number, justificativaId: n
   });
 }
 
-/** §5.6 — mesma lógica da justificativa de atraso acima. Só diretoria. */
+/** Mesma lógica da justificativa de atraso acima. Só diretoria. */
 export function excluirRemarcacaoBanca(projetoId: number, remarcacaoId: number, token: string) {
   return apiFetch<null>(`/projetos/${projetoId}/remarcacao-banca/${remarcacaoId}`, {
     method: "DELETE",
@@ -263,9 +263,9 @@ export function excluirRemarcacaoBanca(projetoId: number, remarcacaoId: number, 
   });
 }
 
-/** "Limpar histórico" não apaga nada — só marca 'agora' como corte de
+/** "Limpar histórico" não apaga nada, só marca 'agora' como corte de
  *  exibição da timeline. As linhas continuam no banco, usadas na contagem
- *  de dias (§5.4); só saem da tela até alguém pedir pra ver tudo de novo. */
+ *  de dias; só saem da tela até alguém pedir pra ver tudo de novo. */
 export function ocultarHistorico(projetoId: number, token: string) {
   return apiFetch<{ id: number; historico_oculto_ate: string }>(
     `/projetos/${projetoId}/historico/ocultar`,
@@ -285,7 +285,7 @@ export function mostrarHistoricoCompleto(projetoId: number, token: string) {
 /* ------------------------------------------------------------------ */
 
 export interface EscopoVendidoPayload {
-  /** Vazio + `nome_customizado` preenchido = a opção "Outro" do §4. */
+  /** Vazio + `nome_customizado` preenchido = a opção "Outro". */
   escopo_id: number | null;
   nome_customizado?: string | null;
   frente_id: number;
@@ -329,19 +329,18 @@ export function updateEscopoProjeto(
   });
 }
 
-// ⭐ A contagem do §5.4 começa pela REUNIÃO INICIAL, marcada no calendário do
+// A contagem do  começa pela REUNIÃO INICIAL, marcada no calendário do
 // CRONOGRAMA com o escopo escolhido (`createReuniao` em `lib/tarefas.ts`). A
 // aba Reuniões, que era onde isso ficava, deixou de existir: todas as datas do
-// projeto passaram a ser cravadas numa tela só (§2). Não existe um "iniciar
+// projeto passaram a ser cravadas numa tela só. Não existe um "iniciar
 // escopo" digitado à parte.
 //
 // (Merge) `updateEscopoProjeto` acima veio da main e convive com isso: ele edita
 // os CAMPOS do escopo vendido (nome, dias, entrega planejada, ordem na tabela),
-// não a data de início — que continua sendo a reunião inicial do cronograma.
+// não a data de início, que continua sendo a reunião inicial do cronograma.
 
 /**
- * 🔒 O backend recusa com 422 até a banca do escopo ser APROVADA (§5.5) — a
- * banca acontecer não basta, é o resultado que libera.
+ * O backend recusa com 422 até a banca do escopo ser realizada.
  *
  * `justificativa` só é exigida para ALTERAR uma entrega já registrada, e nesse
  * caso o backend também exige que quem altera seja a diretoria (§13).
@@ -397,11 +396,11 @@ export function confirmarEntregaEscopo(
 }
 
 /**
- * Marca a banca do escopo — escreve na MESMA linha que `/bancas` lê (§8).
+ * Marca a banca do escopo, escreve na MESMA linha que `/bancas` lê.
  *
  * `escopoIds` é o conjunto COMPLETO de escopos que a banca passa a cobrir (o
  * da URL entra de qualquer jeito). Omitido, os vínculos atuais ficam como
- * estão — é o caminho de quem só quer mexer na data.
+ * estão, é o caminho de quem só quer mexer na data.
  */
 export function marcarBancaDoEscopo(
   escopoId: number,
@@ -433,16 +432,16 @@ export const ROTULO_STATUS_ESCOPO: Record<string, string> = {
   cancelado: "Cancelado",
 };
 
-/** §7.4 — o `tipo` de `MotivoAtraso`, usado tanto na aba Atrasos quanto no
+/** O `tipo` de `MotivoAtraso`, usado tanto na aba Atrasos quanto no
  *  histórico do projeto (pra mostrar a que motivo uma justificativa se
  *  refere). Um só lugar pras duas telas não divergirem no rótulo. */
 /**
  * Os tipos de motivo de atraso, para rótulo.
  *
- * ⚠ `entrega_interna`/`entrega_externa` continuam aqui, mas nenhum motivo NOVO
+ * `entrega_interna`/`entrega_externa` continuam aqui, mas nenhum motivo NOVO
  * nasce com eles: o atraso da entrega saiu dos insights em 2026-08-12. Ficam
  * porque as notas de justificativa já gravadas com esses tipos seguem no banco
- * e aparecem no Histórico — sem o rótulo, a tela mostraria a chave crua.
+ * e aparecem no Histórico, sem o rótulo, a tela mostraria a chave crua.
  */
 export const ROTULO_MOTIVO_ATRASO: Record<string, string> = {
   banca: "Banca",
@@ -452,14 +451,14 @@ export const ROTULO_MOTIVO_ATRASO: Record<string, string> = {
 };
 
 /* ------------------------------------------------------------------ */
-/* Ciclo de vida — espelho de utils/status_projeto.py                  */
+/* Ciclo de vida, espelho de utils/status_projeto.py                  */
 /* ------------------------------------------------------------------ */
 
 export const ROTULO_STATUS: Record<StatusProjeto, string> = {
   vendido: "Vendido",
   ambientacao: "Ambientação",
   em_andamento: "Em andamento",
-  validacao_bancas: "Validação em bancas",
+  validacao_bancas: "Aguardando bancas",
   envio_tep: "Envio do TEP",
   periodo_ajustes: "Período de ajustes",
   finalizado: "Finalizado",
@@ -474,7 +473,7 @@ const STATUS_PAUSAVEIS: StatusProjeto[] = [
   "periodo_ajustes",
 ];
 
-/** A fila do ciclo de vida, na ordem. `pausado` fica fora — é estado à parte. */
+/** A fila do ciclo de vida, na ordem. `pausado` fica fora, é estado à parte. */
 const STATUS_ORDEM: StatusProjeto[] = [
   "vendido",
   "ambientacao",
@@ -486,12 +485,12 @@ const STATUS_ORDEM: StatusProjeto[] = [
 ];
 
 /**
- * ✋ Espelho de `status_projeto.py::destinos_validos` — as etapas que o
+ * Espelho de `status_projeto.py::destinos_validos`, as etapas que o
  * seletor mostra como opção pra este status. Livre entre as ativas, nos dois
  * sentidos (inclusive reabrir um projeto finalizado); o backend revalida
  * (`transicao_manual_valida`), aqui é só pra montar a lista.
  *
- * Vendido só oferece Ambientação, e só quando `temKickoff` — sem data de
+ * Vendido só oferece Ambientação, e só quando `temKickoff`, sem data de
  * kickoff marcada não tem o que confirmar. `pausado` não tem destino por
  * aqui: sai pelo retomar.
  */
@@ -513,23 +512,23 @@ export function tomDoStatus(status: StatusProjeto): "success" | "muted" | "defau
 }
 
 /**
- * Uma cor fixa por fase — mesma fonte usada no kanban de projetos e no
+ * Uma cor fixa por fase, mesma fonte usada no kanban de projetos e no
  * seletor de etapa da Visão geral, pra nenhum dos dois inventar a própria
  * paleta e os dois acabarem discordando da cor de uma fase.
  */
 export const CORES_STATUS: Record<StatusProjeto, string> = {
-  vendido: "#9CA3AF", // cinza — ainda não começou de fato
+  vendido: "#9CA3AF", // cinza, ainda não começou de fato
   ambientacao: "#6366F1", // índigo
   em_andamento: "#3B82F6", // azul
   validacao_bancas: "#8B5CF6", // roxo
   envio_tep: "#14B8A6", // teal
   periodo_ajustes: "#F97316", // laranja
   finalizado: "#10B981", // verde
-  pausado: "#F59E0B", // âmbar — vermelho fica reservado pro alerta de vencida
+  pausado: "#F59E0B", // âmbar, vermelho fica reservado pro alerta de vencida
 };
 
 /** Mesma ordem de colunas do kanban de projetos (`ProjetoKanbanBoard`,
- *  que itera `Object.keys(CORES_STATUS)`) — usada pra ordenar a lista pela
+ *  que itera `Object.keys(CORES_STATUS)`), usada pra ordenar a lista pela
  *  fase do ciclo de vida sem inventar uma segunda ordem que discorde do
  *  kanban. */
 const ORDEM_STATUS_KANBAN = Object.keys(CORES_STATUS) as StatusProjeto[];
@@ -549,7 +548,7 @@ export function rotuloDiaSemana(dia: number | null | undefined): string {
   return DIAS_DA_SEMANA[dia - 1];
 }
 
-/** Só dias úteis — reunião de projeto não cai em fim de semana. Catálogo
+/** Só dias úteis, reunião de projeto não cai em fim de semana. Catálogo
  *  único do cadastro (`ProjetoNovo`) e da edição (`ProjetoVisaoGeral`). */
 export const DIAS_REUNIAO = [
   { valor: 1, rotulo: "Segunda-feira" },
@@ -561,7 +560,7 @@ export const DIAS_REUNIAO = [
 
 /**
  * A API manda data pura (`2026-08-10`), sem fuso. `new Date("2026-08-10")`
- * interpreta como UTC e volta um dia atrás no Brasil — daí o corte manual.
+ * interpreta como UTC e volta um dia atrás no Brasil, daí o corte manual.
  */
 export function formatarData(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -571,9 +570,9 @@ export function formatarData(iso: string | null | undefined): string {
 
 /**
  * O backend manda datetime em UTC, mas sem o `Z` na string (datetime "naive"
- * do Python/Pydantic — ex.: `"2026-08-07T03:16:00"`). Sem fuso marcado,
+ * do Python/Pydantic, ex.: `"2026-08-07T03:16:00"`). Sem fuso marcado,
  * `new Date(...)` lê a string como hora LOCAL em vez de UTC, e mostra o
- * relógio de UTC cru como se já fosse horário de Brasília — sempre 3h
+ * relógio de UTC cru como se já fosse horário de Brasília, sempre 3h
  * adiantado. Não mexe em data pura (`2026-07-14`, sem hora): essa já é
  * tratada à parte, porque não é um instante pra converter, só um dia.
  */
@@ -584,7 +583,7 @@ export function paraDataUtc(iso: string): Date {
 
 export function formatarDataHora(iso: string | null | undefined): string {
   if (!iso) return "—";
-  // ⚠ Data pura (`2026-07-14`) não tem hora e NÃO pode passar por `new Date`:
+  // Data pura (`2026-07-14`) não tem hora e NÃO pode passar por `new Date`:
   // ele lê como UTC e no Brasil devolve o dia anterior às 21:00. O calendário
   // geral mistura eventos com hora (banca) e sem hora (kickoff, reunião,
   // entrega) no mesmo campo, então a distinção é feita aqui.
@@ -597,8 +596,8 @@ export function formatarDataHora(iso: string | null | undefined): string {
 }
 
 /**
- * "dd/mm/aaaa às hh:mm" — usado nos cards de projeto (kanban e lista) pra
- * mostrar a data da próxima banca (§6.2). Espaço inquebrável em volta do
+ * "dd/mm/aaaa às hh:mm", usado nos cards de projeto (kanban e lista) pra
+ * mostrar a data da próxima banca. Espaço inquebrável em volta do
  * "às" pra data e hora nunca se separarem numa quebra de linha do card.
  */
 export function formatarDataHoraBanca(iso: string | null | undefined): string {

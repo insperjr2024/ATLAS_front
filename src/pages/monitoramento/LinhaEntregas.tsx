@@ -12,8 +12,8 @@ import { theme } from "@/styles/theme";
 
 /** O teto do eixo Y.
  *
- *  ⭐ **Fixo, e não ajustado ao maior mês.** Escalando pelo máximo, um mês com
- *  2 entregas desenharia o ponto no topo por ser o melhor da série — o card
+ *  **Fixo, e não ajustado ao maior mês.** Escalando pelo máximo, um mês com
+ *  2 entregas desenharia o ponto no topo por ser o melhor da série, o card
  *  diria "ótimo" num semestre fraco. Com teto fixo, a mesma altura significa a
  *  mesma coisa toda vez que a tela abre.
  *
@@ -33,10 +33,10 @@ function mesComAno(iso: string): string {
 }
 
 /**
- * As entregas de escopo por mês nos últimos 6 (§7.1).
+ * As entregas de escopo por mês nos últimos 6.
  *
  * **Linha, e não barras.** A pergunta do card é "o ritmo está subindo ou
- * caindo?", e linha responde isso de relance — barras convidam a comparar mês
+ * caindo?", e linha responde isso de relance, barras convidam a comparar mês
  * contra mês, que é a leitura errada num intervalo curto onde o volume oscila
  * por acaso.
  *
@@ -49,7 +49,7 @@ export function LinhaEntregas({ meses }: { meses: { inicio: string; total: numbe
   const teto = Math.max(TETO_PADRAO, Math.ceil(pico / 4) * 4);
 
   const dados = meses.map((m, i) => ({
-    // O último rótulo é "hoje" — ver o docstring. Os outros levam o mês.
+    // O último rótulo é "hoje", ver o docstring. Os outros levam o mês.
     rotulo: i === meses.length - 1 ? "hoje" : nomeDoMes(m.inicio),
     mes: mesComAno(m.inicio),
     total: m.total,
@@ -60,7 +60,7 @@ export function LinhaEntregas({ meses }: { meses: { inicio: string; total: numbe
       <ResponsiveContainer>
         {/* Margem simétrica nos dois lados. Encolher o espaço do eixo Y com
             `left` negativo desloca a ÁREA INTEIRA do gráfico e ele para de
-            ficar centralizado no card — quem controla esse espaço é a `width`
+            ficar centralizado no card, quem controla esse espaço é a `width`
             do próprio eixo, logo abaixo. */}
         <LineChart data={dados} margin={{ top: 8, right: 12, bottom: 0, left: 12 }}>
           <CartesianGrid stroke={theme.colors.border} vertical={false} />
@@ -82,7 +82,7 @@ export function LinhaEntregas({ meses }: { meses: { inicio: string; total: numbe
             axisLine={false}
           />
           {/* O tooltip mostra o mês DE VERDADE, inclusive no ponto rotulado
-              "hoje" — senão o último ponto ficaria sem data nenhuma. */}
+              "hoje", senão o último ponto ficaria sem data nenhuma. */}
           <Tooltip
             labelFormatter={(_, carga) => carga?.[0]?.payload?.mes ?? ""}
             cursor={{ stroke: theme.colors.border }}

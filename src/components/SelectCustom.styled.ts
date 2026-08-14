@@ -68,7 +68,7 @@ export const SelectPanel = styled.div`
   background: ${theme.colors.popover};
   box-shadow: ${theme.shadows.lg};
 
-  /* Sempre visível, não só ao passar o mouse (padrão do macOS) — sem isso
+  /* Sempre visível, não só ao passar o mouse (padrão do macOS), sem isso
      uma lista mais longa que a altura do painel parece só "acabar", sem
      nenhum indício de que dá pra rolar pra ver o resto. */
   scrollbar-width: thin;

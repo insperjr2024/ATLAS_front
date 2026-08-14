@@ -57,7 +57,7 @@ export function ProjetoTarefas() {
     try {
       // As colunas vêm da API e são DESTE projeto: quantidade, nome, cor e
       // ordem são configuráveis pela diretoria aqui mesmo, no botão
-      // "Colunas" — cada projeto tem o seu fluxo.
+      // "Colunas", cada projeto tem o seu fluxo.
       const [resTarefas, resColunas] = await Promise.all([
         getTarefas(projeto.id, token),
         getColunas(projeto.id, token),
@@ -79,14 +79,14 @@ export function ProjetoTarefas() {
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
 
   // Só quem está de fato alocado neste projeto pode ser responsável por uma
-  // tarefa dele — `usuarios` (do useProjeto) é o quadro inteiro da Insper Jr.
+  // tarefa dele, `usuarios` (do useProjeto) é o quadro inteiro da Insper Jr.
   const membrosDoProjeto = usuarios.filter(
     (u) => u.id === projeto.coordenador_id || projeto.consultor_ids.includes(u.id),
   );
 
   /**
    * Otimista: o card já aparece na coluna nova antes da resposta. Se o PATCH
-   * falhar, recarrega do servidor — a fonte da verdade nunca é o estado local.
+   * falhar, recarrega do servidor, a fonte da verdade nunca é o estado local.
    */
   async function mover(tarefaId: number, colunaId: number) {
     if (!token) return;
@@ -128,7 +128,7 @@ export function ProjetoTarefas() {
             {vencidas > 0 && ` · ${vencidas} vencida${vencidas > 1 ? "s" : ""}`}
           </PageCardTitle>
           <HeaderAcoes>
-            {/* 🔒 Configurar o board é da diretoria (§3), e só deste projeto. */}
+            {/* Configurar o board é da diretoria, e só deste projeto. */}
             {pode(usuario, "configurar_colunas") && (
               <PageButtonSm
                 type="button"
@@ -140,7 +140,7 @@ export function ProjetoTarefas() {
                 Colunas
               </PageButtonSm>
             )}
-            {/* §3: os QUATRO perfis criam e movem tarefa — sem gate de posição. */}
+            {/* os QUATRO perfis criam e movem tarefa, sem gate de posição. */}
             <PageButtonSm type="button" onClick={() => setCriando(true)}>
               <Plus size={14} />
               Nova tarefa

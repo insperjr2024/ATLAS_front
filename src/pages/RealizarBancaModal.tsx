@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { nomeUsuario } from "@/lib/nucleo";
 import { toDateInputValue, toTimeInputValue } from "@/lib/bancas";
+import { CODIGO_BANCA_ABAIXO_DO_MINIMO, codigoDoErro } from "@/lib/api";
 import type { Banca, Candidatura } from "@/types/banca";
 import type { UsuarioResumo } from "@/types/auth";
 import {
@@ -26,7 +27,7 @@ import {
 
 interface Props {
   banca: Banca;
-  /** As candidaturas DESTA banca — quem se inscreveu. */
+  /** As candidaturas DESTA banca, quem se inscreveu. */
   candidaturas: Candidatura[];
   usuarios: UsuarioResumo[];
   ehDiretor: boolean;
@@ -39,10 +40,10 @@ interface Props {
 }
 
 /**
- * Registrar que a banca aconteceu, e quem compareceu (§8).
+ * Registrar que a banca aconteceu, e quem compareceu.
  *
- * ⭐ É esta escrita que separa "a data passou" de "a banca foi feita". Sem
- * ela a banca fica `atrasada` para sempre — e o §7.4 mede o atraso do projeto
+ * É esta escrita que separa "a data passou" de "a banca foi feita". Sem
+ * ela a banca fica `atrasada` para sempre, e o  mede o atraso do projeto
  * exatamente por isso, então o monitoramento acusaria atraso de uma banca que
  * correu bem.
  */
@@ -77,24 +78,24 @@ export function RealizarBancaModal({
   }, [onCancelar]);
 
   /**
-   * ⚠ **Só o TOTAL — e é por isso que isto não decide mais o `forcar`.**
+   * **Só o TOTAL, e é por isso que isto não decide mais o `forcar`.**
    *
-   * O §8 tem três regras de composição, e esta é uma: o piso total. As outras
+   * O  tem três regras de composição, e esta é uma: o piso total. As outras
    * duas são por FRENTE (piso de cada uma, e a liderança de cada uma), e o
-   * front não tem como calculá-las — nenhum endpoint expõe os déficits por
+   * front não tem como calculá-las, nenhum endpoint expõe os déficits por
    * frente, e reimplementar `ComposicaoBancaChecker` aqui criaria uma segunda
    * régua que divergiria da primeira.
    *
    * O efeito de usá-la como gate era um BECO: uma banca com 5 de 5 alocados
    * mas sem ninguém de Direito passava por aqui como completa, ia sem
-   * `forcar`, e o backend recusava com "faltam 1 de Direito" — sem que a
+   * `forcar`, e o backend recusava com "faltam 1 de Direito", sem que a
    * diretora tivesse qualquer botão para seguir. Continua servindo para o
    * aviso adiantado, que é o que ela sabe responder.
    */
   const totalAbaixoDoMinimo = candidaturas.length < banca.piso_minimo;
 
   /**
-   * A recusa de composição que o BACKEND devolveu — a régua completa do §8.
+   * A recusa de composição que o BACKEND devolveu, a régua completa.
    *
    * Enquanto não há uma, `forcar` vai `false`: ninguém força o que ainda não
    * foi barrado. Depois dela, a diretora ganha o botão de registrar assim
@@ -112,11 +113,11 @@ export function RealizarBancaModal({
     setSalvando(true);
     try {
       await onConfirmar({
-        // ⚠ Os dois campos são hora LOCAL — é o que a pessoa digitou olhando o
+        // Os dois campos são hora LOCAL, é o que a pessoa digitou olhando o
         // relógio dela. O banco guarda UTC (ver `paraDataUtc` em
         // `lib/projetos.ts`), então a conversão tem de acontecer AQUI. Mandar a
         // string crua fazia o backend gravar 14:00 local como 14:00 UTC, e a
-        // banca reaparecia 3h mais cedo — a cada registro, sempre para trás.
+        // banca reaparecia 3h mais cedo, a cada registro, sempre para trás.
         // O `marcarBancaDoEscopo` do cronograma já fazia certo; era só este.
         realizado_em: new Date(`${data}T${hora}:00`).toISOString(),
         presentes: [...presentes],
@@ -125,10 +126,15 @@ export function RealizarBancaModal({
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : "Erro ao registrar";
       setErro(mensagem);
-      // A assinatura da recusa de composição (ver `_exigir_composicao`). Só
-      // ela destrava o "registrar assim mesmo" — um erro de rede ou de data
-      // não deve virar convite para forçar.
-      setRecusaDeComposicao(mensagem.includes("Composição incompleta"));
+      // ⭐ O CÓDIGO da recusa, não um trecho do texto. Só ele destrava o
+      // "registrar assim mesmo" — erro de rede ou de data não deve virar
+      // convite para forçar.
+      //
+      // Antes isto procurava a frase "Composição incompleta" dentro da
+      // mensagem. A frase mudou quando o piso por frente saiu do §8, e o botão
+      // da diretoria sumiu sem ninguém perceber: a plataforma recusava e não
+      // oferecia saída. Texto é para ler; código é contrato.
+      setRecusaDeComposicao(codigoDoErro(err) === CODIGO_BANCA_ABAIXO_DO_MINIMO);
       setSalvando(false);
     }
   }
@@ -201,7 +207,7 @@ export function RealizarBancaModal({
                 Esta banca tem {candidaturas.length} de {banca.piso_minimo} pessoas alocadas.{" "}
                 {ehDiretor
                   ? "Como diretor, você pode registrá-la assim mesmo."
-                  : "Só o Diretor de Projetos pode registrá-la abaixo do mínimo — peça a ele."}
+                  : "Só o Diretor de Projetos pode registrá-la abaixo do mínimo, peça a ele."}
               </FormErrorText>
             )}
 
@@ -212,9 +218,9 @@ export function RealizarBancaModal({
             <PageButton type="button" $variant="outline" onClick={onCancelar}>
               Cancelar
             </PageButton>
-            {/* ⭐ A saída do beco: o backend recusou por composição e quem está
+            {/* A saída do beco: o backend recusou por composição e quem está
                 aqui é a diretoria, então ela reenvia com `forcar`. O botão só
-                nasce DEPOIS da recusa — antes dela não há o que forçar, e
+                nasce DEPOIS da recusa, antes dela não há o que forçar, e
                 oferecer o atalho de largada convidaria a pular a regra. */}
             {recusaDeComposicao && ehDiretor ? (
               <PageButton

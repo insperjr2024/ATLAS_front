@@ -7,7 +7,7 @@ export const VagasGrid = styled.div`
   gap: ${theme.spacing.md};
 `;
 
-/** Cartão do projeto. Sem vaga fica esmaecido em vez de sumir — a pessoa
+/** Cartão do projeto. Sem vaga fica esmaecido em vez de sumir, a pessoa
  *  precisa ver que o projeto existe e está cheio. */
 export const ProjetoCard = styled.button<{ $indisponivel: boolean }>`
   display: flex;
@@ -115,7 +115,7 @@ export const PedidoTopo = styled.div`
   flex-wrap: wrap;
 `;
 
-/** A justificativa é o que o coordenador vem ler — destacada, não escondida
+/** A justificativa é o que o coordenador vem ler, destacada, não escondida
  *  numa linha de meta. */
 export const Justificativa = styled.blockquote`
   margin: 0;
@@ -141,14 +141,14 @@ export const PedidoAcoes = styled.div`
 /**
  * A barra de filtros da página.
  *
- * ⭐ **Os campos não crescem.** Com `flex: 1 1`, um seletor sozinho esticava
- * de ponta a ponta do card — uma faixa larguíssima para escolher entre cinco
+ * **Os campos não crescem.** Com `flex: 1 1`, um seletor sozinho esticava
+ * de ponta a ponta do card, uma faixa larguíssima para escolher entre cinco
  * frentes. Largura fixa de 14rem cabe o nome de frente e de projeto sem
  * reticências e sem virar paisagem.
  *
- * ⭐ **O respiro embaixo é maior que o de dentro.** A barra encostava na
+ * **O respiro embaixo é maior que o de dentro.** A barra encostava na
  * grade, e ao filtrar uma frente o agrupamento sumia e os cartões subiam
- * quase até o seletor. O `margin-bottom` separa o controle do resultado —
+ * quase até o seletor. O `margin-bottom` separa o controle do resultado,
  * são coisas diferentes e precisam parecer diferentes.
  *
  * No celular os campos voltam a ocupar a linha inteira: ali largura fixa
@@ -211,7 +211,7 @@ export const CoordCard = styled.article`
 `;
 
 /**
- * O título envolve o botão — mesmo padrão de acordeão da lista da gestão:
+ * O título envolve o botão, mesmo padrão de acordeão da lista da gestão:
  * o `h3` mantém o projeto na estrutura de cabeçalhos, o `button` carrega a
  * interação, e nenhum dos dois fica dentro do outro de forma inválida.
  */
@@ -224,8 +224,8 @@ export const CoordCabecalhoTitulo = styled.h3`
 /**
  * Faixa de identificação, e também o que abre e fecha o cartão.
  *
- * Ela continua sendo o resumo do projeto — nome, cliente, status, frentes e
- * ocupação —, então serve de conteúdo fechado sem precisar de uma linha
+ * Ela continua sendo o resumo do projeto, nome, cliente, status, frentes e
+ * ocupação, então serve de conteúdo fechado sem precisar de uma linha
  * separada só para o título. O corpo com time e pedidos é que colapsa.
  */
 export const CoordCabecalho = styled.button`
@@ -319,7 +319,7 @@ export const CoordContagem = styled.span`
   color: ${theme.colors.cardForeground};
 `;
 
-/** A barra é redundante de propósito — o número ao lado é a fonte da verdade
+/** A barra é redundante de propósito, o número ao lado é a fonte da verdade
  *  para quem usa leitor de tela, e por isso ela fica `aria-hidden`. */
 export const CoordBarraTrilho = styled.span`
   display: block;
@@ -347,7 +347,7 @@ export const CoordBarraPreenchida = styled.span<{ $proporcao: number; $cheio: bo
  * Duas colunas em tela larga, empilhadas no celular.
  *
  * Colunas explícitas em vez de `auto-fit`: com a divisória entre elas, o
- * ponto de quebra precisa ser conhecido — `auto-fit` decide sozinho quantas
+ * ponto de quebra precisa ser conhecido, `auto-fit` decide sozinho quantas
  * colunas cabem, e a linha ora apareceria na vertical, ora na horizontal, sem
  * a media query saber qual dos dois casos está na tela.
  *
@@ -369,7 +369,7 @@ export const CoordCorpo = styled.div`
  * borda do contêiner: assim ela existe só quando há de fato duas colunas, e
  * vira linha horizontal quando o cartão empilha, em vez de sumir.
  *
- * O respiro é igual dos dois lados — o `gap` da grade antes da linha, o
+ * O respiro é igual dos dois lados, o `gap` da grade antes da linha, o
  * `padding` depois dela.
  */
 export const CoordColuna = styled.section`
@@ -486,7 +486,7 @@ export const CoordPedidoMeta = styled.span`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** Limite de linha para a justificativa continuar legível — texto corrido de
+/** Limite de linha para a justificativa continuar legível, texto corrido de
  *  ponta a ponta da coluna é onde o olho se perde ao voltar para a esquerda. */
 export const CoordJustificativa = styled.p`
   margin: ${theme.spacing.xs} 0 0;
@@ -519,7 +519,7 @@ export const CoordVazio = styled.p`
  * Com tudo aberto a página crescia por projeto E por pedido: dez projetos com
  * cinco pedidos cada davam cinquenta cartões numa rolagem só, e achar o
  * projeto certo virava caça. Fechado, cada projeto ocupa uma linha e a página
- * inteira cabe na tela — quem decide escolhe onde entrar.
+ * inteira cabe na tela, quem decide escolhe onde entrar.
  */
 export const SolGrupo = styled.section`
   border: 1px solid ${theme.colors.border};
@@ -536,7 +536,7 @@ export const SolGrupo = styled.section`
  *
  * É o padrão de acordeão do ARIA: o `h3` mantém o projeto na estrutura de
  * cabeçalhos (leitor de tela navega de projeto em projeto) e o `button`
- * carrega a interação. Colocar o `h3` DENTRO do botão seria HTML inválido —
+ * carrega a interação. Colocar o `h3` DENTRO do botão seria HTML inválido,
  * botão só aceita conteúdo de frase.
  */
 export const SolGrupoCabecalho = styled.h3`
@@ -651,7 +651,7 @@ export const SolMeta = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** A justificativa é o texto que embasa a decisão — limite de linha para não
+/** A justificativa é o texto que embasa a decisão, limite de linha para não
  *  virar uma faixa de ponta a ponta que o olho perde ao voltar. */
 export const SolTexto = styled.p`
   margin: ${theme.spacing.sm} 0 0;
@@ -707,7 +707,7 @@ export const HistDesfecho = styled.span<{ $aprovada: boolean }>`
 `;
 
 /** Duas linhas e corta: no histórico a justificativa é contexto, não a
- *  decisão — quem precisa do texto inteiro procura o pedido, não a lista. */
+ *  decisão, quem precisa do texto inteiro procura o pedido, não a lista. */
 export const HistTexto = styled.p`
   margin: ${theme.spacing.xs} 0 0;
   max-width: 65ch;
@@ -756,254 +756,76 @@ export const GrupoFrenteContagem = styled.span`
 /* Painel lateral de alocação                                          */
 /* ------------------------------------------------------------------ */
 
-/**
- * Painel lateral, e não modal centralizado: a grade de projetos fica visível
- * atrás enquanto se aloca, que é o que permite comparar "este está cheio,
- * aquele não" sem fechar e reabrir.
- */
-export const PainelOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  background: rgb(0 0 0 / 0.4);
-`;
-
-export const PainelLateral = styled.aside`
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-  width: min(28rem, 100vw);
-  display: flex;
-  flex-direction: column;
-  background: ${theme.colors.card};
-  border-left: 1px solid ${theme.colors.border};
-  box-shadow: ${theme.shadows.lg};
-  animation: entrar ${theme.transitions.normal};
-
-  @keyframes entrar {
-    from {
-      transform: translateX(100%);
-    }
-    to {
-      transform: translateX(0);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-`;
+/* Mudou de casa: a tela de criar projeto monta equipe com o MESMO painel, e
+   um `pages/*.styled` não é lugar de onde outra página importa. Ficam
+   re-exportados aqui para os imports existentes não mudarem uma linha,
+   mesmo movimento que `Calendario.styled` fez com o chrome de modal. */
+export {
+  PainelOverlay,
+  PainelLateral,
+  PainelTitulo,
+  PainelCabecalho,
+  PainelFechar,
+  PainelFiltros,
+  PainelCorpo,
+  PainelRodape,
+  PainelGrupo,
+  PainelGrupoTitulo,
+  PainelSecao,
+  PainelSecaoTitulo,
+  CandidatoLista,
+  CandidatoLinha,
+  CandidatoTopo,
+  CandidatoInfo,
+  CandidatoNome,
+  CandidatoMeta,
+  CandidatoSituacao,
+  CandidatoProjetos,
+  BotaoDeTexto,
+} from "@/styles/painel.styled";
 
 /**
- * O nome do projeto e a ocupação, um sobre o outro.
+ * A carga do solicitante na tela de decisão — badge, não linha de apoio.
  *
- * `CardNome` e `CardLinha` são spans inline — soltos no cabeçalho eles
- * encostavam um no outro e o texto saía "Fluxo Orion2 de 3 consultores".
- * Empilhar resolve sem depender de `<br>` nem de espaço fabricado.
+ * ⭐ **É a informação que decide o pedido.** Quem aprova precisa saber em
+ * quantos projetos a pessoa já está antes de colocá-la em mais um; a
+ * justificativa diz por que ela quer entrar, não se ela cabe. Como linha de
+ * meta cinza, do mesmo tamanho da data, essa informação passava batido.
+ *
+ * ⚠ O vermelho vem do `tom` da escala de `situacao_carga`, e nunca de um
+ * número cravado aqui. A diretoria edita o limiar de "Demanda alta" nas
+ * configurações — hoje 3 — e o destaque tem de seguir essa decisão sozinho.
+ * Um `>= 3` no front voltaria a ser a régua paralela que o núcleo acabou de
+ * remover do backend.
  */
-export const PainelTitulo = styled.div`
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-`;
-
-export const PainelCabecalho = styled.header`
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md};
-  border-bottom: 1px solid ${theme.colors.border};
-`;
-
-export const PainelFechar = styled.button`
-  flex-shrink: 0;
+export const CargaBadge = styled.span<{ $alerta: boolean }>`
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border: none;
+  gap: 0.375rem;
+  align-self: flex-start;
+
+  margin: 0.25rem 0 0;
+  padding: 0.25rem 0.5rem;
   border-radius: ${theme.borderRadius.md};
-  background: transparent;
-  color: ${theme.colors.mutedForeground};
-  cursor: pointer;
-  transition: background ${theme.transitions.fast}, color ${theme.transitions.fast};
 
-  &:hover {
-    background: ${theme.colors.muted};
-    color: ${theme.colors.foreground};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${theme.colors.ring};
-    outline-offset: 2px;
-  }
-`;
-
-/** Os filtros ficam fora da área rolável: some do campo de visão bem quando a
- *  lista fica longa é justamente quando ele é mais necessário. */
-export const PainelFiltros = styled.div`
-  padding: ${theme.spacing.md};
-  border-bottom: 1px solid ${theme.colors.border};
-`;
-
-export const PainelCorpo = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  padding: ${theme.spacing.md};
-`;
-
-export const PainelGrupo = styled.div`
-  & + & {
-    margin-top: ${theme.spacing.lg};
-  }
-`;
-
-export const PainelGrupoTitulo = styled.h4`
-  margin: 0 0 ${theme.spacing.xs};
   font-size: ${theme.fontSize.xs};
-  font-weight: ${theme.fontWeight.semibold};
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: ${theme.colors.mutedForeground};
-`;
+  font-weight: ${({ $alerta }) =>
+    $alerta ? theme.fontWeight.semibold : theme.fontWeight.medium};
 
-/**
- * A lista de candidatos.
- *
- * Cada pessoa ocupa DUAS linhas e nada mais: o nome e uma linha de apoio em
- * texto corrido. A versão anterior empilhava carga, pílula de situação,
- * posição e "pediu" como quatro etiquetas soltas na mesma linha — quatro
- * caixas coloridas por pessoa, vinte pessoas, e a única coisa que a tela
- * precisava responder ("quem está mais livre?") sumia no meio.
- *
- * `ul`/`li` de verdade: é uma lista, e leitor de tela anuncia o tamanho dela.
- */
-export const CandidatoLista = styled.ul`
-  margin: 0;
-  padding: 0;
-  list-style: none;
-`;
+  color: ${({ $alerta }) =>
+    $alerta ? theme.colors.destructive : theme.colors.mutedForeground};
+  background: ${({ $alerta }) =>
+    $alerta ? "hsl(0, 72%, 51%, 0.1)" : theme.colors.muted};
+  border: 1px solid
+    ${({ $alerta }) => ($alerta ? "hsl(0, 72%, 51%, 0.35)" : "transparent")};
 
-export const CandidatoLinha = styled.li`
-  padding: ${theme.spacing.sm} 0;
-  min-width: 0;
-
-  & + & {
-    border-top: 1px solid ${theme.colors.border};
+  svg {
+    flex-shrink: 0;
   }
 `;
 
-/** A linha em si. A lista de projetos, quando aberta, cai por baixo dela. */
-export const CandidatoTopo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  min-width: 0;
-`;
-
-/**
- * "3 projetos" clicável.
- *
- * Botão de verdade, com aparência de texto: precisa de teclado e de
- * `aria-expanded`, e um `span` com `onClick` não dá nenhum dos dois. A seta
- * é o que avisa que há algo a abrir — sem ela a única pista seria o cursor,
- * que não existe no celular.
- */
-export const BotaoDeTexto = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  transition: color ${theme.transitions.fast};
-
-  &:hover {
-    color: ${theme.colors.foreground};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${theme.colors.ring};
-    outline-offset: 2px;
-    border-radius: ${theme.borderRadius.sm};
-  }
-`;
-
-/** Os projetos da pessoa, recuados para se lerem como detalhe da linha. */
-export const CandidatoProjetos = styled.ul`
-  margin: ${theme.spacing.xs} 0 0;
-  padding: ${theme.spacing.xs} 0 0 ${theme.spacing.md};
-  list-style: none;
-  border-top: 1px dashed ${theme.colors.border};
-
-  li {
-    font-size: ${theme.fontSize.xs};
-    color: ${theme.colors.mutedForeground};
-    line-height: 1.6;
-  }
-`;
-
-
-export const CandidatoInfo = styled.div`
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-`;
-
-export const CandidatoNome = styled.span`
-  font-size: ${theme.fontSize.sm};
-  font-weight: ${theme.fontWeight.medium};
-  color: ${theme.colors.cardForeground};
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-/** Linha de apoio: "3 projetos · Carga alta". Texto, não etiquetas. */
-export const CandidatoMeta = styled.span`
-  font-size: ${theme.fontSize.xs};
-  color: ${theme.colors.mutedForeground};
-`;
-
-/**
- * A situação dentro da linha de apoio. A cor reforça, mas quem carrega o
- * significado é a palavra — "Carga alta" continua legível em preto e branco,
- * e por isso ela é `<strong>` e não um ponto colorido.
- */
-export const CandidatoSituacao = styled.strong<{ $tom: "ok" | "atencao" | "alerta" | "neutro" }>`
-  font-weight: ${theme.fontWeight.medium};
-  color: ${({ $tom }) =>
-    $tom === "alerta"
-      ? theme.colors.destructive
-      : $tom === "atencao"
-        ? theme.colors.warningForeground
-        : theme.colors.mutedForeground};
-`;
-
-/** Cabeçalho de seção do painel ("Pediram para entrar", "Disponíveis"). */
-export const PainelSecaoTitulo = styled.h4`
-  margin: 0 0 ${theme.spacing.xs};
-  font-size: ${theme.fontSize.xs};
-  font-weight: ${theme.fontWeight.semibold};
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: ${theme.colors.mutedForeground};
-`;
-
-export const PainelSecao = styled.section`
-  & + & {
-    margin-top: ${theme.spacing.lg};
-    padding-top: ${theme.spacing.lg};
-    border-top: 1px solid ${theme.colors.border};
-  }
+/** O complemento do badge: o que a carga significa para quem decide. */
+export const CargaRecado = styled.span`
+  font-weight: ${theme.fontWeight.normal};
+  opacity: 0.9;
 `;

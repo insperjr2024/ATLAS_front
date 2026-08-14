@@ -71,19 +71,19 @@ interface Frente {
 
 /** Fim de semana nunca é importado: o backend já conta só seg–sex que não
  *  estejam na tabela. A caixa existe marcada e travada para deixar isso
- *  visível — sem ela, alguém procuraria onde marcar sábado. */
+ *  visível, sem ela, alguém procuraria onde marcar sábado. */
 const FIM_DE_SEMANA_AUTOMATICO = true;
 
 /**
- * Os calendários base por frente — a tela do diretor.
+ * Os calendários base por frente, a tela do diretor.
  *
  * Cada frente abrange cursos diferentes, e cada curso tem o seu calendário
- * acadêmico no Insper. É este calendário que define o dia útil (§5.4) dos
+ * acadêmico no Insper. É este calendário que define o dia útil dos
  * projetos daquela frente.
  *
  * O PDF é lido, mas NUNCA salvo direto: a leitura é posicional e pode errar se
  * o Insper mudar o layout, então a diretoria filtra por categoria, confere numa
- * tabela e só então grava. É o mesmo contrato do §11 para a grade horária.
+ * tabela e só então grava. É o mesmo contrato do  para a grade horária.
  */
 export function CalendariosBase() {
   const { token } = useAuth();
@@ -158,7 +158,7 @@ export function CalendariosBase() {
     const repetidas = selecionadas.filter((d) => jaSalvas.has(d.data));
 
     // As categorias por frente são gravadas com `substituir`: o PDF passa a ser
-    // a verdade sobre elas. O que está salvo e não veio no PDF vai sumir — e
+    // a verdade sobre elas. O que está salvo e não veio no PDF vai sumir, e
     // isso precisa estar escrito, não descoberto depois.
     const escolhidas = new Set(selecionadas.map((d) => d.data));
     const removidas = dias.filter(
@@ -201,7 +201,7 @@ export function CalendariosBase() {
       // O que é da frente SUBSTITUI o que ela tinha: recarregar o PDF do curso
       // é justamente para corrigir as datas dela. O lote leva tudo o que foi
       // selecionado, inclusive o que já estava salvo e por isso não aparece na
-      // tabela — mandar só as novas apagaria as antigas.
+      // tabela, mandar só as novas apagaria as antigas.
       await carregarDiasNaoLetivos(
         semestre.id,
         selecionadas.filter((d) => d.escopo === "frente").map(paraGravar),
@@ -257,7 +257,7 @@ export function CalendariosBase() {
     await carregarDias();
   }
 
-  /** O mapa que o calendário usa para hachurar — mesmo formato do cronograma. */
+  /** O mapa que o calendário usa para hachurar, mesmo formato do cronograma. */
   const mapaDeDias = useMemo(() => {
     const mapa = new Map<string, { tipo: string; descricao: string | null }>();
     for (const d of dias) mapa.set(d.data.slice(0, 10), { tipo: d.tipo, descricao: d.descricao });
@@ -291,7 +291,7 @@ export function CalendariosBase() {
     );
   }
   if (!semestre) {
-    return <EmptyText>Nenhum semestre cadastrado — crie um em Configurações.</EmptyText>;
+    return <EmptyText>Nenhum semestre cadastrado, crie um em Configurações.</EmptyText>;
   }
 
   return (
@@ -416,7 +416,7 @@ export function CalendariosBase() {
               </NavPeriodo>
 
               {/* Reusa o calendário do cronograma em só-leitura: sem etapas nem
-                  marcos, sobra exatamente o que esta tela quer mostrar — os
+                  marcos, sobra exatamente o que esta tela quer mostrar, os
                   dias não úteis hachurados, com o motivo no title. */}
               <PaintedCalendar
                 blocos={blocos}
@@ -455,7 +455,7 @@ export function CalendariosBase() {
 
               {leitura.resumo.nao_reconhecidos > 0 && (
                 <FormErrorText>
-                  {leitura.resumo.nao_reconhecidos} marcações não foram reconhecidas — o layout do
+                  {leitura.resumo.nao_reconhecidos} marcações não foram reconhecidas, o layout do
                   PDF pode ter mudado. Confira a lista com atenção antes de salvar.
                 </FormErrorText>
               )}
@@ -493,7 +493,7 @@ export function CalendariosBase() {
 
               {diff.repetidas.length > 0 && (
                 <p style={{ fontSize: "0.875rem" }}>
-                  {diff.repetidas.length} datas já estão no calendário e não aparecem abaixo — elas
+                  {diff.repetidas.length} datas já estão no calendário e não aparecem abaixo, elas
                   continuam salvas.
                 </p>
               )}
@@ -566,7 +566,7 @@ export function CalendariosBase() {
           titulo="Excluir dia não útil"
           mensagem={
             <>
-              {formatarData(paraExcluir.data)} — {paraExcluir.descricao ?? paraExcluir.tipo}
+              {formatarData(paraExcluir.data)}, {paraExcluir.descricao ?? paraExcluir.tipo}
               {paraExcluir.frente_id === null && (
                 <>
                   {" "}

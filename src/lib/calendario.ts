@@ -14,7 +14,7 @@ export interface EventoCalendario {
 }
 
 /**
- * O calendário geral (§6.5) — recortado por posição no backend (diretor vê
+ * O calendário geral, recortado por posição no backend (diretor vê
  * tudo, gerente a própria frente, coordenador/consultor só os projetos em
  * que estão alocados), igual ao resto do site.
  *
@@ -37,7 +37,7 @@ export const ROTULO_TIPO: Record<TipoEvento, string> = {
   entrega: "Entrega",
 };
 
-/** Glifo + cor, nunca cor sozinha — o calendário também é impresso.
+/** Glifo + cor, nunca cor sozinha, o calendário também é impresso.
  *  Símbolos tipográficos, não emoji: precisam renderizar igual em qualquer
  *  fonte/SO e não competir visualmente com o resto da tela. */
 export const GLIFO_TIPO: Record<TipoEvento, string> = {

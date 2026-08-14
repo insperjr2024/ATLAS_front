@@ -7,6 +7,7 @@ import {
   type ProjetoComVaga,
 } from "@/lib/vagas";
 import { PageButtonSm, EmptyText, ErrorText } from "@/styles/page.styled";
+import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import { FieldGroup, FieldLabel, FieldSelect } from "./Bancas.styled";
 import {
   PainelOverlay,
@@ -38,7 +39,7 @@ const TODAS = "__todas__";
 /**
  * Distribui a lista por frente, da frente com mais gente para a com menos.
  *
- * Com uma frente selecionada devolve um grupo só — o cabeçalho some na
+ * Com uma frente selecionada devolve um grupo só, o cabeçalho some na
  * renderização, porque repetiria o que o filtro já diz.
  *
  * Quem tem duas frentes aparece nos dois grupos, de propósito: o gerente que
@@ -64,18 +65,26 @@ function agruparPorFrente(
 /**
  * Uma pessoa na lista: nome e uma linha de apoio em texto corrido.
  *
- * Fora do componente do painel de propósito — declarada dentro, ela seria uma
+ * Fora do componente do painel de propósito, declarada dentro, ela seria uma
  * função nova a cada render e o React remontaria todas as linhas a cada
  * clique, em vez de atualizar.
  */
 function Pessoa({
   candidato: c,
-  bloqueado,
+  motivoBloqueio,
   alocando,
   onAlocar,
 }: {
   candidato: CandidatoAlocacao;
-  bloqueado: boolean;
+  /**
+   * ⭐ O MOTIVO no lugar de um booleano — e a troca é de propósito.
+   *
+   * Com `bloqueado: boolean` dava para desabilitar o botão sem explicar nada,
+   * que era o estado anterior desta tela. Com o motivo, o único jeito de
+   * travar é escrevendo por quê: quem for adicionar uma trava nova esbarra no
+   * tipo antes de esbarrar numa pessoa confusa.
+   */
+  motivoBloqueio: string | null;
   alocando: boolean;
   onAlocar: (usuarioId: number) => void;
 }) {
@@ -114,13 +123,15 @@ function Pessoa({
             {c.posicao !== "consultor" && ` · ${c.posicao}`}
           </CandidatoMeta>
         </CandidatoInfo>
-        <PageButtonSm
-          type="button"
-          disabled={bloqueado || alocando}
-          onClick={() => onAlocar(c.usuario_id)}
-        >
-          {alocando ? "Alocando…" : "Alocar"}
-        </PageButtonSm>
+        <MotivoDesabilitado motivo={motivoBloqueio}>
+          <PageButtonSm
+            type="button"
+            disabled={!!motivoBloqueio || alocando}
+            onClick={() => onAlocar(c.usuario_id)}
+          >
+            {alocando ? "Alocando…" : "Alocar"}
+          </PageButtonSm>
+        </MotivoDesabilitado>
       </CandidatoTopo>
 
       {aberto && c.carga > 0 && (
@@ -142,21 +153,21 @@ interface Props {
   projeto: ProjetoComVaga;
   token: string;
   onFechar: () => void;
-  /** Recarrega a grade — a ocupação do projeto muda a cada alocação. */
+  /** Recarrega a grade, a ocupação do projeto muda a cada alocação. */
   onAlocou: () => void;
 }
 
 /**
- * O painel de alocar gente num projeto (§7.3).
+ * O painel de alocar gente num projeto.
  *
- * A lista vem do back ordenada por carga crescente — a mesma régua do
+ * A lista vem do back ordenada por carga crescente, a mesma régua do
  * `AlocarPessoasModal` das bancas. A decisão que se quer favorecer é
  * distribuir, e ordenar por nome obrigaria a varrer tudo para achar quem está
  * livre.
  *
  * Cada pessoa mostra DUAS linhas: nome e "3 projetos · Carga alta". Antes
  * eram quatro etiquetas soltas por pessoa (carga, situação, posição, "pediu")
- * e a pergunta que o painel existe para responder — quem está mais livre —
+ * e a pergunta que o painel existe para responder, quem está mais livre —
  * se perdia no meio delas. Quem pediu para entrar virou uma seção no topo,
  * que é informação sobre a FILA, não sobre a pessoa.
  */
@@ -235,14 +246,27 @@ export function VagasAlocarPainel({ projeto, token, onFechar, onAlocou }: Props)
   const gruposPediram = useMemo(() => agruparPorFrente(pediram, frente), [pediram, frente]);
   const gruposDemais = useMemo(() => agruparPorFrente(demais, frente), [demais, frente]);
 
-  const semVaga = projeto.vagas === 0;
+  /**
+   * Por que não dá para alocar mais ninguém neste projeto.
+   *
+   * A contagem entra na frase porque é ela que diz o que fazer: saber que o
+   * teto é 3 e que há 3 pessoas transforma "não posso" em "preciso tirar
+   * alguém, ou aumentar o teto na edição do projeto".
+   */
+  const motivoBloqueio =
+    projeto.vagas === 0
+      ? `O time deste projeto já está completo — ${projeto.alocados} de ${projeto.max_consultores} consultores. ` +
+        "Tire alguém da equipe, ou aumente o número de consultores na edição do projeto."
+      : null;
+
+  const semVaga = !!motivoBloqueio;
 
   function linhaDe(c: CandidatoAlocacao) {
     return (
       <Pessoa
         key={c.usuario_id}
         candidato={c}
-        bloqueado={semVaga}
+        motivoBloqueio={motivoBloqueio}
         alocando={alocando === c.usuario_id}
         onAlocar={alocar}
       />

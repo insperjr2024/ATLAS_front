@@ -26,11 +26,11 @@ interface Props {
 }
 
 /**
- * "Como funciona" — a explicação da tela, sob demanda.
+ * "Como funciona", a explicação da tela, sob demanda.
  *
- * 📐 Num botão, e não num texto fixo no topo: quem usa a tela todo dia não
+ * Num botão, e não num texto fixo no topo: quem usa a tela todo dia não
  * precisa reler a instrução, e um aviso permanente vira ruído que se aprende
- * a ignorar. Quem chega pela primeira vez procura ajuda — e acha.
+ * a ignorar. Quem chega pela primeira vez procura ajuda, e acha.
  *
  * ⭐ **Escrito para quem nunca abriu a plataforma.** Duas coisas guiam o texto:
  *
@@ -78,10 +78,9 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
             <PassoItem>
               <PassoTitulo>1. Escolha o escopo no seletor de cima</PassoTitulo>
               <PassoTexto>
-                Em <strong>Todos os escopos</strong> você enxerga o projeto inteiro, mas só
-                consegue marcar <strong>Kickoff</strong> e <strong>Reunião geral</strong> —
-                essas são do projeto. Banca, entrega e reunião inicial pertencem a um escopo,
-                então escolha qual antes.
+                No seletor acima. Em <strong>Todos os escopos</strong> você vê o projeto
+                inteiro, mas só consegue marcar kickoff e reunião semanal, as datas de
+                banca e entrega pertencem a um escopo específico.
               </PassoTexto>
             </PassoItem>
 
@@ -98,9 +97,9 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
             <PassoItem>
               <PassoTitulo>3. Clique no dia</PassoTitulo>
               <PassoTexto>
-                Abre uma confirmação antes de gravar — nenhum clique crava data direto. Para
-                sair do modo sem marcar nada, aperte <strong>Esc</strong> ou clique no botão
-                aceso de novo.
+                No calendário. Abre uma confirmação antes de gravar, nenhum clique crava
+                data direto. Para sair do modo sem marcar nada, aperte{" "}
+                <strong>Esc</strong> ou clique no botão de novo.
               </PassoTexto>
             </PassoItem>
 

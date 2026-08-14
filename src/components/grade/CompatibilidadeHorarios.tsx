@@ -29,17 +29,17 @@ const ROTULO_TEOR: Record<Teor, string> = {
 };
 
 interface Props {
-  /** Os consultores escolhidos. O coordenador não entra — a comparação é
+  /** Os consultores escolhidos. O coordenador não entra, a comparação é
    *  entre quem foi marcado como consultor. */
   consultorIds: number[];
   usuarios: UsuarioResumo[];
 }
 
 /**
- * Quanto os consultores escolhidos conseguem se encontrar (§11).
+ * Quanto os consultores escolhidos conseguem se encontrar.
  *
- * 📐 Verde = todos livres naquela faixa. É a janela onde a reunião semanal
- * cabe (§6.4) — por isso o quadro mostra o cruzamento, e não a grade de cada
+ * Verde = todos livres naquela faixa. É a janela onde a reunião semanal
+ * cabe, por isso o quadro mostra o cruzamento, e não a grade de cada
  * um: quem monta equipe não precisa saber a que horas cada pessoa tem aula.
  */
 export function CompatibilidadeHorarios({ consultorIds, usuarios }: Props) {
@@ -107,7 +107,7 @@ export function CompatibilidadeHorarios({ consultorIds, usuarios }: Props) {
         <Titulo>Horários livres em comum</Titulo>
         <Selo $teor={teor}>
           {ROTULO_TEOR[teor]}
-          {teor !== "desconhecida" && ` · ${dados.total_livres}`}
+          {dados.nota != null && ` · nota ${dados.nota.toFixed(1)}`}
         </Selo>
       </Topo>
 
@@ -135,7 +135,7 @@ export function CompatibilidadeHorarios({ consultorIds, usuarios }: Props) {
                     <MiniCelula
                       key={dia}
                       $livre={livre}
-                      title={`${dia}, ${faixa.hora_inicio} — ${
+                      title={`${dia}, ${faixa.hora_inicio}, ${
                         livre ? "todos livres" : "alguém tem aula"
                       }`}
                     />
@@ -148,11 +148,11 @@ export function CompatibilidadeHorarios({ consultorIds, usuarios }: Props) {
       )}
 
       {/* Ninguém preencheu nenhuma: o `teor_texto` acima já cobre esse caso.
-          Só entra aqui quando é ALGUÉM, não todo mundo — é a parte que o
+          Só entra aqui quando é ALGUÉM, não todo mundo, é a parte que o
           texto genérico não sabe dizer: quem exatamente. */}
       {nomesSemGrade.length > 0 && nomesSemGrade.length < dados.considerados.length && (
         <Aviso>
-          {`${nomesSemGrade.join(", ")} ainda não preencheu a grade — ${
+          {`${nomesSemGrade.join(", ")} ainda não preencheu a grade, ${
             nomesSemGrade.length === 1 ? "entrou" : "entraram"
           } na conta como livre em todos os horários.`}
         </Aviso>

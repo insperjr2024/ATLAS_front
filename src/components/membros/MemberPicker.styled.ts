@@ -61,7 +61,7 @@ export const AddRow = styled.div`
 `;
 
 /* ------------------------------------------------------------------ */
-/* Dropdown customizado — nem select nativo, nem checkboxes soltas: o    */
+/* Dropdown customizado, nem select nativo, nem checkboxes soltas: o    */
 /* filtro de frente mora dentro do próprio painel, junto da lista.       */
 /* ------------------------------------------------------------------ */
 
@@ -206,7 +206,7 @@ export const DropdownVazio = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** A contagem de consultores selecionados — vira vermelha em caso de erro. */
+/** A contagem de consultores selecionados, vira vermelha em caso de erro. */
 export const CountHint = styled.p<{ $ok: boolean }>`
   margin: 0;
   font-size: ${theme.fontSize.xs};

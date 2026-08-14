@@ -33,10 +33,10 @@ interface Props {
 const MINIMO = 20;
 
 /**
- * As informações do projeto, e a declaração de interesse (§7.3).
+ * As informações do projeto, e a declaração de interesse.
  *
- * 📐 A justificativa tem mínimo de caracteres. O coordenador decide lendo
- * isto — "quero entrar" não dá base para decidir nada, e um campo livre sem
+ * A justificativa tem mínimo de caracteres. O coordenador decide lendo
+ * isto, "quero entrar" não dá base para decidir nada, e um campo livre sem
  * piso vira exatamente isso.
  */
 export function VagaProjetoModal({ projeto, onFechar, onEnviar }: Props) {
@@ -57,7 +57,7 @@ export function VagaProjetoModal({ projeto, onFechar, onEnviar }: Props) {
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     if (faltam > 0) {
-      setErro(`Escreva um pouco mais — faltam ${faltam} caracteres.`);
+      setErro(`Escreva um pouco mais, faltam ${faltam} caracteres.`);
       return;
     }
     setErro("");

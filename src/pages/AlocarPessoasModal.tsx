@@ -20,9 +20,9 @@ import { BancaAcoes, BancaInfo, BancaLinha, BancaMeta, BancaNome } from "./Banca
 interface Props {
   banca: Banca;
   usuarios: UsuarioResumo[];
-  /** TODAS as candidaturas do sistema — é delas que sai a carga de cada um. */
+  /** TODAS as candidaturas do sistema, é delas que sai a carga de cada um. */
   candidaturas: Candidatura[];
-  /** A equipe do projeto desta banca: não pode assistir à própria (§8). */
+  /** A equipe do projeto desta banca: não pode assistir à própria. */
   equipes: EquipeProjeto[];
   token: string;
   onFechar: () => void;
@@ -30,10 +30,10 @@ interface Props {
 }
 
 /**
- * Alocar gente numa banca à mão (§8).
+ * Alocar gente numa banca à mão.
  *
- * 📐 A ordem é por CARGA CRESCENTE: quem está em menos bancas aparece
- * primeiro. É o mesmo espírito do rodízio automático — distribuir o trabalho —
+ * A ordem é por CARGA CRESCENTE: quem está em menos bancas aparece
+ * primeiro. É o mesmo espírito do rodízio automático, distribuir o trabalho —
  * mas aqui a diretoria decide caso a caso, em vez de esperar a janela de uma
  * semana do push.
  */
@@ -61,7 +61,7 @@ export function AlocarPessoasModal({
     const jaNaBanca = new Set(
       candidaturas.filter((c) => c.banca_id === banca.id).map((c) => c.usuario_id),
     );
-    // A equipe que apresenta não assiste à própria banca (§8).
+    // A equipe que apresenta não assiste à própria banca.
     const daEquipe = new Set(
       equipes.filter((e) => e.banca_id === banca.id).map((e) => e.usuario_id),
     );

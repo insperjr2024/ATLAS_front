@@ -23,7 +23,7 @@ import {
   FormErrorText,
 } from "./Projetos.styled";
 
-/** §13: remarcar uma banca que acontece dentro desta folga exige diretoria. */
+/** remarcar uma banca que acontece dentro desta folga exige diretoria. */
 const FOLGA_LIVRE_DIAS_UTEIS = 5;
 
 /** O mínimo que o seletor de cobertura precisa saber de cada escopo. */
@@ -38,7 +38,7 @@ export interface EscopoCobrivel {
 
 interface Props {
   nomeEscopo: string;
-  /** Os escopos do projeto — a banca pode cobrir mais de um (§8). */
+  /** Os escopos do projeto, a banca pode cobrir mais de um. */
   escoposDoProjeto: EscopoCobrivel[];
   /** O id do escopo em foco (entra na cobertura sempre). */
   escopoId: number;
@@ -47,7 +47,7 @@ interface Props {
   nomeFrente: (id: number) => string;
   /** O dia clicado no calendário, em `yyyy-MM-dd`. */
   dia: string;
-  /** A banca já tem data — então isto é uma REMARCAÇÃO, não a primeira. */
+  /** A banca já tem data, então isto é uma REMARCAÇÃO, não a primeira. */
   jaTemData: boolean;
   /** O último dia da janela do escopo; fora dela só a diretoria marca. */
   fimJanela: string | null;
@@ -64,18 +64,18 @@ interface Props {
 }
 
 /**
- * A banca marcada pelo calendário (§9) — "uma data só" (§8): escreve na MESMA
+ * A banca marcada pelo calendário, "uma data só": escreve na MESMA
  * linha que a tela de Bancas lê, sem espelho nem sincronização.
  *
- * ⭐ **É o único bloqueio duro do cronograma.** Pintar etapa além da janela é
- * livre e só avisa (§15); marcar banca fora dela não passa sem a diretoria — e
+ * **É o único bloqueio duro do cronograma.** Pintar etapa além da janela é
+ * livre e só avisa; marcar banca fora dela não passa sem a diretoria, e
  * a tela barra antes de enviar, em vez de deixar o 422 explicar depois.
  *
  * A justificativa é exigida em três casos, e por motivos diferentes:
  *
- * - a data cai **fora da janela** do escopo (só a diretoria, §13);
- * - é uma **remarcação** — §9: remarcar nunca é silencioso;
- * - a banca atual acontece nos **próximos 5 dias úteis** (§13: os avaliadores
+ * - a data cai **fora da janela** do escopo (só a diretoria, );
+ * - é uma **remarcação**, remarcar nunca é silencioso;
+ * - a banca atual acontece nos **próximos 5 dias úteis** (os avaliadores
  *   já reservaram a agenda), e aí também só a diretoria.
  *
  * Quem decide de verdade continua sendo o backend: se ele recusar, a mensagem
@@ -97,7 +97,7 @@ export function MarcarBancaModal({
 }: Props) {
   const [justificativa, setJustificativa] = useState("");
   /**
-   * Os OUTROS escopos que esta banca passa a cobrir (§8).
+   * Os OUTROS escopos que esta banca passa a cobrir.
    *
    * Vive aqui, e não numa tela à parte, porque a cobertura muda o que a data
    * significa: uma banca que cobre dois escopos precisa caber na janela dos
@@ -109,7 +109,7 @@ export function MarcarBancaModal({
       .map((e) => e.id),
   );
   // 14h é o horário padrão das bancas; editável porque a trava de choque de
-  // horário do §8 compara data E hora — sem o campo, duas bancas do mesmo dia
+  // horário do  compara data E hora, sem o campo, duas bancas do mesmo dia
   // colidiriam sempre.
   const [horario, setHorario] = useState("14:00");
   const [erro, setErro] = useState("");
@@ -211,22 +211,22 @@ export function MarcarBancaModal({
 
         <ModalBody>
           <p>
-            <strong>{nomeEscopo}</strong> — banca em {formatarData(dia)}.
+            <strong>{nomeEscopo}</strong>, banca em {formatarData(dia)}.
           </p>
 
           {foraDaJanela && (
             <p>
-              ⚠ Esta data está <strong>fora da janela</strong> do escopo, que termina
+              Esta data está <strong>fora da janela</strong> do escopo, que termina
               em {formatarData(fimJanela)}.{" "}
               {ehDiretor
                 ? "Os dias além da janela entram como atraso do projeto."
-                : "Marcar aqui é decisão da diretoria — escolha um dia dentro da janela ou peça autorização."}
+                : "Marcar aqui é decisão da diretoria, escolha um dia dentro da janela ou peça autorização."}
             </p>
           )}
 
           {emCimaDaHora && (
             <p>
-              ⚠ A banca atual acontece em{" "}
+              A banca atual acontece em{" "}
               <strong>
                 {folgaAtual} {folgaAtual === 1 ? "dia útil" : "dias úteis"}
               </strong>{" "}
@@ -247,7 +247,7 @@ export function MarcarBancaModal({
                       type="checkbox"
                       checked={e.id === escopoId || cobertos.includes(e.id)}
                       // O escopo de onde a banca está sendo marcada entra
-                      // sempre — desmarcá-lo deixaria a ação sem sentido.
+                      // sempre, desmarcá-lo deixaria a ação sem sentido.
                       disabled={travado(e) || e.id === escopoId}
                       onChange={() =>
                         setCobertos((atuais) =>
@@ -267,7 +267,7 @@ export function MarcarBancaModal({
 
           {frentesEnvolvidas.length > 1 && (
             <p>
-              Esta banca vai cobrir {frentesEnvolvidas.map(nomeFrente).join(" e ")} — a composição
+              Esta banca vai cobrir {frentesEnvolvidas.map(nomeFrente).join(" e ")}, a composição
               exigida passa a somar as duas frentes.
             </p>
           )}

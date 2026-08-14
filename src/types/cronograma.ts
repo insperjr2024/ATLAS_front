@@ -14,8 +14,8 @@ export interface EtapaCronograma {
 
 /**
  * Só dois tipos gravados. Banca, entrega e kickoff são LIDOS de
- * `banca`, `projeto_escopo` e `projeto` — regravá-los criaria uma segunda
- * fonte da verdade e o "uma data só" do §8 morreria no primeiro reagendamento.
+ * `banca`, `projeto_escopo` e `projeto`, regravá-los criaria uma segunda
+ * fonte da verdade e o "uma data só" do  morreria no primeiro reagendamento.
  */
 export interface MarcoCronograma {
   id: number;
@@ -32,13 +32,13 @@ export interface EscopoComEtapas extends EscopoVendido {
 
 export interface FaixaDerivadaResposta {
   /**
-   * ⭐ `escopo` é a JANELA do §5: da reunião inicial até *vendidos +
+   * `escopo` é a JANELA do da reunião inicial até *vendidos +
    * ajustados* dias úteis depois dela.
    *
-   * ⚠ Já foi "até a banca", e por isso sumia enquanto a banca não tivesse
-   * data — justamente quando é mais útil. A faixa é **previsão**: ela mostra
+   * Já foi "até a banca", e por isso sumia enquanto a banca não tivesse
+   * data, justamente quando é mais útil. A faixa é **previsão**: ela mostra
    * até onde o escopo cabe no que foi prometido, e é dentro dela que a banca
-   * precisa caber (§9), não o contrário.
+   * precisa caber, não o contrário.
    *
    * As outras duas são do projeto inteiro e vêm sem escopo.
    */
@@ -71,14 +71,14 @@ export interface CronogramaResposta {
   faixas_derivadas: FaixaDerivadaResposta[];
   janela: { inicio: string; fim: string };
   /**
-   * A gestão corrente. A `janela` é larga de propósito — o ano corrente e o
-   * seguinte, para a navegação ser livre —, mas o semestre é o recorte que
+   * A gestão corrente. A `janela` é larga de propósito, o ano corrente e o
+   * seguinte, para a navegação ser livre, mas o semestre é o recorte que
    * interessa por padrão: é quando o projeto de fato acontece.
    */
   semestre: { nome: string; inicio: string; fim: string } | null;
   dias_nao_uteis: DiaNaoUtilResposta[];
   /**
-   * As reuniões do projeto — a inicial de cada escopo e as gerais.
+   * As reuniões do projeto, a inicial de cada escopo e as gerais.
    *
    * Vêm aqui porque elas são MARCAÇÕES DO CRONOGRAMA desde que a aba Reuniões
    * deixou de existir: sem isso, o que o coordenador acabou de marcar sumia da
@@ -86,7 +86,7 @@ export interface CronogramaResposta {
    */
   reunioes: ReuniaoSemanal[];
   /**
-   * ⚠ Não procure `reajuste_pendente` aqui: o pedido de dias de ajuste (§8) é
+   * Não procure `reajuste_pendente` aqui: o pedido de dias de ajuste é
    * de UM escopo, não do projeto, e por isso mora em `EscopoVendido`
    * (`escopos[].reajuste_pendente: PedidoDeDias`), que carrega dias
    * solicitados e motivo. O campo solto que existia neste nível só tinha id e
