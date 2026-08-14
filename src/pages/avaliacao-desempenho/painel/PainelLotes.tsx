@@ -108,6 +108,7 @@ export function PainelLotes() {
 
   const [pendenciasLoteId, setPendenciasLoteId] = useState<number | null>(null);
   const [pendencias, setPendencias] = useState<DesempenhoPendencia[]>([]);
+  const [pendenciasCarregando, setPendenciasCarregando] = useState(false);
   const [paraExcluir, setParaExcluir] = useState<DesempenhoLote | null>(null);
 
   const [editandoLoteId, setEditandoLoteId] = useState<number | null>(null);
@@ -293,7 +294,13 @@ export function PainelLotes() {
       return;
     }
     setPendenciasLoteId(loteId);
-    setPendencias(await getPendencias(loteId, token));
+    setPendencias([]);
+    setPendenciasCarregando(true);
+    try {
+      setPendencias(await getPendencias(loteId, token));
+    } finally {
+      setPendenciasCarregando(false);
+    }
   }
 
   if (erro) {
@@ -543,7 +550,9 @@ export function PainelLotes() {
 
                   {pendenciasLoteId === lote.id && !lote.aberto && (
                     <SubLista>
-                      {gruposPendencias.length === 0 ? (
+                      {pendenciasCarregando ? (
+                        <EmptyText>Carregando pendências...</EmptyText>
+                      ) : gruposPendencias.length === 0 ? (
                         <EmptyText>Ninguém pendente neste formulário.</EmptyText>
                       ) : (
                         gruposPendencias.map((grupo) => (

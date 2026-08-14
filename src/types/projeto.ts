@@ -33,6 +33,9 @@ export interface ProjetoResumo {
   sinergico: boolean;
   coordenador_id: number | null;
   consultor_ids: number[];
+  /** Teto de consultores da equipe, escolhido na criação do projeto. O
+   *  backend já mandava; faltava declarar aqui. */
+  max_consultores: number | null;
   data_kickoff: string | null;
   kickoff_pendente: boolean;
   /** Arquivar não é excluir, só some das listagens normais. */
@@ -225,6 +228,12 @@ export interface ProjetoCompleto extends ProjetoResumo {
   dia_reuniao_padrao: number | null;
   criado_por: number | null;
   equipe: MembroProjeto[];
+  /**
+   * ⭐ Quem abriu é **visitante**: um avaliador escalado numa banca deste
+   * projeto, que entra só para votar. O §3 não lhe dá visão do projeto, então
+   * o shell mostra apenas a aba Banca — as outras devolveriam 404 no clique.
+   */
+  apenas_banca?: boolean;
 }
 
 /**

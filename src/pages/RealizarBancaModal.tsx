@@ -231,7 +231,18 @@ export function RealizarBancaModal({
                 {salvando ? "Registrando…" : "Registrar assim mesmo"}
               </PageButton>
             ) : (
-              <PageButton type="submit" disabled={salvando}>
+              /* ⭐ Desligado para quem NUNCA vai conseguir forçar.
+                 O aviso acima já diz quantos faltam; deixar o botão aceso
+                 fazia o coordenador clicar para receber de volta a mesma frase
+                 que estava na tela. Só para ele: para a diretoria o botão
+                 continua ativo, porque é o clique dela que revela a recusa do
+                 backend — a régua completa, com os pisos por frente — e destrava
+                 o "Registrar assim mesmo". Desligá-lo para ela recriaria o beco
+                 que este modal existe para não ter. */
+              <PageButton
+                type="submit"
+                disabled={salvando || (totalAbaixoDoMinimo && !ehDiretor)}
+              >
                 {salvando ? "Registrando…" : "Registrar realização"}
               </PageButton>
             )}

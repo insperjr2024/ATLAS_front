@@ -19,6 +19,7 @@ import {
   getEscoposVendidos,
   getFrentes,
   podeGerenciarBanca,
+  pushAlocacao,
   realizarBanca,
   registrarDescricaoCoordenador,
   registrarResultado,
@@ -121,6 +122,7 @@ import {
   ModalFooterSplit,
   NarrowModalContent,
   WideModalContent,
+  PageHeaderAcoes,
   PageHeaderRow,
   PageHeaderText,
   PageHeading,
@@ -213,6 +215,9 @@ export function Bancas() {
   const [avisoErro, setAvisoErro] = useState("");
   const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
   const [bancaConvidar, setBancaConvidar] = useState<Banca | null>(null);
+  const [distribuindo, setDistribuindo] = useState(false);
+  /** O que a distribuição fez — dito em números, não em "pronto!". */
+  const [resultadoPush, setResultadoPush] = useState("");
 
   const podeAgendar = !!usuario?.permissoes.pode_definir_cronograma;
   const ehDiretor = usuario?.posicao === "diretor";
@@ -377,6 +382,33 @@ export function Bancas() {
     recarregar();
   }
 
+  /** ⭐ Roda na hora o mesmo rodízio do agendador das 6h (§8).
+   *
+   *  Diz quantas bancas e quantas pessoas — "nenhuma banca precisava" é
+   *  resultado legítimo e frequente (só entram bancas dos próximos 7 dias
+   *  ainda abaixo do piso), e sem o texto o clique pareceria não ter feito
+   *  nada. */
+  async function handleDistribuirAgora() {
+    if (!token) return;
+    setDistribuindo(true);
+    setResultadoPush("");
+    setAvisoErro("");
+    try {
+      const preenchidas = await pushAlocacao(token);
+      const pessoas = preenchidas.reduce((total, b) => total + b.usuarios_alocados.length, 0);
+      setResultadoPush(
+        preenchidas.length === 0
+          ? "Nenhuma banca dos próximos 7 dias precisava de gente."
+          : `${preenchidas.length} banca(s) preenchida(s), ${pessoas} pessoa(s) escalada(s).`,
+      );
+      recarregar();
+    } catch (err) {
+      setAvisoErro(err instanceof Error ? err.message : "Erro ao distribuir avaliadores");
+    } finally {
+      setDistribuindo(false);
+    }
+  }
+
   async function handleDesalocar(bancaId: number) {
     const candidatura = candidaturaDe(bancaId);
     if (!token || !candidatura) return;
@@ -428,7 +460,7 @@ export function Bancas() {
   }
 
   function handleExcluir(banca: Banca) {
-    if (!token || !podeGerenciarBanca(banca, usuarioLogado.id)) return;
+    if (!token || !podeGerenciarBanca(banca, usuarioLogado.id, ehDiretor)) return;
     setBancaParaExcluir(banca);
   }
 
@@ -467,16 +499,34 @@ export function Bancas() {
             <PageSubheading>
               Bancas dos próximos 7 dias que ainda estiverem sem gente são preenchidas
               automaticamente todo dia às 6h, por rodízio e priorizando a mesma frente. Use
-              “Alocar pessoas” num card para escalar alguém antes disso.
+              “Distribuir agora” para rodar a mesma distribuição na hora, ou “Alocar pessoas”
+              num card para escalar alguém específico.
             </PageSubheading>
           )}
+          {resultadoPush && <PageSubheading>{resultadoPush}</PageSubheading>}
         </PageHeaderText>
-        {podeAgendar && (
-          <PageButton type="button" onClick={() => setCriarAberto(true)}>
-            <Plus size={16} />
-            Criar banca
-          </PageButton>
-        )}
+        <PageHeaderAcoes>
+          {/* ⭐ A distribuição automática existia só no agendador das 6h: a
+              rota estava pronta e nenhuma tela a chamava, então a diretoria não
+              tinha como rodá-la ao fechar uma escala em cima da hora. */}
+          {ehDiretor && (
+            <PageButton
+              type="button"
+              $variant="outline"
+              disabled={distribuindo}
+              onClick={handleDistribuirAgora}
+            >
+              <Users size={16} />
+              {distribuindo ? "Distribuindo…" : "Distribuir agora"}
+            </PageButton>
+          )}
+          {podeAgendar && (
+            <PageButton type="button" onClick={() => setCriarAberto(true)}>
+              <Plus size={16} />
+              Criar banca
+            </PageButton>
+          )}
+        </PageHeaderAcoes>
       </PageHeaderRow>
 
       <TabBar>
@@ -815,7 +865,10 @@ function SecaoBancas({
               const diaSemana = dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
               const hora = dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
               const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
-              const podeGerenciar = gerenciar && usuarioId != null && podeGerenciarBanca(banca, usuarioId);
+              const podeGerenciar =
+                gerenciar &&
+                usuarioId != null &&
+                podeGerenciarBanca(banca, usuarioId, ehDiretorLista);
               // Banca legada (sem escopo vendido vinculado) mostra o escopo do
               // catálogo, singular, como sempre foi. Banca costurada a
               // escopo(s) do projeto mostra todos os que ela cobre, uma
@@ -1046,7 +1099,7 @@ function SecaoBancas({
                               : acao === "alocar"
                                 ? "Alocar-se"
                                 : acao === "deslocar"
-                                  ? "Deslocar-se"
+                                  ? "Desalocar-se"
                                   : "Avaliar"}
                         </PageButtonSm>
                       </MotivoDesabilitado>
@@ -1585,7 +1638,7 @@ function VerMaisModal({
 }) {
   if (!banca) return null;
 
-  const podeGerenciar = podeGerenciarBanca(banca, usuarioId);
+  const podeGerenciar = podeGerenciarBanca(banca, usuarioId, ehDiretor);
   // O coordenador não é avaliador da própria banca ("ninguém avalia o
   // próprio grupo"), no lugar do formulário de notas, ele só registra este
   // relato livre, e só depois que a banca de fato aconteceu.
