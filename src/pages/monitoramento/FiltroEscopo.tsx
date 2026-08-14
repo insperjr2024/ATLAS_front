@@ -4,15 +4,15 @@ import { FieldSelect } from "./Monitoramento.styled";
 import { useMonitoramento } from "./MonitoramentoLayout";
 
 /**
- * O filtro de escopo de UMA aba — irmão de `useFiltroFrente`, mesma ideia:
+ * O filtro de escopo de UMA aba, irmão de `useFiltroFrente`, mesma ideia:
  * estado próprio por aba, sem seletor global no topo.
  *
- * Diferente da frente, o escopo NÃO tem trava de visão (§7.5 é só sobre
- * frente) — qualquer um que enxerga o Monitoramento pode filtrar por
+ * Diferente da frente, o escopo NÃO tem trava de visão ( é só sobre
+ * frente), qualquer um que enxerga o Monitoramento pode filtrar por
  * qualquer escopo do catálogo, sem gate de `pode()`. O que ESTREITA as
  * opções (não a segurança, o backend já resolve isso sozinho) é a frente
- * efetiva: um `?frente_id=` escolhido no filtro irmão, ou — pra gerente, que
- * não escolhe, fica sempre travado — a própria frente dele. Sem isso, a
+ * efetiva: um `?frente_id=` escolhido no filtro irmão, ou, pra gerente, que
+ * não escolhe, fica sempre travado, a própria frente dele. Sem isso, a
  * lista oferecia escopo de outra frente que o resultado nunca ia poder
  * mostrar (o backend zera silenciosamente).
  *
@@ -35,7 +35,7 @@ export function useFiltroEscopo(frenteEfetiva: number | null) {
     ? escopos.filter((e) => e.frente_id != null && frentesRelevantes.includes(e.frente_id))
     : escopos;
 
-  // Trocar a frente pode deixar o escopo escolhido fora da lista nova — some
+  // Trocar a frente pode deixar o escopo escolhido fora da lista nova, some
   // a opção sem avisar, e o filtro continuaria "aplicado" a um escopo que
   // nem aparece mais pra escolher de novo.
   useEffect(() => {

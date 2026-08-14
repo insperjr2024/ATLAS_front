@@ -102,7 +102,7 @@ export const HeaderActions = styled.div`
 `;
 
 /* ------------------------------------------------------------------ */
-/* Senha de primeiro acesso (§10)                                      */
+/* Senha de primeiro acesso                                      */
 /* ------------------------------------------------------------------ */
 
 export const SenhaProvisoriaCaixa = styled.div`
@@ -116,7 +116,7 @@ export const SenhaProvisoriaCaixa = styled.div`
   background: ${theme.colors.muted};
 `;
 
-/** Monoespaçada e espaçada: esta senha vai ser LIDA e digitada à mão — em
+/** Monoespaçada e espaçada: esta senha vai ser LIDA e digitada à mão, em
  *  fonte proporcional, `O` e `0` (que o gerador já evita) e `rn`/`m` viram
  *  fonte de erro na hora de repassar. */
 export const SenhaProvisoriaValor = styled.code`

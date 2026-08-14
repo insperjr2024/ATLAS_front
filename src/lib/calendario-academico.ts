@@ -1,7 +1,7 @@
 import { apiFetch } from "@/lib/api";
 
 /**
- * O calendário acadêmico do Insper — a carga que **define o dia útil** (§5.4).
+ * O calendário acadêmico do Insper, a carga que **define o dia útil**.
  *
  * Sem estes dados, `contar_dias_uteis` só exclui fim de semana, e toda a
  * contagem do sistema fica errada por feriado e semana de prova. É por isso
@@ -50,7 +50,7 @@ export function createSemestre(
   });
 }
 
-/** Arquivar a gestão (§12) — os indicadores reiniciam na próxima. */
+/** Arquivar a gestão, os indicadores reiniciam na próxima. */
 export function updateSemestre(
   semestreId: number,
   dados: { status?: "ativa" | "arquivada"; nome?: string; inicio?: string; fim?: string },
@@ -70,7 +70,7 @@ export function getDiasNaoLetivos(semestreId: number, token: string) {
 /**
  * O calendário base de uma frente.
  *
- * `apenasDaFrente` corta os dias globais da resposta — é o que a tela de
+ * `apenasDaFrente` corta os dias globais da resposta, é o que a tela de
  * edição usa, para a diretoria não apagar um feriado nacional achando que
  * está mexendo só no calendário de Business.
  */
@@ -94,7 +94,7 @@ export interface DiaLidoDoPdf {
   /**
    * A quem o dia pertence.
    *
-   * Feriado é do país e vale para todas as frentes — subir o PDF de Business
+   * Feriado é do país e vale para todas as frentes, subir o PDF de Business
    * não pode criar uma cópia dele em cada frente. Todo o resto sai do
    * calendário de um CURSO: avaliação, recesso e aulas canceladas de
    * Administração não são os de Engenharia.
@@ -127,7 +127,7 @@ export interface LeituraPdf {
 }
 
 /**
- * Lê o PDF e devolve o que encontrou — NÃO grava.
+ * Lê o PDF e devolve o que encontrou, NÃO grava.
  *
  * A gravação é uma chamada separada, depois da conferência na tela. A leitura
  * é posicional e pode errar se o Insper mudar o layout; salvar direto
@@ -156,13 +156,13 @@ export interface DiaNaoLetivoPayload {
 export interface ResultadoCarga {
   semestre_id: number;
   criados: number;
-  /** Datas que já estavam carregadas — a rota é idempotente por (semestre, data). */
+  /** Datas que já estavam carregadas, a rota é idempotente por (semestre, data). */
   ignorados: number;
   dias: DiaNaoLetivo[];
 }
 
 /**
- * Carga em lote — o calendário inteiro do semestre de uma vez.
+ * Carga em lote, o calendário inteiro do semestre de uma vez.
  *
  * Com `frenteId`, grava o calendário base daquela frente; sem ele, o global.
  * `substituir` limpa antes, mas só o calendário da MESMA frente: recarregar o
@@ -197,8 +197,8 @@ export function limparDiasNaoLetivos(semestreId: number, token: string) {
  * Interpreta a colagem de um calendário: uma linha por dia, nos formatos
  * `dd/mm/aaaa; tipo; descrição` ou `aaaa-mm-dd, tipo, descrição`.
  *
- * O §11 do briefing prevê leitura de imagem por OCR para a GRADE HORÁRIA
- * (coisa diferente, e fora desta entrega). Aqui é só colar texto — que é
+ * O  do briefing prevê leitura de imagem por OCR para a GRADE HORÁRIA
+ * (coisa diferente, e fora desta entrega). Aqui é só colar texto, que é
  * como a diretoria recebe o calendário do Insper.
  */
 export function interpretarColagem(texto: string): {

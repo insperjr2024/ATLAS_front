@@ -14,7 +14,7 @@ export interface EventoCalendario {
 }
 
 /**
- * O calendário geral (§6.5) — recortado por posição no backend (diretor vê
+ * O calendário geral, recortado por posição no backend (diretor vê
  * tudo, gerente a própria frente, coordenador/consultor só os projetos em
  * que estão alocados), igual ao resto do site.
  *

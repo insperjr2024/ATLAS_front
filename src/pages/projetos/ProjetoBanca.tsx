@@ -9,6 +9,7 @@ import {
   ROTULO_STATUS_BANCA,
   tomDoStatusBanca,
 } from "@/lib/bancas";
+import { CODIGO_BANCA_ABAIXO_DO_MINIMO, codigoDoErro } from "@/lib/api";
 import { createAvaliacao, getFormularioAtivo, submeterAvaliacao } from "@/lib/avaliacoes";
 import { formatarDataHora } from "@/lib/projetos";
 import { VotoBanca } from "@/components/VotoBanca";
@@ -567,9 +568,13 @@ function RegistrarRealizacaoModal({
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : "Não foi possível registrar";
       setErro(mensagem);
-      // O backend recusa quando a composição mínima por frente não fecha (§8).
-      // Só a diretoria força — e a rota é quem decide isso, não a tela.
-      setRecusaDeComposicao(mensagem.toLowerCase().includes("mínimo") || mensagem.toLowerCase().includes("composição"));
+      // ⭐ Pelo CÓDIGO da recusa, não por palavras na mensagem.
+      //
+      // Este `includes` procurava "mínimo" ou "composição", e o texto atual do
+      // backend ("Esta banca tem 0 de 2 pessoas alocadas...") não tem nenhuma
+      // das duas — o botão de forçar da diretoria nunca aparecia. Quem decide
+      // continua sendo a rota; o que mudou é como a tela pergunta.
+      setRecusaDeComposicao(codigoDoErro(err) === CODIGO_BANCA_ABAIXO_DO_MINIMO);
     } finally {
       setSalvando(false);
     }

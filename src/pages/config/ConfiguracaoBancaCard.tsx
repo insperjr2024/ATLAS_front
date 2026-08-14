@@ -6,7 +6,7 @@ import { PageCard, PageCardHeader, PageCardTitle, PageCardContent, PageButton, E
 import { FieldGroup, FieldLabel, FieldInput, FormErrorText } from "../Config.styled";
 
 /**
- * O teto de pessoas por banca (§8) — hoje já é usado de verdade (bloqueia
+ * O teto de pessoas por banca, hoje já é usado de verdade (bloqueia
  * candidatura acima do valor), mas não tinha tela nenhuma pra editar.
  */
 export function ConfiguracaoBancaCard() {

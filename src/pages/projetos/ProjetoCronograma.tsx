@@ -6,15 +6,16 @@ import {
   ChevronRight,
   Download,
   HelpCircle,
+  Info,
   Lock,
   Plus,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-// ⚠️ `oficializarCronograma` e `pedirDiasDeAjuste` CONVIVEM, apesar de terem se
-// cruzado no merge: o primeiro só carimba a data (§5.3, informativo) e o
-// segundo estica a janela (§8, passa pela diretoria). Nenhum consulta o outro.
+// `oficializarCronograma` e `pedirDiasDeAjuste` CONVIVEM, apesar de terem se
+// cruzado no merge: o primeiro só carimba a data (, informativo) e o
+// segundo estica a janela (, passa pela diretoria). Nenhum consulta o outro.
 import {
   createEtapa,
   definirEntregaPlanejada,
@@ -90,6 +91,7 @@ import {
   type Visao,
 } from "@/components/cronograma-pintado/visao";
 import type { CronogramaResposta } from "@/types/cronograma";
+import type { EscopoVendido } from "@/types/projeto";
 import {
   PageStack,
   PageButton,
@@ -118,8 +120,8 @@ import { useProjeto } from "./ProjetoPage";
 
 
 /**
- * ⭐ Os modos de marcação — o que transforma esta aba no painel único de datas
- * do projeto (§2).
+ * Os modos de marcação, o que transforma esta aba no painel único de datas
+ * do projeto.
  *
  * `escopo: true` quer dizer que o modo precisa de um escopo escolhido na
  * barra: a reunião inicial abre a janela DE UM escopo, e banca e entrega são
@@ -130,9 +132,9 @@ const MODOS = [
   { valor: "reuniao_inicial", rotulo: "Reunião inicial", escopo: true },
   { valor: "reuniao_geral", rotulo: "Reunião geral", escopo: false },
   { valor: "banca", rotulo: "Banca", escopo: true },
-  // ⭐ UMA entrega só: entrega do escopo **é** a entrega ao cliente daquele
-  // escopo (§5.5). Havia aqui um modo "Entrega ao cliente" separado, do
-  // projeto — duas datas para a mesma promessa, que divergiam no primeiro
+  // UMA entrega só: entrega do escopo **é** a entrega ao cliente daquele
+  // escopo. Havia aqui um modo "Entrega ao cliente" separado, do
+  // projeto, duas datas para a mesma promessa, que divergiam no primeiro
   // reagendamento.
   { valor: "entrega", rotulo: "Entrega", escopo: true },
 ] as const;
@@ -144,12 +146,76 @@ function semAno(iso: string): string {
   return `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
 }
 
-/** Hoje em `yyyy-MM-dd` local — o formato de todas as datas desta tela. */
+/** Hoje em `yyyy-MM-dd` local, o formato de todas as datas desta tela. */
 function hojeIso(): string {
   const agora = new Date();
   const mes = String(agora.getMonth() + 1).padStart(2, "0");
   const dia = String(agora.getDate()).padStart(2, "0");
   return `${agora.getFullYear()}-${mes}-${dia}`;
+}
+
+
+/**
+ * ⭐ Um período por BANCA REALIZADA — e o rótulo que o retrabalho dela recebe.
+ *
+ * ⚠ **Correção ≠ ajuste, e o resultado da banca é que separa os dois.**
+ *
+ * - banca **reprovada** → o que vem depois é **correção**, e numerada: o time
+ *   está consertando o que aquela banca apontou. "correção 1" e "correção 2"
+ *   contam a história de um escopo que precisou de duas tentativas.
+ * - banca **aprovada** → o trabalho passou; o que vem depois são **ajustes**
+ *   finos antes de entregar ao cliente, não conserto de reprovação.
+ *
+ * Chamar tudo de "correção" acusava de reprovação um escopo que passou de
+ * primeira, e um único rótulo não distinguia o retrabalho da 1ª banca do da 2ª.
+ *
+ * ⚠ Sem veredito ainda, o rótulo é "ajustes": é o neutro. "correção" afirmaria
+ * uma reprovação que ninguém decidiu.
+ *
+ * Cada período vai do dia SEGUINTE à realização até a véspera da próxima
+ * (a última fica aberta). O dia da banca é dela, não do conserto que ela pediu.
+ */
+interface PeriodoPosBanca {
+  /** `yyyy-MM-dd` — o primeiro dia que já é retrabalho. */
+  inicio: string;
+  /** `yyyy-MM-dd` da próxima banca, ou `null` na última (fica aberta). */
+  fim: string | null;
+  rotulo: string;
+}
+
+function derivarPeriodosPosBanca(escopo: EscopoVendido): PeriodoPosBanca[] {
+  const sessoes = escopo.banca?.sessoes ?? [];
+  const realizadas = sessoes
+    .filter((s) => s.realizado_em)
+    .map((s) => ({ dia: s.realizado_em!.slice(0, 10), resultado: s.resultado }))
+    .sort((a, b) => a.dia.localeCompare(b.dia));
+
+  // Banca anterior a `banca_sessao`, ou escopo antigo entregue sem registro de
+  // realização: cai na régua de sempre, com o rótulo genérico.
+  if (realizadas.length === 0) {
+    const marco = escopo.banca?.realizado_em?.slice(0, 10) ?? escopo.data_entrega_real?.slice(0, 10);
+    return marco ? [{ inicio: marco, fim: null, rotulo: "correção" }] : [];
+  }
+
+  return realizadas.map((r, i) => ({
+    inicio: r.dia,
+    fim: realizadas[i + 1]?.dia ?? null,
+    // Sem numeração: o que importa é a NATUREZA do retrabalho, não a ordem.
+    // "correção 1" e "correção 2" faziam a legenda parecer um índice, e o
+    // número já está no calendário — a banca que o precede tem marcação
+    // própria no dia.
+    rotulo: r.resultado === "nao_aprovada" ? "correção" : "ajustes",
+  }));
+}
+
+/** O período em que este trecho TERMINA — `null` se ele acabou antes de
+ *  qualquer banca, ou seja, ainda é trabalho vendido. */
+function periodoDoTrecho(periodos: PeriodoPosBanca[], dataFim: string): PeriodoPosBanca | null {
+  // De trás para frente: o trecho pertence ao último período que ele alcança.
+  for (let i = periodos.length - 1; i >= 0; i--) {
+    if (dataFim > periodos[i].inicio) return periodos[i];
+  }
+  return null;
 }
 
 export function ProjetoCronograma() {
@@ -168,7 +234,7 @@ export function ProjetoCronograma() {
   /**
    * O escopo em foco, ou "geral" para o projeto inteiro.
    *
-   * Geral não é só um filtro solto: ele é a visão consolidada — junta etapas,
+   * Geral não é só um filtro solto: ele é a visão consolidada, junta etapas,
    * marcos, entregas e os dias não úteis de TODAS as frentes. Abre nele porque
    * "como está o cronograma?" é a pergunta de quem chega; editar é ação
    * deliberada de quem escolhe um escopo.
@@ -176,11 +242,11 @@ export function ProjetoCronograma() {
   const [escopoSelecionado, setEscopoSelecionado] = useState<number | "geral">("geral");
 
   /**
-   * A última marcação, enquanto ela ainda pode ser desfeita (§ UX).
+   * A última marcação, enquanto ela ainda pode ser desfeita.
    *
-   * 📐 Só existe quando há PARA ONDE voltar. Kickoff, banca e entrega não
+   * Só existe quando há PARA ONDE voltar. Kickoff, banca e entrega não
    * aceitam data vazia na API (`data_kickoff: date`, não `Optional`), então
-   * marcar a primeira vez é irreversível — e oferecer um "desfazer" que
+   * marcar a primeira vez é irreversível, e oferecer um "desfazer" que
    * falharia seria pior que não oferecer.
    */
   const [desfazer, setDesfazer] = useState<{
@@ -194,19 +260,19 @@ export function ProjetoCronograma() {
   const [previewIntervalo, setPreviewIntervalo] = useState<{ inicio: string; fim: string } | null>(
     null,
   );
-  // Mês é o default: é o formato canônico do §6.4. Dia e semana são lentes de
+  // Mês é o default: é o formato canônico. Dia e semana são lentes de
   // detalhe. `referencia` é o período em foco; `null` até a janela chegar.
   const [visao, setVisao] = useState<Visao>("mes");
   const [referencia, setReferencia] = useState<Date | null>(null);
   const [criandoEtapa, setCriandoEtapa] = useState(false);
   const [confirmandoOficializacao, setConfirmandoOficializacao] = useState(false);
   /**
-   * ⭐ §8: o pedido de dias em preenchimento, com o que o CALENDÁRIO já disse.
+   * o pedido de dias em preenchimento, com o que o CALENDÁRIO já disse.
    *
    * Não é um booleano porque o pedido não nasce mais de um formulário em
    * branco: o coordenador arrasta a etapa além da janela e o excedente do
    * gesto já chega aqui como `dias` e `ateDia`. O botão da barra continua
-   * abrindo o mesmo modal, só que sem seleção (`ateDia: null`) — é a porta de
+   * abrindo o mesmo modal, só que sem seleção (`ateDia: null`), é a porta de
    * quem prefere digitar o número.
    *
    * Guarda o `escopoId` em vez de depender do escopo selecionado na barra: na
@@ -220,8 +286,8 @@ export function ProjetoCronograma() {
     ateDia: string | null;
   } | null>(null);
   /**
-   * ⭐ O modo de marcação ativo — o que faz desta aba o **painel único de
-   * datas** do projeto (§2). Com um modo ligado, clicar num dia crava aquela
+   * O modo de marcação ativo, o que faz desta aba o **painel único de
+   * datas** do projeto. Com um modo ligado, clicar num dia crava aquela
    * data em vez de pintar etapa.
    *
    * `null` = o comportamento de sempre (pintar com o pincel). Ligar um modo
@@ -229,10 +295,10 @@ export function ProjetoCronograma() {
    * ligados juntos faria o gesto ser ambíguo.
    */
   const [modoMarcacao, setModoMarcacao] = useState<ModoMarcacao>(null);
-  /** A banca cuja ficha está aberta — o clique no marco do calendário (§5.5). */
+  /** A banca cuja ficha está aberta, o clique no marco do calendário. */
   const [bancaAberta, setBancaAberta] = useState<number | null>(null);
   const [remarcando, setRemarcando] = useState<{ dia: string; escopoId: number } | null>(null);
-  /** A reunião sendo marcada ou editada pelo calendário (§12). */
+  /** A reunião sendo marcada ou editada pelo calendário. */
   const [reuniaoAberta, setReuniaoAberta] = useState<{
     dia: string;
     tipo: "inicial" | "geral";
@@ -241,23 +307,23 @@ export function ProjetoCronograma() {
     observacoes: string | null;
   } | null>(null);
 /**
-   * A entrega sendo registrada ou alterada pelo calendário (§13).
+   * A entrega sendo registrada ou alterada pelo calendário.
    *
-   * ⚠ Diferente da banca, ela **não** precisa caber na janela do escopo: a
+   * Diferente da banca, ela **não** precisa caber na janela do escopo: a
    * janela é o tempo de TRABALHO vendido, e a apresentação ao cliente costuma
    * acontecer dias depois da banca.
    */
   const [entregaAberta, setEntregaAberta] = useState<{ dia: string; escopoId: number } | null>(
     null,
   );
-  /** O kickoff sendo marcado pelo calendário — confirma antes por causa da ambientação. */
+  /** O kickoff sendo marcado pelo calendário, confirma antes por causa da ambientação. */
   const [kickoffAberto, setKickoffAberto] = useState<string | null>(null);
-  /** Etapas criadas na tela e ainda sem trecho — não existem no banco. */
+  /** Etapas criadas na tela e ainda sem trecho, não existem no banco. */
   const [rascunhos, setRascunhos] = useState<{ escopoId: number; nome: string; cor: string }[]>([]);
   const [exportandoPdf, setExportandoPdf] = useState(false);
   /** Enquanto não é `null`, a cópia fora da tela está montada com estes meses. */
   const [mesesExport, setMesesExport] = useState<Date[] | null>(null);
-  /** O escopo escolhido no modal de export — independente do que está na tela. */
+  /** O escopo escolhido no modal de export, independente do que está na tela. */
   const [escopoExport, setEscopoExport] = useState<number | "geral">("geral");
   const [etapaParaExcluir, setEtapaParaExcluir] = useState<{
     chave: string;
@@ -268,8 +334,8 @@ export function ProjetoCronograma() {
   const podeEditar = !!usuario?.permissoes.pode_definir_cronograma;
   const ehDiretor = usuario?.posicao === "diretor";
   /**
-   * ⭐ Só o COORDENADOR do projeto pede dias de ajuste (§8), e por isso o botão
-   * é dele — mostrar para gerente ou diretor entregaria um 422 depois de
+   * Só o COORDENADOR do projeto pede dias de ajuste, e por isso o botão
+   * é dele, mostrar para gerente ou diretor entregaria um 422 depois de
    * preencher o formulário.
    */
   const souCoordenador = projeto.equipe.some(
@@ -284,7 +350,7 @@ export function ProjetoCronograma() {
       setDados(resposta);
       // Ancora aqui, e não num efeito: o efeito seria um setState em cascata
       // logo após o render (react-hooks/set-state-in-effect). Abrimos no
-      // período de hoje trazido para dentro da janela — um cronograma já
+      // período de hoje trazido para dentro da janela, um cronograma já
       // encerrado abriria num mês vazio e pareceria quebrado.
       setReferencia((atual) =>
         atual ??
@@ -314,7 +380,7 @@ export function ProjetoCronograma() {
   }, [modoMarcacao]);
 
   // Um tique por segundo enquanto houver o que desfazer. O `setState` mora
-  // no callback do intervalo, não no corpo do efeito — no corpo ele dispararia
+  // no callback do intervalo, não no corpo do efeito, no corpo ele dispararia
   // render em cascata.
   useEffect(() => {
     if (!desfazer) return;
@@ -333,10 +399,10 @@ export function ProjetoCronograma() {
     ? null
     : (dados?.escopos.find((e) => e.id === escopoSelecionado) ?? null);
   /**
-   * O carimbo do §5.3 — e SÓ isso: ele alimenta um banner e habilita o botão.
+   * O carimbo, e SÓ isso: ele alimenta um banner e habilita o botão.
    *
-   * ⚠️ Não é trava de nada. `pincelTravado`, o `disabled` da entrega e os
-   * filtros de "escopo oficializado" saíram daqui de propósito (§15): pintar é
+   * Não é trava de nada. `pincelTravado`, o `disabled` da entrega e os
+   * filtros de "escopo oficializado" saíram daqui de propósito: pintar é
    * sempre permitido, e quem delimita o trabalho é a JANELA do escopo, que não
    * pergunta se o cronograma foi oficializado.
    */
@@ -353,18 +419,18 @@ export function ProjetoCronograma() {
   /**
    * O calendário acadêmico da frente do escopo SELECIONADO.
    *
-   * Cada frente tem o seu — as semanas de avaliação de Administração não são
+   * Cada frente tem o seu, as semanas de avaliação de Administração não são
    * as de Engenharia. Trocar o escopo no seletor troca o calendário junto, que
    * é o que faz um projeto sinérgico mostrar a realidade de cada lado.
    *
    * Os dias sem frente (`null`) entram sempre: feriado é do país.
    */
-  /** Sábado e domingo da janela — a base dos dois mapas abaixo. */
+  /** Sábado e domingo da janela, a base dos dois mapas abaixo. */
   const fimDeSemana = useMemo(() => {
     const mapa = new Map<string, { tipo: string; descricao: string | null }>();
     if (!dados) return mapa;
     // Não vem do backend de propósito: `dia_nao_letivo` guarda o que a
-    // diretoria carrega do PDF, e fim de semana não é carregado — o cálculo de
+    // diretoria carrega do PDF, e fim de semana não é carregado, o cálculo de
     // dias úteis já o exclui por definição.
     const fim = new Date(`${dados.janela.fim.slice(0, 10)}T12:00:00`);
     const cursor = new Date(`${dados.janela.inicio.slice(0, 10)}T12:00:00`);
@@ -393,7 +459,7 @@ export function ProjetoCronograma() {
   }, [dados, frentesVisiveis, fimDeSemana]);
 
   /**
-   * Dias úteis entre duas datas ISO, inclusive — a régua do prazo no banner.
+   * Dias úteis entre duas datas ISO, inclusive, a régua do prazo no banner.
    *
    * Usa o mesmo mapa que hachura o calendário, então feriado e semana de provas
    * já entram. Não é uma segunda definição de dia útil: `dias_uteis.py` continua
@@ -406,25 +472,25 @@ export function ProjetoCronograma() {
   );
 
   /**
-   * ⭐ §15: o banner da janela. **Informa, não bloqueia** — pintar além dela
+   * o banner da janela. **Informa, não bloqueia**, pintar além dela
    * continua permitido, e é essa a diferença para a banca, que é recusada.
    *
    * Três estados, nesta ordem de prioridade:
    *
    * 1. pedido de dias aguardando a diretoria;
    * 2. prazo ainda aberto (mostra quantos dias úteis restam para pedir);
-   * 3. já pintou além da janela e o prazo venceu — mostra
+   * 3. já pintou além da janela e o prazo venceu, mostra
    *    *vendidos · ajustados · atraso* e diz que não cabe mais pedido.
    *
-   * ⚠ **Etapa posterior à banca realizada não dispara nada**: aquilo é
-   * CORREÇÃO (§11), tem métrica própria e não é estouro de janela.
+   * **Etapa posterior à banca realizada não dispara nada**: aquilo é
+   * CORREÇÃO, tem métrica própria e não é estouro de janela.
    */
   const avisoJanela = useMemo(() => {
     if (!escopo || !escopo.data_inicio) return null;
 
-    // ⚠️ **Aqui só entra INFORMAÇÃO, nunca pedido.** O "peça dias de ajuste"
+    // **Aqui só entra INFORMAÇÃO, nunca pedido.** O "peça dias de ajuste"
     // virou um botão na barra, visível apenas nos 3 dias úteis em que o pedido
-    // existe — misturado ao aviso de atraso, ele fazia parecer que aumentar a
+    // existe, misturado ao aviso de atraso, ele fazia parecer que aumentar a
     // janela e corrigir o que a banca apontou fossem a mesma coisa.
     if (escopo.reajuste_pendente) {
       return {
@@ -450,7 +516,7 @@ export function ProjetoCronograma() {
 
 
   /** Banca, entrega e kickoff são LIDOS de onde já vivem (`banca.data_hora`,
-   *  `data_entrega_*`, `data_kickoff`) — não há linha de marco para eles. */
+   *  `data_entrega_*`, `data_kickoff`), não há linha de marco para eles. */
   const marcos = useMemo<MarcoRenderizavel[]>(() => {
     if (!dados) return [];
     const lista: MarcoRenderizavel[] = [];
@@ -481,50 +547,17 @@ export function ProjetoCronograma() {
       if (!modoGeral && e.id !== escopoSelecionado) continue;
       if (e.banca?.data_hora) {
         const bancaId = e.banca.id;
-        // ⭐ **Uma marcação por TENTATIVA, não por banca.**
-        //
-        // `banca.data_hora` é só a tentativa CORRENTE. Uma banca reprovada e
-        // remarcada sumia do dia em que de fato aconteceu — o calendário
-        // mostrava a data nova como se a primeira nunca tivesse existido, e
-        // quem abrisse o cronograma não tinha como saber que houve duas.
-        //
-        // `sessoes` vem vazio nas bancas anteriores a `banca_sessao`: o
-        // fallback mantém essas com a marcação de sempre.
-        const tentativas = e.banca.sessoes?.length
-          ? e.banca.sessoes
-          : [
-              {
-                id: 0,
-                numero: 1,
-                data_hora: e.banca.data_hora,
-                realizado_em: e.banca.realizado_em,
-                resultado: e.banca.resultado,
-                encerrada_em: null,
-              },
-            ];
-        for (const tentativa of tentativas) {
-          if (!tentativa.data_hora) continue;
-          // "Banca" na primeira, "2ª banca" da segunda em diante: numerar a
-          // primeira sugeriria que houve outra antes dela.
-          const nome = tentativa.numero <= 1 ? "Banca" : `${tentativa.numero}ª banca`;
-          const veredito =
-            tentativa.resultado === "aprovada"
-              ? " · aprovada"
-              : tentativa.resultado === "nao_aprovada"
-                ? " · não aprovada"
-                : "";
-          lista.push({
-            data: chaveData(paraDataUtc(tentativa.data_hora)),
-            tipo: "banca",
-            rotulo: nome,
-            titulo: `${nome} — ${e.nome}${veredito}`,
-            // ⭐ O único marco que abre ficha. Banca é a marcação que carrega
-            // informação que NÃO cabe no calendário — quem avalia, quem é a
-            // equipe, qual o resultado —, e até aqui ela só existia na tela
-            // `/bancas`, longe de onde a data aparece.
-            onClick: () => setBancaAberta(bancaId),
-          });
-        }
+        lista.push({
+          data: chaveData(paraDataUtc(e.banca.data_hora)),
+          tipo: "banca",
+          rotulo: ROTULOS_MARCO.banca,
+          titulo: `Banca, ${e.nome}`,
+          // O único marco que abre ficha. Banca é a marcação que carrega
+          // informação que NÃO cabe no calendário, quem avalia, quem é a
+          // equipe, qual o resultado, e até aqui ela só existia na tela
+          // `/bancas`, longe de onde a data aparece.
+          onClick: () => setBancaAberta(bancaId),
+        });
       }
       const entrega = e.data_entrega_real ?? e.data_entrega_planejada;
       if (entrega) {
@@ -532,11 +565,11 @@ export function ProjetoCronograma() {
           data: entrega.slice(0, 10),
           tipo: "entrega",
           rotulo: ROTULOS_MARCO.entrega,
-          titulo: `Entrega — ${e.nome}`,
+          titulo: `Entrega, ${e.nome}`,
         });
       }
     }
-    // As reuniões do §12: a inicial de cada escopo (que abre a janela) e as
+    // As reuniões do a inicial de cada escopo (que abre a janela) e as
     // gerais do projeto. Sem elas aqui, marcar uma reunião no calendário não
     // deixava marca nenhuma no calendário.
     for (const r of dados.reunioes ?? []) {
@@ -548,7 +581,7 @@ export function ProjetoCronograma() {
         tipo: inicial ? "reuniao_inicial" : "reuniao_geral",
         rotulo: ROTULOS_MARCO[inicial ? "reuniao_inicial" : "reuniao_geral"],
         titulo: [
-          inicial ? `Reunião inicial — ${daquele?.nome ?? "escopo"}` : "Reunião geral",
+          inicial ? `Reunião inicial, ${daquele?.nome ?? "escopo"}` : "Reunião geral",
           r.observacoes,
         ]
           .filter(Boolean)
@@ -569,14 +602,14 @@ export function ProjetoCronograma() {
   }, [dados, modoGeral, escopoSelecionado, projeto.data_entrega_prevista_cliente]);
 
   /**
-   * ⭐ A JANELA de cada escopo — da reunião inicial até *vendidos + ajustados*
-   * dias úteis (§5) — chega como faixa derivada, junto de ambientação e pausa.
+   * A JANELA de cada escopo, da reunião inicial até *vendidos + ajustados*
+   * dias úteis, chega como faixa derivada, junto de ambientação e pausa.
    *
-   * ⚠ Já foi "até a banca", e sumia enquanto a banca não tivesse data. A faixa
+   * Já foi "até a banca", e sumia enquanto a banca não tivesse data. A faixa
    * é previsão: é dentro dela que a banca precisa caber, não o contrário.
    *
-   * A cor sai do ÍNDICE do escopo na lista do projeto — a mesma ordem dos
-   * grupos da legenda —, então a faixa e o título do escopo na legenda casam
+   * A cor sai do ÍNDICE do escopo na lista do projeto, a mesma ordem dos
+   * grupos da legenda, então a faixa e o título do escopo na legenda casam
    * sem ninguém precisar decorar cor. O recorte segue o do calendário: no
    * modo Geral aparecem todas; com um escopo selecionado, só a dele.
    */
@@ -595,12 +628,12 @@ export function ProjetoCronograma() {
             : COR_PAUSA,
       rotulo:
         f.tipo === "escopo"
-          ? `${escopos.find((e) => e.id === f.projeto_escopo_id)?.nome ?? f.rotulo} — janela do escopo`
+          ? `${escopos.find((e) => e.id === f.projeto_escopo_id)?.nome ?? f.rotulo}, janela do escopo`
           : f.rotulo,
     }));
   }, [dados]);
 
-  /** O que vai para o calendário — mesmo recorte das etapas. A LEGENDA usa
+  /** O que vai para o calendário, mesmo recorte das etapas. A LEGENDA usa
    *  `todasAsFaixas`: ela lista os escopos todos, mesmo os fora da visão. */
   const faixas = useMemo(
     () =>
@@ -623,7 +656,7 @@ export function ProjetoCronograma() {
     [visao, referencia],
   );
 
-  // A navegação para nas bordas da janela — fora dela não há cronograma.
+  // A navegação para nas bordas da janela, fora dela não há cronograma.
   const limites = useMemo(() => {
     if (!referencia || !janela) return { recuar: true, avancar: true };
     const atual = intervaloDaVisao(visao, referencia);
@@ -644,12 +677,12 @@ export function ProjetoCronograma() {
   }
 
   /**
-   * TODAS as etapas do projeto, de todos os escopos — o calendário é do
+   * TODAS as etapas do projeto, de todos os escopos, o calendário é do
    * projeto, não do escopo.
    *
    * O seletor de escopo continua existindo, mas só decide a que escopo uma
    * etapa NOVA pertence e sobre qual janela o banner fala. Trocar de
-   * escopo não muda mais o que o calendário mostra: a §5.4 admite escopos em
+   * escopo não muda mais o que o calendário mostra: a  admite escopos em
    * paralelo, e escondê-los um do outro esconderia justamente a sobreposição
    * que o coordenador precisa enxergar para não estourar a equipe.
    *
@@ -663,7 +696,7 @@ export function ProjetoCronograma() {
         (e.etapas ?? []).map((etapa) => ({
           ...etapa,
           // Linhas com a mesma chave são TRECHOS de uma etapa só. Nome e cor
-          // definem a identidade porque é isso que o usuário enxerga — o id é
+          // definem a identidade porque é isso que o usuário enxerga, o id é
           // detalhe de como o banco guarda.
           grupo: `${e.id}|${etapa.nome}|${etapa.cor}`,
           escopoId: e.id,
@@ -679,7 +712,7 @@ export function ProjetoCronograma() {
 
     // Rascunhos primeiro, para uma etapa recém-criada já aparecer na legenda
     // mesmo sem nenhum trecho. Se ela ganhar trechos, o laço abaixo preenche
-    // esta mesma entrada — a chave é a mesma.
+    // esta mesma entrada, a chave é a mesma.
     for (const r of rascunhos) {
       const chave = `${r.escopoId}|${r.nome}|${r.cor}`;
       mapa.set(chave, {
@@ -718,7 +751,7 @@ export function ProjetoCronograma() {
    * Num projeto sinérgico a etapa vale para as duas frentes, mas o calendário
    * na tela é o de uma só. Sem este aviso, o coordenador pintaria por cima da
    * semana de provas de Tech enquanto olha o calendário de Business e nunca
-   * saberia — que é exatamente o caso que o aviso existe para pegar.
+   * saberia, que é exatamente o caso que o aviso existe para pegar.
    */
   const conflitosDeFrente = useMemo(() => {
     if (!dados || !escopo) return [];
@@ -756,26 +789,26 @@ export function ProjetoCronograma() {
 
 
   /** O pincel manda: pintar é editar a etapa ativa, então quem trava é o
-   *  escopo DELA — não o que está escolhido no seletor. */
+   *  escopo DELA, não o que está escolhido no seletor. */
   const grupoDoPincel = grupos.find((g) => g.chave === grupoAtivo);
-  /* `pincelTravado` vivia aqui, ligado ao cronograma oficializado. §15: pintar
-     é sempre permitido — o banner avisa quando passa da janela, e o único
+  /* `pincelTravado` vivia aqui, ligado ao cronograma oficializado. pintar
+     é sempre permitido, o banner avisa quando passa da janela, e o único
      bloqueio duro é a banca fora dela. */
 
-  /** O escopo do pedido de dias em aberto — ver o comentário de `pedindoDias`. */
+  /** O escopo do pedido de dias em aberto, ver o comentário de `pedindoDias`. */
   const escopoDoPedido = useMemo(
     () => dados?.escopos.find((e) => e.id === pedindoDias?.escopoId) ?? null,
     [dados, pedindoDias],
   );
 
-  /** A frente do escopo dono da etapa no pincel — quem manda no que trava. */
+  /** A frente do escopo dono da etapa no pincel, quem manda no que trava. */
   const frenteDoPincel = useMemo(
     () => dados?.escopos.find((e) => e.id === grupoDoPincel?.escopoId)?.frente_id ?? null,
     [dados, grupoDoPincel],
   );
 
   /**
-   * O que IMPEDE pintar — e que não é a mesma coisa que o que aparece.
+   * O que IMPEDE pintar, e que não é a mesma coisa que o que aparece.
    *
    * Quem manda aqui é a frente da etapa no pincel, não a visão. No Geral o
    * calendário mostra a união das frentes, mas pintar uma etapa de Business
@@ -783,7 +816,7 @@ export function ProjetoCronograma() {
    * que o aviso de conflito existe para sinalizar, não para proibir. Usar a
    * união como trava deixaria o Geral MAIS restrito que o escopo.
    */
-  /** O escopo dono da etapa no pincel — é a janela DELE que trava o arrasto. */
+  /** O escopo dono da etapa no pincel, é a janela DELE que trava o arrasto. */
   const escopoDoPincel = useMemo(
     () => dados?.escopos.find((e) => e.id === grupoDoPincel?.escopoId) ?? null,
     [dados, grupoDoPincel],
@@ -796,16 +829,16 @@ export function ProjetoCronograma() {
       mapa.set(dia.data.slice(0, 10), { tipo: dia.tipo, descricao: dia.descricao });
     }
 
-    // ⭐ **A etapa não sai da janela do escopo.** Fora dela o dia fica
+    // **A etapa não sai da janela do escopo.** Fora dela o dia fica
     // intocável, como um feriado: o calendário do escopo é o tempo que foi
     // vendido, e esticar o trabalho para além dele é renegociar prazo, não
     // arrastar o mouse. A saída é pedir dias à diretoria, e só nos 3 primeiros
     // dias úteis depois da largada.
     //
-    // ⚠ **Banca já realizada solta a trava.** A partir dela, mexer no
-    // cronograma daquele escopo é AJUSTE — não é mais o trabalho vendido
+    // **Banca já realizada solta a trava.** A partir dela, mexer no
+    // cronograma daquele escopo é AJUSTE, não é mais o trabalho vendido
     // correndo, e ajuste nasce fora da janela por definição. A entrega também
-    // solta, mas é consequência: o §5.5 só a permite depois da banca.
+    // solta, mas é consequência: o  só a permite depois da banca.
     const alvo = escopoDoPincel;
     const emAjustes = !!alvo?.data_entrega_real || !!alvo?.banca?.realizado_em;
     if (dados && alvo && !emAjustes) {
@@ -825,16 +858,16 @@ export function ProjetoCronograma() {
   }, [dados, frenteDoPincel, fimDeSemana, escopoDoPincel]);
 
   /**
-   * ⭐ §8: os dias DEPOIS do fim da janela que o arrasto pode alcançar para
-   * virar um pedido à diretoria — em vez de esbarrar numa parede muda.
+   * os dias DEPOIS do fim da janela que o arrasto pode alcançar para
+   * virar um pedido à diretoria, em vez de esbarrar numa parede muda.
    *
    * É o que responde "quantos dias a mais eu quero?" com o gesto que a pessoa
    * já usa para tudo nesta tela: arrastar no calendário. O excedente do
    * arrasto vira `dias_solicitados`; a parte que cabe na janela é pintada
    * normalmente (o `apararPontas` do calendário cuida disso).
    *
-   * ⚠ **Só dias ÚTEIS entram.** É a contagem deles que vai no pedido, e o
-   * backend soma dias úteis em `dias_uteis_ajustados` — deixar um sábado no
+   * **Só dias ÚTEIS entram.** É a contagem deles que vai no pedido, e o
+   * backend soma dias úteis em `dias_uteis_ajustados`, deixar um sábado no
    * conjunto pediria um dia que a janela não gasta.
    *
    * Vazio (= a parede volta a ser parede) quando o pedido não teria como ser
@@ -872,21 +905,21 @@ export function ProjetoCronograma() {
 
 
   /**
-   * ⭐ O alerta **ao lado do calendário**, um por escopo (§15).
+   * O alerta **ao lado do calendário**, um por escopo.
    *
-   * A pergunta que ele responde é de UM escopo — "as etapas deste escopo
-   * passaram do tempo que foi previsto para ele?" — e por isso mora na legenda,
+   * A pergunta que ele responde é de UM escopo, "as etapas deste escopo
+   * passaram do tempo que foi previsto para ele?", e por isso mora na legenda,
    * encostado na lista de etapas daquele escopo. O banner do topo fala do
    * escopo selecionado; aqui todos aparecem ao mesmo tempo, que é o que a visão
    * Geral precisa.
    *
-   * ⚠ **A régua é o que foi VENDIDO**, não a janela esticada: é o "tempo
+   * **A régua é o que foi VENDIDO**, não a janela esticada: é o "tempo
    * previsto inicialmente" que o coordenador combinou. Quando o estouro cabe
    * nos dias que a diretoria autorizou, o aviso muda de tom em vez de sumir —
    * continuar vendo que o escopo passou do vendido é o que justifica o ajuste.
    *
    * Dois silêncios de propósito: escopo sem etapa nenhuma, e os dias pintados
-   * **depois da banca realizada**, que são CORREÇÕES (§11) e têm métrica própria.
+   * **depois da banca realizada**, que são CORREÇÕES e têm métrica própria.
    */
   const avisoDoEscopo = useCallback(
     (escopoId: number) => {
@@ -913,8 +946,8 @@ export function ProjetoCronograma() {
       const vendidos = escopoAlvo.dias_uteis_vendidos;
       const ajustados = escopoAlvo.dias_uteis_ajustados;
 
-      // ⭐ Janela cheia: daqui em diante o calendário recusa dias novos, e é
-      // aqui que a pessoa descobre por quê — antes de arrastar e "não
+      // Janela cheia: daqui em diante o calendário recusa dias novos, e é
+      // aqui que a pessoa descobre por quê, antes de arrastar e "não
       // acontecer nada".
       if (pintados > 0 && pintados >= vendidos + ajustados) {
         return {
@@ -923,7 +956,7 @@ export function ProjetoCronograma() {
             `A janela está cheia: ${pintados} de ${vendidos + ajustados} dias úteis pintados. ` +
             (escopoAlvo.pedido_ajuste_aberto
               ? "Para pintar além dela, peça dias de ajuste à diretoria."
-              : "O prazo para pedir dias de ajuste já venceu — a janela não muda mais."),
+              : "O prazo para pedir dias de ajuste já venceu, a janela não muda mais."),
         };
       }
 
@@ -948,7 +981,7 @@ export function ProjetoCronograma() {
    * Pintar ACRESCENTA um trecho ao grupo, em vez de mover a etapa inteira.
    *
    * O novo intervalo entra na lista, os que se encostam são fundidos, e o
-   * resultado é reconciliado contra as linhas que já existem — reaproveitando
+   * resultado é reconciliado contra as linhas que já existem, reaproveitando
    * ids para o `criado_em`/`criado_por` de cada trecho não se perder a cada
    * pincelada.
    */
@@ -958,8 +991,8 @@ export function ProjetoCronograma() {
       const grupo = grupos.find((g) => g.chave === grupoChave);
       if (!grupo) return;
       setAviso("");
-      // ⭐ §15: o alerta de estouro. Medido ANTES de gravar, com o trecho novo
-      // já somado — é a pincelada que acabou de acontecer que a pessoa precisa
+      // o alerta de estouro. Medido ANTES de gravar, com o trecho novo
+      // já somado, é a pincelada que acabou de acontecer que a pessoa precisa
       // relacionar ao aviso.
       try {
         const existentes = grupo.trechos.map((t) => ({
@@ -987,7 +1020,7 @@ export function ProjetoCronograma() {
         await Promise.all([carregar(), recarregarProjeto()]);
       } catch (err) {
         // O backend também barra fora da janela, e a mensagem dele já diz onde
-        // a janela termina e se ainda dá para pedir dias — repassar é melhor do
+        // a janela termina e se ainda dá para pedir dias, repassar é melhor do
         // que reescrever a regra aqui.
         setAviso(err instanceof Error ? err.message : "Erro ao pintar a etapa");
       }
@@ -1054,7 +1087,7 @@ export function ProjetoCronograma() {
    * O erro sobe para o modal mostrar; ele só fecha se deu certo.
    */
   /**
-   * O que entra no PDF, segundo o escopo escolhido NO MODAL — não o da tela.
+   * O que entra no PDF, segundo o escopo escolhido NO MODAL, não o da tela.
    *
    * Exportar "somente Análise Mercadológica" enquanto se olha o Geral tem que
    * produzir o PDF daquele escopo, e não uma foto do que está na tela.
@@ -1090,7 +1123,7 @@ export function ProjetoCronograma() {
     setAviso("");
     for (const trecho of grupo.trechos) await deleteEtapa(trecho.id, token);
     setRascunhos((atual) => atual.filter((r) => `${r.escopoId}|${r.nome}|${r.cor}` !== chave));
-    // Se o pincel era esta etapa, ele fica órfão — apagar tem que desarmá-lo.
+    // Se o pincel era esta etapa, ele fica órfão, apagar tem que desarmá-lo.
     setGrupoAtivo((atual) => (atual === chave ? null : atual));
     setEtapaParaExcluir(null);
     await carregar();
@@ -1099,10 +1132,10 @@ export function ProjetoCronograma() {
   /**
    * A entrega PLANEJADA do escopo selecionado.
    *
-   * Fica aqui porque é decisão de cronograma: a §5.3 diz que ao fim da
+   * Fica aqui porque é decisão de cronograma: a  diz que ao fim da
    * ambientação o coordenador crava o cronograma do escopo, e a data de
    * entrega faz parte disso. Não confundir com a entrega REAL, que é registro
-   * de execução e fica travada até a banca aprovar (§5.5).
+   * de execução e fica travada até a banca aprovar.
    */
   async function salvarEntrega(valor: string) {
     if (!token || !escopo) return;
@@ -1116,9 +1149,9 @@ export function ProjetoCronograma() {
   }
 
   /**
-   * §5.3: cravar o cronograma do escopo — um CARIMBO, não um cadeado.
+   * cravar o cronograma do escopo, um CARIMBO, não um cadeado.
    *
-   * ⚠️ Já foi o cadeado que trancava o calendário atrás de uma fila de
+   * Já foi o cadeado que trancava o calendário atrás de uma fila de
    * aprovação; hoje só registra a data e alimenta o banner. Por isso não
    * recarrega o projeto nem mexe em janela: nenhum dia da contagem muda.
    */
@@ -1130,7 +1163,7 @@ export function ProjetoCronograma() {
   }
 
   /**
-   * ⭐ O clique num dia, quando há modo de marcação ligado (§4 do de-para).
+   * O clique num dia, quando há modo de marcação ligado (do de-para).
    *
    * Cada modo escreve numa tabela diferente, mas para quem usa é o mesmo
    * gesto: escolher o dia no calendário. Era isso que estava espalhado por
@@ -1161,7 +1194,7 @@ export function ProjetoCronograma() {
     setAviso("");
 
     // Nenhum modo grava direto: os quatro abrem confirmação. A reunião precisa
-    // das observações, a banca e a entrega podem exigir justificativa — e um
+    // das observações, a banca e a entrega podem exigir justificativa, e um
     // clique que crava data sem passo intermediário erra fácil no calendário.
     if (modoMarcacao === "reuniao_geral" || modoMarcacao === "reuniao_inicial") {
       const inicial = modoMarcacao === "reuniao_inicial";
@@ -1193,7 +1226,7 @@ export function ProjetoCronograma() {
    * O kickoff, marcado no calendário como todas as outras datas do projeto.
    *
    * Confirma antes porque ele não é só um ponto no cronograma: é de onde a
-   * ambientação conta (§5.3), e mexer nele pode encerrar ou reabrir a janela
+   * ambientação conta, e mexer nele pode encerrar ou reabrir a janela
    * que move o status do projeto sozinho.
    */
   async function confirmarKickoff() {
@@ -1210,7 +1243,7 @@ export function ProjetoCronograma() {
     await recarregarProjeto();
   }
 
-  /** Confirma a banca — com justificativa, horário e cobertura de escopos. */
+  /** Confirma a banca, com justificativa, horário e cobertura de escopos. */
   async function confirmarBanca(justificativa: string, horario: string, escopoIds: number[]) {
     if (!token || !remarcando) return;
     const anteriorIso = dados?.escopos.find((e) => e.id === remarcando.escopoId)?.banca?.data_hora ?? null;
@@ -1221,7 +1254,7 @@ export function ProjetoCronograma() {
       justificativa || undefined,
       escopoIds,
     );
-    // Remarcar exige justificativa (§5.6), então o desfazer manda uma que
+    // Remarcar exige justificativa, então o desfazer manda uma que
     // diz o que foi: a linha do histórico tem que contar a verdade.
     if (anteriorIso) {
       const escopoId = remarcando.escopoId;
@@ -1238,11 +1271,11 @@ export function ProjetoCronograma() {
   }
 
   /**
-   * Registra, edita ou apaga a reunião do dia (§12).
+   * Registra, edita ou apaga a reunião do dia.
    *
    * A mesma função cobre os três porque o modal é um só: o que muda é haver ou
    * não `reuniaoId`. Apagar a reunião INICIAL desfaz a `data_inicio` do escopo
-   * — quem faz isso é o backend, que recalcula a partir da primeira reunião
+   *, quem faz isso é o backend, que recalcula a partir da primeira reunião
    * restante.
    */
   async function salvarReuniao(observacoes: string) {
@@ -1276,8 +1309,14 @@ export function ProjetoCronograma() {
     await Promise.all([carregar(), recarregarProjeto()]);
   }
 
-  /** §13: registrar a entrega é livre; alterá-la é decisão da diretoria. */
-  async function confirmarEntrega(justificativa: string) {
+  /**
+   * §13: registrar a DATA da entrega é livre; alterá-la é decisão da diretoria.
+   *
+   * ⚠ Isto não entrega o escopo — só grava o dia. Quem move o status para
+   * "Entregue" é a confirmação na Visão geral (`confirmarEntregaEscopo`), e por
+   * isso o nome daqui fala de data, não de entrega.
+   */
+  async function salvarDataDeEntrega(justificativa: string) {
     if (!token || !entregaAberta) return;
     const anterior = dados?.escopos.find((e) => e.id === entregaAberta.escopoId)?.data_entrega_real ?? null;
     await marcarEntregaEscopo(
@@ -1299,10 +1338,10 @@ export function ProjetoCronograma() {
   }
 
   /**
-   * ⭐ §8: o coordenador pede mais dias para a JANELA do escopo.
+   * o coordenador pede mais dias para a JANELA do escopo.
    *
    * O backend recusa fora do prazo de 3 dias úteis e para quem não é o
-   * coordenador — não duplicamos a regra aqui. Deixa o erro SUBIR para o modal
+   * coordenador, não duplicamos a regra aqui. Deixa o erro SUBIR para o modal
    * em vez de tratá-lo: a recusa ("o prazo venceu em 08/09") pertence ao
    * formulário que a pessoa está preenchendo, não a um banner no topo.
    */
@@ -1314,14 +1353,14 @@ export function ProjetoCronograma() {
   }
 
   /**
-   * ⭐ §8: o arrasto passou do fim da janela — o excedente vira o pedido.
+   * o arrasto passou do fim da janela, o excedente vira o pedido.
    *
    * Chega aqui só o que o calendário considerou negociável (ver
    * `diasNegociaveis`), então `diasExtras` já é a contagem de dias ÚTEIS que
    * falta para a etapa caber: exatamente o número que o backend vai somar em
    * `dias_uteis_ajustados` se a diretoria aprovar.
    *
-   * Abre o modal em vez de enviar direto: o §8 exige a justificativa, e um
+   * Abre o modal em vez de enviar direto: o  exige a justificativa, e um
    * arrasto não tem onde escrevê-la.
    */
   function negociarDias(_grupo: string, diasExtras: number, ultimoDia: string) {
@@ -1331,11 +1370,56 @@ export function ProjetoCronograma() {
   }
 
   /**
+   * ⭐ A pessoa tentou pintar um dia travado — e agora a tela diz por quê.
+   *
+   * ⚠ **Antes isto era silêncio.** O calendário desistia do arrasto e não
+   * acontecia nada: nem pintava, nem avisava. Quem tentava pintar antes da
+   * reunião inicial ficava clicando numa parede muda, sem descobrir que existe
+   * uma ordem a seguir — e o backend, que tem a explicação pronta, nunca era
+   * chamado, porque a requisição não chegava a sair.
+   *
+   * 📐 A frase é montada AQUI, e não no calendário, porque ela precisa do nome
+   * do escopo, das datas da janela e de saber se ainda dá para pedir dias. O
+   * calendário só sabe que o dia está travado.
+   */
+  function explicarBloqueio(_dia: string, motivo: { tipo: string; descricao: string | null }) {
+    const alvo = escopoDoPincel;
+
+    if (motivo.tipo === "sem_janela") {
+      setAviso(
+        `${alvo ? `O escopo "${alvo.nome}"` : "Este escopo"} ainda não teve reunião ` +
+          "inicial, e é ela que abre a janela de dias vendidos. Marque a reunião inicial " +
+          "primeiro — só depois dá para pintar etapas e marcar a banca.",
+      );
+      return;
+    }
+
+    if (motivo.tipo === "fora_da_janela") {
+      const ate = alvo?.fim_janela ? ` A janela termina em ${formatarData(alvo.fim_janela)}.` : "";
+      // O pedido de dias só existe enquanto o prazo dele está aberto — oferecer
+      // a saída fora do prazo seria mandar a pessoa levar outra recusa.
+      const saida =
+        diasNegociaveis.size > 0
+          ? " Para esticar, arraste além do fim da janela: isso abre um pedido de dias à diretoria."
+          : " O prazo para pedir dias de ajuste já passou, então a janela deste escopo não muda mais.";
+      return setAviso(
+        `Este dia está fora da janela${alvo ? ` de "${alvo.nome}"` : ""}.${ate}${saida}`,
+      );
+    }
+
+    // Fim de semana, feriado, recesso: fato, não regra negociável.
+    setAviso(
+      `${motivo.descricao ?? "Este dia não é útil"} — as etapas contam só dias úteis, ` +
+        "então feriados e fins de semana ficam de fora da contagem.",
+    );
+  }
+
+  /**
    * Gera o PDF ou a imagem a partir de uma cópia FORA DA TELA com os meses
    * escolhidos.
    *
    * Não dá para rasterizar o calendário visível: ele mostra o recorte da visão
-   * atual (um dia, se for o caso), e o §6.4 quer o cronograma de apresentação.
+   * atual (um dia, se for o caso), e o  quer o cronograma de apresentação.
    * O erro sobe para o modal mostrar.
    */
   async function gerarPdf(
@@ -1376,12 +1460,12 @@ export function ProjetoCronograma() {
 
   if (carregando || !dados) return <PageLoadingBlock />;
 
-  // Cronograma antes do kickoff não tem o que dizer — é o estado honesto.
+  // Cronograma antes do kickoff não tem o que dizer, é o estado honesto.
   if (!dados.data_kickoff) {
     return (
       <AvisoBanner>
         Marque o kickoff na aba <Link to={`/projetos/${projeto.id}`}>Visão geral</Link> para montar
-        o cronograma — é ele que dá o ponto de partida da contagem.
+        o cronograma, é ele que dá o ponto de partida da contagem.
       </AvisoBanner>
     );
   }
@@ -1403,9 +1487,9 @@ export function ProjetoCronograma() {
           coordenador é o botão da barra. */}
       {avisoJanela && <AvisoBanner>{avisoJanela.texto}</AvisoBanner>}
 
-      {/* ⚠️ Banner de OUTRO assunto, e por isso separado do de cima: este é o
-          carimbo do §5.3, memória de quando o cronograma foi cravado. Ele não
-          fala da janela nem a limita — os dois convivem e podem aparecer
+      {/* Banner de OUTRO assunto, e por isso separado do de cima: este é o
+          carimbo, memória de quando o cronograma foi cravado. Ele não
+          fala da janela nem a limita, os dois convivem e podem aparecer
           juntos. `escopo!` é seguro: `oficializado` já exige o escopo. */}
       {oficializado && (
         <AvisoBanner>
@@ -1462,7 +1546,7 @@ export function ProjetoCronograma() {
         >
           {/* "Todos os escopos" e não "Geral": para quem chega agora, Geral
               não diz se é um escopo chamado assim ou a soma de todos. O valor
-              continua sendo `geral` — mudou só o rótulo. */}
+              continua sendo `geral`, mudou só o rótulo. */}
           <option value="geral">Todos os escopos</option>
           {dados.escopos.map((e) => (
             <option key={e.id} value={e.id}>
@@ -1471,13 +1555,13 @@ export function ProjetoCronograma() {
           ))}
         </FieldSelect>
 
-        {/* ⭐ Marcar clicando no dia: reunião inicial, reunião geral, banca e
-            entrega. Antes cada uma vivia numa tela diferente — a aba Reuniões,
+        {/* Marcar clicando no dia: reunião inicial, reunião geral, banca e
+            entrega. Antes cada uma vivia numa tela diferente, a aba Reuniões,
             a Visão geral e um botão no topo desta barra.
 
-            📐 Os modos que dependem de escopo SOMEM na visão Geral, em vez de
+            Os modos que dependem de escopo SOMEM na visão Geral, em vez de
             ficarem desabilitados. Botão morto com tooltip não ensina nada a
-            quem não conhece a tela — a explicação só aparece no hover, e no
+            quem não conhece a tela, a explicação só aparece no hover, e no
             celular nunca aparece. No lugar deles entra uma frase que diz o que
             fazer para eles voltarem. */}
         {podeEditar && (
@@ -1502,9 +1586,17 @@ export function ProjetoCronograma() {
           </GrupoVisao>
         )}
 
+        {/* Só quando realmente não há escopo escolhido: com um selecionado os
+            botões voltam e a caixa não teria o que explicar. */}
         {podeEditar && !escopo && (
           <DicaEscopo>
-            Escolha um escopo acima para marcar reunião inicial, banca e entrega.
+            <Info size={15} aria-hidden />
+            <span>
+              <strong>Escolha um escopo acima para continuar.</strong> Reunião inicial, banca e
+              entrega pertencem a um escopo específico — cada um tem a própria janela de dias
+              vendidos. Os botões deles aparecem assim que você escolher um. Kickoff e reunião
+              geral são do projeto inteiro e já estão disponíveis aqui.
+            </span>
           </DicaEscopo>
         )}
 
@@ -1537,13 +1629,13 @@ export function ProjetoCronograma() {
           </BotaoBarra>
         )}
 
-        {/* ⭐ **A porta de aumentar a JANELA do escopo** — e nada além disso.
+        {/* **A porta de aumentar a JANELA do escopo**, e nada além disso.
             Aparece só para o coordenador, com um escopo escolhido, e só
             durante os 3 dias úteis depois da largada: é a janela em que dá
             para perceber que o escopo foi vendido apertado. Fora dela o botão
             some, porque a porta não existe mais.
 
-            ⚠️ Não confundir com as CORREÇÕES pós-banca: aquilo é tempo gasto
+            Não confundir com as CORREÇÕES pós-banca: aquilo é tempo gasto
             arrumando o que a banca apontou, não se pede a ninguém e não
             aumenta janela. Os dois já dividiram a palavra "ajuste" e a tela
             ficava dizendo que eram a mesma coisa. */}
@@ -1572,12 +1664,12 @@ export function ProjetoCronograma() {
               {diasPreview !== null && <ContadorDias>· {diasPreview} dias úteis</ContadorDias>}
             </PincelAtivo>
             {/* Sem botão de borracha, o gesto precisa estar escrito em algum
-                lugar — senão ninguém descobre que dá para desmarcar. */}
+                lugar, senão ninguém descobre que dá para desmarcar. */}
             <ContadorDias>Arraste a partir de um dia já pintado para desmarcar.</ContadorDias>
-            {/* §8: o mesmo motivo do aviso acima. O arrasto além da janela é o
+            {/* o mesmo motivo do aviso acima. O arrasto além da janela é o
                 jeito de PEDIR os dias, e ninguém tenta um gesto que a tela
                 mostra como parede se não estiver escrito que ele leva a algum
-                lugar. Só aparece quando o pedido é possível — `diasNegociaveis`
+                lugar. Só aparece quando o pedido é possível, `diasNegociaveis`
                 já é vazio fora do prazo, para quem não é coordenador e com um
                 pedido pendente. */}
             {diasNegociaveis.size > 0 && (
@@ -1593,9 +1685,9 @@ export function ProjetoCronograma() {
           )
         )}
 
-        {/* O carimbo do §5.3, depois da banca marcada: "este é o cronograma
+        {/* O carimbo, depois da banca marcada: "este é o cronograma
             combinado". Some depois de carimbado porque carimbar de novo não
-            diz nada de novo — e é o ÚNICO efeito que oficializar tem hoje:
+            diz nada de novo, e é o ÚNICO efeito que oficializar tem hoje:
             pintar, criar e excluir etapa continuam liberados depois dele. */}
         {podeEditar && escopo && !oficializado && etapas.length > 0 && escopo.banca && (
           <BotaoBarra
@@ -1608,7 +1700,7 @@ export function ProjetoCronograma() {
           </BotaoBarra>
         )}
 
-        {/* Exportar é a única ação da matriz liberada ao consultor — o
+        {/* Exportar é a única ação da matriz liberada ao consultor, o
             botão não fica atrás de `pode()`. */}
         <BotaoBarra type="button" $variant="ghost" onClick={() => setExportandoPdf(true)}>
           <Download size={14} />
@@ -1656,34 +1748,34 @@ export function ProjetoCronograma() {
           onNegociar={negociarDias}
           onArrasteMudou={setPreviewIntervalo}
           onDiaClicado={modoMarcacao ? marcarDia : undefined}
+          onBloqueado={explicarBloqueio}
           semScrollProprio
         />
 
         <LegendaBox>
           {/* Um grupo por escopo: com o calendário do projeto inteiro, "Etapas"
               numa lista só não diria de qual escopo é cada faixa. Com um
-              escopo só, o título continua sendo o nome dele — sem seção órfã. */}
+              escopo só, o título continua sendo o nome dele, sem seção órfã. */}
           {dados.escopos.map((esc) => {
             const doEscopo = grupos.filter((g) => g.escopoId === esc.id);
             const periodo = todasAsFaixas.find(
               (f) => f.tipo === "escopo" && f.projeto_escopo_id === esc.id,
             );
             /**
-             * ⭐ A partir daqui, o que está pintado é CORREÇÃO.
+             * A partir daqui, o que está pintado é CORREÇÃO.
              *
-             * ⚠️ Correção ≠ dia de ajuste. Ajuste aumenta a JANELA e é pedido à
+             * Correção ≠ dia de ajuste. Ajuste aumenta a JANELA e é pedido à
              * diretoria nos 3 primeiros dias úteis; correção é o tempo gasto
              * depois da banca arrumando o que ela apontou. Sem o rótulo, o
              * mesmo retângulo colorido pode ser o trabalho vendido ou a
              * correção, e o calendário deixa de contar a história certa.
              */
-            const marcoCorrecoes =
-              esc.banca?.realizado_em?.slice(0, 10) ?? esc.data_entrega_real?.slice(0, 10) ?? null;
+            const periodosPosBanca = derivarPeriodosPosBanca(esc);
             return (
               <LegendaGrupo key={esc.id}>
                 <LegendaTitulo>{esc.nome}</LegendaTitulo>
-                {/* ⭐ A janela do §5: é dentro dela que as etapas são pintadas.
-                    Sem janela, o escopo ainda não teve reunião inicial — e é
+                {/* A janela: é dentro dela que as etapas são pintadas.
+                    Sem janela, o escopo ainda não teve reunião inicial, e é
                     isso que a linha diz. */}
                 {periodo ? (
                   <LegendaItem as="div">
@@ -1700,11 +1792,11 @@ export function ProjetoCronograma() {
                   </LegendaItem>
                 ) : (
                   <EmptyText>
-                    Sem janela: marque a reunião inicial no calendário — é ela que abre a
+                    Sem janela: marque a reunião inicial no calendário, é ela que abre a
                     janela deste escopo.
                   </EmptyText>
                 )}
-                {/* ⭐ O alerta do escopo, encostado nas etapas dele. Aparece
+                {/* O alerta do escopo, encostado nas etapas dele. Aparece
                     mesmo sem reunião inicial: os dias vendidos são conhecidos
                     desde a venda, e pintar 21 num escopo de 20 já é estouro. */}
                 {(() => {
@@ -1734,18 +1826,20 @@ export function ProjetoCronograma() {
                             justamente o vão que o cronograma quer mostrar. */}
                         {grupo.trechos.map((t) => {
                           // Dias ÚTEIS, não corridos: é a unidade em que o
-                          // escopo é vendido e em que o atraso é medido (§5.4).
+                          // escopo é vendido e em que o atraso é medido.
                           const uteis = diasDoIntervalo(t.data_inicio, t.data_fim).filter(
                             (d) => !diasNaoUteis.has(d),
                           ).length;
-                          // Trecho que TERMINA depois do marco tem correção
-                          // dentro dele — inclusive o que atravessa a data.
-                          const ehCorrecao = !!marcoCorrecoes && t.data_fim > marcoCorrecoes;
+                          // Qual banca precede este trecho, e como ela
+                          // terminou, é o que decide entre "correção N" e
+                          // "ajustes". Trecho que TERMINA depois do marco tem
+                          // retrabalho dentro dele, inclusive o que o atravessa.
+                          const posBanca = periodoDoTrecho(periodosPosBanca, t.data_fim);
                           return (
                             <small key={t.id}>
                               {semAno(t.data_inicio)} – {semAno(t.data_fim)} · {uteis}{" "}
                               {uteis === 1 ? "dia útil" : "dias úteis"}
-                              {ehCorrecao && <TagCorrecao>correção</TagCorrecao>}
+                              {posBanca && <TagCorrecao>{posBanca.rotulo}</TagCorrecao>}
                             </small>
                           );
                         })}
@@ -1893,7 +1987,7 @@ export function ProjetoCronograma() {
         <NovaEtapaModal
           corInicial={corSugerida(etapas.length)}
           // Todos os escopos: o filtro `!cronograma_oficializado_em` que vivia
-          // aqui saiu junto com o cadeado (§15).
+          // aqui saiu junto com o cadeado.
           escopos={dados.escopos.map((e) => ({ id: e.id, nome: e.nome }))}
           escopoFixo={escopo?.id ?? null}
           onCancelar={() => setCriandoEtapa(false)}
@@ -1907,7 +2001,7 @@ export function ProjetoCronograma() {
           mensagem={
             <>
               A etapa <strong>{etapaParaExcluir.nome}</strong> será apagada
-              {etapaParaExcluir.trechos > 1 && ` — os ${etapaParaExcluir.trechos} trechos dela`}, e
+              {etapaParaExcluir.trechos > 1 && `, os ${etapaParaExcluir.trechos} trechos dela`}, e
               os dias que estavam pintados voltam a ficar em branco. As tarefas e a banca do escopo
               não são afetadas.
             </>
@@ -1952,7 +2046,7 @@ export function ProjetoCronograma() {
           mensagem={
             <>
               Registra a data em que este cronograma foi cravado. As etapas continuam
-              editáveis — quem delimita o trabalho é a <strong>janela do escopo</strong>.
+              editáveis, quem delimita o trabalho é a <strong>janela do escopo</strong>.
             </>
           }
           rotuloConfirmar="Oficializar"
@@ -1981,7 +2075,7 @@ export function ProjetoCronograma() {
           entregaAtual={escopo.data_entrega_real}
           ehDiretor={ehDiretor}
           onCancelar={() => setEntregaAberta(null)}
-          onConfirmar={confirmarEntrega}
+          onConfirmar={salvarDataDeEntrega}
         />
       )}
 

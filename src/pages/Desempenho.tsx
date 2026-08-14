@@ -273,7 +273,7 @@ function VerMinhaAvaliacaoModal({
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="minha-avaliacao-titulo">
         <ModalHeader>
-          <ModalTitle id="minha-avaliacao-titulo">Meu formulário — {banca.nome_projeto}</ModalTitle>
+          <ModalTitle id="minha-avaliacao-titulo">Meu formulário, {banca.nome_projeto}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>

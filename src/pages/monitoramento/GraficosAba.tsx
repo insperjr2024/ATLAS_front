@@ -36,6 +36,7 @@ import {
   ErrorText,
   PageButton,
 } from "@/styles/page.styled";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import { CaixaGrafico } from "./Monitoramento.styled";
 import {
   MontadorGrid,
@@ -58,14 +59,14 @@ type TipoGrafico = (typeof TIPOS)[number]["chave"];
 const CORES = PALETA.map((p) => p.amostra);
 
 /**
- * Montador de gráficos do monitoramento (§7).
+ * Montador de gráficos do monitoramento.
  *
- * 📐 As tabelas oferecidas vêm de um catálogo curado no backend — o front não
+ * As tabelas oferecidas vêm de um catálogo curado no backend, o front não
  * conhece o banco nem tem cópia da lista. Coluna de credencial, texto sobre
  * pessoas e tabela de ligação ficam de fora de propósito; ver o aviso no topo
  * de `graficos.py`.
  *
- * 📐 Nada fica salvo. O gráfico existe enquanto a tela está aberta — foi a
+ * Nada fica salvo. O gráfico existe enquanto a tela está aberta, foi a
  * escolha do núcleo, para ver se o formato serve antes de virar tabela nova.
  */
 export function GraficosAba() {
@@ -113,7 +114,7 @@ export function GraficosAba() {
   const podeMedir = metricas.length > 0 && !ehRelacao;
 
   // Só busca quando a combinação está completa. `operacao` diferente de
-  // contagem exige métrica — sem ela o backend recusaria e a tela piscaria
+  // contagem exige métrica, sem ela o backend recusaria e a tela piscaria
   // erro enquanto a pessoa ainda está montando.
   const pronto = !!tabela && !!dimensao && (operacao === "contagem" || !!metrica);
   const chave = pronto
@@ -342,7 +343,15 @@ export function GraficosAba() {
           ) : !dados ? (
             <EmptyText>Carregando...</EmptyText>
           ) : dados.dados.length === 0 ? (
-            <EmptyText>Nenhum dado para esse recorte.</EmptyText>
+            /* "Recorte" é jargão de quem construiu a tela. Quem monta um
+               gráfico e não vê nada precisa saber que a combinação escolhida
+               é que não tem registro — e que a saída é trocar o agrupamento
+               ou o período, não desistir. */
+            <EstadoVazio
+              causa="filtro"
+              titulo="Nenhum registro nessa combinação"
+              motivo="A tabela tem dados, mas nenhum se encaixa no agrupamento e no período escolhidos. Tente outro agrupamento, ou amplie o período."
+            />
           ) : (
             <>
               <CaixaGrafico $altura="22rem">

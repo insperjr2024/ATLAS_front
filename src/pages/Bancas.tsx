@@ -171,7 +171,7 @@ interface Contexto {
   equipesProjeto: EquipeProjeto[];
   candidaturas: Candidatura[];
   solicitacoesTroca: SolicitacaoTroca[];
-  /** banca_id → prazo de avaliação — separado de `Banca` porque
+  /** banca_id → prazo de avaliação, separado de `Banca` porque
    *  `paraAvaliar` funde `BancaParaAvaliar` com a `Banca` cheia e descarta os
    *  campos extras (ver `recarregar`). */
   prazosAvaliacao: Record<number, { prazoAvaliacao: string; prazoExpirado: boolean }>;
@@ -304,7 +304,7 @@ export function Bancas() {
   if (carregando || !contexto || !usuario) return <PageLoadingBlock />;
 
   // A narrowing do `!usuario` acima não sobrevive dentro das funções
-  // declaradas depois — o TS não sabe quando elas rodam. Segurar o valor
+  // declaradas depois, o TS não sabe quando elas rodam. Segurar o valor
   // numa const resolve sem espalhar `usuario!` pelo arquivo.
   const usuarioLogado = usuario;
   const contextoAtual = contexto;
@@ -313,13 +313,13 @@ export function Bancas() {
     return candidaturas.find((c) => c.banca_id === bancaId && c.usuario_id === usuarioLogado.id);
   }
 
-  // Coordenador ou membro da equipe daquela banca — o próprio grupo, que não
+  // Coordenador ou membro da equipe daquela banca, o próprio grupo, que não
   // pode se candidatar a assistir/avaliar a própria banca.
   function ehDoProprioGrupo(banca: Banca): boolean {
     // `equipe_ids` já vem do backend somando coordenador + equipe do projeto
     // (`projeto_membro`) + a tabela legada. O `equipesProjeto` fica como
     // segunda checagem só para bancas antigas servidas por um backend anterior
-    // ao campo — some quando todas tiverem passado por aqui.
+    // ao campo, some quando todas tiverem passado por aqui.
     return (
       banca.equipe_ids?.includes(usuarioLogado.id) ||
       banca.coordenador_id === usuarioLogado.id ||
@@ -331,7 +331,7 @@ export function Bancas() {
 
   const mostrarMeusProjetos = podeAgendar || bancasDoProjeto.length > 0;
 
-  // ⚠ `aceitaInscricao` no lugar da comparação com a string antiga: uma banca
+  // `aceitaInscricao` no lugar da comparação com a string antiga: uma banca
   // `atrasada` continua nestes baldes. Trocar só o literal a faria sumir da
   // tela inteira.
   const jaAlocado = bancas
@@ -349,7 +349,7 @@ export function Bancas() {
     .sort(porDataMaisProxima);
 
   /**
-   * ⚠ **O buraco em que uma banca some da tela.**
+   * **O buraco em que uma banca some da tela.**
    *
    * As três seções de alocação acima exigem `aceitaInscricao`, e `paraAvaliar`
    * só traz banca em que o usuário logado é avaliador alocado. Uma banca
@@ -357,7 +357,7 @@ export function Bancas() {
    * ela existe no banco, vem no `GET /bancas`, e a interface inteira a ignora.
    *
    * Some sem nenhuma pista de que existiu, e é a diretoria que produz esse
-   * estado — o `forcar` do `RealizarBancaModal` é justamente o que deixa
+   * estado, o `forcar` do `RealizarBancaModal` é justamente o que deixa
    * registrar abaixo do mínimo. Listar aqui é o mínimo para a banca continuar
    * encontrável.
    */
@@ -609,10 +609,13 @@ export function Bancas() {
             onVerMais={setBancaDetalhe}
           />
           {/* Realizada, sem resultado e sem avaliador — ver
-              `realizadasSemAvaliador`. Sem ação por enquanto: registrar
-              resultado ainda não tem tela (o `registrarResultado` de
-              `lib/bancas.ts` não é chamado por ninguém). Aparecer já resolve o
-              pior, que era sumir sem deixar rastro. */}
+              `realizadasSemAvaliador`. Estas não caem em nenhuma das outras
+              seções: as de alocação exigem status aberto, e a de avaliação
+              pendente só lista quem é avaliador. Sem esta seção elas existiam
+              no banco e a tela inteira as ignorava.
+
+              Quem chega aqui registra o resultado pela própria seção — só a
+              diretoria, já que sem avaliador não há votação de onde apurar. */}
           {realizadasSemAvaliador.length > 0 && (
             <SecaoBancas
               bancaDestacada={bancaDestacada}
@@ -624,6 +627,7 @@ export function Bancas() {
               usuarioId={usuario.id}
               gerenciar={podeAgendar}
               ehDiretorLista={ehDiretor}
+              onRegistrarResultado={setBancaResultado}
               onVerMais={setBancaDetalhe}
             />
           )}
@@ -783,21 +787,16 @@ function SecaoBancas({
   gerenciar?: boolean;
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
-  /** Abre o registro de realização — só faz sentido em banca já com data. */
+  /** Abre o registro de realização, só faz sentido em banca já com data. */
   onRealizar?: (banca: Banca) => void;
-  /** Abre a alocação manual — só faz sentido enquanto a banca não aconteceu. */
+  /** Abre a alocação manual, só faz sentido enquanto a banca não aconteceu. */
   onAlocarPessoas?: (banca: Banca) => void;
-  /**
-   * ⭐ Override da diretoria sobre o resultado (§8).
-   *
-   * A saída para a banca que aconteceu e ninguém votou: sem ela, o veredito
-   * nunca sai e a entrega ao cliente fica travada para sempre (§5.5).
-   */
+  /** Abre o registro de resultado, só faz sentido em banca já realizada. */
   onRegistrarResultado?: (banca: Banca) => void;
-  /** Alocar OUTRA pessoa é ação de diretoria (§8), diferente de gerenciar. */
+  /** Alocar OUTRA pessoa é ação de diretoria, diferente de gerenciar. */
   ehDiretorLista?: boolean;
   onPedirTroca?: (bancaId: number) => void;
-  /** Abre o picker de convite específico — alternativa ao pedido aberto. */
+  /** Abre o picker de convite específico, alternativa ao pedido aberto. */
   onConvidar?: (banca: Banca) => void;
   onCancelarTroca?: (solicitacaoId: number) => void;
 }) {
@@ -819,8 +818,8 @@ function SecaoBancas({
               const podeGerenciar = gerenciar && usuarioId != null && podeGerenciarBanca(banca, usuarioId);
               // Banca legada (sem escopo vendido vinculado) mostra o escopo do
               // catálogo, singular, como sempre foi. Banca costurada a
-              // escopo(s) do projeto mostra todos os que ela cobre — uma
-              // banca pode juntar mais de um (§8), e o campo antigo só
+              // escopo(s) do projeto mostra todos os que ela cobre, uma
+              // banca pode juntar mais de um, e o campo antigo só
               // guardava o primeiro.
               const nomesEscopos =
                 banca.projeto_escopo_ids.length > 0
@@ -896,7 +895,7 @@ function SecaoBancas({
                         </PageBadge>
                       ))}
                       {/* O selo de ESTADO (Inscrito, vaga(s), prazo) fica à
-                          direita — separado do que a banca É (nome, escopo)
+                          direita, separado do que a banca É (nome, escopo)
                           por alinhamento, não só por ser outra cor de badge. */}
                       <BancaStatusBadges>
                         {acao === "avaliar" && (
@@ -965,12 +964,12 @@ function SecaoBancas({
                       )}
 
                       {/* Ainda não aconteceu: o passo que tira a banca de
-                          "atrasada" e alimenta o cálculo do §7.4.
-                          ⚠ Trava por CARGO (`gerenciar`), não por ser o
+                          "atrasada" e alimenta o cálculo.
+                          Trava por CARGO (`gerenciar`), não por ser o
                           coordenador daquela banca: o backend usa
                           `require_pode_definir_cronograma`, e usar
                           `podeGerenciarBanca` aqui escondia o botão da
-                          própria diretoria — que é justamente quem precisa
+                          própria diretoria, que é justamente quem precisa
                           dele. */}
                       {gerenciar && onRealizar && !banca.realizado_em && banca.data_hora && (
                         <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onRealizar(banca))}>
@@ -1010,13 +1009,19 @@ function SecaoBancas({
                                 <PageButtonSm
                                   $variant="outline"
                                   type="button"
+                                  title="Abre o pedido pra qualquer pessoa elegível: quem confirmar primeiro assume sua vaga."
                                   onClick={pararPropagacao(() => onPedirTroca(banca.id))}
                                 >
                                   Pedir troca
                                 </PageButtonSm>
                               )}
                               {onConvidar && (
-                                <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onConvidar(banca))}>
+                                <PageButtonSm
+                                  $variant="outline"
+                                  type="button"
+                                  title="Convida uma pessoa específica pra assumir sua vaga — só ela pode confirmar."
+                                  onClick={pararPropagacao(() => onConvidar(banca))}
+                                >
                                   Convidar alguém
                                 </PageButtonSm>
                               )}
@@ -1057,10 +1062,10 @@ function SecaoBancas({
   );
 }
 
-/** Pedidos abertos de troca de candidatura (§8): qualquer consultor elegível
+/** Pedidos abertos de troca de candidatura: qualquer consultor elegível
  *  pode confirmar; quem pediu vê os próprios pedidos aqui também, com opção
  *  de cancelar (o mesmo botão também aparece em "Já alocado", junto da
- *  banca — os dois lugares fazem a mesma coisa, de propósito). */
+ *  banca, os dois lugares fazem a mesma coisa, de propósito). */
 function SecaoTrocas({
   solicitacoes,
   bancas,
@@ -1084,7 +1089,7 @@ function SecaoTrocas({
     return !banca || aceitaInscricao(banca.status);
   });
   // Convite pra outra pessoa não aparece pra mais ninguém: só quem pediu
-  // ("Meu pedido") e quem foi convidado ("Convite pra você") — o resto do
+  // ("Meu pedido") e quem foi convidado ("Convite pra você"), o resto do
   // pool nem sabe que existe (o backend também recusaria a confirmação).
   const disponiveis = pendentes.filter(
     (s) =>
@@ -1178,7 +1183,7 @@ function BancaFormModal({
 
   // Criar banca parte de um projeto que já existe: nada de digitar o nome.
   // O endpoint `marcarBancaDoEscopo` deriva nome, coordenador e frentes do
-  // próprio projeto — os mesmos dados que a tela de cronograma usa.
+  // próprio projeto, os mesmos dados que a tela de cronograma usa.
   const [projetos, setProjetos] = useState<ProjetoResumo[]>([]);
   const [projetoId, setProjetoId] = useState<number | null>(null);
   const [busca, setBusca] = useState("");
@@ -1290,8 +1295,8 @@ function BancaFormModal({
         await syncEquipeProjeto(banca.id, consultorIds, contexto.equipesProjeto, token);
         await syncBancaFrentes(banca.id, frenteIds, contexto.bancasFrentes, token);
       } else {
-        // Uma banca pode cobrir vários escopos do mesmo projeto (§8). O
-        // primeiro vai na URL, a lista completa no corpo — o backend deriva
+        // Uma banca pode cobrir vários escopos do mesmo projeto. O
+        // primeiro vai na URL, a lista completa no corpo, o backend deriva
         // dali o nome do projeto, o coordenador e as frentes.
         const criada = await marcarBancaDoEscopo(
           escoposMarcados[0],
@@ -1381,7 +1386,7 @@ function BancaFormModal({
                               setProjetoId(projeto.id);
                               setEscoposMarcados([]);
                               // A equipe do projeto é quem apresenta, e por
-                              // isso não assiste à própria banca (§8) — já
+                              // isso não assiste à própria banca, já
                               // vem marcada para não montar à mão.
                               setConsultorIds(projeto.consultor_ids);
                             }}
@@ -1517,7 +1522,7 @@ function BancaFormModal({
                   <FieldLabel as="span">Frentes</FieldLabel>
                   <BuscaMeta>
                     {frentesDosEscoposMarcados.length > 0
-                      ? `${frentesDosEscoposMarcados.join(" · ")} — vêm dos escopos escolhidos.`
+                      ? `${frentesDosEscoposMarcados.join(" · ")}, vêm dos escopos escolhidos.`
                       : "Definidas pelos escopos escolhidos."}
                   </BuscaMeta>
                 </FieldGroup>
@@ -1581,8 +1586,8 @@ function VerMaisModal({
   if (!banca) return null;
 
   const podeGerenciar = podeGerenciarBanca(banca, usuarioId);
-  // O coordenador não é avaliador da própria banca (§8: "ninguém avalia o
-  // próprio grupo") — no lugar do formulário de notas, ele só registra este
+  // O coordenador não é avaliador da própria banca ("ninguém avalia o
+  // próprio grupo"), no lugar do formulário de notas, ele só registra este
   // relato livre, e só depois que a banca de fato aconteceu.
   const ehCoordenador = usuarioId === banca.coordenador_id;
 
@@ -1666,7 +1671,7 @@ function VerMaisModal({
 }
 
 /**
- * O relato do coordenador sobre a banca — não é o formulário de avaliação
+ * O relato do coordenador sobre a banca, não é o formulário de avaliação
  * (ele nem candidato dela é, ver `create_candidatura`). Só aparece depois de
  * `realizado_em`; só o próprio coordenador edita, o resto só lê.
  */
@@ -1733,7 +1738,7 @@ function DescricaoCoordenador({
 }
 
 /**
- * Convite direto pra troca — alternativa ao "Pedir troca" (pool aberto,
+ * Convite direto pra troca, alternativa ao "Pedir troca" (pool aberto,
  * qualquer elegível confirma). Aqui quem pede escolhe a pessoa; só ela
  * consegue confirmar depois (o backend garante, ver `confirmar_solicitacao_troca`).
  * As mesmas exclusões do pool aberto valem aqui: coordenador e equipe do
@@ -1770,7 +1775,7 @@ function ConvidarTrocaModal({
     <ModalOverlay onClick={onClose} role="presentation">
       <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="convidar-troca-titulo">
         <ModalHeader>
-          <ModalTitle id="convidar-troca-titulo">Convidar para a troca — {banca.nome_projeto}</ModalTitle>
+          <ModalTitle id="convidar-troca-titulo">Convidar para a troca, {banca.nome_projeto}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>
@@ -1834,7 +1839,7 @@ function AvaliarModal({
   const { usuario } = useAuth();
   const escoposOrdenados = escopos.slice().sort((a, b) => a.nome.localeCompare(b.nome));
 
-  // Bloco 1 — a diretoria pede de novo mesmo o sistema já sabendo quem
+  // Bloco 1, a diretoria pede de novo mesmo o sistema já sabendo quem
   // está logado e qual o escopo cadastrado da banca: são só o ponto de
   // partida, o avaliador pode confirmar diferente.
   const [nomeAvaliador, setNomeAvaliador] = useState(usuario?.nome ?? "");
@@ -1848,7 +1853,7 @@ function AvaliarModal({
   const [escopoOutro, setEscopoOutro] = useState("");
 
   // O Bloco 2 (critérios técnicos) depende do que foi respondido AQUI —
-  // "Escopo Avaliado" — não de `banca.escopo_id` direto: é essa resposta
+  // "Escopo Avaliado", não de `banca.escopo_id` direto: é essa resposta
   // que decide o bloco, mesmo já vindo prenchida a partir da banca.
   const escopoIdParaFiltro = typeof escopoSelecionado === "number" ? escopoSelecionado : null;
 
@@ -1936,7 +1941,7 @@ function AvaliarModal({
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="avaliar-titulo">
         <ModalHeader>
-          <ModalTitle id="avaliar-titulo">Formulário de avaliação — {banca.nome_projeto}</ModalTitle>
+          <ModalTitle id="avaliar-titulo">Formulário de avaliação, {banca.nome_projeto}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>

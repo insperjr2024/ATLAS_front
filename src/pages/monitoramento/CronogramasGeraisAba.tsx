@@ -8,7 +8,6 @@ import {
   ErrorBlock,
   ErrorText,
   PageButton,
-  EmptyText,
 } from "@/styles/page.styled";
 import {
   AvisoSomenteLeitura,
@@ -21,9 +20,10 @@ import {
   type TomPilula,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
-/** Um limiar curto o bastante para chamar atenção antes de estourar — não
+/** Um limiar curto o bastante para chamar atenção antes de estourar, não
  *  é a mesma régua do backend (que só distingue em_contagem/estourou), é
  *  só o corte visual de "quase lá" nesta tela. */
 const DIAS_LIMIAR_ATENCAO = 5;
@@ -44,16 +44,16 @@ function rodapeDoEscopo(escopo: EscopoCritico | null): { tom: TomPilula; rotulo:
 }
 
 /** Pra "Voltar" (no header do projeto) devolver pra cá, e não pra listagem
- *  de projetos — ver `voltarDoLocation` em `ProjetoPage.tsx`. */
+ *  de projetos, ver `voltarDoLocation` em `ProjetoPage.tsx`. */
 const VOLTAR_PARA_AQUI = {
   voltarPara: "/monitoramento/cronogramas",
   voltarRotulo: "Voltar para Monitoramento",
 };
 
 /**
- * Board macro de cronogramas (§7): o mês atual de todos os projetos
+ * Board macro de cronogramas: o mês atual de todos os projetos
  * visíveis, um mini-calendário por projeto, ordenados pelo escopo mais
- * perto de estourar o prazo primeiro — a ordem já vem pronta do backend.
+ * perto de estourar o prazo primeiro, a ordem já vem pronta do backend.
  *
  * Read-only, mesmo espírito da aba Tarefas: clicar no card leva para o
  * cronograma de verdade do projeto, onde dá para editar.
@@ -114,10 +114,26 @@ export function CronogramasGeraisAba() {
   }
 
   if (dados.projetos.length === 0) {
+    // ⭐ Duas causas MUITO diferentes chegam aqui, e a régua que as separa são
+    // os filtros: com algum ligado, o dado provavelmente existe e está a um
+    // clique de distância; sem nenhum, é o recorte de visão da pessoa.
+    const filtrando = frenteId !== null || escopoId !== null;
     return (
       <PageStack>
         {seletor}
-        <EmptyText>Nenhum projeto na sua visão.</EmptyText>
+        {filtrando ? (
+          <EstadoVazio
+            causa="filtro"
+            titulo="Nenhum projeto com esse recorte"
+            motivo="Os filtros acima estão escondendo o resto. Volte para “Todas as frentes” para ver tudo o que você acompanha."
+          />
+        ) : (
+          <EstadoVazio
+            causa="acesso"
+            titulo="Nenhum projeto para acompanhar"
+            motivo="Você vê aqui os projetos das frentes que acompanha. Se falta algum que deveria estar, peça à diretoria para conferir a sua frente no cadastro de membros."
+          />
+        )}
       </PageStack>
     );
   }

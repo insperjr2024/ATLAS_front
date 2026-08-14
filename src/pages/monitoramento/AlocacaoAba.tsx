@@ -53,7 +53,7 @@ const ROTULO_PAPEL: Record<Papel, { singular: string; plural: string }> = {
   coordenador: { singular: "coordenador", plural: "Coordenadores" },
 };
 
-/** §7.3 — carga por pessoa.
+/** , carga por pessoa.
  *
  *  A aba fala de UM papel por vez, escolhido no filtro que aparece no
  *  cabeçalho de cada card. Antes eram duas tabelas empilhadas mais um toggle
@@ -91,9 +91,9 @@ export function AlocacaoAba() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, frenteId, escopoId]);
 
-  // ⚠ O seletor fica FORA do early return de erro e de carregando. Se ele
+  // O seletor fica FORA do early return de erro e de carregando. Se ele
   // sumisse durante uma falha, quem filtrasse numa frente que dá erro ficaria
-  // sem como voltar para "Todas" — a tela travaria no estado quebrado.
+  // sem como voltar para "Todas", a tela travaria no estado quebrado.
   if (erro) {
     return (
       <PageStack>
@@ -122,9 +122,9 @@ export function AlocacaoAba() {
     papel === "consultor" ? dados.demanda_alta.consultores : dados.demanda_alta.coordenadores;
   const rotulo = ROTULO_PAPEL[papel];
 
-  /* ⭐ O controle aparece DENTRO de cada card, mas o estado é UM só.
+  /* O controle aparece DENTRO de cada card, mas o estado é UM só.
      Três estados independentes deixariam o gráfico em "Consultores" e a tabela
-     em "Coordenadores" ao mesmo tempo — três recortes da mesma pergunta se
+     em "Coordenadores" ao mesmo tempo, três recortes da mesma pergunta se
      contradizendo na mesma tela. Assim ele fica à mão em qualquer ponto da
      página e os cards nunca discordam. */
   const filtro = (
@@ -151,7 +151,7 @@ export function AlocacaoAba() {
   return (
     <PageStack>
       {seletor}
-      {/* Quem são as pessoas — a lista completa abre a aba. */}
+      {/* Quem são as pessoas, a lista completa abre a aba. */}
       <TabelaCarga
         titulo={rotulo.plural}
         linhas={linhas}
@@ -197,10 +197,10 @@ export function AlocacaoAba() {
 }
 
 /**
- * Quanto ainda dá para vender, por frente (§7.3).
+ * Quanto ainda dá para vender, por frente.
  *
  * A conta é `max(0, teto − projetos da pessoa)`, somada. O `max(0)` é o ponto:
- * um consultor com 3 projetos conta 0, nunca −1 — ele está sobrecarregado, mas
+ * um consultor com 3 projetos conta 0, nunca −1, ele está sobrecarregado, mas
  * isso não tira do núcleo a chance de vender para outra pessoa.
  *
  * **Duas colunas, uma por papel, nunca somadas.** Um número único de "projetos
@@ -219,7 +219,7 @@ function CapacidadePorFrente({ capacidade }: { capacidade: Alocacao["capacidade"
       </PageCardHeader>
       <PageCardContent>
         {semNenhuma ? (
-          <EmptyText>Nenhuma vaga livre — todo mundo está no limite ou acima.</EmptyText>
+          <EmptyText>Nenhuma vaga livre, todo mundo está no limite ou acima.</EmptyText>
         ) : (
           <TabelaRolagem $min="30rem" $max="22rem">
             <DataTable>
@@ -228,7 +228,7 @@ function CapacidadePorFrente({ capacidade }: { capacidade: Alocacao["capacidade"
                   <TableHeadCell>Frente</TableHeadCell>
                   <TableHeadCell>Pessoas</TableHeadCell>
                   {/* O teto vai no cabeçalho, e não num parágrafo acima: sem
-                      ele em lugar nenhum, "vagas" fica sem régua — cabe mais
+                      ele em lugar nenhum, "vagas" fica sem régua, cabe mais
                       quanto? O número vem do backend, para as duas pontas não
                       divergirem. */}
                   <TableHeadCell>Vagas de consultor (até {teto.consultor})</TableHeadCell>
@@ -248,8 +248,8 @@ function CapacidadePorFrente({ capacidade }: { capacidade: Alocacao["capacidade"
                     </TableCell>
                   </TableRow>
                 ))}
-                {/* ⚠ O total NÃO é a soma da coluna. Quem está em duas frentes
-                    aparece nas duas linhas, e a vaga dela é uma só — o backend
+                {/* O total NÃO é a soma da coluna. Quem está em duas frentes
+                    aparece nas duas linhas, e a vaga dela é uma só, o backend
                     conta por pessoa. Sem esta nota, quem somasse na mão acharia
                     que a tabela está errada. */}
                 <TableRow>
@@ -278,7 +278,7 @@ function CapacidadePorFrente({ capacidade }: { capacidade: Alocacao["capacidade"
 /** Uma coluna do card: o papel, e quem dele caiu na faixa mais alta.
  *
  *  Quem entra na lista é decisão do backend (`demanda_alta`), tomada pela
- *  POSIÇÃO da faixa na escala — não pelo nome nem pela cor, que a diretoria
+ *  POSIÇÃO da faixa na escala, não pelo nome nem pela cor, que a diretoria
  *  edita à vontade. Se a tela procurasse por "Carga alta" ou por vermelho, uma
  *  renomeada esvaziaria o card sem ninguém perceber. */
 function ColunaDemandaAlta({ linhas }: { linhas: LinhaCarga[] }) {
@@ -301,7 +301,7 @@ function ColunaDemandaAlta({ linhas }: { linhas: LinhaCarga[] }) {
                         {/* `.map(p => p.nome)` e não `.join` direto: `projetos`
                             virou lista de objetos quando o gráfico passou a
                             precisar do status, e juntar objetos imprime
-                            "[object Object]". O TypeScript não pega — `join`
+                            "[object Object]". O TypeScript não pega, `join`
                             aceita array de qualquer coisa. */}
                         {linha.projetos.map((p) => p.nome).join(", ")}
                       </DemandaAltaProjetos>
@@ -371,7 +371,7 @@ function TabelaCarga({
                     <TableCell>{linha.nome}</TableCell>
                     <TableCell>
                       {/* 4 projetos é muito ou pouco depende de quantos os
-                          colegas carregam — daí a barra contra o maior da
+                          colegas carregam, daí a barra contra o maior da
                           tabela, e não o número solto. */}
                       <BarraCarga>
                         <strong>{linha.total}</strong>
@@ -400,7 +400,7 @@ function TabelaCarga({
                     </TableCell>
                     <TableCell>
                       {/* Nome e cor vêm da escala que a diretoria definiu em
-                          Configurações — a tela não decide o que é "carga
+                          Configurações, a tela não decide o que é "carga
                           alta". */}
                       {linha.situacao ? (
                         <Pilula $tom={linha.situacao.tom}>{linha.situacao.nome}</Pilula>

@@ -26,9 +26,9 @@ interface Props {
 }
 
 /**
- * Presença por membro — o controle da diretoria do §8.
+ * Presença por membro, o controle da diretoria.
  *
- * 📐 O dado já era gravado e nunca lido: `Registrar realização` marca
+ * O dado já era gravado e nunca lido: `Registrar realização` marca
  * `candidatura.confirmado` para quem compareceu, e até aqui nenhuma tela
  * consumia isso. Esta é a leitura.
  *
@@ -59,7 +59,7 @@ export function PresencaBancas({ usuarios, candidaturas, bancas }: Props) {
           usuario: u,
           ...d,
           faltas: d.inscrito - d.presente,
-          // Sem banca realizada não há percentual — `null` para a tela mostrar
+          // Sem banca realizada não há percentual, `null` para a tela mostrar
           // um traço em vez de "0%", que soaria como falta.
           percentual: d.inscrito > 0 ? Math.round((d.presente / d.inscrito) * 100) : null,
         };

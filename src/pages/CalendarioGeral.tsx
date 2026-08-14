@@ -72,6 +72,13 @@ import {
 const INICIO_SEMANA = 0;
 const ROTULOS = rotulosDiaSemana(INICIO_SEMANA);
 const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega", "prova"];
+/** Reunião é semanal, POR PROJETO — com o portfólio inteiro junto numa grade
+ *  só, ela sozinha lota todos os dias úteis de todas as semanas. Isso é
+ *  exatamente o "tem tudo, mas não faz sentido": marco raro (banca, kickoff,
+ *  entrega, prova) e rotina recorrente (reunião) pesando igual afogam os
+ *  marcos que a pessoa realmente veio procurar. Reunião começa OFF; quem
+ *  quiser ligar, liga no filtro. */
+const TIPOS_PADRAO: TipoEvento[] = TIPOS.filter((t) => t !== "reuniao");
 /**
  * A célula tem altura FLEXÍVEL (encolhe pra caber as 5-6 semanas do mês na
  * tela, sem empurrar a página). Duas pílulas cabem com folga agora que o
@@ -94,8 +101,8 @@ type Visao = "mes" | "semana" | "dia";
  *
  * Recorta por posição, como o resto do site: diretor vê o portfólio
  * inteiro, gerente só a própria frente, coordenador/consultor só os
- * projetos em que estão alocados. O §6.5 original pedia "acessível a todos,
- * sem recorte" — decisão revista depois: só quem já enxerga tudo em toda
+ * projetos em que estão alocados. O  original pedia "acessível a todos,
+ * sem recorte", decisão revista depois: só quem já enxerga tudo em toda
  * tela (a diretoria) tira proveito de ver o portfólio inteiro aqui também;
  * pra quem está em poucos projetos, o resto vira ruído. O recorte é feito
  * no backend (`GetEventosCalendarioUseCase`), a página só mostra o que
@@ -103,14 +110,14 @@ type Visao = "mes" | "semana" | "dia";
  */
 export function CalendarioGeral() {
   const { token, usuario } = useAuth();
-  // Só diretor e gerente enxergam o portfólio inteiro (§3/§6.5) — o texto
+  // Só diretor e gerente enxergam o portfólio inteiro, o texto
   // reflete o que a pessoa está de fato vendo, em vez de prometer "todos os
   // projetos" pra quem só vê os próprios.
   const veTudo = usuario?.posicao === "diretor" || usuario?.posicao === "gerente";
   const [visao, setVisao] = useState<Visao>("mes");
   const [data, setData] = useState(() => new Date());
   const [eventos, setEventos] = useState<EventoCalendario[]>([]);
-  const [tiposAtivos, setTiposAtivos] = useState<TipoEvento[]>(TIPOS);
+  const [tiposAtivos, setTiposAtivos] = useState<TipoEvento[]>(TIPOS_PADRAO);
   const [detalhe, setDetalhe] = useState<EventoCalendario | null>(null);
   const [diaAberto, setDiaAberto] = useState<Date | null>(null);
   const [carregando, setCarregando] = useState(true);

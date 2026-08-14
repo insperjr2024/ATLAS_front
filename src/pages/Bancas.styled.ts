@@ -97,7 +97,7 @@ export const FieldLabel = styled.label`
   color: ${theme.colors.foreground};
 `;
 
-/** O asterisco de campo obrigatório — mesma marcação em todo formulário. */
+/** O asterisco de campo obrigatório, mesma marcação em todo formulário. */
 export const Required = styled.span`
   color: ${theme.colors.destructive};
   margin-left: 0.15rem;
@@ -120,6 +120,8 @@ export const FieldInput = styled.input`
 `;
 
 export const FieldTextarea = styled.textarea`
+  width: 100%;
+  box-sizing: border-box;
   min-height: 5rem;
   padding: 0.625rem 0.75rem;
   border-radius: ${theme.borderRadius.lg};
@@ -209,7 +211,7 @@ export const CardHeaderRow = styled.div`
   width: 100%;
 `;
 
-// A implementação real não é mais um `<select>` nativo — é `SelectCustom`,
+// A implementação real não é mais um `<select>` nativo, é `SelectCustom`,
 // reexportado aqui com o mesmo nome pra ninguém precisar trocar import nos
 // ~20 arquivos que já usam `FieldSelect` (mesma API: value/onChange/filhos
 // `<option>`). Ver `components/SelectCustom.tsx`.
@@ -339,7 +341,7 @@ export const BancaNome = styled.span`
 `;
 
 /** A linha de metadado simples (picker do `AlocarPessoasModal`, linhas de
- *  `SecaoTrocas`) — sem ícone, é só texto corrido curto. Pro card cheio da
+ *  `SecaoTrocas`), sem ícone, é só texto corrido curto. Pro card cheio da
  *  lista principal ver `BancaMetaLinha`/`BancaMetaItem`, que têm mais fatos
  *  pra separar. */
 export const BancaMeta = styled.span`
@@ -348,7 +350,7 @@ export const BancaMeta = styled.span`
 `;
 
 /** O(s) selo(s) de ESTADO da banca (Inscrito, N vaga(s), Lotada, prazo de
- *  avaliação) — empurrados pro canto direito da linha do título, longe do
+ *  avaliação), empurrados pro canto direito da linha do título, longe do
  *  nome e do escopo. Separar por ALINHAMENTO, não só por serem badges
  *  diferentes: título+escopo dizem "o que é", o selo diz "como está", e os
  *  dois lados coexistindo na mesma corrida de texto era o que misturava as
@@ -362,7 +364,7 @@ export const BancaStatusBadges = styled.span`
 `;
 
 /** Cada fato da linha de metadado (horário, coordenador, alocados) com o
- *  próprio ícone — "09:00 · Duda Lima · 2/5 alocados" corrido, sem nada
+ *  próprio ícone, "09:00 · Duda Lima · 2/5 alocados" corrido, sem nada
  *  diferenciando as três informações, lia como um bloco só de texto cinza. */
 export const BancaMetaLinha = styled.div`
   display: flex;
@@ -392,15 +394,15 @@ export const BancaAcoes = styled.div`
 `;
 
 /**
- * O card de uma banca na lista principal (§8) — não confundir com
+ * O card de uma banca na lista principal, não confundir com
  * `BancaLinha`, que continua sendo a linha fina usada em listas mais simples
  * (o picker do `AlocarPessoasModal`, as trocas em `SecaoTrocas`). Aqui a
  * banca carrega até 5-6 ações possíveis dependendo de quem olha, e por isso
  * ganha um cartão próprio: título/meta em cima, ações num rodapé separado
- * por uma borda — em vez de tudo espremido numa linha só (era isso que
+ * por uma borda, em vez de tudo espremido numa linha só (era isso que
  * deixava a tela cheia de pílulas iguais, sem hierarquia nenhuma). O cartão
  * inteiro é clicável (abre "Ver mais"), no mesmo padrão dos cards de
- * Projetos — por isso o botão "Ver mais" deixou de existir separado.
+ * Projetos, por isso o botão "Ver mais" deixou de existir separado.
  */
 export const BancaCard = styled.div<{ $destacada?: boolean }>`
   display: grid;
@@ -436,7 +438,7 @@ export const BancaCard = styled.div<{ $destacada?: boolean }>`
 `;
 
 /** As duas colunas da lista de bancas viram uma coluna só em telas
- *  estreitas — a grade de data+ações lado a lado não cabe. */
+ *  estreitas, a grade de data+ações lado a lado não cabe. */
 export const BancaCardScrollWrap = styled.div<{ $scrollable?: boolean }>`
   display: flex;
   flex-direction: column;
@@ -450,10 +452,10 @@ export const BancaCardScrollWrap = styled.div<{ $scrollable?: boolean }>`
     `}
 `;
 
-/** O rodapé do card — separado do título/meta por uma borda, pra ação não
+/** O rodapé do card, separado do título/meta por uma borda, pra ação não
  *  parecer parte do mesmo bloco de texto. `justify-content: space-between`
  *  separa as ações administrativas (esquerda) da ação principal (direita),
- *  que é a única pílula cheia do card — o resto fica em contorno. */
+ *  que é a única pílula cheia do card, o resto fica em contorno. */
 export const BancaCardFooter = styled.div`
   grid-column: 1 / -1;
   display: flex;
@@ -580,7 +582,7 @@ export const EscolhidoBox = styled.div`
   background: ${theme.colors.muted};
 `;
 
-/** Escopo que já tem banca: continua visível, mas fora de alcance — some da
+/** Escopo que já tem banca: continua visível, mas fora de alcance, some da
  *  lista seria pior, o usuário procuraria por ele. */
 export const EscopoIndisponivel = styled.span`
   font-size: ${theme.fontSize.xs};

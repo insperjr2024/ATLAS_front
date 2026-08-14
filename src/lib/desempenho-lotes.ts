@@ -44,7 +44,7 @@ export function getPendencias(loteId: number, token: string) {
   return apiFetch<DesempenhoPendencia[]>(`/desempenho/lotes/${loteId}/pendencias`, { token });
 }
 
-/** Exclusão de verdade (fora da regra 2.6 do doc, por pedido explícito) — o
+/** Exclusão de verdade (fora da regra 2.6 do doc, por pedido explícito), o
  * backend ainda recusa (409) se o lote já tiver avaliação/finalização real. */
 export function deleteLote(loteId: number, token: string) {
   return apiFetch(`/desempenho/lotes/${loteId}`, { method: "DELETE", token });

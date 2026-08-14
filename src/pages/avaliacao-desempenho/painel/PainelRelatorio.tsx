@@ -104,7 +104,7 @@ export function PainelRelatorio() {
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>
-            {modo === "avaliacoes" ? "Relatório das avaliações" : "Relatórios de PDI"} — {selecionado.nome}
+            {modo === "avaliacoes" ? "Relatório das avaliações" : "Relatórios de PDI"}, {selecionado.nome}
           </PageCardTitle>
           <PageButton $variant="outline" type="button" onClick={() => setModo(null)}>
             Voltar
@@ -143,7 +143,7 @@ export function PainelRelatorio() {
               <TipoCardHeader>
                 <TipoCardTitulo>Relatório das avaliações</TipoCardTitulo>
               </TipoCardHeader>
-              <TipoCardDescricao>Periódica e finalização — notas e comentários recebidos.</TipoCardDescricao>
+              <TipoCardDescricao>Periódica e finalização, notas e comentários recebidos.</TipoCardDescricao>
             </TipoCard>
             <TipoCard type="button" $disabled={false} onClick={() => abrirModo("pdi")}>
               <TipoCardHeader>

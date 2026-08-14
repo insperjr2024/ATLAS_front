@@ -1,7 +1,7 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
-// Cores fixas na ordem categórica validada (ver skill de dataviz) — nunca
+// Cores fixas na ordem categórica validada (ver skill de dataviz), nunca
 // cicladas, sempre a mesma frente = mesma cor. Luz apenas: o app ainda não
 // tem dark mode ativo (as variáveis --primary/--foreground/etc. do
 // index.css também só definem o tema claro em uso hoje).

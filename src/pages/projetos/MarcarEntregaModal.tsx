@@ -18,7 +18,7 @@ interface Props {
   alvo: string;
   /** O dia clicado no calendário, em `yyyy-MM-dd`. */
   dia: string;
-  /** A entrega já registrada — quando existe, isto é uma ALTERAÇÃO. */
+  /** A entrega já registrada, quando existe, isto é uma ALTERAÇÃO. */
   entregaAtual: string | null;
   ehDiretor: boolean;
   onCancelar: () => void;
@@ -27,17 +27,16 @@ interface Props {
 }
 
 /**
- * A entrega do escopo ao cliente, marcada pelo calendário (§13).
+ * A entrega do escopo ao cliente, marcada pelo calendário.
  *
- * ⭐ **Marcar é livre; alterar é decisão da diretoria.** Registrar a entrega é
- * o passo em que o coordenador fecha o escopo — travá-lo faria o time depender
+ * **Marcar é livre; alterar é decisão da diretoria.** Registrar a entrega é
+ * o passo em que o coordenador fecha o escopo, travá-lo faria o time depender
  * da diretoria para anotar o que já aconteceu. Mudar a data depois é outra
  * coisa: sem gate, um escopo entregue com atraso poderia ter a data empurrada
  * até o atraso sumir do monitoramento.
  *
- * A trava do §5.5 (sem banca APROVADA não há entrega — realizar não basta)
- * continua sendo do backend; este modal não a repete, só mostra a recusa
- * quando ela vem.
+ * A trava do  (sem banca realizada não há entrega) continua sendo do
+ * backend, este modal não a repete, só mostra a recusa quando ela vem.
  */
 export function MarcarEntregaModal({
   alvo,
@@ -78,15 +77,26 @@ export function MarcarEntregaModal({
 
         <ModalBody>
           <p>
-            <strong>{alvo}</strong> — entrega em {formatarData(dia)}.
+            <strong>{alvo}</strong>, entrega em {formatarData(dia)}.
           </p>
+
+          {/* ⭐ A data é registro; o status é declaração. Sem esta linha, quem
+              marca o dia volta à Visão geral e estranha o escopo continuar
+              "Em andamento" — e o próximo passo não está nesta tela. */}
+          {!alterando && (
+            <p>
+              Isto registra o <strong>dia</strong> da entrega. O escopo passa a{" "}
+              <strong>Entregue</strong> quando o coordenador ou a diretoria confirmar a
+              entrega na aba <strong>Visão geral</strong>.
+            </p>
+          )}
 
           {alterando && (
             <p>
-              ⚠ Já existe entrega registrada em{" "}
+              Já existe entrega registrada em{" "}
               <strong>{formatarData(entregaAtual)}</strong>.{" "}
               {bloqueado
-                ? "Mudar uma data de entrega já registrada é decisão da diretoria (§13)."
+                ? "Mudar uma data de entrega já registrada é decisão da diretoria."
                 : "A mudança fica registrada no Histórico com a justificativa."}
             </p>
           )}

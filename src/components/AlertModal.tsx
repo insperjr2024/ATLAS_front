@@ -17,7 +17,7 @@ interface Props {
 }
 
 /**
- * O aviso de uma ação que já aconteceu (normalmente um erro) — não pede
+ * O aviso de uma ação que já aconteceu (normalmente um erro), não pede
  * decisão, só que a pessoa leia e feche.
  *
  * Existe pelo mesmo motivo do `ConfirmarModal`: parar de depender do

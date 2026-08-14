@@ -6,6 +6,7 @@ import { getProjetos } from "@/lib/projetos";
 import { NotaButtons, NotaButtonsGroup } from "@/components/desempenho/NotaButtons";
 import type { DesempenhoFilaItem, DesempenhoFormulario, DesempenhoNotaInput, DesempenhoTipo } from "@/types/desempenho";
 import type { ProjetoResumo } from "@/types/projeto";
+import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import {
   ErrorBlock,
   ErrorText,
@@ -118,6 +119,10 @@ function chave(item: Pick<DesempenhoFilaItem, "lote_id" | "avaliado_id">) {
   return `${item.lote_id}-${item.avaliado_id}`;
 }
 
+function chaveRascunhos(usuarioId: number) {
+  return `desempenho-rascunhos-${usuarioId}`;
+}
+
 export function AvaliacaoDesempenho() {
   const { usuario, token } = useAuth();
   const [passo, setPasso] = useState<Passo>("carregando");
@@ -140,23 +145,57 @@ export function AvaliacaoDesempenho() {
   const [comentarios, setComentarios] = useState("");
   const [erroForm, setErroForm] = useState("");
 
-  // Respostas ficam salvas aqui até o envio final — dá pra reabrir e editar
+  // Respostas ficam salvas aqui até o envio final, dá pra reabrir e editar
   // qualquer uma antes de enviar. Só vai pro backend quando o tipo inteiro
-  // (periódica ou finalização) estiver com todo mundo respondido.
+  // (periódica ou finalização) estiver com todo mundo respondido. Espelhado
+  // no localStorage (ver os dois efeitos abaixo): sem isso, sair da tela no
+  // meio de uma fila de 4 apagava quem já tinha sido preenchido, mesmo a
+  // pessoa lendo aquilo como "já enviei essa".
   const [rascunhos, setRascunhos] = useState<Record<string, Rascunho>>({});
+  const [rascunhosCarregados, setRascunhosCarregados] = useState(false);
   const [enviandoTudo, setEnviandoTudo] = useState(false);
   const [erroEnvio, setErroEnvio] = useState("");
+
+  // Restaura rascunhos salvos de uma sessão anterior antes de qualquer outro
+  // efeito começar a espelhar `rascunhos` de volta pro localStorage, senão a
+  // primeira gravação (com o estado inicial vazio) apagaria o que já existia.
+  useEffect(() => {
+    if (!usuario) return;
+    try {
+      const salvo = localStorage.getItem(chaveRascunhos(usuario.id));
+      if (salvo) setRascunhos(JSON.parse(salvo));
+    } catch {
+      // Rascunho corrompido ou localStorage indisponível: segue do zero.
+    } finally {
+      setRascunhosCarregados(true);
+    }
+  }, [usuario?.id]);
+
+  // Espelha pro localStorage a cada mudança, é o que sobrevive a sair da
+  // tela (ou fechar a aba) no meio de uma fila de várias avaliações.
+  useEffect(() => {
+    if (!usuario || !rascunhosCarregados) return;
+    try {
+      if (Object.keys(rascunhos).length === 0) {
+        localStorage.removeItem(chaveRascunhos(usuario.id));
+      } else {
+        localStorage.setItem(chaveRascunhos(usuario.id), JSON.stringify(rascunhos));
+      }
+    } catch {
+      // Modo privado ou quota cheia: perde a persistência, não a tela.
+    }
+  }, [rascunhos, usuario, rascunhosCarregados]);
 
   const nomesProjeto = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
 
   // O backend só mantém um lote fechado na fila por uma janela (regra
-  // 2.3-bis) — o suficiente pra pessoa descobrir que perdeu o prazo, sem
+  // 2.3-bis), o suficiente pra pessoa descobrir que perdeu o prazo, sem
   // acumular pendência de rodada antiga pra sempre. Aparece já na tela
   // inicial, antes de qualquer escolha de tipo.
   const itensFechados = useMemo(() => fila.filter((item) => !item.aberto), [fila]);
 
-  // `getProjetos` já aplica o recorte de visão (§3): pra coordenador e
-  // consultor devolve só os projetos onde eles estão hoje — daí dá pra
+  // `getProjetos` já aplica o recorte de visão: pra coordenador e
+  // consultor devolve só os projetos onde eles estão hoje, daí dá pra
   // derivar o papel de cada um sem endpoint novo (coordenador_id/
   // consultor_ids já vêm no resumo).
   const minhasParticipacoes = useMemo(() => {
@@ -199,7 +238,7 @@ export function AvaliacaoDesempenho() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.id, token]);
 
-  // Só conta como "pendente" quem ainda tem lote aberto — os fechados vão
+  // Só conta como "pendente" quem ainda tem lote aberto, os fechados vão
   // pro aviso à parte (`itensFechados`), nunca travam um tipo como
   // "concluído" nem entram na conta do que falta responder.
   const filaDoTipo = (tipo: DesempenhoTipo) =>
@@ -213,7 +252,7 @@ export function AvaliacaoDesempenho() {
     setTipoEscolhido(tipo);
     setErroForm("");
     setPasso("fila");
-    // Recarrega na hora de entrar — se algum lote fechou enquanto a pessoa
+    // Recarrega na hora de entrar, se algum lote fechou enquanto a pessoa
     // estava parada na tela de escolha, ela já vê o aviso "Fechado" na
     // lista, em vez de só descobrir isso ao tentar enviar.
     const novaFila = (await carregarFila()) ?? fila;
@@ -224,7 +263,7 @@ export function AvaliacaoDesempenho() {
     if (!token) return;
     setErroForm("");
     if (!item.aberto) {
-      setErroForm(`O formulário "${item.lote_nome}" está fechado — não dá mais pra responder por ele.`);
+      setErroForm(`O formulário "${item.lote_nome}" está fechado, não dá mais pra responder por ele.`);
       return;
     }
     try {
@@ -266,7 +305,7 @@ export function AvaliacaoDesempenho() {
       return;
     }
 
-    // Não envia pro backend ainda — só guarda como rascunho. O envio de
+    // Não envia pro backend ainda, só guarda como rascunho. O envio de
     // verdade só acontece quando todo mundo do tipo estiver respondido
     // (ver handleEnviarTodas), e dá pra reabrir e editar até lá.
     setErroForm("");
@@ -284,7 +323,7 @@ export function AvaliacaoDesempenho() {
     setEnviandoTudo(true);
     setErroEnvio("");
     try {
-      // Confere de novo bem na hora de enviar — pode ter fechado entre abrir
+      // Confere de novo bem na hora de enviar, pode ter fechado entre abrir
       // a fila e clicar aqui. Melhor avisar antes do que deixar cada envio
       // estourar um erro do backend no meio do loop.
       const filaFresca = (await carregarFila()) ?? [];
@@ -297,7 +336,7 @@ export function AvaliacaoDesempenho() {
       if (fecharamAgora.length > 0) {
         setFilaOriginalDoTipo((atual) => atual.map((item) => porChave.get(chave(item)) ?? item));
         setErroEnvio(
-          `${fecharamAgora.length === 1 ? "Um formulário fechou" : `${fecharamAgora.length} formulários fecharam`} agora — revise a lista antes de tentar de novo.`,
+          `${fecharamAgora.length === 1 ? "Um formulário fechou" : `${fecharamAgora.length} formulários fecharam`} agora, revise a lista antes de tentar de novo.`,
         );
         setEnviandoTudo(false);
         return;
@@ -370,7 +409,7 @@ export function AvaliacaoDesempenho() {
 
   if (passo === "carregando") return <PageLoadingBlock />;
 
-  // Quem já fechou sai da conta do progresso — nunca vai dar pra responder,
+  // Quem já fechou sai da conta do progresso, nunca vai dar pra responder,
   // então não pode travar o "Enviar avaliações" das pessoas que ainda dá.
   const itensAindaAbertos = filaOriginalDoTipo.filter((item) => item.aberto);
   const totalNaRodada = itensAindaAbertos.length;
@@ -380,7 +419,7 @@ export function AvaliacaoDesempenho() {
   const algumFechado = filaOriginalDoTipo.some((item) => !item.aberto);
 
   // "Não quero responder o outro agora" só faz sentido quando sobra
-  // exatamente UM tipo com pendência — se os dois já estão vazios (tudo
+  // exatamente UM tipo com pendência, se os dois já estão vazios (tudo
   // concluído) não existe "outro" pra declinar.
   const algumTipoConcluido = TIPOS.some((t) => filaDoTipo(t.valor).length === 0);
   const algumTipoPendente = TIPOS.some((t) => filaDoTipo(t.valor).length > 0);
@@ -423,7 +462,7 @@ export function AvaliacaoDesempenho() {
           <AvisoFechadoLista>
             {itensFechados.map((item) => (
               <AvisoFechadoItem key={chave(item)}>
-                {item.avaliado_nome} — {item.lote_nome}
+                {item.avaliado_nome}, {item.lote_nome}
               </AvisoFechadoItem>
             ))}
           </AvisoFechadoLista>
@@ -481,7 +520,7 @@ export function AvaliacaoDesempenho() {
         <PageCard>
           <PageCardHeader>
             <PageCardTitle>
-              Suas avaliações — {TIPOS.find((t) => t.valor === tipoEscolhido)?.titulo}
+              Suas avaliações, {TIPOS.find((t) => t.valor === tipoEscolhido)?.titulo}
             </PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
@@ -499,7 +538,7 @@ export function AvaliacaoDesempenho() {
 
             {algumFechado && (
               <FormErrorText>
-                Alguns formulários fecharam enquanto você respondia — não dá mais pra enviar essas
+                Alguns formulários fecharam enquanto você respondia, não dá mais pra enviar essas
                 avaliações. As outras continuam valendo normalmente.
               </FormErrorText>
             )}
@@ -509,8 +548,16 @@ export function AvaliacaoDesempenho() {
                 const fechado = !item.aberto;
                 const concluido = !!rascunhos[chave(item)];
                 return (
-                  <FilaItem
+                  <MotivoDesabilitado
                     key={chave(item)}
+                    motivo={
+                      fechado
+                        ? "O lote de avaliação foi fechado antes de você responder, e a plataforma não aceita mais o envio. " +
+                          "Avise a diretoria se esta avaliação ainda precisa entrar."
+                        : null
+                    }
+                  >
+                  <FilaItem
                     type="button"
                     $clicavel={!fechado}
                     disabled={fechado}
@@ -524,6 +571,7 @@ export function AvaliacaoDesempenho() {
                       {fechado ? "Fechado" : concluido ? "Concluída · editar" : "Pendente"}
                     </PageBadge>
                   </FilaItem>
+                  </MotivoDesabilitado>
                 );
               })}
             </FilaList>
@@ -531,9 +579,28 @@ export function AvaliacaoDesempenho() {
             {erroForm && <FormErrorText>{erroForm}</FormErrorText>}
             {erroEnvio && <FormErrorText>{erroEnvio}</FormErrorText>}
 
-            <PageButton type="button" disabled={!prontoParaEnviar || enviandoTudo} onClick={handleEnviarTodas}>
-              {enviandoTudo ? "Enviando..." : "Enviar avaliações"}
-            </PageButton>
+            {/* ⭐ Quantas faltam, e não só que falta. O envio é tudo-ou-nada,
+                então o número é a única informação capaz de dizer quanto ainda
+                há pela frente — sem ele, quem tem 12 colegas para avaliar não
+                sabe se parou na segunda ou na décima primeira. */}
+            <MotivoDesabilitado
+              motivo={
+                prontoParaEnviar
+                  ? null
+                  : totalNaRodada === 0
+                    ? "Não há ninguém para avaliar nesta rodada."
+                    : `Faltam ${totalNaRodada - concluidosNaRodada} de ${totalNaRodada} — ` +
+                      "as avaliações são enviadas todas juntas, então preencha as que ficaram abertas na lista acima."
+              }
+            >
+              <PageButton
+                type="button"
+                disabled={!prontoParaEnviar || enviandoTudo}
+                onClick={handleEnviarTodas}
+              >
+                {enviandoTudo ? "Enviando..." : "Enviar avaliações"}
+              </PageButton>
+            </MotivoDesabilitado>
           </PageCardContent>
         </PageCard>
       )}
@@ -567,7 +634,7 @@ export function AvaliacaoDesempenho() {
             <FormStack onSubmit={handleSubmit}>
               {formulario.secoes.map((secao) => {
                 // Nas seções de critério único do formulário de coordenador,
-                // o rótulo do critério é idêntico ao título da seção — não
+                // o rótulo do critério é idêntico ao título da seção, não
                 // repete visualmente (mas mantém pra acessibilidade).
                 const labelRedundante =
                   secao.criterios.length === 1 && secao.criterios[0].label.trim() === secao.titulo.trim();

@@ -4,7 +4,9 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   Bell,
+  CalendarCheck,
   CalendarClock,
+  CalendarPlus,
   CalendarSync,
   CalendarX,
   Check,
@@ -69,7 +71,7 @@ import {
   VazioBloco,
 } from "./Notificacoes.styled";
 
-/** O ícone e o rótulo de cada tipo (§6.6). `alerta` pinta de vermelho o que é
+/** O ícone e o rótulo de cada tipo. `alerta` pinta de vermelho o que é
  *  cobrança; o que é notícia boa ou neutra fica cinza.
  *
  *  O rótulo é o nome COMPLETO do alerta, não uma palavra solta: "Banca" servia
@@ -86,12 +88,16 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   // Pedido de entrada em projeto (§7.3) — tanto o aviso pra quem coordena
   // quanto a resposta pra quem pediu usam este mesmo tipo.
   solicitacao_projeto: { icone: Users, rotulo: "Pedido de entrada em projeto", alerta: false },
+  // Pedido de dias de ajuste no cronograma (§13). O pedido é alerta porque
+  // espera decisão de quem recebe; a resposta não é, já foi resolvida.
+  reajuste_solicitado: { icone: CalendarPlus, rotulo: "Pedido de dias", alerta: true },
+  reajuste_respondido: { icone: CalendarCheck, rotulo: "Pedido de dias respondido", alerta: false },
   // Vindos do módulo de bancas (§8), que passou a escrever nesta mesma central.
   troca_banca: { icone: ArrowLeftRight, rotulo: "Troca de banca", alerta: false },
   avaliacao_pendente: { icone: ClipboardCheck, rotulo: "Avaliação pendente", alerta: true },
   descricao_coordenador_pendente: { icone: NotebookPen, rotulo: "Descrição de banca pendente", alerta: true },
   banca_aviso: { icone: Megaphone, rotulo: "Aviso de banca", alerta: false },
-  // O plano mudou depois de combinado — pintados como alerta porque exigem
+  // O plano mudou depois de combinado, pintados como alerta porque exigem
   // replanejamento de quem já tinha a data antiga na agenda.
   banca_remarcada: { icone: CalendarSync, rotulo: "Banca remarcada", alerta: true },
   entrega_alterada: { icone: Truck, rotulo: "Entrega alterada", alerta: true },
@@ -104,9 +110,32 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   pdi_prazo_vencido: { icone: GraduationCap, rotulo: "Prazo de PDI vencido", alerta: true },
 };
 
-/** A ordem dos chips: os 5 do briefing (§6.6) primeiro, na ordem em que ele os
+/**
+ * A aparência de um tipo, com rede de proteção.
+ *
+ * ⚠ **Ler `APARENCIA[tipo]` direto derrubava a página inteira.** O tipo que
+ * não estivesse no mapa devolvia `undefined`, o destructure estourava, e o
+ * ErrorBoundary trocava a tela toda por "Algo deu errado" — uma notificação
+ * desconhecida apagava as outras cinquenta.
+ *
+ * Foi o que aconteceu: o backend ganhou `solicitacao_projeto`,
+ * `reajuste_solicitado` e `reajuste_respondido`, o `TipoNotificacao` do front
+ * não foi atualizado junto, e o `Record<>` deixou de cobrar as entradas.
+ *
+ * ⭐ O tipo completo, corrigido, impede a próxima omissão em tempo de
+ * compilação. Este fallback cobre o que ele não alcança: o backend sobe antes
+ * do front, e por alguns minutos manda um tipo que esta versão não conhece.
+ * Aí a notificação aparece genérica, em vez de derrubar a central.
+ */
+function aparenciaDe(tipo: TipoNotificacao) {
+  return (
+    APARENCIA[tipo] ?? { icone: Bell, rotulo: "Aviso", alerta: false }
+  );
+}
+
+/** A ordem dos chips: os 5 do briefing primeiro, na ordem em que ele os
  *  lista, e depois os três que vieram na sequência. Fixa e não derivada do que
- *  chegou — assim o filtro não muda de lugar a cada recarga. */
+ *  chegou, assim o filtro não muda de lugar a cada recarga. */
 const ORDEM_FILTROS: TipoNotificacao[] = [
   "kickoff_pendente",
   "tarefa_vencida",
@@ -119,6 +148,8 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "alocado_em_projeto",
   "entrega_registrada",
   "solicitacao_projeto",
+  "reajuste_solicitado",
+  "reajuste_respondido",
   "troca_banca",
   "avaliacao_pendente",
   "descricao_coordenador_pendente",
@@ -128,15 +159,15 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "banca_aviso",
 ];
 
-/** O filtro só oferece o que aquela pessoa é capaz de receber — sem isso, o
+/** O filtro só oferece o que aquela pessoa é capaz de receber, sem isso, o
  *  consultor via chip pra tipo que nunca chega pra ele. Os tipos fora deste
  *  switch valem pra qualquer cargo (equipe + liderança, ou individual por
  *  participação em banca), então não entram aqui. */
 function tipoVisivelPara(tipo: TipoNotificacao, usuario: Usuario | null): boolean {
   if (!usuario) return true;
   switch (tipo) {
-    // Quem crava a banca (§5.3) e registra a reunião (§6.4) é sempre a
-    // coordenação — o consultor nunca é o alvo individual, e só vira
+    // Quem crava a banca e registra a reunião é sempre a
+    // coordenação, o consultor nunca é o alvo individual, e só vira
     // liderança se também for diretor/gerente.
     case "banca_nao_marcada":
     case "projeto_sem_reuniao":
@@ -169,13 +200,13 @@ export function Notificacoes() {
   const painelRef = useRef<HTMLDivElement>(null);
   /** Contador de recarga: "Tentar de novo" e "marcar todas" incrementam, e o
    *  efeito reage. Assim nada chama setState de forma síncrona no corpo do
-   *  efeito — é o que a regra `react-hooks/set-state-in-effect` cobra. */
+   *  efeito, é o que a regra `react-hooks/set-state-in-effect` cobra. */
   const [recarga, setRecarga] = useState(0);
 
   const recarregarLista = useCallback(() => setRecarga((n) => n + 1), []);
 
   useEffect(() => {
-    // A flag evita gravar estado depois que a página já saiu de tela — sem
+    // A flag evita gravar estado depois que a página já saiu de tela, sem
     // ela, sair no meio da requisição dispara warning de update em componente
     // desmontado.
     let vivo = true;
@@ -210,7 +241,7 @@ export function Notificacoes() {
     };
   }, [painelAberto]);
 
-  /** Quantas de cada tipo — o número vai ao lado de cada opção. Sem ele,
+  /** Quantas de cada tipo, o número vai ao lado de cada opção. Sem ele,
    *  filtrar vira tentativa e erro: a pessoa marca para descobrir se há algo
    *  ali. */
   const contagemPorTipo = useMemo(() => {
@@ -299,7 +330,7 @@ export function Notificacoes() {
       </PageHeaderRow>
 
       <FiltroBar>
-        {/* Estado de leitura: 2 opções exclusivas — segmentado deixa isso
+        {/* Estado de leitura: 2 opções exclusivas, segmentado deixa isso
             óbvio sem precisar de rótulo explicando. */}
         <SegGroup role="group" aria-label="Estado de leitura">
           <SegButton type="button" $ativo={!soNaoLidas} onClick={() => setSoNaoLidas(false)}>
@@ -332,7 +363,7 @@ export function Notificacoes() {
                   que informa QUAIS alertas existem. Mostrar só os que
                   chegaram faria o filtro sumir junto com o problema
                   resolvido. O que É filtrado por cargo é se aquele tipo
-                  chega pra essa pessoa — ver `tipoVisivelPara`. */}
+                  chega pra essa pessoa, ver `tipoVisivelPara`. */}
               {ORDEM_FILTROS.filter((tipo) => tipoVisivelPara(tipo, usuario)).map((tipo) => {
                 const total = contagemPorTipo[tipo] ?? 0;
                 const marcada = tipos.includes(tipo);
@@ -348,7 +379,7 @@ export function Notificacoes() {
                     <OpcaoCaixa $marcada={marcada}>
                       {marcada && <Check size={11} strokeWidth={3} />}
                     </OpcaoCaixa>
-                    <OpcaoTexto>{APARENCIA[tipo].rotulo}</OpcaoTexto>
+                    <OpcaoTexto>{aparenciaDe(tipo).rotulo}</OpcaoTexto>
                     <OpcaoContagem>{total}</OpcaoContagem>
                   </OpcaoLinha>
                 );
@@ -408,7 +439,7 @@ export function Notificacoes() {
             <>
               <Lista>
                 {visiveis.map((notificacao) => {
-                  const { icone: Icone, alerta } = APARENCIA[notificacao.tipo];
+                  const { icone: Icone, alerta } = aparenciaDe(notificacao.tipo);
                   return (
                     <Item key={notificacao.chave} $lida={notificacao.lida}>
                       <ItemIcone $alerta={alerta}>
@@ -436,7 +467,7 @@ export function Notificacoes() {
                 })}
               </Lista>
               <NotaRodape>
-                Marcar como lida só tira do contador — o alerta continua aqui até o problema ser
+                Marcar como lida só tira do contador, o alerta continua aqui até o problema ser
                 resolvido (marcar o kickoff, concluir a tarefa, registrar a reunião).
               </NotaRodape>
             </>

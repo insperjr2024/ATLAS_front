@@ -24,12 +24,12 @@ import {
 } from "./Projetos.styled";
 
 interface Props {
-  /** A cor pré-selecionada — a próxima da rampa, pela ordem da etapa. */
+  /** A cor pré-selecionada, a próxima da rampa, pela ordem da etapa. */
   corInicial: string;
   /**
-   * Os escopos em que a etapa pode nascer — todos eles: o cadeado de
+   * Os escopos em que a etapa pode nascer, todos eles: o cadeado de
    * oficialização acabou, e pintar além da janela avisa em vez de impedir
-   * (§15).
+   *.
    *
    * Na visão Geral não há escopo escolhido na barra, então a pergunta vem para
    * cá: toda etapa pertence a um escopo, e o banco exige isso.
@@ -43,7 +43,7 @@ interface Props {
 }
 
 /**
- * A criação de etapa do §6.4 — "o coordenador cria a etapa, escolhe a cor e
+ * A criação de etapa do , "o coordenador cria a etapa, escolhe a cor e
  * pinta os dias".
  *
  * Substituiu um `window.prompt()`, que além de destoar do app só devolvia
@@ -63,7 +63,7 @@ export function NovaEtapaModal({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
-  // Esc fecha — o `prompt` nativo dava isso de graça e seria uma regressão
+  // Esc fecha, o `prompt` nativo dava isso de graça e seria uma regressão
   // silenciosa perder ao trocar por um modal próprio.
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
@@ -97,7 +97,7 @@ export function NovaEtapaModal({
   }
 
   return (
-    // Clique no overlay fecha; no conteúdo, não — daí o stopPropagation.
+    // Clique no overlay fecha; no conteúdo, não, daí o stopPropagation.
     <ModalOverlay onMouseDown={onCancelar}>
       <ModalContent onMouseDown={(e) => e.stopPropagation()}>
         <form onSubmit={enviar}>

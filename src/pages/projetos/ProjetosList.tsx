@@ -85,10 +85,10 @@ export function ProjetosList() {
   const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  // O kanban é a visão prioritária de Projetos — a lista é a segunda opção,
+  // O kanban é a visão prioritária de Projetos, a lista é a segunda opção,
   // pra quem quer conferir/ordenar em texto corrido, e "Arquivados" é a
   // MESMA lista, só que com outro recorte de conteúdo (não é uma página
-  // separada — ver `projetosVisiveis` abaixo). Guardado na URL (não só em
+  // separada, ver `projetosVisiveis` abaixo). Guardado na URL (não só em
   // estado local) pra "voltar" de dentro de um projeto devolver pro modo de
   // onde a pessoa veio, em vez de sempre resetar pro kanban.
   const [modo, setModoState] = useState<ModoVisualizacao>(
@@ -123,10 +123,10 @@ export function ProjetosList() {
       // pra permitir marcar várias frentes de uma vez, um projeto sinérgico
       // aparece assim que QUALQUER uma das suas frentes estiver marcada.
       const [projetosResp, frentesResp, usuariosResp] = await Promise.all([
-        // `frente_id` não vai mais pro backend — o filtro de frente(s) virou
+        // `frente_id` não vai mais pro backend, o filtro de frente(s) virou
         // um refinamento no cliente (ver `projetosVisiveis` abaixo), pra
         // suportar marcar várias de uma vez. Arquivados sempre vêm junto
-        // (quando a permissão existe) — a aba "Arquivados" e o checkbox
+        // (quando a permissão existe), a aba "Arquivados" e o checkbox
         // "Mostrar" só filtram em cima do mesmo dado já carregado, sem
         // precisar de uma nova busca a cada troca.
         getProjetos(token, null, podeArquivar),
@@ -209,7 +209,7 @@ export function ProjetosList() {
   /**
    * Otimista, igual ao kanban de tarefas: o card já pula de coluna antes da
    * resposta do PATCH. Se o backend recusar a transição, volta pro estado
-   * anterior — a fonte da verdade nunca é o arrasto local.
+   * anterior, a fonte da verdade nunca é o arrasto local.
    */
   async function moverStatus(projetoId: number, statusNovo: StatusProjeto) {
     if (!token) return;
@@ -225,7 +225,7 @@ export function ProjetosList() {
   }
 
   // "Arquivados" é a MESMA tela de Lista, só trocando o recorte de conteúdo
-  // (§6.2) — nunca uma rota/página à parte. Fora dela, o checkbox "Mostrar"
+  //, nunca uma rota/página à parte. Fora dela, o checkbox "Mostrar"
   // é quem decide se os arquivados aparecem misturados aos ativos.
   const projetosVisiveis =
     modo === "arquivados"
@@ -258,7 +258,7 @@ export function ProjetosList() {
 
   // Só bloqueia a tela na PRIMEIRA carga (sem dado nenhum ainda). Reconsultas
   // disparadas por um filtro (ex.: "Mostrar arquivados") mantêm a lista atual
-  // visível enquanto busca — sem isso, cada clique piscava a tela inteira
+  // visível enquanto busca, sem isso, cada clique piscava a tela inteira
   // pra um spinner, parecendo um reload em vez de uma atualização.
   if (carregando && projetos.length === 0) return <PageLoadingBlock />;
 
@@ -308,7 +308,7 @@ export function ProjetosList() {
               <LayoutGrid size={14} />
               Lista
             </ViewToggleBtn>
-            {/* Arquivados (§6.2) é a MESMA tela de Lista — troca só o recorte
+            {/* Arquivados é a MESMA tela de Lista, troca só o recorte
                 de conteúdo (`projetosVisiveis`), não a rota nem o
                 componente. */}
             {podeArquivar && (
@@ -358,7 +358,7 @@ export function ProjetosList() {
                   </>
                 )}
 
-                {/* Ordem só faz sentido em Lista/Arquivados — no Kanban quem
+                {/* Ordem só faz sentido em Lista/Arquivados, no Kanban quem
                     organiza os cards é a coluna (status), não uma fila
                     crescente/decrescente. */}
                 {mostrarSecaoOrdem && (
@@ -401,8 +401,8 @@ export function ProjetosList() {
 
       {projetosFiltrados.length === 0 ? (
         modo !== "arquivados" && frentesSelecionadas.length === 0 && !podeCriar ? (
-          /* ⭐ Quem não está em projeto nenhum via só uma frase e um beco sem
-             saída — e tela vazia sem explicação parece defeito. Agora ela diz
+          /* Quem não está em projeto nenhum via só uma frase e um beco sem
+             saída, e tela vazia sem explicação parece defeito. Agora ela diz
              o que fazer e leva para lá. São ~28 pessoas hoje. */
           <EmptyText>
             Você ainda não está em nenhum projeto.{" "}
@@ -444,7 +444,7 @@ export function ProjetosList() {
                 key={projeto.id}
                 to={`/projetos/${projeto.id}`}
                 // Este card só renderiza fora do Kanban (que já é o padrão
-                // pra onde "Voltar" cai sem state nenhum) — aqui é sempre
+                // pra onde "Voltar" cai sem state nenhum), aqui é sempre
                 // preciso dizer explicitamente o modo de onde se veio.
                 state={{ voltarPara: `/projetos?modo=${modo}`, voltarRotulo: "Voltar para projetos" }}
               >
@@ -459,7 +459,7 @@ export function ProjetosList() {
                   {projeto.frente_ids.map((id) => (
                     <FrenteTag key={id}>{nomeFrente(id)}</FrenteTag>
                   ))}
-                  {projeto.sinergico && <FrenteTag>🔗 sinérgico</FrenteTag>}
+                  {projeto.sinergico && <FrenteTag>sinérgico</FrenteTag>}
                 </TagRow>
 
                 <div>
@@ -471,10 +471,10 @@ export function ProjetosList() {
                     <Ponto $cor={tonsStatus.ponto} />
                     {ROTULO_STATUS[projeto.status]}
                   </StatusPilula>
-                  {/* Redundante dentro da própria aba Arquivados — lá TODO
+                  {/* Redundante dentro da própria aba Arquivados, lá TODO
                       card já é arquivado. */}
                   {projeto.arquivado_em && modo !== "arquivados" && (
-                    <PageBadge $tone="muted">📦 Arquivado</PageBadge>
+                    <PageBadge $tone="muted">Arquivado</PageBadge>
                   )}
                 </div>
 

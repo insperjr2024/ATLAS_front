@@ -7,9 +7,9 @@ import type { Permissoes } from "@/types/auth";
 type PermissaoCampo = keyof Permissoes;
 
 /**
- * Guarda de rota por permissão (da posição — ver `types/auth.ts`).
+ * Guarda de rota por permissão (da posição, ver `types/auth.ts`).
  *
- * Cada área administrativa tem a sua caixa própria — dar acesso ao Núcleo não
+ * Cada área administrativa tem a sua caixa própria, dar acesso ao Núcleo não
  * dá acesso a Membros. Esconder o item na Sidebar não protege nada: sem este
  * guard, digitar /membros na barra de endereço abre a tela. E o backend
  * revalida tudo, porque o front só esconde.

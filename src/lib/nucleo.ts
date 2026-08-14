@@ -36,9 +36,9 @@ export function frentesDaBanca(bancasFrentes: BancaFrente[], frentes: Frente[], 
 }
 
 /**
- * ⭐ A equipe da banca, a partir do `equipe_ids` que o BACKEND já resolveu.
+ * A equipe da banca, a partir do `equipe_ids` que o BACKEND já resolveu.
  *
- * ⚠ Isto substituiu uma versão que lia `equipe_projeto` — a tabela LEGADA do
+ * Isto substituiu uma versão que lia `equipe_projeto`, a tabela LEGADA do
  * módulo de bancas, preenchida à mão no formulário "Consultores do projeto".
  * Banca marcada pelo cronograma não escreve nela, então a ficha mostrava
  * "Membros —" justamente nas bancas do fluxo novo, que hoje são a maioria.
@@ -46,8 +46,8 @@ export function frentesDaBanca(bancasFrentes: BancaFrente[], frentes: Frente[], 
  * `equipe_ids` já soma as duas fontes (ver `utils/equipe_banca.py` no backend)
  * e não custa chamada nova: vem junto de cada banca em `GET /bancas`.
  *
- * O coordenador sai da lista porque tem linha própria na ficha — o backend o
- * inclui no conjunto por outro motivo (§8: quem não pode avaliar a banca).
+ * O coordenador sai da lista porque tem linha própria na ficha, o backend o
+ * inclui no conjunto por outro motivo (quem não pode avaliar a banca).
  */
 export function membrosDaBanca(
   equipeIds: number[] | undefined,

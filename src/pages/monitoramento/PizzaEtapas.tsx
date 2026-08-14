@@ -22,14 +22,14 @@ import {
 } from "./Monitoramento.styled";
 
 /** Quantos projetos cabem no balão antes de ele virar uma parede de texto.
- *  O que passar disso vira "e mais N" — a lista completa está a um clique, na
+ *  O que passar disso vira "e mais N", a lista completa está a um clique, na
  *  seção que abre abaixo do gráfico. */
 const MAX_NO_BALAO = 8;
 
 /** O balão de hover: a etapa no topo, os projetos dela embaixo.
  *
  *  Substitui o tooltip padrão do recharts, que mostraria só "em_andamento: 12"
- *  — a chave crua do banco e um número que a legenda já dá. O que falta ao
+ * , a chave crua do banco e um número que a legenda já dá. O que falta ao
  *  olhar o gráfico é QUAIS são esses 12. */
 function BalaoDaFatia({
   active,
@@ -62,16 +62,16 @@ function BalaoDaFatia({
 }
 
 /**
- * A distribuição do portfólio pelas etapas do ciclo (§7.1).
+ * A distribuição do portfólio pelas etapas do ciclo.
  *
- * ⭐ **O número no meio é a soma das fatias, não um número à parte.** O backend
+ * **O número no meio é a soma das fatias, não um número à parte.** O backend
  * monta as etapas sobre a mesma lista `em_curso` de onde tira `total_ativos`,
  * então as partes fecham com o todo por construção. Um donut cujo centro não
  * bate com as fatias é o jeito mais fácil de um gráfico mentir: cada número
  * isolado parece certo.
  *
  * Substituiu a lista de texto "Distribuição por status", que ordenava por
- * quantidade — o que embaralhava o funil — e não deixava chegar aos projetos.
+ * quantidade, o que embaralhava o funil, e não deixava chegar aos projetos.
  */
 export function PizzaEtapas({ etapas }: { etapas: EtapaDoPortfolio[] }) {
   const [selecionada, setSelecionada] = useState<string | null>(null);
@@ -82,7 +82,7 @@ export function PizzaEtapas({ etapas }: { etapas: EtapaDoPortfolio[] }) {
   // criando um alvo invisível.
   const comProjeto = etapas.filter((e) => e.total > 0);
   const aberta = etapas.find((e) => e.status === selecionada) ?? null;
-  // `?? []` mantém a chamada do hook estável quando não há etapa aberta — o
+  // `?? []` mantém a chamada do hook estável quando não há etapa aberta, o
   // hook não pode entrar depois do `return` de portfólio vazio, logo abaixo.
   const lista = usePaginacao(aberta?.projetos ?? [], POR_PAGINA);
 
@@ -112,7 +112,7 @@ export function PizzaEtapas({ etapas }: { etapas: EtapaDoPortfolio[] }) {
                 paddingAngle={2}
                 // A ordem é o dado: as fatias saem na sequência do ciclo, então
                 // a pizza se lê como funil. O padrão do recharts começa às 3h e
-                // anda no sentido anti-horário — invertido para a leitura
+                // anda no sentido anti-horário, invertido para a leitura
                 // começar no topo e seguir como relógio.
                 startAngle={90}
                 endAngle={-270}

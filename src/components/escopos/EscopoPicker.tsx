@@ -1,20 +1,24 @@
 import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import type { Escopo, Frente } from "@/types/banca";
-import { PageButtonSm, EmptyText } from "@/styles/page.styled";
-import { FieldInput, FieldLabel, FieldSelect } from "@/pages/Bancas.styled";
+import { EmptyText } from "@/styles/page.styled";
+import { FieldInput, FieldSelect } from "@/pages/Bancas.styled";
 import {
+  CatalogoChips,
+  CatalogoGrupo,
+  CatalogoGrupoTitulo,
+  EscopoChip,
   EscopoLinha,
   EscopoLista,
   DiasInput,
   MoverBotao,
   MoverBotoes,
   RemoverBotao,
-  PickerRodape,
+  PickerCatalogo,
 } from "./EscopoPicker.styled";
 
 /** A hierarquia dos 4 escopos clássicos da Business, sempre nessa ordem
  *  quando aparecem juntos num projeto (a pedido do usuário, 2026-08-07).
- *  Espelha `ORDEM_PADRAO_BUSINESS` da migration `9ef5e8c8a983` no backend —
+ *  Espelha `ORDEM_PADRAO_BUSINESS` da migration `9ef5e8c8a983` no backend,
  *  só o nome muda de arquivo, a regra é a mesma. */
 const ORDEM_PADRAO_BUSINESS: Record<string, number> = {
   "Análise Mercadológica": 0,
@@ -25,7 +29,7 @@ const ORDEM_PADRAO_BUSINESS: Record<string, number> = {
 
 /** Um escopo sendo montado no formulário, antes de virar `projeto_escopo`. */
 export interface EscopoEmEdicao {
-  /** Vazio = é um "Outro" (§4), com o nome digitado à mão. */
+  /** Vazio = é um "Outro", com o nome digitado à mão. */
   escopo_id: number | null;
   nome_customizado: string;
   frente_id: number;
@@ -75,7 +79,7 @@ export function EscopoPicker({
   desabilitado,
 }: EscopoPickerProps) {
   const nomeFrente = (id: number) => frentes.find((f) => f.id === id)?.nome ?? `Frente ${id}`;
-  // Um escopo do catálogo só entra uma vez por projeto — "Outro" fica de
+  // Um escopo do catálogo só entra uma vez por projeto, "Outro" fica de
   // fora dessa checagem porque cada um tem nome próprio, não colide.
   const idsJaEscolhidos = new Set(valor.map((e) => e.escopo_id).filter((id) => id !== null));
   const disponiveis = catalogo.filter(
@@ -90,7 +94,7 @@ export function EscopoPicker({
     onChange(valor.filter((_, i) => i !== indice));
   }
 
-  /** Troca de posição com o vizinho — é isso que "ordem" significa aqui: a
+  /** Troca de posição com o vizinho, é isso que "ordem" significa aqui: a
    *  sequência em que a lista vai ser enviada na criação do projeto. */
   function mover(indice: number, direcao: -1 | 1) {
     const alvo = indice + direcao;
@@ -111,7 +115,7 @@ export function EscopoPicker({
     };
 
     // Um dos 4 clássicos da Business: entra já no lugar certo da hierarquia
-    // em vez de sempre no fim — antes do primeiro que já esteja na lista com
+    // em vez de sempre no fim, antes do primeiro que já esteja na lista com
     // ordem maior que a dele. Escopo "Outro" ou de catálogo fora dessa lista
     // simplesmente vai pro fim, como sempre foi.
     const ordemNovo = catalogoItem ? ORDEM_PADRAO_BUSINESS[catalogoItem.nome] : undefined;
@@ -216,36 +220,48 @@ export function EscopoPicker({
         );
       })}
 
-      <PickerRodape>
-        <FieldLabel htmlFor="adicionar-escopo">Adicionar escopo</FieldLabel>
-        <FieldSelect
-          id="adicionar-escopo"
-          value=""
-          disabled={desabilitado}
-          onChange={(e) => {
-            if (!e.target.value) return;
-            adicionar(e.target.value === "outro" ? null : Number(e.target.value));
-          }}
-        >
-          <option value="">Escolha um escopo…</option>
-          {disponiveis.map((escopo) => (
-            <option key={escopo.id} value={escopo.id}>
-              {escopo.nome} · {nomeFrente(escopo.frente_id!)}
-            </option>
-          ))}
-          {/* §4: além dos padrão, sempre existe a opção "Outro". */}
-          <option value="outro">+ Outro (nome customizado)</option>
-        </FieldSelect>
-        <PageButtonSm
-          type="button"
-          $variant="outline"
-          disabled={desabilitado}
-          onClick={() => adicionar(null)}
-        >
-          <Plus size={14} />
-          Outro
-        </PageButtonSm>
-      </PickerRodape>
+      <PickerCatalogo>
+        {/* Um bloco por frente MARCADA, na ordem em que foram marcadas. Uma
+            frente sem escopo livre continua aparecendo, com o motivo escrito:
+            sumir o bloco faria parecer que a frente não foi marcada. */}
+        {frentesMarcadas.map((frenteId) => {
+          const doGrupo = disponiveis.filter((e) => e.frente_id === frenteId);
+          return (
+            <CatalogoGrupo key={frenteId}>
+              <CatalogoGrupoTitulo>{nomeFrente(frenteId)}</CatalogoGrupoTitulo>
+              {doGrupo.length === 0 ? (
+                <EmptyText>
+                  {catalogo.some((e) => e.frente_id === frenteId)
+                    ? "Todos os escopos desta frente já foram adicionados."
+                    : "Esta frente ainda não tem escopo no catálogo."}
+                </EmptyText>
+              ) : (
+                <CatalogoChips>
+                  {doGrupo.map((escopo) => (
+                    <EscopoChip
+                      key={escopo.id}
+                      type="button"
+                      disabled={desabilitado}
+                      onClick={() => adicionar(escopo.id)}
+                    >
+                      <Plus size={12} aria-hidden="true" />
+                      {escopo.nome}
+                    </EscopoChip>
+                  ))}
+                </CatalogoChips>
+              )}
+            </CatalogoGrupo>
+          );
+        })}
+
+        {/* Além dos do catálogo, sempre existe a opção "Outro". */}
+        <CatalogoChips>
+          <EscopoChip $outro type="button" disabled={desabilitado} onClick={() => adicionar(null)}>
+            <Plus size={12} aria-hidden="true" />
+            Outro (nome customizado)
+          </EscopoChip>
+        </CatalogoChips>
+      </PickerCatalogo>
     </EscopoLista>
   );
 }
