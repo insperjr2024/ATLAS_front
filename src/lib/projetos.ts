@@ -225,6 +225,28 @@ export function registrarJustificativaAtraso(
   });
 }
 
+/**
+ * §7.4: "a diretoria **pergunta** ao coordenador e digita a nota".
+ *
+ * ⭐ A pergunta, registrada. Só a segunda metade existia na plataforma — a
+ * caixa de texto — e a pergunta acontecia por fora. Quem cobrou, quando, e se
+ * já responderam não ficava em lugar nenhum.
+ *
+ * O pedido é do MOTIVO (escopo + tipo), não do projeto: dois escopos atrasados
+ * rendem dois pedidos, e responder um não fecha o outro. O backend recusa com
+ * 422 se já houver pedido aberto para o mesmo motivo.
+ */
+export function pedirJustificativaAtraso(
+  projetoId: number,
+  token: string,
+  dados: { projeto_escopo_id?: number | null; tipo?: string | null; sobre?: string },
+) {
+  return apiFetch<{ id: number; solicitado_em: string; coordenador_id: number }>(
+    `/projetos/${projetoId}/pedido-justificativa`,
+    { method: "POST", token, body: JSON.stringify(dados) },
+  );
+}
+
 /** §7.4 — não é edição de rotina, é pra corrigir engano/teste. Só diretoria. */
 export function excluirJustificativaAtraso(projetoId: number, justificativaId: number, token: string) {
   return apiFetch<null>(`/projetos/${projetoId}/justificativa-atraso/${justificativaId}`, {
@@ -323,6 +345,10 @@ export function updateEscopoProjeto(
  *
  * `justificativa` só é exigida para ALTERAR uma entrega já registrada, e nesse
  * caso o backend também exige que quem altera seja a diretoria (§13).
+ *
+ * ⚠ **Marcar a data NÃO entrega o escopo.** O status só vira "entregue" por
+ * `confirmarEntregaEscopo` — a data é registro de calendário, a confirmação é
+ * a declaração de que o trabalho foi ao cliente.
  */
 export function marcarEntregaEscopo(
   escopoId: number,
@@ -330,12 +356,42 @@ export function marcarEntregaEscopo(
   token: string,
   justificativa?: string,
 ) {
-  return apiFetch<{ id: number; data_entrega_real: string; status: string }>(
-    `/escopos-projeto/${escopoId}/entrega`,
+  return apiFetch<{
+    id: number;
+    data_entrega_real: string;
+    /** true enquanto ninguém confirmou a entrega — o status segue parado. */
+    aguardando_confirmacao: boolean;
+  }>(`/escopos-projeto/${escopoId}/entrega`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ data_entrega_real: data, justificativa }),
+  });
+}
+
+/**
+ * ⭐ O ato que move o escopo para **Entregue** — e o único que faz isso.
+ *
+ * 🔒 Recusa com 422 se: a banca não aprovou (§5.5), a data da entrega não está
+ * marcada, o escopo já foi confirmado, ou quem clicou não é o **coordenador
+ * daquele projeto** nem a diretoria. A checagem de quem pode é de VÍNCULO, não
+ * de cargo: um coordenador de outro projeto não confirma este.
+ */
+export function confirmarEntregaEscopo(
+  escopoId: number,
+  token: string,
+  /**
+   * O dia da entrega, em `yyyy-MM-dd`, para quando ele ainda não tiver sido
+   * marcado no Cronograma. Com data já registrada o backend ignora este campo:
+   * mudar entrega registrada é do §13 e tem porta própria.
+   */
+  dataEntregaReal?: string,
+) {
+  return apiFetch<{ id: number; status: string; entrega_confirmada_em: string }>(
+    `/escopos-projeto/${escopoId}/confirmar-entrega`,
     {
-      method: "PATCH",
+      method: "POST",
       token,
-      body: JSON.stringify({ data_entrega_real: data, justificativa }),
+      body: JSON.stringify({ data_entrega_real: dataEntregaReal ?? null }),
     },
   );
 }

@@ -697,6 +697,26 @@ export const AtrasoCelula = styled.div`
 `;
 
 /**
+ * A célula "Entrega": a data e, embaixo, o estado da confirmação.
+ *
+ * ⭐ Data e confirmação empilhadas, e não num badge só, porque são duas
+ * informações diferentes — *quando* foi e se alguém já **afirmou** que foi. Uma
+ * data sozinha na coluna era lida como "entregue", que é justamente a confusão
+ * que a confirmação existe para desfazer.
+ */
+export const EntregaCelula = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+
+  small {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/**
  * A nota do atraso na célula.
  *
  * Cortada em duas linhas de propósito: a explicação pode ser longa, e deixá-la

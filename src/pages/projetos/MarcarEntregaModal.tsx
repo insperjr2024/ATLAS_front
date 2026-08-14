@@ -81,6 +81,17 @@ export function MarcarEntregaModal({
             <strong>{alvo}</strong> — entrega em {formatarData(dia)}.
           </p>
 
+          {/* ⭐ A data é registro; o status é declaração. Sem esta linha, quem
+              marca o dia volta à Visão geral e estranha o escopo continuar
+              "Em andamento" — e o próximo passo não está nesta tela. */}
+          {!alterando && (
+            <p>
+              Isto registra o <strong>dia</strong> da entrega. O escopo passa a{" "}
+              <strong>Entregue</strong> quando o coordenador ou a diretoria confirmar a
+              entrega na aba <strong>Visão geral</strong>.
+            </p>
+          )}
+
           {alterando && (
             <p>
               ⚠ Já existe entrega registrada em{" "}

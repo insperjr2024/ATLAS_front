@@ -1341,8 +1341,14 @@ export function ProjetoCronograma() {
     await Promise.all([carregar(), recarregarProjeto()]);
   }
 
-  /** §13: registrar a entrega é livre; alterá-la é decisão da diretoria. */
-  async function confirmarEntrega(justificativa: string) {
+  /**
+   * §13: registrar a DATA da entrega é livre; alterá-la é decisão da diretoria.
+   *
+   * ⚠ Isto não entrega o escopo — só grava o dia. Quem move o status para
+   * "Entregue" é a confirmação na Visão geral (`confirmarEntregaEscopo`), e por
+   * isso o nome daqui fala de data, não de entrega.
+   */
+  async function salvarDataDeEntrega(justificativa: string) {
     if (!token || !entregaAberta) return;
     const anterior = dados?.escopos.find((e) => e.id === entregaAberta.escopoId)?.data_entrega_real ?? null;
     await marcarEntregaEscopo(
@@ -2047,7 +2053,7 @@ export function ProjetoCronograma() {
           entregaAtual={escopo.data_entrega_real}
           ehDiretor={ehDiretor}
           onCancelar={() => setEntregaAberta(null)}
-          onConfirmar={confirmarEntrega}
+          onConfirmar={salvarDataDeEntrega}
         />
       )}
 

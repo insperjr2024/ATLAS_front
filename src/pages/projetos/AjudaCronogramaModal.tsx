@@ -182,6 +182,14 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
             retrabalho que ela apontou. <strong>ajustes</strong> quando foi aprovada — são os
             acertos finos antes de entregar.
           </PassoTexto>
+          <PassoTexto>
+            Marcar a entrega aqui grava o <strong>dia</strong> em que ela aconteceu — e só
+            isso. O escopo passa a <strong>Entregue</strong> num segundo passo, na aba{" "}
+            <strong>Visão geral</strong>, onde o coordenador do projeto ou a diretoria
+            clica em <em>Confirmar entrega</em>. São coisas diferentes de propósito:
+            clicar num dia do calendário é fácil de errar, e o status é o que a diretoria
+            lê como "foi ao cliente".
+          </PassoTexto>
           <Regra>
             Banca não aprovada <strong>trava a entrega ao cliente</strong>. É preciso marcar
             uma nova banca no calendário e ela aprovar. Cada tentativa fica registrada: o

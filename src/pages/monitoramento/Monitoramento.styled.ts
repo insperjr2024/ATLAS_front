@@ -928,6 +928,242 @@ export const AtrasoFlagIcone = styled.span`
   cursor: help;
 `;
 
+/* ──────────────────────────────────────────────────────────────────────
+   A LINHA DA FILA DE APROVAÇÕES
+
+   ⭐ **É a `LinhaAtraso` com uma terceira coluna.** A aba Atrasos já tinha
+   resolvido "item de lista que carrega muito contexto": número que ordena à
+   esquerda, corpo respirando no meio, motivos empilhados embaixo. A fila de
+   Aprovações precisava do mesmo mais um lugar fixo para a ação.
+
+   ⚠ **Por que não dava para seguir com o `ItemLista`.** Ele foi desenhado
+   para item de UMA linha: `align-items: baseline` e `small { display:
+   inline-flex; white-space: nowrap }`. Com três informações dentro (título,
+   fatos, texto escrito), os `<small>` fluíam na MESMA linha e nada quebrava —
+   era isso que fazia o nome do projeto emendar no metadado e no motivo
+   ("Análise Mercadológica+5 dias sobre 8 vendidos · Ana Souza emOs 8 dias
+   vendidos não cobrem…"). O conteúdo se espremia na horizontal em vez de
+   usar a altura que sobrava.
+   ────────────────────────────────────────────────────────────────────── */
+
+export const LinhaAprovacao = styled.li`
+  display: grid;
+  /* A coluna de ação tem largura MÍNIMA, não fixa: o formulário de decisão
+     abre dentro dela e precisa poder crescer. */
+  grid-template-columns: 3.75rem minmax(0, 1fr) minmax(10rem, auto);
+  align-items: start;
+  gap: 0 ${theme.spacing.md};
+  padding: 0.9rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: ${theme.borderRadius.lg};
+  transition: background ${theme.transitions.fast};
+
+  &:nth-of-type(even) {
+    background: ${theme.alpha(theme.colors.foreground, 0.015)};
+  }
+
+  &:hover {
+    background: ${theme.alpha(theme.colors.foreground, 0.03)};
+  }
+
+  & + & {
+    border-top: 1px solid ${theme.colors.border};
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  /* Em telas médias a ação desce para baixo do corpo em vez de espremer a
+     citação: texto de motivo com 40 caracteres por linha não se lê. */
+  @media (max-width: ${theme.breakpoints.md}px) {
+    grid-template-columns: 3.75rem minmax(0, 1fr);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}px) {
+    grid-template-columns: 1fr;
+    gap: ${theme.spacing.xs};
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/**
+ * A linha de FATOS do item — números e nomes, separados por espaço.
+ *
+ * ⭐ Substitui o `EmptyText` que fazia esse papel. `EmptyText` é o parágrafo
+ * de estado vazio, em `sm`: usado como metadado, ele ficava quase do tamanho
+ * do nome do projeto, e a linha inteira lia com um peso só.
+ *
+ * ⚠ `flex-wrap` é o ponto: cada fato é um `<span>` que QUEBRA para a linha
+ * de baixo quando não cabe. É o oposto do `white-space: nowrap` do
+ * `ItemLista`, e é o que faz o item usar altura em vez de se espremer.
+ */
+export const AprovacaoMeta = styled.p`
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.75rem;
+  row-gap: 0.2rem;
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+
+  /* O número dentro do fato — mais escuro que o rótulo que o cerca. */
+  strong {
+    color: ${theme.colors.foreground};
+    font-weight: ${theme.fontWeight.medium};
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* O número que PREOCUPA. Sem itálico: aqui o em marca ênfase semântica,
+     e o itálico em xs prejudica a leitura de dígito. */
+  em {
+    font-style: normal;
+    color: ${SEVERIDADE_TEXTO.critica};
+    font-weight: ${theme.fontWeight.medium};
+  }
+`;
+
+/**
+ * O que a PESSOA escreveu — motivo do pedido, justificativa da vaga.
+ *
+ * ⭐ Ganha filete e tamanho `sm` porque é o dado que decide: nas duas filas
+ * que já decidiam aqui, é lendo esta frase que a diretoria diz sim ou não.
+ * Estava em `<small>` cinza, do mesmo peso da data.
+ *
+ * Filete NEUTRO de propósito: no ATLAS o vermelho é severidade, e uma citação
+ * não é severa.
+ */
+export const AprovacaoCitacao = styled.blockquote`
+  margin: 0;
+  max-width: 65ch;
+  padding-left: ${theme.spacing.sm};
+  border-left: 3px solid ${theme.alpha(theme.colors.foreground, 0.15)};
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.55;
+  color: ${theme.colors.foreground};
+`;
+
+/** A coluna da direita: os botões, ou o formulário quando ele abre. */
+export const AprovacaoAcoes = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  min-width: 0;
+
+  @media (max-width: ${theme.breakpoints.md}px) {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    padding-top: 0.2rem;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}px) {
+    grid-column: 1;
+  }
+`;
+
+/**
+ * O formulário da decisão, aberto no lugar do par de botões.
+ *
+ * ⚠ Nasce com `min-width` porque a coluna é `auto`: sem isso o textarea
+ * encolheria até a largura do maior botão.
+ */
+export const AprovacaoForm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 16rem;
+
+  textarea {
+    width: 100%;
+    resize: vertical;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}px) {
+    min-width: 0;
+  }
+`;
+
+/** Os dois botões do formulário, lado a lado. */
+export const AprovacaoFormBotoes = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+`;
+
+/**
+ * O segundo nível de leitura — fechado por padrão, SEMPRE.
+ *
+ * ⚠ Chegou a existir a ideia de abrir sozinho nos casos "duvidosos" (carga
+ * alta, janela estourada, empate na urna). Ficou de fora porque a régua do
+ * que é duvidoso seria um chute não calibrado: numa semana ruim, tudo casa
+ * com alguma regra e a tela abre inteira — que é o estado que este
+ * componente existe para evitar.
+ */
+export const AprovacaoDetalhe = styled.details`
+  summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: fit-content;
+    padding: 0.15rem 0;
+    cursor: pointer;
+    list-style: none;
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: "▾";
+      transition: transform ${theme.transitions.fast};
+    }
+
+    &:hover {
+      color: ${theme.colors.foreground};
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${theme.colors.ring};
+      outline-offset: 2px;
+      border-radius: ${theme.borderRadius.sm};
+    }
+  }
+
+  &[open] summary::after {
+    transform: rotate(180deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    summary::after {
+      transition: none;
+    }
+  }
+`;
+
+/** O conteúdo do `<details>`: pares rótulo/valor em colunas que se acomodam. */
+export const AprovacaoGrade = styled.dl`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.4rem ${theme.spacing.md};
+  margin: 0.5rem 0 0;
+  font-size: ${theme.fontSize.xs};
+
+  dt {
+    color: ${theme.colors.mutedForeground};
+  }
+
+  dd {
+    margin: 0 0 0.4rem;
+    color: ${theme.colors.foreground};
+    font-variant-numeric: tabular-nums;
+  }
+`;
+
 export const MotivoLista = styled.ul`
   display: flex;
   flex-direction: column;

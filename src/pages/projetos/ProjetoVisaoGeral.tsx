@@ -4,8 +4,10 @@ import { Download, ExternalLink, Lock, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   baixarAnexoProposta,
+  confirmarEntregaEscopo,
   DIAS_REUNIAO,
   formatarData,
   formatarDataHora,
@@ -28,7 +30,7 @@ import {
 } from "@/components/membros/MemberPicker";
 import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
-import type { BancaDoEscopo, ProjetoCompleto } from "@/types/projeto";
+import type { BancaDoEscopo, EscopoVendido, ProjetoCompleto } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
 import {
   PageStack,
@@ -42,7 +44,9 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  FieldGroup,
   FieldInput,
+  FieldLabel,
   FieldSelect,
   FieldTextarea,
   FormErrorText,
@@ -75,6 +79,7 @@ import {
   ProgressoBarra,
   ProgressoTexto,
   Cadeado,
+  EntregaCelula,
   EscopoNome,
   AtrasoCelula,
   JustificativaAtraso,
@@ -342,6 +347,16 @@ function TabelaEscopos() {
   // (O backend usa só `exigir_acesso_ao_projeto` aqui; o front não pode ser
   // mais restrito que ele, ou esconde um botão que a pessoa tem direito de ver.)
   const podeConduzir = !!usuario?.permissoes.pode_marcar_kickoff;
+  /**
+   * ⭐ Confirmar a entrega é de VÍNCULO, não de cargo: o coordenador DESTE
+   * projeto ou a diretoria. Um coordenador de outro projeto tem a mesma
+   * posição e não confirma este — por isso a comparação é com
+   * `projeto.coordenador_id`, e não com `usuario.posicao`.
+   *
+   * (O front só esconde o botão; quem recusa é o use case, que checa a equipe.)
+   */
+  const podeConfirmar =
+    !!usuario && (usuario.posicao === "diretor" || usuario.id === projeto.coordenador_id);
 
   // ⚠️ A única escrita daqui é a JUSTIFICATIVA DO ATRASO (§7.4), e ela é
   // exceção pelo mesmo motivo que o resto não é: datas de escopo — banca e
@@ -498,24 +513,14 @@ function TabelaEscopos() {
                       </TableCell>
 
                       <TableCell>
-                        {escopo.data_entrega_real ? (
-                          formatarData(escopo.data_entrega_real)
-                        ) : escopo.entrega_liberada ? (
-                          podeConduzir ? (
-                            /* Leva para o calendário em vez de gravar HOJE
-                               em silêncio: a entrega quase nunca é no dia em
-                               que alguém lembra de registrá-la, e a data certa
-                               é escolhida onde ela é vista — no Cronograma. */
-                            <PageButtonSm
-                              as={Link}
-                              to={`/projetos/${projeto.id}/cronograma`}
-                              $variant="outline"
-                            >
-                              Marcar no Cronograma
-                            </PageButtonSm>
-                          ) : (
-                            <EmptyText>liberada</EmptyText>
-                          )
+                        {escopo.data_entrega_real || escopo.entrega_liberada ? (
+                          <CelulaEntrega
+                            escopo={escopo}
+                            projetoId={projeto.id}
+                            podeConfirmar={podeConfirmar}
+                            podeConduzir={podeConduzir}
+                            onConfirmou={recarregar}
+                          />
                         ) : (
                           <Cadeado title={motivoDaTrava(escopo.banca)}>
                             <Lock size={12} />
@@ -542,6 +547,9 @@ function TabelaEscopos() {
               <br />▶ Um escopo começa a contar na <strong>reunião inicial</strong> dele: marque-a
               no <strong>Cronograma</strong>, escolhendo o escopo e clicando no dia. A banca não
               precisa estar marcada antes — é ela que precisa caber na janela que a reunião abre.
+              <br />▶ Marcar a data da entrega no Cronograma <strong>não</strong> muda o status: o
+              escopo vira <strong>Entregue</strong> quando o coordenador do projeto ou a diretoria
+              clica em <em>Confirmar entrega</em> aqui nesta tabela.
             </LegendaTabela>
           </>
         )}
@@ -564,6 +572,121 @@ function TabelaEscopos() {
         />
       )}
     </PageCard>
+  );
+}
+
+/**
+ * A célula "Entrega" de um escopo cuja banca já aprovou.
+ *
+ * ⭐ **A data não entrega o escopo — a confirmação entrega.** As duas coisas já
+ * foram uma só: marcar o dia no Cronograma virava o status na tabela. Só que
+ * marcar um dia é gesto de calendário (corrigível, clicável por engano) e o
+ * status "Entregue" é lido como uma afirmação sobre o cliente.
+ *
+ * ⚠ **Mas confirmar não exige ter marcado antes.** Exigir mandava a pessoa ao
+ * Cronograma, de volta para cá e a um segundo clique — dois gestos em duas
+ * telas para um fato só, e o botão nem aparecia enquanto isso. Quando não há
+ * data, o próprio modal pergunta o dia. O Cronograma continua sendo o caminho
+ * de quem quer VER a data contra a janela antes de cravá-la.
+ *
+ * 🔒 O botão só aparece para o coordenador do projeto e para a diretoria — e a
+ * confirmação não tem volta pela interface, por isso passa por um modal.
+ */
+function CelulaEntrega({
+  escopo,
+  projetoId,
+  podeConfirmar,
+  podeConduzir,
+  onConfirmou,
+}: {
+  escopo: EscopoVendido;
+  projetoId: number;
+  podeConfirmar: boolean;
+  podeConduzir: boolean;
+  onConfirmou: () => Promise<void> | void;
+}) {
+  const { token } = useAuth();
+  const [confirmando, setConfirmando] = useState(false);
+  // Sugerido, não cravado: a entrega quase nunca é no dia em que alguém lembra
+  // de registrá-la, mas hoje é o palpite certo na maioria das vezes.
+  const [dia, setDia] = useState(() => new Date().toISOString().slice(0, 10));
+
+  const data = escopo.data_entrega_real ? formatarData(escopo.data_entrega_real) : null;
+
+  if (escopo.entrega_confirmada_em) {
+    return (
+      <EntregaCelula>
+        {data}
+        <small title={`Confirmada em ${formatarDataHora(escopo.entrega_confirmada_em)}`}>
+          ✓ confirmada
+          {escopo.entrega_confirmada_por && ` por ${escopo.entrega_confirmada_por}`}
+        </small>
+      </EntregaCelula>
+    );
+  }
+
+  return (
+    <EntregaCelula>
+      {data}
+      {podeConfirmar ? (
+        <PageButtonSm type="button" $variant="outline" onClick={() => setConfirmando(true)}>
+          Confirmar entrega
+        </PageButtonSm>
+      ) : data ? (
+        // Quem não confirma ainda precisa saber por que a linha não diz
+        // "Entregue" — senão a data parece não ter surtido efeito.
+        <small>aguardando confirmação</small>
+      ) : podeConduzir ? (
+        <PageButtonSm as={Link} to={`/projetos/${projetoId}/cronograma`} $variant="outline">
+          Marcar no Cronograma
+        </PageButtonSm>
+      ) : (
+        <EmptyText>liberada</EmptyText>
+      )}
+
+      {confirmando && token && (
+        <ConfirmarModal
+          titulo="Confirmar a entrega deste escopo"
+          rotuloConfirmar="Confirmar entrega"
+          rotuloProcessando="Confirmando…"
+          mensagem={
+            <>
+              <p>
+                Isto marca <strong>{escopo.nome}</strong> como{" "}
+                <strong>entregue ao cliente</strong>
+                {data ? ` em ${data}.` : "."}
+              </p>
+              {!data && (
+                <FieldGroup>
+                  <FieldLabel htmlFor="dia-entrega">Dia da entrega</FieldLabel>
+                  <FieldInput
+                    id="dia-entrega"
+                    type="date"
+                    value={dia}
+                    onChange={(e) => setDia(e.target.value)}
+                  />
+                </FieldGroup>
+              )}
+              <p>
+                O status passa a valer para a diretoria e para o Monitoramento, e não há
+                como desfazer pela plataforma. Confirme só depois de a entrega ter
+                acontecido de fato.
+              </p>
+            </>
+          }
+          onCancelar={() => setConfirmando(false)}
+          onConfirmar={async () => {
+            // Manda o dia só quando não existe data: mudar entrega registrada é
+            // do §13 (diretoria + justificativa) e tem porta própria.
+            await confirmarEntregaEscopo(escopo.id, token, data ? undefined : dia);
+            setConfirmando(false);
+            // Recarrega para a linha trocar o botão pelo "✓ confirmada" e o
+            // status do escopo (e, se foi o último, o do projeto) virar junto.
+            await onConfirmou();
+          }}
+        />
+      )}
+    </EntregaCelula>
   );
 }
 
