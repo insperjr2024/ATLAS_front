@@ -118,6 +118,10 @@ function chave(item: Pick<DesempenhoFilaItem, "lote_id" | "avaliado_id">) {
   return `${item.lote_id}-${item.avaliado_id}`;
 }
 
+function chaveRascunhos(usuarioId: number) {
+  return `desempenho-rascunhos-${usuarioId}`;
+}
+
 export function AvaliacaoDesempenho() {
   const { usuario, token } = useAuth();
   const [passo, setPasso] = useState<Passo>("carregando");
@@ -142,10 +146,44 @@ export function AvaliacaoDesempenho() {
 
   // Respostas ficam salvas aqui até o envio final, dá pra reabrir e editar
   // qualquer uma antes de enviar. Só vai pro backend quando o tipo inteiro
-  // (periódica ou finalização) estiver com todo mundo respondido.
+  // (periódica ou finalização) estiver com todo mundo respondido. Espelhado
+  // no localStorage (ver os dois efeitos abaixo): sem isso, sair da tela no
+  // meio de uma fila de 4 apagava quem já tinha sido preenchido, mesmo a
+  // pessoa lendo aquilo como "já enviei essa".
   const [rascunhos, setRascunhos] = useState<Record<string, Rascunho>>({});
+  const [rascunhosCarregados, setRascunhosCarregados] = useState(false);
   const [enviandoTudo, setEnviandoTudo] = useState(false);
   const [erroEnvio, setErroEnvio] = useState("");
+
+  // Restaura rascunhos salvos de uma sessão anterior antes de qualquer outro
+  // efeito começar a espelhar `rascunhos` de volta pro localStorage, senão a
+  // primeira gravação (com o estado inicial vazio) apagaria o que já existia.
+  useEffect(() => {
+    if (!usuario) return;
+    try {
+      const salvo = localStorage.getItem(chaveRascunhos(usuario.id));
+      if (salvo) setRascunhos(JSON.parse(salvo));
+    } catch {
+      // Rascunho corrompido ou localStorage indisponível: segue do zero.
+    } finally {
+      setRascunhosCarregados(true);
+    }
+  }, [usuario?.id]);
+
+  // Espelha pro localStorage a cada mudança, é o que sobrevive a sair da
+  // tela (ou fechar a aba) no meio de uma fila de várias avaliações.
+  useEffect(() => {
+    if (!usuario || !rascunhosCarregados) return;
+    try {
+      if (Object.keys(rascunhos).length === 0) {
+        localStorage.removeItem(chaveRascunhos(usuario.id));
+      } else {
+        localStorage.setItem(chaveRascunhos(usuario.id), JSON.stringify(rascunhos));
+      }
+    } catch {
+      // Modo privado ou quota cheia: perde a persistência, não a tela.
+    }
+  }, [rascunhos, usuario, rascunhosCarregados]);
 
   const nomesProjeto = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
 
