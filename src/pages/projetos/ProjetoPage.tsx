@@ -168,6 +168,16 @@ export function ProjetoPage() {
     carregar();
   }, [carregar, location.pathname]);
 
+  // ⭐ Visitante da banca só tem uma aba. Um link antigo, o botão de voltar ou
+  // a rota-raiz do projeto o deixariam na Visão geral, que dispara chamadas que
+  // ele não pode fazer — a tela quebraria em erro em vez de dizer o que há.
+  useEffect(() => {
+    if (!projeto?.apenas_banca) return;
+    if (location.pathname !== `/projetos/${projeto.id}/banca`) {
+      navigate(`/projetos/${projeto.id}/banca`, { replace: true });
+    }
+  }, [projeto, location.pathname, navigate]);
+
   async function aplicarStatus(statusNovo: string) {
     if (!token || !projeto) return;
     setMudandoStatus(true);
@@ -394,17 +404,27 @@ export function ProjetoPage() {
         </AvisoBanner>
       )}
 
+      {/* ⭐ Visitante da banca: quem foi ESCALADO para avaliar entra aqui para
+          votar, mas o §3 não lhe dá visão do projeto. Mostrar as outras abas
+          seria oferecer cinco portas e abrir uma — as quatro restantes
+          devolvem 404. */}
       <TabBar>
-        <TabLink to={`/projetos/${projeto.id}`} end>
-          Visão geral
-        </TabLink>
-        <TabLink to={`/projetos/${projeto.id}/cronograma`}>Cronograma</TabLink>
-        {/* Depois do Cronograma: é lá que a banca é marcada, e daqui se vê
-            como ela foi. Antes de Tarefas porque a banca é marco do projeto,
-            não rotina de execução. */}
-        <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
-        <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
-        <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
+        {projeto.apenas_banca ? (
+          <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
+        ) : (
+          <>
+            <TabLink to={`/projetos/${projeto.id}`} end>
+              Visão geral
+            </TabLink>
+            <TabLink to={`/projetos/${projeto.id}/cronograma`}>Cronograma</TabLink>
+            {/* Depois do Cronograma: é lá que a banca é marcada, e daqui se vê
+                como ela foi. Antes de Tarefas porque a banca é marco do projeto,
+                não rotina de execução. */}
+            <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
+            <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
+            <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
+          </>
+        )}
       </TabBar>
 
       <Outlet context={contexto} />
