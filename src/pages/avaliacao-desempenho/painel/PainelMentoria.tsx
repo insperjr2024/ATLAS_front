@@ -50,10 +50,7 @@ import {
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   Iniciais,
-  LoteCardAcoes,
-  LoteCardHeader,
   LoteCardMeta,
-  LoteCardTitulo,
   MentoradosLista,
   MentoriaCabecalho,
   MentoriaGrupo,
@@ -450,6 +447,13 @@ function PastasPdiCard() {
     setEditErro("");
   }
 
+  function fecharEdicao() {
+    setEditandoId(null);
+    setAdicionandoItemPastaId(null);
+    setEditandoItemId(null);
+    setPendenciasItemId(null);
+  }
+
   async function handleSalvarEdicao(pastaId: number) {
     if (!token) return;
     if (!editNome.trim() || !editPrazo) {
@@ -601,50 +605,51 @@ function PastasPdiCard() {
           <PastasGrid>
             {pastas.map((pasta, index) => {
               const itens = itensPorPasta[pasta.id] ?? [];
-              const expandida = editandoId === pasta.id;
-
-              if (!expandida) {
-                return (
-                  <PastaCard key={pasta.id}>
-                    <PastaCardTopo>
-                      <PastaNumeroENome>
-                        <PastaNumero aria-hidden>{index + 1}</PastaNumero>
-                        <PastaCardTitulo>
-                          {pasta.nome}
-                          {pasta.semestre && ` (${pasta.semestre})`}
-                        </PastaCardTitulo>
-                      </PastaNumeroENome>
-                      <PageBadge $tone="muted">{ROTULO_TIPO_CURTO[pasta.tipo]}</PageBadge>
-                    </PastaCardTopo>
-                    <LoteCardMeta>
-                      Prazo: {formatarData(pasta.prazo)} · {itens.length} {itens.length === 1 ? "item" : "itens"} exigido(s)
-                    </LoteCardMeta>
-                    <div>
-                      <PageButtonSm type="button" $variant="outline" onClick={() => handleIniciarEdicao(pasta)}>
-                        Editar
-                      </PageButtonSm>
-                    </div>
-                  </PastaCard>
-                );
-              }
-
               return (
-                <PastaCard key={pasta.id} $expandido>
-                  <LoteCardHeader>
-                    <LoteCardTitulo>
-                      {pasta.nome}
-                      {pasta.semestre && ` (${pasta.semestre})`}
-                    </LoteCardTitulo>
-                    <LoteCardAcoes>
-                      <PageButtonSm type="button" $variant="outline" onClick={() => setEditandoId(null)}>
-                        Fechar
-                      </PageButtonSm>
-                      <PageButtonSm $variant="ghost" type="button" onClick={() => setParaExcluir(pasta)}>
-                        Excluir
-                      </PageButtonSm>
-                    </LoteCardAcoes>
-                  </LoteCardHeader>
+                <PastaCard key={pasta.id}>
+                  <PastaCardTopo>
+                    <PastaNumeroENome>
+                      <PastaNumero aria-hidden>{index + 1}</PastaNumero>
+                      <PastaCardTitulo>
+                        {pasta.nome}
+                        {pasta.semestre && ` (${pasta.semestre})`}
+                      </PastaCardTitulo>
+                    </PastaNumeroENome>
+                    <PageBadge $tone="muted">{ROTULO_TIPO_CURTO[pasta.tipo]}</PageBadge>
+                  </PastaCardTopo>
+                  <LoteCardMeta>
+                    Prazo: {formatarData(pasta.prazo)} · {itens.length} {itens.length === 1 ? "item" : "itens"} exigido(s)
+                  </LoteCardMeta>
+                  <div>
+                    <PageButtonSm type="button" $variant="outline" onClick={() => handleIniciarEdicao(pasta)}>
+                      Editar
+                    </PageButtonSm>
+                  </div>
+                </PastaCard>
+              );
+            })}
+          </PastasGrid>
+        )}
+      </PageCardContent>
 
+      {editandoId !== null && (() => {
+        const pasta = pastas.find((p) => p.id === editandoId);
+        if (!pasta) return null;
+        const itens = itensPorPasta[pasta.id] ?? [];
+        return (
+          <ModalOverlay onClick={fecharEdicao}>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalTitle>
+                  Editar pasta de PDI
+                  <br />
+                  <small>{pasta.nome}</small>
+                </ModalTitle>
+                <ModalClose type="button" onClick={fecharEdicao} aria-label="Fechar">
+                  <X size={16} />
+                </ModalClose>
+              </ModalHeader>
+              <ModalBody>
                   <FormStack
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -814,12 +819,19 @@ function PastasPdiCard() {
                       </PageButtonSm>
                     </div>
                   )}
-                </PastaCard>
-              );
-            })}
-          </PastasGrid>
-        )}
-      </PageCardContent>
+              </ModalBody>
+              <ModalFooter>
+                <PageButton type="button" $variant="ghost" onClick={() => setParaExcluir(pasta)}>
+                  Excluir pasta
+                </PageButton>
+                <PageButton type="button" $variant="outline" onClick={fecharEdicao}>
+                  Fechar
+                </PageButton>
+              </ModalFooter>
+            </ModalContent>
+          </ModalOverlay>
+        );
+      })()}
 
       {modalAberto && (
         <ModalOverlay onClick={() => setModalAberto(false)}>
