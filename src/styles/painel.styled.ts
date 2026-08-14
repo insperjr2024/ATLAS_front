@@ -1,5 +1,5 @@
 /**
- * O painel lateral de escolher gente — o chrome e a lista de pessoas.
+ * O painel lateral de escolher gente, o chrome e a lista de pessoas.
  *
  * Saiu de `pages/Vagas.styled.ts`, que passou a re-exportá-lo, pelo mesmo
  * motivo que `modal.styled.ts` saiu de `Calendario.styled`: a tela de criar
@@ -8,7 +8,7 @@
  *
  * Quem monta equipe usa as duas telas no mesmo dia. Se o painel de Vagas
  * ordena por carga e agrupa por frente e o de criar projeto for um `<select>`
- * alfabético, são duas réguas diferentes para a mesma decisão — e a segunda
+ * alfabético, são duas réguas diferentes para a mesma decisão, e a segunda
  * some justamente a informação que faz escolher (quem está livre).
  */
 
@@ -17,7 +17,7 @@ import { theme } from "@/styles/theme";
 
 /**
  * Painel lateral, e não modal centralizado: o que está atrás continua
- * visível enquanto se escolhe — em Vagas é a grade de projetos, em criar
+ * visível enquanto se escolhe, em Vagas é a grade de projetos, em criar
  * projeto são as frentes marcadas, que decidem quem faz sentido no time.
  */
 export const PainelOverlay = styled.div`
@@ -58,7 +58,7 @@ export const PainelLateral = styled.aside`
 /**
  * O título do painel e a linha de apoio, um sobre o outro.
  *
- * Os dois são spans inline — soltos no cabeçalho eles encostavam um no outro
+ * Os dois são spans inline, soltos no cabeçalho eles encostavam um no outro
  * e o texto saía "Fluxo Orion2 de 3 consultores". Empilhar resolve sem
  * depender de `<br>` nem de espaço fabricado.
  */
@@ -119,7 +119,7 @@ export const PainelCorpo = styled.div`
   padding: ${theme.spacing.md};
 `;
 
-/** Rodapé fixo do painel — usado quando escolher é multi e há um "pronto". */
+/** Rodapé fixo do painel, usado quando escolher é multi e há um "pronto". */
 export const PainelRodape = styled.footer`
   display: flex;
   align-items: center;
@@ -150,7 +150,7 @@ export const PainelGrupoTitulo = styled.h4`
  *
  * Cada pessoa ocupa DUAS linhas e nada mais: o nome e uma linha de apoio em
  * texto corrido. A versão anterior empilhava carga, pílula de situação,
- * posição e "pediu" como quatro etiquetas soltas na mesma linha — quatro
+ * posição e "pediu" como quatro etiquetas soltas na mesma linha, quatro
  * caixas coloridas por pessoa, vinte pessoas, e a única coisa que a tela
  * precisava responder ("quem está mais livre?") sumia no meio.
  *
@@ -184,7 +184,7 @@ export const CandidatoTopo = styled.div`
  *
  * Botão de verdade, com aparência de texto: precisa de teclado e de
  * `aria-expanded`, e um `span` com `onClick` não dá nenhum dos dois. A seta
- * é o que avisa que há algo a abrir — sem ela a única pista seria o cursor,
+ * é o que avisa que há algo a abrir, sem ela a única pista seria o cursor,
  * que não existe no celular.
  */
 export const BotaoDeTexto = styled.button`
@@ -249,7 +249,7 @@ export const CandidatoMeta = styled.span`
 
 /**
  * A situação dentro da linha de apoio. A cor reforça, mas quem carrega o
- * significado é a palavra — "Carga alta" continua legível em preto e branco,
+ * significado é a palavra, "Carga alta" continua legível em preto e branco,
  * e por isso ela é `<strong>` e não um ponto colorido.
  */
 export const CandidatoSituacao = styled.strong<{ $tom: "ok" | "atencao" | "alerta" | "neutro" }>`

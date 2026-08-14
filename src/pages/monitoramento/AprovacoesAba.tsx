@@ -1,50 +1,49 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getAprovacoes, type Aprovacoes } from "@/lib/monitoramento";
-import { formatarData } from "@/lib/projetos";
+import { AtrasosSemJustificativaCard } from "./AtrasosSemJustificativaCard";
+import { BancasSemResultadoCard } from "./BancasSemResultadoCard";
+import { EntradasEmProjetoCard } from "./EntradasEmProjetoCard";
 import { ExcecoesDeChoqueCard } from "./ExcecoesDeChoqueCard";
 import { PedidosDeDiasCard } from "./PedidosDeDiasCard";
 import {
   PageStack,
-  PageCard,
-  PageCardHeader,
-  PageCardTitle,
-  PageCardContent,
   PageButton,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
-import { ItemLista, LinkProjeto, ListaSimples, Pilula } from "./Monitoramento.styled";
+import { FaixaResumo, ResumoItem, ResumoRotulo, ResumoValor } from "./Monitoramento.styled";
 
 /**
- * ⭐ A fila da diretoria — tudo que espera decisão dela, num lugar só.
+ * A fila da diretoria, tudo que espera decisão dela, num lugar só.
  *
  * O problema que esta aba resolve não é de dado, é de descoberta. As decisões
  * estavam espalhadas: o pedido de dias num card da Visão geral e a
  * justificativa de atraso dentro da aba Atrasos. Fila que ninguém sabe que
- * existe é fila parada — dois pedidos chegaram a ficar represados sem ninguém
- * notar.
+ * existe é fila parada.
  *
- * ⚠ **Nem toda ação restrita à diretoria é uma aprovação.** Criar formulário,
+ * **Nem toda ação restrita à diretoria é uma aprovação.** Criar formulário,
  * configurar coluna do kanban e excluir usuário também são só dela, e nenhuma
  * entra aqui: são coisas que ela FAZ quando quer, não coisas que esperam por
  * ela. O critério é ter alguém do outro lado bloqueado enquanto não houver
  * resposta.
  *
  * ⭐ **As cinco filas aparecem sempre, mesmo vazias.** Uma tela que só surge
- * quando há problema não ensina o que ela cobre — e era isso que acontecia
- * quando tudo resolvido virava um único "Nada esperando por você".
+ * quando há problema não ensina o que ela cobre.
  *
- * Três delas **não decidem aqui**: levam ao lugar onde a decisão tem
- * contexto. Justificar um atraso sem ver os motivos, aceitar alguém sem ver a
- * carga dele, ou dar veredito sem ver a banca é decidir no escuro. A aba
- * responde "o que falta?"; a tela de destino responde "por quê?". Só o pedido
- * de dias e a exceção de choque se decidem na própria lista, porque o motivo
- * escrito (e, no choque, com qual banca ela conflita) é todo o contexto de que
- * a decisão precisa.
+ * ⭐ **As cinco decidem AQUI.** Três delas mandavam a pessoa para outra tela —
+ * o projeto, Vagas, Bancas — com o argumento de que decidir sem contexto é
+ * decidir no escuro. O argumento estava certo e a conclusão errada: o
+ * caminho não era exportar a decisão, era importar o contexto. Cada linha
+ * agora carrega o que a pessoa iria ver do outro lado (a urna da banca, a
+ * carga de quem pediu, o motivo do atraso com escopo e dias), e as cinco
+ * rotas de decisão já existiam — nenhuma foi criada para isto.
+ *
+ * ⚠ **A ordem dos cards é por custo de ficar parado**, não alfabética nem
+ * histórica. O choque de horário vem primeiro porque é o único que APODRECE:
+ * passado o horário pretendido, a decisão não destrava mais nada.
  */
 export function AprovacoesAba() {
   const { token } = useAuth();
@@ -82,16 +81,48 @@ export function AprovacoesAba() {
 
   if (carregando || !dados) return <PageLoadingBlock />;
 
-  // ⭐ **As quatro filas aparecem SEMPRE, mesmo vazias.**
-  //
-  // Antes, com tudo resolvido, a aba inteira era substituída por um card
-  // "Nada esperando por você". Isso escondia o que a tela cobre: quem abrisse
-  // num dia calmo não tinha como saber que ela também vigia solicitações de
-  // entrada ou bancas sem resultado. Fila que só existe quando há problema não
-  // ensina ninguém a confiar nela — e o vazio de cada card já diz "aqui está
-  // limpo" com mais precisão do que um vazio único dizia.
+  // Na ordem em que os cards aparecem — a faixa é o índice da página.
+  const filas = [
+    { rotulo: "Choques de horário", n: dados.excecoes_de_choque.length, id: "fila-choque" },
+    { rotulo: "Dias de ajuste", n: dados.dias_de_ajuste.length, id: "fila-dias" },
+    { rotulo: "Bancas sem veredito", n: dados.bancas_sem_resultado.length, id: "fila-bancas" },
+    { rotulo: "Pedidos de entrada", n: dados.solicitacoes_de_entrada.length, id: "fila-entradas" },
+    { rotulo: "Atrasos sem porquê", n: dados.atrasos_sem_justificativa.length, id: "fila-atrasos" },
+  ];
+
   return (
     <PageStack>
+      {/* ⭐ "Quantos, sem rolar". A página tem cinco cards e cresce com a fila;
+          sem a faixa, saber se há algo esperando exigia percorrer a tela
+          inteira. Os números ficam NEUTROS de propósito — a mesma decisão da
+          aba Atrasos: contagem é volume, não gravidade, e tingi-la faria a
+          cor competir com a régua de severidade que vive dentro dos cards. */}
+      <FaixaResumo>
+        {filas.map((f) => (
+          <ResumoItem key={f.id}>
+            <ResumoValor>
+              <a href={`#${f.id}`}>{f.n}</a>
+            </ResumoValor>
+            <ResumoRotulo>{f.rotulo}</ResumoRotulo>
+          </ResumoItem>
+        ))}
+      </FaixaResumo>
+
+      {dados.total === 0 && (
+        <EmptyText>Nada esperando por você. As cinco filas estão limpas.</EmptyText>
+      )}
+
+      <ExcecoesDeChoqueCard itens={dados.excecoes_de_choque} onDecidiu={carregar} />
+      <PedidosDeDiasCard itens={dados.dias_de_ajuste} onDecidiu={carregar} />
+      <BancasSemResultadoCard itens={dados.bancas_sem_resultado} onDecidiu={carregar} />
+      <EntradasEmProjetoCard itens={dados.solicitacoes_de_entrada} onDecidiu={carregar} />
+      <AtrasosSemJustificativaCard itens={dados.atrasos_sem_justificativa} onDecidiu={carregar} />
+
+      {/* ⚠ Havia aqui um card "Entregas sem classificação": as entregas
+          atrasadas ainda não marcadas como atraso interno ou por agenda do
+          cliente. Saiu em 2026-08-12 junto com o que lhe dava sentido — o
+          atraso de ENTREGA deixou de ser insight, e com ele a métrica que
+          separava os dois tipos. */}
       {/* Decide na própria lista: o pedido traz o motivo escrito, que é todo o
           contexto de que a decisão precisa. */}
       <PedidosDeDiasCard onDecidiu={carregar} />
@@ -111,8 +142,8 @@ export function AprovacoesAba() {
           ) : (
             <>
               <EmptyText style={{ marginBottom: "0.75rem" }}>
-                §7.4: o alerta de atraso é automático, mas o motivo é você quem escreve — e é ele
-                que explica o vermelho para quem olha o portfólio depois.
+                O alerta de atraso é automático, mas o motivo é você quem escreve, e é ele que
+                explica o vermelho para quem olha o portfólio depois.
               </EmptyText>
               <ListaSimples>
                 {dados.atrasos_sem_justificativa.map((a) => (
@@ -134,85 +165,12 @@ export function AprovacoesAba() {
         </PageCardContent>
       </PageCard>
 
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>
-            Solicitações de entrada em projeto
-            {dados.solicitacoes_de_entrada.length > 0 &&
-              ` (${dados.solicitacoes_de_entrada.length})`}
-          </PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          {dados.solicitacoes_de_entrada.length === 0 ? (
-            <EmptyText>Ninguém esperando para entrar num projeto.</EmptyText>
-          ) : (
-            <>
-              <EmptyText style={{ marginBottom: "0.75rem" }}>
-                Quem pediu para entrar fica parado até alguém responder, e a vaga segue
-                aberta. Responder é em <strong>Vagas em projetos</strong>, onde dá para ver
-                a carga de quem pediu.
-              </EmptyText>
-              <ListaSimples>
-                {dados.solicitacoes_de_entrada.map((s) => (
-                  <ItemLista key={s.id}>
-                    <div>
-                      <LinkProjeto as={Link} to="/vagas">
-                        {s.usuario_nome ?? "Alguém"} → {s.projeto_nome}
-                      </LinkProjeto>
-                      <EmptyText>{s.justificativa}</EmptyText>
-                    </div>
-                    {/* A carga é o contexto da decisão: aceitar alguém que já
-                        está em quatro projetos é outra conversa. */}
-                    <Pilula $tom="neutro">
-                      {s.carga_do_solicitante}{" "}
-                      {s.carga_do_solicitante === 1 ? "projeto" : "projetos"}
-                    </Pilula>
-                  </ItemLista>
-                ))}
-              </ListaSimples>
-            </>
-          )}
-        </PageCardContent>
-      </PageCard>
-
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>
-            Bancas sem resultado
-            {dados.bancas_sem_resultado.length > 0 && ` (${dados.bancas_sem_resultado.length})`}
-          </PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          {dados.bancas_sem_resultado.length === 0 ? (
-            <EmptyText>Toda banca realizada já tem o veredito registrado.</EmptyText>
-          ) : (
-            <>
-              <EmptyText style={{ marginBottom: "0.75rem" }}>
-                A banca aconteceu e ninguém registrou se foi aprovada. O registro é na tela
-                de <strong>Bancas</strong>.
-              </EmptyText>
-              <ListaSimples>
-                {dados.bancas_sem_resultado.map((b) => (
-                  <ItemLista key={b.banca_id}>
-                    <div>
-                      <LinkProjeto as={Link} to="/bancas">
-                        {b.projeto_nome} — {b.escopo_nome}
-                      </LinkProjeto>
-                      <EmptyText>realizada em {formatarData(b.realizado_em)}</EmptyText>
-                    </div>
-                  </ItemLista>
-                ))}
-              </ListaSimples>
-            </>
-          )}
-        </PageCardContent>
-      </PageCard>
-
-      {/* ⚠ Havia aqui um card "Entregas sem classificação": as entregas
-          atrasadas ainda não marcadas como atraso interno ou por agenda do
-          cliente. Saiu em 2026-08-12 junto com o que lhe dava sentido — o
-          atraso de ENTREGA deixou de ser insight, e com ele a métrica que
-          separava os dois tipos. */}
+      {/* Havia aqui um terceiro card, "Entregas sem classificação": as
+          entregas atrasadas ainda não marcadas como atraso interno ou por
+          agenda do cliente. Saiu em 2026-08-12 junto com o que lhe dava
+          sentido, o atraso de ENTREGA deixou de ser insight, e com ele a
+          métrica que separava os dois tipos. O card seguia pedindo à diretoria
+          uma classificação que não mudava mais número nenhum. */}
     </PageStack>
   );
 }

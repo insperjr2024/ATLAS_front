@@ -63,7 +63,7 @@ import {
   SecaoTitulo,
 } from "./ProjetoNovo.styled";
 
-/** Duas ou mais frentes tornam o projeto sinérgico — mesmo critério do
+/** Duas ou mais frentes tornam o projeto sinérgico, mesmo critério do
  *  backend em `get_projeto` (`len(frentes) > 1`). Não há teto de frentes. */
 const MIN_FRENTES_SINERGICO = 2;
 
@@ -95,17 +95,17 @@ function BlocoSecao({
 }
 
 /**
- * O cadastro do §6.3.
+ * O cadastro do projeto.
  *
- * ⚠ Kickoff **não** entra aqui: o projeto nasce Vendido, sem data. Ela é
+ * Kickoff **não** entra aqui: o projeto nasce Vendido, sem data. Ela é
  * marcada depois, na página do projeto, e é isso que dispara a mudança de
  * status.
  *
  * A **equipe é opcional** (2026-08-13). Antes o formulário exigia coordenador
  * e pelo menos um consultor, e isso invertia a ordem real das coisas: o
  * projeto é vendido antes de o time existir. Quem cadastrava punha nomes de
- * mentira só para conseguir salvar — e esses nomes ficavam no histórico de
- * participação, que o §10 não deixa reescrever. O time entra depois, em
+ * mentira só para conseguir salvar, e esses nomes ficavam no histórico de
+ * participação, que as regras de histórico não deixam reescrever. O time entra depois, em
  * Vagas ou na Visão geral, e o mesmo painel lateral de Vagas serve aqui.
  */
 export function ProjetoNovo() {
@@ -178,7 +178,7 @@ export function ProjetoNovo() {
     setFrenteIds((atual) => {
       if (atual.includes(id)) {
         const novas = atual.filter((x) => x !== id);
-        // Desmarcar a frente tem que levar os escopos dela junto — senão o
+        // Desmarcar a frente tem que levar os escopos dela junto, senão o
         // formulário envia um escopo de uma frente que o projeto não tem
         // mais, e o backend recusa com uma mensagem confusa.
         setEscopos((lista) => lista.filter((e) => novas.includes(e.frente_id)));
@@ -221,7 +221,7 @@ export function ProjetoNovo() {
       setErro(erroEscopos);
       return;
     }
-    // Equipe vazia passa — o que ainda é erro é a mesma pessoa nos dois
+    // Equipe vazia passa, o que ainda é erro é a mesma pessoa nos dois
     // papéis. Ver `validarEquipe`.
     const erroEquipe = validarEquipe(equipe);
     if (erroEquipe) {
@@ -236,7 +236,7 @@ export function ProjetoNovo() {
     let projetoId = projetoCriadoId;
     try {
       // Se o projeto já foi criado numa tentativa anterior (e só o upload do
-      // anexo falhou), não cria de novo — só reenvia o anexo.
+      // anexo falhou), não cria de novo, só reenvia o anexo.
       if (!projetoId) {
         const projeto = await createProjeto(
           {
@@ -377,7 +377,7 @@ export function ProjetoNovo() {
               {/* Só quando acontece. A instrução ("marque quantas frentes o
                   projeto tiver") saiu junto com as outras descrições de campo;
                   isto aqui não descreve o campo, avisa uma consequência que
-                  muda o projeto de categoria — sem teto de frentes,
+                  muda o projeto de categoria, sem teto de frentes,
                   "sinérgico" é ">= 2", o mesmo critério do `get_projeto`. */}
               {sinergico && (
                 <CampoAjuda>
@@ -425,7 +425,7 @@ export function ProjetoNovo() {
                 />
               </FieldGroup>
 
-              {/* ⭐ A data combinada com o cliente, registrada já na venda —
+              {/* A data combinada com o cliente, registrada já na venda,
                   é aqui que ela é conhecida. Sem obrigatoriedade: nem toda
                   venda fecha com data, e travar o cadastro por isso empurraria
                   quem cria a inventar um valor. */}
@@ -492,7 +492,7 @@ export function ProjetoNovo() {
 
             {/* Logo abaixo da escolha: serve para rever o time ANTES de
                 fechar, não para descobrir o problema depois. Some sozinho com
-                menos de 2 consultores — a comparação é entre pessoas, e o
+                menos de 2 consultores, a comparação é entre pessoas, e o
                 próprio componente já devolve `null` nesse caso. */}
             <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={usuarios} />
           </BlocoSecao>

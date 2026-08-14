@@ -57,7 +57,7 @@ const TODAS = "__todas__";
 /** O padrão: só quem já atua nas frentes marcadas no formulário. */
 const DO_PROJETO = "__do_projeto__";
 
-/** "Ana Souza" -> "AS". Duas letras no máximo — três já não cabem no círculo. */
+/** "Ana Souza" -> "AS". Duas letras no máximo, três já não cabem no círculo. */
 function iniciais(nome: string) {
   const partes = nome.trim().split(/\s+/);
   const primeira = partes[0]?.[0] ?? "";
@@ -66,8 +66,8 @@ function iniciais(nome: string) {
 }
 
 /**
- * A carga entra no rótulo para a alocação ser decidida sem sair da tela —
- * 3+ projetos é o limiar de gargalo do §7.3.
+ * A carga entra no rótulo para a alocação ser decidida sem sair da tela,
+ * 3+ projetos é o limiar de gargalo.
  */
 function metaDe(usuario: UsuarioResumo) {
   const total = usuario.projetos_alocados;
@@ -115,7 +115,7 @@ function agruparPorFrente(
 
 interface PainelProps {
   papel: Papel;
-  /** Já elegíveis por posição — o painel não reimplementa a regra do §6.3. */
+  /** Já elegíveis por posição, o painel não reimplementa a regra. */
   opcoes: UsuarioResumo[];
   frentes: Frente[];
   frenteIdsProjeto: number[];
@@ -126,13 +126,13 @@ interface PainelProps {
 }
 
 /**
- * O painel lateral de escolher gente — o mesmo de Vagas (§7.3), agora também
+ * O painel lateral de escolher gente, o mesmo de Vagas, agora também
  * na criação do projeto.
  *
  * O que ele tem e o `<select>` anterior não tinha: ordem por carga, grupos
  * por frente e busca por nome. Numa lista de quarenta pessoas em ordem
  * alfabética, "quem está livre na Business?" só se responde abrindo outra
- * tela — que é exatamente o que fazia a equipe ser preenchida no chute.
+ * tela, que é exatamente o que fazia a equipe ser preenchida no chute.
  */
 function PainelEscolherPessoa({
   papel,
@@ -278,7 +278,7 @@ function PainelEscolherPessoa({
                             onClick={() => {
                               onAlternar(pessoa.id);
                               // Coordenador é um só: escolhido, não há mais
-                              // nada a fazer aqui. Consultor é lista — o
+                              // nada a fazer aqui. Consultor é lista, o
                               // painel fica aberto para montar o time inteiro
                               // numa passada só.
                               if (ehCoordenador && !escolhido) onFechar();
@@ -320,7 +320,7 @@ interface EquipeCampoProps {
   usuariosFrentes: UsuarioFrente[];
   frentes: Frente[];
   frenteIdsProjeto: number[];
-  /** O teto de consultores do projeto — vira "2 de 3" no cabeçalho do bloco. */
+  /** O teto de consultores do projeto, vira "2 de 3" no cabeçalho do bloco. */
   maxConsultores?: number;
   valor: EquipeSelecionada;
   onChange: (valor: EquipeSelecionada) => void;
@@ -328,12 +328,12 @@ interface EquipeCampoProps {
 }
 
 /**
- * A equipe no formulário de criar projeto — **opcional** (2026-08-13).
+ * A equipe no formulário de criar projeto, **opcional** (2026-08-13).
  *
  * Antes o cadastro exigia coordenador e pelo menos um consultor, e isso
  * invertia a ordem real: o projeto é vendido antes de o time existir. Quem
  * cadastrava punha nomes de mentira para o formulário passar, e esses nomes
- * ficavam no histórico de participação, que o §10 não deixa reescrever.
+ * ficavam no histórico de participação, que as regras de histórico não deixam reescrever.
  * Agora os dois blocos podem ficar vazios e o time é montado depois, em
  * Vagas ou na Visão geral do projeto.
  */
@@ -417,8 +417,8 @@ export function EquipeCampo({
     );
   }
 
-  // O teto conta só consultor (o coordenador entra por fora, §6.2), e é o
-  // mesmo campo "Máximo de consultores" logo acima no formulário — mostrar
+  // O teto conta só consultor (o coordenador entra por fora), e é o
+  // mesmo campo "Máximo de consultores" logo acima no formulário, mostrar
   // "2 de 3" aqui é o que liga um ao outro sem texto explicativo.
   const acimaDoTeto = maxConsultores !== undefined && consultorIds.length > maxConsultores;
 

@@ -58,7 +58,7 @@ function corPorNota(nota: number): "danger" | "default" {
   return nota < 3 ? "danger" : "default";
 }
 
-/** Vermelho abaixo do esperado, âmbar no meio, verde acima — mesma leitura
+/** Vermelho abaixo do esperado, âmbar no meio, verde acima, mesma leitura
  *  rápida de "isso é bom ou ruim" da escala 1-5 do formulário de origem. */
 function corDaNota(nota: number): string {
   if (nota < 3) return theme.colors.destructive;
@@ -125,12 +125,13 @@ export function PainelAvaliadores() {
   const tipoPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.tipo])), [lotes]);
   const projetoIdsPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.projeto_ids])), [lotes]);
   const nomeProjetoPorId = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
+  const projetoPorId = useMemo(() => new Map(projetos.map((p) => [p.id, p])), [projetos]);
   const semestrePorUsuario = useMemo(
     () => new Map(usuarios.map((u) => [u.id, u.semestre_graduacao])),
     [usuarios],
   );
 
-  // Só a(s) frente(s) que a PESSOA integra hoje (`usuario_frente`) — nunca a
+  // Só a(s) frente(s) que a PESSOA integra hoje (`usuario_frente`), nunca a
   // união das frentes dos projetos que ela avaliou/foi avaliada, que pode
   // juntar frentes de rodadas diferentes e não bate com "a pessoa está em
   // 1 ou 2 frentes, nunca mais".
@@ -144,13 +145,23 @@ export function PainelAvaliadores() {
     return mapa;
   }, [usuariosFrentes]);
 
-  function projetosDoLote(loteId: number): string {
-    const ids = projetoIdsPorLote.get(loteId) ?? [];
-    return ids.map((id) => nomeProjetoPorId.get(id)).filter(Boolean).join(", ") || "—";
+  // O lote cobre MUITOS projetos (a rodada inteira), mas uma avaliação é
+  // sempre sobre um par específico, o que se quer mostrar é só o(s)
+  // projeto(s) que ligam avaliador e avaliado (mesmo projeto, um como
+  // coordenador e o outro como consultor), não a lista inteira da rodada.
+  function projetosDaAvaliacao(a: DesempenhoAvaliacao): string {
+    const idsDoLote = projetoIdsPorLote.get(a.lote_id) ?? [];
+    const comuns = idsDoLote.filter((id) => {
+      const projeto = projetoPorId.get(id);
+      if (!projeto) return false;
+      const membros = new Set([projeto.coordenador_id, ...projeto.consultor_ids]);
+      return membros.has(a.avaliador_id) && membros.has(a.avaliado_id);
+    });
+    return comuns.map((id) => nomeProjetoPorId.get(id)).filter(Boolean).join(", ") || "—";
   }
 
   // O resumo de contexto que aparece do lado do nome: a frente que a pessoa
-  // integra hoje e o semestre da graduação dela — atributos DA PESSOA, não
+  // integra hoje e o semestre da graduação dela, atributos DA PESSOA, não
   // da rodada de avaliação.
   function resumoContexto(pessoaId: number): string {
     const frentesPessoa = frentesDoUsuario(usuariosFrentes, frentes, pessoaId);
@@ -172,7 +183,7 @@ export function PainelAvaliadores() {
       grupos.set(a.avaliador_id, lista);
     }
     // O filtro de frente/semestre é sobre QUEM avaliou, não sobre a
-    // avaliação em si — aplicado depois de agrupar, senão um filtro
+    // avaliação em si, aplicado depois de agrupar, senão um filtro
     // removeria linhas individuais e deixaria o grupo com contagem errada.
     return Array.from(grupos.entries())
       .filter(([avaliadorId]) => {
@@ -278,7 +289,7 @@ export function PainelAvaliadores() {
                             <span>
                               {nomes.get(a.avaliado_id) ?? `Usuário ${a.avaliado_id}`}
                               {" · "}
-                              {projetosDoLote(a.lote_id)}
+                              {projetosDaAvaliacao(a)}
                               {" · "}
                               {formatarData(a.criado_em)}
                             </span>

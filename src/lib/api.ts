@@ -4,6 +4,38 @@ interface ApiOptions extends RequestInit {
   token?: string | null;
 }
 
+/**
+ * A recusa da API, com o código da regra quando ela tem um.
+ *
+ * ⭐ **Quem precisa REAGIR a uma recusa específica olha o `codigo`, nunca o
+ * texto.** A mensagem é escrita para a pessoa e muda de redação junto com a
+ * regra; o código é contrato.
+ *
+ * Não é preciosismo — já quebrou duas telas. O modal de realizar banca e a
+ * aba Banca do projeto reconheciam a recusa de composição procurando trechos
+ * dentro da mensagem ("Composição incompleta", depois "mínimo"). Quando o
+ * piso por frente saiu do §8 e a frase mudou, as duas pararam de oferecer o
+ * "registrar assim mesmo" — a plataforma recusava e não dava saída nenhuma
+ * para a diretoria.
+ *
+ * Continua sendo um `Error`, então todo `catch (e) { e.message }` que já
+ * existe segue funcionando sem saber que o código existe.
+ */
+export class ErroDaApi extends Error {
+  readonly codigo?: string;
+
+  constructor(mensagem: string, codigo?: string) {
+    super(mensagem);
+    this.name = "ErroDaApi";
+    this.codigo = codigo;
+  }
+}
+
+/** O código da recusa, quando houver — `undefined` para qualquer outro erro. */
+export function codigoDoErro(erro: unknown): string | undefined {
+  return erro instanceof ErroDaApi ? erro.codigo : undefined;
+}
+
 function formatApiDetail(detail: unknown): string {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) {
@@ -56,7 +88,7 @@ export async function apiFetch<T>(endpoint: string, options: ApiOptions = {}): P
     const mensagem = formatApiDetail(erro?.detail);
 
     // O JWT tem prazo (ACCESS_TOKEN_EXPIRE_MINUTES, hoje 7 dias) e o
-    // AuthContext só revalida no mount — sem isto, uma sessão que expira no
+    // AuthContext só revalida no mount, sem isto, uma sessão que expira no
     // meio do uso deixa a pessoa presa numa página mostrando "Token inválido
     // ou expirado" em vez de voltar pro login pra entrar de novo. O caminho
     // normal é este 401 nunca acontecer: `/auth/renovar` estende o prazo a
@@ -78,7 +110,14 @@ export async function apiFetch<T>(endpoint: string, options: ApiOptions = {}): P
     // /bancas/7/realizar` diz à pessoa exatamente nada, e ainda sugere que ela
     // errou o preenchimento. O endpoint continua no console, para quem vai
     // depurar; na tela vai o que dá para fazer a respeito.
-    if (mensagem) throw new Error(mensagem);
+    if (mensagem) {
+      const detalhe = erro?.detail;
+      const codigo =
+        detalhe && typeof detalhe === "object" && "codigo" in detalhe
+          ? String((detalhe as { codigo: unknown }).codigo)
+          : undefined;
+      throw new ErroDaApi(mensagem, codigo);
+    }
 
     console.error(`Erro ${response.status} em ${endpoint}`);
     throw new Error(
@@ -92,3 +131,12 @@ export async function apiFetch<T>(endpoint: string, options: ApiOptions = {}): P
   if (response.status === 204) return null as T;
   return response.json();
 }
+
+/**
+ * Os códigos de recusa que a interface reconhece.
+ *
+ * ⚠ Espelham as constantes de `src/utils/exceptions.py` no backend. São
+ * poucos de propósito: só entra aqui a recusa a que alguma tela REAGE, e não
+ * toda regra que existe — as outras 200 só precisam ser exibidas.
+ */
+export const CODIGO_BANCA_ABAIXO_DO_MINIMO = "banca_abaixo_do_minimo";

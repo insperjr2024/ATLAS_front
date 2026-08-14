@@ -6,7 +6,7 @@ export function getSolicitacoesTroca(token: string) {
 }
 
 /**
- * `usuarioConvidadoId` — nulo abre pro pool de elegíveis (comportamento de
+ * `usuarioConvidadoId`, nulo abre pro pool de elegíveis (comportamento de
  * sempre); preenchido manda um convite direto pra essa pessoa, e só ela
  * pode confirmar (o backend garante isso, ver `confirmar_solicitacao_troca`).
  */

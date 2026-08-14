@@ -45,7 +45,7 @@ export const theme = {
     success: 'hsl(142, 71%, 45%)',
     successForeground: 'hsl(0, 0%, 100%)',
 
-    // Warning — atenção: o texto sobre warning é ESCURO, não branco
+    // Warning, atenção: o texto sobre warning é ESCURO, não branco
     warning: 'hsl(38, 92%, 50%)',
     warningForeground: 'hsl(0, 0%, 10%)',
 

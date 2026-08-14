@@ -44,7 +44,6 @@ import { PainelAvaliados } from "@/pages/avaliacao-desempenho/painel/PainelAvali
 import { PainelRelatorio } from "@/pages/avaliacao-desempenho/painel/PainelRelatorio";
 import { PainelLotes } from "@/pages/avaliacao-desempenho/painel/PainelLotes";
 import { PainelMentoria } from "@/pages/avaliacao-desempenho/painel/PainelMentoria";
-import { PainelPdi } from "@/pages/avaliacao-desempenho/painel/PainelPdi";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 import { CronogramasGeraisAba } from "@/pages/monitoramento/CronogramasGeraisAba";
@@ -54,7 +53,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* 🏠 A home é /projetos: é o que a pessoa abre todo dia. */}
+          {/* A home é /projetos: é o que a pessoa abre todo dia. */}
           <Route path="/" element={<Navigate to="/projetos" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
@@ -63,8 +62,8 @@ export default function App() {
               logar. Caindo no `*` iria para /projetos e de lá para /login. */}
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
           <Route element={<PrivateRoute />}>
-            {/* ⭐ Primeiro acesso: dentro do PrivateRoute (exige sessão) e
-                FORA do Layout — quem ainda não definiu a senha não deve ver o
+            {/* Primeiro acesso: dentro do PrivateRoute (exige sessão) e
+                FORA do Layout, quem ainda não definiu a senha não deve ver o
                 menu de uma plataforma que o backend recusa a servir. */}
             <Route path="/definir-senha" element={<DefinirSenha />} />
             <Route element={<Layout />}>
@@ -72,15 +71,15 @@ export default function App() {
               <Route path="/bancas" element={<Bancas />} />
                 <Route path="/meu-perfil" element={<MeuPerfil />} />
                 <Route path="/vagas" element={<Vagas />} />
-              {/* /calendario agora agrega os 4 tipos (§6.5); a visão
+              {/* /calendario agora agrega os 4 tipos; a visão
                   só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
-              {/* /calendario agrega os 4 tipos (§6.5); a página só-de-bancas
-                  foi removida — o filtro "Banca" aqui já cobre o mesmo caso
-                  de uso (§8: "calendário pra não sobrepor horários") sem
+              {/* /calendario agrega os 4 tipos; a página só-de-bancas
+                  foi removida, o filtro "Banca" aqui já cobre o mesmo caso
+                  de uso ("calendário pra não sobrepor horários") sem
                   duplicar a tela. */}
               <Route path="/calendario" element={<CalendarioGeral />} />
 
-              {/* 🔔 §6.6 — sem guard: todo perfil tem notificação. O que muda
+              {/* Sem guard: todo perfil tem notificação. O que muda
                   é o conteúdo, e quem recorta isso é o backend. */}
               <Route path="/notificacoes" element={<Notificacoes />} />
 
@@ -90,7 +89,7 @@ export default function App() {
                   já checava (`require_pode_criar_projeto`). Guard por posição
                   aqui travava quem tinha a caixa delegada sem ser
                   diretor/gerente: via o botão, clicava, e caía numa rota que
-                  não deixava entrar. "Arquivados" não é rota própria — é só a
+                  não deixava entrar. "Arquivados" não é rota própria, é só a
                   mesma <ProjetosList /> com outro recorte de conteúdo
                   (?modo=arquivados), travada por dentro com a permissão
                   `arquivar_projeto`. */}
@@ -107,8 +106,8 @@ export default function App() {
                 <Route path="historico" element={<ProjetoHistorico />} />
               </Route>
 
-              {/* §7: monitoramento é por CARGO (`pode_ver_monitoramento`), não
-                  por posição — mesma caixa que a Sidebar já lê pra decidir se
+              {/* monitoramento é por CARGO (`pode_ver_monitoramento`), não
+                  por posição, mesma caixa que a Sidebar já lê pra decidir se
                   mostra o link. Guardar por posição aqui deixava o link
                   visível pra quem tivesse a permissão de cargo mas não fosse
                   literalmente diretor/gerente, e a rota chutava pra
@@ -116,7 +115,7 @@ export default function App() {
               <Route element={<AdminRoute permissao="pode_ver_monitoramento" />}>
                 <Route path="/monitoramento" element={<MonitoramentoLayout />}>
                   <Route index element={<VisaoGeralAba />} />
-                  {/* 🔒 Só a diretoria decide (§3) — o backend cobra
+                  {/* Só a diretoria decide, o backend cobra
                       `require_diretor` na rota; o guard aqui evita a tela
                       vazia com 403 para quem chega pela URL. */}
                   <Route path="aprovacoes" element={<AprovacoesAba />} />
@@ -130,7 +129,7 @@ export default function App() {
                 </Route>
               </Route>
 
-              {/* Avaliação de Desempenho (periódica/finalização) — não
+              {/* Avaliação de Desempenho (periódica/finalização), não
                   confundir com /avaliacoes (feedback de banca) nem com
                   /dashboard (Desempenho.tsx, % de bancas atendidas). */}
               <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenho />} />
@@ -150,11 +149,10 @@ export default function App() {
                   <Route path="relatorio" element={<PainelRelatorio />} />
                   <Route path="lotes" element={<PainelLotes />} />
                   <Route path="mentoria" element={<PainelMentoria />} />
-                  <Route path="pdi" element={<PainelPdi />} />
                 </Route>
               </Route>
 
-              {/* Fora do shell do painel acima — sem o TabBar do resto do
+              {/* Fora do shell do painel acima, sem o TabBar do resto do
                   painel. Editar os formulários é mais sensível que administrar
                   lotes/mentoria/pdi (muda o que todo mundo é avaliado), então
                   tem caixa de cargo própria. */}
@@ -167,8 +165,8 @@ export default function App() {
               <Route element={<FormularioRoute />}>
                 <Route path="/avaliacoes" element={<Avaliacoes />} />
               </Route>
-              {/* Config edita as permissões de qualquer posição — inclusive
-                  esta mesma caixa —, então é a mais sensível das 4
+              {/* Config edita as permissões de qualquer posição, inclusive
+                  esta mesma caixa, então é a mais sensível das 4
                   estendidas. Calendários base entrou junto por já viver na
                   mesma trava antes. */}
               <Route element={<AdminRoute permissao="pode_administrar_configuracoes" />}>

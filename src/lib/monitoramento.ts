@@ -6,16 +6,16 @@ import type { CronogramaResposta } from "@/types/cronograma";
 /* Os tipos espelham `use_cases/monitoramento/monitoramento.py`. */
 
 /**
- * O que faz um projeto pedir atenção (§7.1).
+ * O que faz um projeto pedir atenção.
  *
- * ⚠ `entrega_interna` e `entrega_externa` saíram em 2026-08-12: o atraso da
+ * `entrega_interna` e `entrega_externa` saíram em 2026-08-12: o atraso da
  * ENTREGA ao cliente deixou de ser insight. Ele media a agenda do cliente e não
  * o trabalho do time, e deixava vermelho um projeto cuja banca aconteceu no
  * prazo. O atraso do escopo hoje é medido só contra a BANCA.
  */
 export type TipoAtencao = "kickoff" | "banca" | "reuniao" | "tarefa";
 
-/** Os rótulos do filtro, na ordem em que aparecem — do que o time controla no
+/** Os rótulos do filtro, na ordem em que aparecem, do que o time controla no
  *  dia a dia (tarefa, reunião) para os marcos (banca, kickoff). */
 export const ROTULO_ATENCAO: Record<TipoAtencao, string> = {
   tarefa: "Tarefas",
@@ -46,28 +46,28 @@ export interface VisaoGeral {
     pausados: number;
     finalizados: number;
   };
-  /** As 6 etapas em curso, sempre todas — inclusive as vazias, com `total: 0`.
+  /** As 6 etapas em curso, sempre todas, inclusive as vazias, com `total: 0`.
    *  A soma dos totais é igual a `placar_gestao.total_ativos`, e é isso que faz
    *  o número no meio da pizza fechar com as fatias. */
   por_etapa: EtapaDoPortfolio[];
   /** % dos projetos ativos sem banca atrasada. A entrega ao cliente fica de
-   *  fora de propósito: depende da agenda dele (§7.1). */
+   *  fora de propósito: depende da agenda dele. */
   placar_gestao: { percentual: number; no_prazo: number; total_ativos: number };
   /** % dos projetos em curso atrasados por QUALQUER motivo, banca ou entrega.
    *
-   *  ⚠ Não é o complemento do `placar_gestao`: aquele ignora atraso de entrega.
+   *  Não é o complemento do `placar_gestao`: aquele ignora atraso de entrega.
    *  `100 - placar` não dá este número, e os dois ficam lado a lado na tela —
    *  os rótulos precisam dizer o que cada um mede. */
   atrasados_gestao: { percentual: number; atrasados: number; total_ativos: number };
   entregas: {
-    /** Escopos entregues NA GESTÃO ATUAL — o assunto do card.
+    /** Escopos entregues NA GESTÃO ATUAL, o assunto do card.
      *
-     *  ⚠ Não bate com a soma da `tendencia`: ela abre 6 meses e ignora o
+     *  Não bate com a soma da `tendencia`: ela abre 6 meses e ignora o
      *  semestre, senão viriam quatro meses zerados (a gestão começou em
      *  julho). São duas leituras no mesmo card, de propósito. */
     total_escopos: number;
     /** Entregas por mês nos últimos 6, do mais antigo ao mais novo. O mês
-     *  corrente entra incompleto — é "o que saiu até agora", não previsão. */
+     *  corrente entra incompleto, é "o que saiu até agora", não previsão. */
     tendencia: { inicio: string; total: number }[];
   };
   bancas_proximas: {
@@ -79,10 +79,10 @@ export interface VisaoGeral {
     data_hora: string;
   }[];
   /**
-   * 😴 O VÃO ENTRE ESCOPOS: da entrega ao cliente de um até a reunião inicial
-   * do seguinte — um item por PAR, não por projeto.
+   * O VÃO ENTRE ESCOPOS: da entrega ao cliente de um até a reunião inicial
+   * do seguinte, um item por PAR, não por projeto.
    *
-   * ⚠ Media sempre até HOJE e dava número negativo quando a entrega estava
+   * Media sempre até HOJE e dava número negativo quando a entrega estava
    * registrada para o futuro (a tela chegou a mostrar "-16 dias parado").
    * Corrigido em 2026-08-12.
    */
@@ -90,31 +90,31 @@ export interface VisaoGeral {
     projeto_id: number;
     projeto_nome: string;
     escopo_entregue: string;
-    /** `null` quando o vão está ABERTO — ninguém começou o próximo escopo. */
+    /** `null` quando o vão está ABERTO, ninguém começou o próximo escopo. */
     escopo_seguinte: string | null;
     /** Aberto = ainda correndo até hoje. Fechado = tamanho definitivo. */
     aberto: boolean;
     /** Dias CORRIDOS: é tempo de calendário parado, não esforço. */
     dias_parado: number;
   }[];
-  /** §7.1: o motivo é explícito, nunca um rótulo genérico. */
+  /** o motivo é explícito, nunca um rótulo genérico. */
   atencao_agora: {
     projeto_id: number;
     projeto_nome: string;
     /** A categoria, para a tela filtrar. Vem separada do `motivo` porque
-     *  aquele é frase escrita para humano e muda de redação — agrupar por ela
+     *  aquele é frase escrita para humano e muda de redação, agrupar por ela
      *  seria agrupar por string livre. */
     tipo: TipoAtencao;
     motivo: string;
     dias: number | null;
   }[];
   /**
-   * ⭐ Os números da JANELA DO ESCOPO (§5), agregados por projeto.
+   * Os números da JANELA DO ESCOPO, agregados por projeto.
    *
-   * ⚠ Não confundir `dias_parados` com `tempo_parado` acima: aquele conta os
+   * Não confundir `dias_parados` com `tempo_parado` acima: aquele conta os
    * dias CORRIDOS desde a última entrega enquanto o projeto espera o próximo
    * escopo começar; este conta os **dias úteis em branco** do cronograma
-   * inteiro, do kickoff até hoje — dia sem etapa, reunião, banca ou entrega.
+   * inteiro, do kickoff até hoje, dia sem etapa, reunião, banca ou entrega.
    * O primeiro responde "está entre escopos?"; o segundo, "está andando?".
    *
    * `dias_de_atraso` é o PIOR atraso entre os escopos do projeto, não a soma:
@@ -143,7 +143,7 @@ export interface LinhaTarefas {
   vencidas: number;
   /** Nunca recebeu tarefa nenhuma. */
   sem_tarefas: boolean;
-  /** Tem tarefas, mas todas concluídas ou canceladas — o quadro zerou e não
+  /** Tem tarefas, mas todas concluídas ou canceladas, o quadro zerou e não
    *  veio o próximo lote. Situação diferente de `sem_tarefas`. */
   sem_tarefas_ativas: boolean;
   /** Dias ÚTEIS desde a última tarefa criada (ou desde o kickoff, se nunca
@@ -151,7 +151,7 @@ export interface LinhaTarefas {
   dias_uteis_sem_tarefa: number | null;
   /** De ONDE o campo acima conta, lido do banco por `_marco_sem_tarefa`.
    *
-   *  Vem na resposta porque o número de dias sozinho é ambíguo — não dá para
+   *  Vem na resposta porque o número de dias sozinho é ambíguo, não dá para
    *  saber se ele partiu do kickoff ou da última tarefa criada. Deduzir isso
    *  no front pelo `sem_tarefas` funcionava por coincidência e quebraria em
    *  silêncio se o filtro da lista mudasse. */
@@ -167,7 +167,7 @@ export interface Execucao {
   semana: {
     inicio: string;
     fim: string;
-    /** Quem decide é o servidor, não o relógio do navegador — máquina com data
+    /** Quem decide é o servidor, não o relógio do navegador, máquina com data
      *  ou fuso errado mostraria a semana errada como se fosse a de hoje. */
     eh_atual: boolean;
     eh_passada: boolean;
@@ -192,7 +192,7 @@ export interface Execucao {
 }
 
 /** Um projeto na carga de alguém. Carrega a etapa porque o gráfico de barras
- *  filtra a carga por ela — com só o nome, cada troca de filtro exigiria uma
+ *  filtra a carga por ela, com só o nome, cada troca de filtro exigiria uma
  *  requisição nova. O id deixa o chip da tabela virar link. */
 export interface ProjetoDaCarga {
   id: number;
@@ -210,17 +210,17 @@ export interface LinhaCarga {
    *  na tabela logo abaixo. */
   total: number;
   projetos: ProjetoDaCarga[];
-  /** A situação resolvida pela escala do papel (§7.3), definida pela diretoria
-   *  em Configurações. Vem pronta do backend porque a regra é dele — a tela
+  /** A situação resolvida pela escala do papel, definida pela diretoria
+   *  em Configurações. Vem pronta do backend porque a regra é dele, a tela
    *  reimplementá-la seria convite para divergirem.
    *
-   *  `null` quando o total fica abaixo do menor mínimo da escala — a diretoria
+   *  `null` quando o total fica abaixo do menor mínimo da escala, a diretoria
    *  pode subir o mínimo da primeira faixa para deixar os menos carregados sem
    *  rótulo. A tela mostra um travessão. */
   situacao: { nome: string; tom: TomSituacao } | null;
   /** A pessoa caiu na faixa mais alta do seu papel.
    *
-   *  Quem decide é o backend, pela POSIÇÃO da faixa na escala — não pelo nome
+   *  Quem decide é o backend, pela POSIÇÃO da faixa na escala, não pelo nome
    *  nem pela cor, que são livres. Sem isso, a tela teria de procurar por
    *  `tom === "alerta"` ou pelo nome "Carga alta", e trocar a cor de uma faixa
    *  esvaziaria o destaque em silêncio. */
@@ -247,7 +247,7 @@ export interface Alocacao {
   consultores: LinhaCarga[];
   capacidade: {
     por_frente: CapacidadeFrente[];
-    /** ⚠ NÃO é a soma das linhas: quem está em duas frentes aparece nas duas,
+    /** NÃO é a soma das linhas: quem está em duas frentes aparece nas duas,
      *  e somar contaria a vaga dela duas vezes. O backend conta por pessoa. */
     total: { consultor: number; coordenador: number };
     /** Até quantos projetos cada papel carrega sem sobrecarregar. Vem do
@@ -255,7 +255,7 @@ export interface Alocacao {
     teto: { consultor: number; coordenador: number };
   };
   /** Quem caiu na faixa mais alta do seu papel, já filtrado pelo backend.
-   *  É o que devolve a leitura de "quem é o gargalo" (§7.3), perdida quando as
+   *  É o que devolve a leitura de "quem é o gargalo", perdida quando as
    *  duas tabelas passaram a ordenar do menos carregado para o mais. */
   demanda_alta: {
     coordenadores: LinhaCarga[];
@@ -269,11 +269,11 @@ export interface Atrasos {
     projeto_nome: string;
     status: string;
     /** A SOMA dos dias de todos os motivos. Serve para volume acumulado, não
-     *  para "há quanto tempo está parado" — três escopos com 4 dias cada somam
+     *  para "há quanto tempo está parado", três escopos com 4 dias cada somam
      *  12 sem que nada esteja parado há 12 dias. */
     dias_totais: number;
     /** O PIOR motivo isolado. É o número em destaque na tela, e o que ordena
-     *  a lista — responde "qual é o maior buraco deste projeto". */
+     *  a lista, responde "qual é o maior buraco deste projeto". */
     pior_motivo: number;
     motivos: {
       tipo: string;
@@ -283,12 +283,12 @@ export interface Atrasos {
       projeto_escopo_id: number | null;
       /** A data que venceu: a banca não realizada ou a entrega planejada. */
       data_referencia: string | null;
-      /** §7.4 — já tem justificativa da diretoria cobrindo ESTE motivo (o
+      /** Já tem justificativa da diretoria cobrindo ESTE motivo (o
        *  mesmo escopo pode estar atrasado em banca e entrega ao mesmo tempo;
        *  uma nota de uma rodada de atraso anterior, já resolvida, não conta).
        *  O motivo continua na lista mesmo justificado: o alerta é automático. */
       justificado: boolean;
-      /** Qual nota justifica — pra o selo "justificado" levar direto pra ela
+      /** Qual nota justifica, pra o selo "justificado" levar direto pra ela
        *  no histórico do projeto. `null` quando `justificado` é `false`. */
       justificativa_id: number | null;
     }[];
@@ -307,13 +307,13 @@ export interface Atrasos {
     pior_motivo: string;
   }[];
   /**
-   * §10: os escopos que passaram da JANELA — a coluna "Atraso" do card
+   * os escopos que passaram da JANELA, a coluna "Atraso" do card
    * "Escopos vendidos", com o porquê escrito por quem conduz o projeto.
    *
-   * ⚠ **Não são os `motivos` de `por_projeto`.** Aqueles perguntam "o que
+   * **Não são os `motivos` de `por_projeto`.** Aqueles perguntam "o que
    * venceu e não aconteceu?" e fecham quando o fato acontece; este pergunta
    * "o trabalho passou do tempo vendido?". Um escopo pode estourar a janela
-   * com a banca realizada e a entrega em dia — e aí não há motivo nenhum
+   * com a banca realizada e a entrega em dia, e aí não há motivo nenhum
    * aberto, o projeto nem aparece na lista de atrasos.
    *
    * Vem ordenado com o que FALTA justificar primeiro: é fila de trabalho.
@@ -323,7 +323,7 @@ export interface Atrasos {
     projeto_nome: string;
     projeto_escopo_id: number;
     escopo_nome: string;
-    /** Dias úteis além da janela — a mesma conta da tela do projeto. */
+    /** Dias úteis além da janela, a mesma conta da tela do projeto. */
     dias: number;
     dias_vendidos: number;
     dias_ajustados: number;
@@ -333,10 +333,10 @@ export interface Atrasos {
     registrado_por: string | null;
     registrado_em: string | null;
   }[];
-  /** Os números da faixa do topo, calculados no backend — a divisão
-   *  banca/entrega decide a leitura do §7.4 e o front recontar isso a partir
+  /** Os números da faixa do topo, calculados no backend, a divisão
+   *  banca/entrega decide a leitura do  e o front recontar isso a partir
    *  das descrições seria reimplementar a classificação. */
-  /** ⚠ `com_externo`/`pior_externo` saíram com o motivo de entrega
+  /** `com_externo`/`pior_externo` saíram com o motivo de entrega
    *  (2026-08-12): sem ele seriam dois zeros permanentes na faixa do topo. */
   resumo: {
     projetos: number;
@@ -344,15 +344,15 @@ export interface Atrasos {
   };
 }
 
-/** Espelha `Urgencia` de `types/tarefa.ts` — mesma gradação, backend igual. */
+/** Espelha `Urgencia` de `types/tarefa.ts`, mesma gradação, backend igual. */
 export type UrgenciaTarefa = "vencida" | "critica" | "atencao" | "normal";
 
 export interface ColunaAgregada {
-  /** Nome normalizado (minúsculo, sem espaço nas pontas) — chave de
+  /** Nome normalizado (minúsculo, sem espaço nas pontas), chave de
    *  agrupamento, já que colunas de projetos diferentes podem se chamar
    *  igual (ou quase). */
   chave: string;
-  /** Nome de exibição — o da primeira coluna encontrada com esse nome. */
+  /** Nome de exibição, o da primeira coluna encontrada com esse nome. */
   nome: string;
   cor: string;
 }
@@ -378,7 +378,7 @@ export interface TarefasGerais {
   tarefas: TarefaAgregada[];
 }
 
-/** O escopo que decide a posição do projeto na fila (§7) — o que está mais
+/** O escopo que decide a posição do projeto na fila, o que está mais
  *  perto de estourar o prazo, entre os que ainda estão em contagem. */
 export interface EscopoCritico {
   id: number;
@@ -394,13 +394,13 @@ export interface CronogramaProjetoResumo {
   cliente: string;
   cronograma: CronogramaResposta;
   /** `null` = nenhum escopo em contagem (todos entregues/cancelados, ou
-   *  nenhum começou ainda) — o card vai para o fim da fila. */
+   *  nenhum começou ainda), o card vai para o fim da fila. */
   escopo_critico: EscopoCritico | null;
 }
 
 export interface CronogramasGerais {
   /** Já vem ordenado do backend, do mais perto de estourar pro mais
-   *  folgado — o front só renderiza na ordem recebida. */
+   *  folgado, o front só renderiza na ordem recebida. */
   projetos: CronogramaProjetoResumo[];
 }
 
@@ -421,7 +421,7 @@ export function getVisaoGeral(token: string, frenteId?: number | null, escopoId?
  * `referencia` = qualquer dia da semana desejada, em `YYYY-MM-DD`; o servidor
  * normaliza para a segunda. Sem ela, a semana de hoje.
  *
- * Só o passado é aceito — o backend recusa data futura com 422. Semana futura
+ * Só o passado é aceito, o backend recusa data futura com 422. Semana futura
  * devolveria "não distribuiu" e "não fez reunião" para todo mundo, porque as
  * duas medem ausência de registro; a tela acusaria o time por algo que ainda
  * nem teve chance de acontecer.
@@ -545,6 +545,36 @@ export interface AprovacaoDiasDeAjuste {
   motivo: string;
   solicitado_por_nome: string | null;
   criado_em: string;
+  /** O fim da janela como está hoje. `null` = escopo sem reunião inicial. */
+  fim_janela: string | null;
+  /**
+   * ⭐ O fim da janela SE a diretoria aprovar — a resposta à pergunta que a
+   * decisão faz de verdade. Não é somar: são N dias ÚTEIS a partir da reunião
+   * inicial, pulando feriado, prova e recesso, e essa conta ninguém faz de
+   * cabeça olhando "+5 sobre 8 vendidos".
+   */
+  fim_se_aprovar: string | null;
+  /** §8: último dia em que ainda cabia pedir. Passou, o pedido é fora do prazo. */
+  prazo_pedido_ajuste: string | null;
+}
+
+/** Um motivo de atraso — a mesma forma que a aba Atrasos consome. */
+export interface MotivoDeAtraso {
+  tipo: string;
+  descricao: string;
+  dias: number;
+  escopo: string | null;
+  projeto_escopo_id: number | null;
+  data_referencia: string | null;
+  /** §7.4: já existe nota da diretoria cobrindo ESTE motivo. */
+  justificado: boolean;
+  justificativa_id: number | null;
+  /**
+   * §7.4: quando a diretoria PEDIU a explicação ao coordenador. `null` =
+   * ninguém cobrou ainda. Com data, a fila mostra "aguardando o coordenador"
+   * em vez de oferecer o pedido de novo.
+   */
+  pedido_em: string | null;
 }
 
 export interface AprovacaoAtraso {
@@ -552,7 +582,13 @@ export interface AprovacaoAtraso {
   projeto_nome: string;
   status: string;
   dias_totais: number;
-  motivos: string[];
+  /** ⭐ O pior motivo isolado — é ele que ordena, nunca a soma. */
+  pior_motivo: number;
+  /**
+   * Estruturados, não frases. Sem o escopo e os dias de cada um, a diretoria
+   * não tinha como escrever uma nota específica sem abrir o projeto.
+   */
+  motivos: MotivoDeAtraso[];
 }
 
 /** Alguém pediu para entrar num projeto e está parado esperando resposta. */
@@ -573,12 +609,46 @@ export interface AprovacaoBancaSemResultado {
   banca_id: number;
   projeto_id: number;
   projeto_nome: string;
+  /** O primeiro escopo — mantido para quem já lê o campo. */
   escopo_nome: string;
+  /** Todos os escopos que esta banca cobre: a decisão destrava a entrega de cada um. */
+  escopos: { projeto_escopo_id: number; nome: string }[];
   realizado_em: string;
+  prazo_avaliacao_em: string;
+  /** Passou o prazo de 2 dias sem a urna fechar. */
+  prazo_vencido: boolean;
+  /**
+   * ⭐ A urna. Sem ela, duas situações que exigem respostas OPOSTAS ficavam
+   * idênticas na tela: "ninguém votou e o prazo venceu" (a diretoria decide
+   * no lugar deles) e "falta um voto e o prazo corre" (cobra, não decide).
+   */
+  apuracao: {
+    recebidos: number;
+    esperados: number;
+    aprovacoes: number;
+    reprovacoes: number;
+    /** "maioria" | "empate" | "sem_votos" | "aguardando" */
+    motivo: string;
+  };
+}
+
+/** §8: um pedido para marcar banca em horário já ocupado. */
+export interface AprovacaoExcecaoChoque {
+  id: number;
+  projeto_id: number;
+  projeto_nome: string;
+  projeto_escopo_id: number | null;
+  escopo_nome: string | null;
+  data_hora_pretendida: string;
+  /** O nome do projeto da banca que já ocupa o horário. */
+  conflita_com: string | null;
+  justificativa: string;
+  solicitado_por_nome: string | null;
+  criado_em: string;
 }
 
 /**
- * ⚠ Havia uma quinta fila, `entregas_sem_classificacao` (entregas atrasadas
+ * Havia uma terceira fila, `entregas_sem_classificacao` (entregas atrasadas
  * sem o rótulo interno/agenda do cliente). Removida em 2026-08-12 junto com o
  * atraso de ENTREGA nos insights: sem a métrica que separava os dois tipos, a
  * classificação deixou de mudar qualquer número.
@@ -588,9 +658,8 @@ export interface Aprovacoes {
   atrasos_sem_justificativa: AprovacaoAtraso[];
   solicitacoes_de_entrada: AprovacaoEntrada[];
   bancas_sem_resultado: AprovacaoBancaSemResultado[];
-  /** §8: pedidos para marcar banca em horário já ocupado. O card tem busca
-   *  própria (decide inline); isto entra no envelope para alimentar o total. */
-  excecoes_de_choque: unknown[];
+  /** §8: pedidos para marcar banca em horário já ocupado. */
+  excecoes_de_choque: AprovacaoExcecaoChoque[];
   /** Servido pronto pelo backend — o badge da aba precisa dele antes de
    *  qualquer render, e somar no front duplicaria a conta. */
   total: number;
@@ -600,7 +669,7 @@ export interface Aprovacoes {
  * Tudo que espera decisão da diretoria, numa chamada.
  *
  * Sem `frenteId` de propósito: a fila é dela e ela enxerga a área inteira
- * (§3). Um filtro aqui só criaria a chance de um pedido ficar escondido atrás
+ *. Um filtro aqui só criaria a chance de um pedido ficar escondido atrás
  * de uma opção que alguém deixou ligada.
  */
 export function getAprovacoes(token: string) {

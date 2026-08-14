@@ -5,14 +5,14 @@ export interface Tarefa {
   titulo: string;
   responsavel_id: number;
   prazo: string;
-  /** A coluna do kanban — configurável pela diretoria, não mais um ENUM. */
+  /** A coluna do kanban, configurável pela diretoria, não mais um ENUM. */
   coluna_id: number;
   criado_por: number;
   criado_em: string;
-  /** Só muda quando o STATUS muda — alimenta a "última movimentação" do §7.2. */
+  /** Só muda quando o STATUS muda, alimenta a "última movimentação". */
   movida_em: string;
   /**
-   * 🧮 Derivado pelo backend, nunca gravado: prazo passado + a coluna atual
+   * Derivado pelo backend, nunca gravado: prazo passado + a coluna atual
    * não marcada como "encerra a tarefa".
    */
   vencida: boolean;
@@ -36,13 +36,13 @@ export interface ReuniaoSemanal {
   id: number;
   projeto_id: number;
   /**
-   * ⭐ Sobre qual escopo foi a reunião. Vazio = reunião geral do projeto.
-   * A PRIMEIRA reunião de um escopo é a "reunião inicial" do §5.4 — é ela que
+   * Sobre qual escopo foi a reunião. Vazio = reunião geral do projeto.
+   * A PRIMEIRA reunião de um escopo é a "reunião inicial" do , é ela que
    * preenche a `data_inicio` dele e faz a contagem de dias começar a correr.
    */
   projeto_escopo_id: number | null;
   data_reuniao: string;
-  /** Texto livre — a ata informal da reunião geral (§12). */
+  /** Texto livre, a ata informal da reunião geral. */
   observacoes: string | null;
   /** Derivado do vínculo, não gravado: um campo próprio poderia divergir e
    *  criar uma reunião "geral" com escopo preenchido. */
@@ -58,6 +58,6 @@ export interface ReuniaoRegistrada extends ReuniaoSemanal {
 export interface ReunioesResposta {
   reunioes: ReuniaoSemanal[];
   semana_atual: { inicio: string; fim: string };
-  /** 🧮 Ausência de linha na janela seg–dom = projeto sem reunião. */
+  /** Ausência de linha na janela seg–dom = projeto sem reunião. */
   tem_reuniao_esta_semana: boolean;
 }

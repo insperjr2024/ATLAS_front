@@ -35,7 +35,7 @@ const TIPOS: { valor: DesempenhoTipo; rotulo: string }[] = [
   { valor: "finalizacao", rotulo: "Finalização" },
 ];
 
-// Regra 2.9: nota < 3 é sinalizada (atenção), >= 3 fica neutra — é o que
+// Regra 2.9: nota < 3 é sinalizada (atenção), >= 3 fica neutra, é o que
 // deixa escanear o painel sem ler número por número.
 function ehAtencao(nota: number | null): boolean {
   return nota !== null && nota < 3;
@@ -106,7 +106,7 @@ const ROTULO_PAPEL: Record<string, string> = {
 
 interface RelatorioDesempenhoProps {
   relatorio: DesempenhoRelatorio;
-  /** Cabeçalho "Fulano — Coordenador(a) · Projeto Alfa, Projeto Beta" — opcional
+  /** Cabeçalho "Fulano, Coordenador(a) · Projeto Alfa, Projeto Beta", opcional
    * porque nem todo lugar que usa este componente sabe o papel/projetos de
    * quem está sendo mostrado. */
   pessoa?: { nome: string; posicao?: string; projetos?: string[] };
@@ -163,7 +163,7 @@ export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoPr
         </RelatorioPessoaHeader>
       )}
 
-      {/* Sempre as duas abas, mesmo sem avaliação daquele tipo ainda — perder
+      {/* Sempre as duas abas, mesmo sem avaliação daquele tipo ainda, perder
           a aba faria perder a informação de qual tipo é aquela nota. */}
       <TipoTabBar role="tablist">
         {TIPOS.map((t) => (

@@ -67,7 +67,7 @@ import { LIST_MAX_VISIVEIS, TableScrollWrap } from "@/styles/shared.styled";
 
 // Fonte única dos rótulos: alimenta as caixas do modal de edição E as tags da
 // tabela. Cada título é verbo + objeto, para a tag dizer sozinha o que a posição
-// pode fazer — sem depender de abrir o modal para descobrir.
+// pode fazer, sem depender de abrir o modal para descobrir.
 const PERMISSOES = [
   {
     campo: "pode_criar_projeto" as const,
@@ -121,7 +121,7 @@ const PERMISSOES = [
     descricao:
       "Abrir o Monitoramento: visão geral, execução, alocação de pessoas e atrasos.",
   },
-  // As 3 abaixo não estão na tabela do §3 — nasceram travadas só por posição
+  // As 3 abaixo não estão na tabela do , nasceram travadas só por posição
   // (diretor, ou diretor+gerente) e viraram caixa configurável a pedido
   // explícito do usuário, pro mesmo motivo das 10: dar pra delegar sem
   // precisar tornar alguém "diretor" inteiro.
@@ -135,19 +135,19 @@ const PERMISSOES = [
     campo: "pode_editar_formularios_desempenho" as const,
     titulo: "Editar formulários de Avaliação de Desempenho",
     descricao:
-      "Mudar as seções e critérios dos formulários — afeta o que todo mundo é avaliado, não só a rotina de administrar.",
+      "Mudar as seções e critérios dos formulários, afeta o que todo mundo é avaliado, não só a rotina de administrar.",
   },
   {
     campo: "pode_administrar_configuracoes" as const,
     titulo: "Administrar Configurações",
     descricao:
-      "Abrir Configurações e Calendários base — inclusive editar as permissões de qualquer posição, o que inclui conceder esta mesma caixa a outra.",
+      "Abrir Configurações e Calendários base, inclusive editar as permissões de qualquer posição, o que inclui conceder esta mesma caixa a outra.",
   },
   {
     campo: "pode_ver_todos_projetos" as const,
     titulo: "Ver todos os projetos, de qualquer frente",
     descricao:
-      "A única caixa que muda QUAIS projetos aparecem — as outras de cima só abrem funcionalidade, sem tocar nisso. Sem esta caixa, coordenador e consultor sempre ficam limitados ao que já estão alocados, mesmo com todo o resto marcado.",
+      "A única caixa que muda QUAIS projetos aparecem, as outras de cima só abrem funcionalidade, sem tocar nisso. Sem esta caixa, coordenador e consultor sempre ficam limitados ao que já estão alocados, mesmo com todo o resto marcado.",
   },
 ];
 
@@ -206,9 +206,9 @@ export function Config() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // Núcleo e Configurações ficaram fora da tabela das 10 do §3, mas viraram
+  // Núcleo e Configurações ficaram fora da tabela das 10, mas viraram
   // caixa própria (`pode_administrar_configuracoes`) a pedido explícito do
-  // usuário — inclusive pra editar as permissões de qualquer posição, que é
+  // usuário, inclusive pra editar as permissões de qualquer posição, que é
   // a ação mais sensível daqui: quem tem a caixa concede a mesma caixa (ou
   // qualquer outra) a outra posição. Só quem já tem a permissão consegue
   // distribuí-la, então não dá pra se auto-conceder do zero.
@@ -247,7 +247,7 @@ export function Config() {
           sendo construídos. A ordem dos grupos segue a dependência: o semestre
           e os cadastros vêm primeiro porque o resto os referencia (escopo
           aponta pra frente, banca conta o piso da frente), as regras
-          automáticas depois, e o acesso por último — é o único grupo que não
+          automáticas depois, e o acesso por último, é o único grupo que não
           fala de operação, e sim de quem entra onde. */}
       <SecaoGrupo>
         <SecaoCabecalho>
@@ -362,7 +362,7 @@ export function Config() {
           <PageCardContent>
             {!podeEditarPermissoes && (
               <EmptyText style={{ fontSize: "0.7rem" }}>
-                Só quem já tem esta permissão pode editar — impede auto-concessão de acesso.
+                Só quem já tem esta permissão pode editar, impede auto-concessão de acesso.
               </EmptyText>
             )}
             <TableScrollWrap $scrollable={posicoes.length > LIST_MAX_VISIVEIS}>
@@ -649,7 +649,7 @@ function ModalFrente({
   );
 }
 
-/** As caixas do formulário, na ordem em que aparecem — derivadas de
+/** As caixas do formulário, na ordem em que aparecem, derivadas de
  *  `PERMISSOES` para uma permissão nova não nascer faltando no modal. */
 function permissoesDe(posicao: PosicaoPermissao): Record<CampoPermissao, boolean> {
   return Object.fromEntries(
@@ -691,7 +691,7 @@ function ModalPosicaoPermissao({
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog">
         <ModalHeader>
-          <ModalTitle>Editar permissões — {ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</ModalTitle>
+          <ModalTitle>Editar permissões, {ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>

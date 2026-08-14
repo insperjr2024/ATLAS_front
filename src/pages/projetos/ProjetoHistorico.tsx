@@ -89,7 +89,7 @@ import { useProjeto } from "./ProjetoPage";
 const APARENCIA_EVENTO: Record<string, { rotulo: string; cor: string }> = {
   pedido_de_dias: { rotulo: "Pedido de dias", cor: theme.colors.mutedForeground },
   dias_de_ajuste: { rotulo: "Dias aprovados", cor: theme.colors.success },
-  // ⚠ Nada de `primary` aqui: neste tema ele é o MESMO vermelho do
+  // Nada de `primary` aqui: neste tema ele é o MESMO vermelho do
   // `destructive`, e "Reunião" saía com cara de alerta. `info` e `warning`
   // são as cores que dizem "informação" e "atenção" sem gritar erro.
   reuniao: { rotulo: "Reunião", cor: theme.colors.info },
@@ -142,20 +142,20 @@ function autorDe(h: HistoricoEntrada): number | null {
 
 /**
  * Timeline vertical das mudanças de status (F4) e notas de atraso/remarcação
- * de banca (§7.4/§5.6) do projeto, com resumo de tempo por etapa, filtros
+ * de banca do projeto, com resumo de tempo por etapa, filtros
  * por status/autor/período, paginação por dia e "Limpar histórico".
  */
 /**
- * ⭐ O id NUMÉRICO de uma linha do histórico.
+ * O id NUMÉRICO de uma linha do histórico.
  *
  * O backend compõe a timeline de sete fontes e prefixa o id de cada uma para
- * as chaves não colidirem — `"justificativa:7"`, `"remarcacao:3"`,
+ * as chaves não colidirem, `"justificativa:7"`, `"remarcacao:3"`,
  * `"entrega:12"`. Ótimo como chave de React, inútil como id de rota.
  *
- * ⚠ Dois bugs saíram de ler o valor cru:
+ * Dois bugs saíram de ler o valor cru:
  *
  * - a âncora virava `#justificativa-justificativa:7`, e o link "justificado"
- *   da aba Atrasos aponta para `#justificativa-7` — a pessoa caía no topo do
+ *   da aba Atrasos aponta para `#justificativa-7`, a pessoa caía no topo do
  *   histórico em vez de na nota que acabou de escrever;
  * - o botão Excluir mandava `justificativa:7` para uma rota que espera `int`,
  *   e voltava 422.
@@ -173,7 +173,7 @@ export function ProjetoHistorico() {
   const [erro, setErro] = useState("");
   const [confirmandoLimpar, setConfirmandoLimpar] = useState(false);
   const [mostrandoTudo, setMostrandoTudo] = useState(false);
-  // Mesma trava de quem registra (§7.4/§5.6) — não é edição de rotina, é
+  // Mesma trava de quem registra, não é edição de rotina, é
   // pra corrigir engano/teste.
   const podeExcluir = pode(usuario, "registrar_justificativa_atraso");
   const [excluindo, setExcluindo] = useState<
@@ -181,7 +181,7 @@ export function ProjetoHistorico() {
   >(null);
 
   // Quem acabou de justificar um atraso (ou remarcar uma banca) chega aqui
-  // via `#justificativa-7`/`#remarcacao-3` — sem isso a pessoa caía no topo
+  // via `#justificativa-7`/`#remarcacao-3`, sem isso a pessoa caía no topo
   // da lista inteira e tinha que procurar a nota que acabou de escrever.
   const [realcado, setRealcado] = useState<string | null>(null);
   const jaRolouRef = useRef(false);
@@ -202,7 +202,7 @@ export function ProjetoHistorico() {
   const [autorFiltro, setAutorFiltro] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
-  /** Qual pill de período rápido está ativa — `null` quando as datas vieram
+  /** Qual pill de período rápido está ativa, `null` quando as datas vieram
    *  de edição manual (ou não há filtro), pra não marcar um pill errado. */
   const [periodoRapido, setPeriodoRapido] = useState<number | null>(null);
 
@@ -227,7 +227,7 @@ export function ProjetoHistorico() {
       await excluirRemarcacaoBanca(projeto.id, idNumerico(linha.id), token);
     }
     // No sucesso quem chamou desmonta o ConfirmarModal (ver o próprio
-    // componente) — precisa fechar aqui antes de recarregar.
+    // componente), precisa fechar aqui antes de recarregar.
     setExcluindo(null);
     await carregar();
   }
@@ -237,7 +237,7 @@ export function ProjetoHistorico() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, projeto.id]);
 
-  // "Limpar histórico" não apaga linha nenhuma — só marca o corte de
+  // "Limpar histórico" não apaga linha nenhuma, só marca o corte de
   // exibição no projeto (ver OcultarHistoricoUseCase no back). Por isso um
   // recarregar() (atualiza o projeto no contexto, pro banner aparecer) e um
   // carregar() (o back já devolve a lista filtrada pelo novo corte).
@@ -261,7 +261,7 @@ export function ProjetoHistorico() {
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
 
-  // Cada linha marca a entrada num status — "quanto tempo ficou" é a
+  // Cada linha marca a entrada num status, "quanto tempo ficou" é a
   // distância até a PRÓXIMA linha (ou até agora, pra quem está vigente).
   // Soma por status pra dar conta de quem visitou a mesma etapa mais de
   // uma vez (voltou e avançou de novo).
@@ -320,7 +320,7 @@ export function ProjetoHistorico() {
     setPeriodoRapido(null);
   }
 
-  // Atalho pros recortes de data mais pedidos — sem isso, "só a última
+  // Atalho pros recortes de data mais pedidos, sem isso, "só a última
   // semana" exigia calcular a data de cabeça e digitar nos dois campos.
   function aplicarPeriodoRapido(dias: number) {
     const fim = new Date();
@@ -341,7 +341,7 @@ export function ProjetoHistorico() {
 
   const historicoFiltrado = useMemo(() => {
     return historico.filter((linha) => {
-      // O filtro de status pinta as PÍLULAS de transição — uma nota de
+      // O filtro de status pinta as PÍLULAS de transição, uma nota de
       // atraso não tem status, então fica de fora só se o usuário estiver
       // filtrando por status (senão ela sempre aparece).
       if (statusFiltro.size > 0 && (!ehStatus(linha) || !statusFiltro.has(linha.status_novo))) return false;
@@ -369,7 +369,7 @@ export function ProjetoHistorico() {
     return [...grupos.entries()];
   }, [historicoFiltrado]);
 
-  // A lista não vem toda de uma vez — só os dias mais recentes, com um botão
+  // A lista não vem toda de uma vez, só os dias mais recentes, com um botão
   // pra pedir mais. Sem isso, um projeto de gestões passadas vira uma
   // rolagem infinita de dias que ninguém pediu pra ver.
   const DIAS_POR_PAGINA = 10;
@@ -599,11 +599,11 @@ export function ProjetoHistorico() {
                                   </HistoricoNotaMotivo>
                                 )}
                               </HistoricoNotaCabecalho>
-                              {/* ⚠ `detalhe`, não `texto`. O backend unificou as
+                              {/* `detalhe`, não `texto`. O backend unificou as
                                   cinco fontes do histórico num envelope com
                                   `titulo`/`detalhe` prontos; o campo `texto`
                                   parou de ser enviado e esta linha renderizava
-                                  `undefined` — a nota aparecia com autor e data,
+                                  `undefined`, a nota aparecia com autor e data,
                                   mas SEM o motivo escrito. */}
                               <HistoricoNotaTexto>{linha.detalhe}</HistoricoNotaTexto>
                             </HistoricoNotaLinha>
@@ -667,9 +667,9 @@ export function ProjetoHistorico() {
                       );
                     }
 
-                    // ⭐ Toda linha que não é transição de status é desenhada
+                    // Toda linha que não é transição de status é desenhada
                     // aqui, a partir do `titulo`/`detalhe` que o backend manda
-                    // pronto — o que deixa uma fonte nova aparecer sem a tela
+                    // pronto, o que deixa uma fonte nova aparecer sem a tela
                     // saber nada sobre ela. A ETIQUETA é o que dá leitura: sem
                     // ela, seis naturezas de evento viravam seis frases soltas
                     // e indistinguíveis na mesma coluna.
@@ -683,7 +683,7 @@ export function ProjetoHistorico() {
                       // "negados" são histórias opostas.
                       const negado = linha.tipo === "dias_de_ajuste" && linha.aprovado === false;
                       const cor = negado ? theme.colors.destructive : aparencia.cor;
-                      // ⭐ A cor vive só na ETIQUETA. A bolinha e a borda do
+                      // A cor vive só na ETIQUETA. A bolinha e a borda do
                       // cartão ficam neutras de propósito: com seis naturezas
                       // de evento, colorir também a moldura enchia a coluna de
                       // vermelho e verde e a timeline perdia a leitura calma —

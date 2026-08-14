@@ -20,7 +20,7 @@ interface Props {
   nomeEscopo?: string;
   /** O dia clicado no calendário, em `yyyy-MM-dd`. */
   dia: string;
-  /** Já existe reunião deste tipo neste dia — então isto é uma edição. */
+  /** Já existe reunião deste tipo neste dia, então isto é uma edição. */
   observacoesAtuais?: string | null;
   editando: boolean;
   onCancelar: () => void;
@@ -30,17 +30,17 @@ interface Props {
 }
 
 /**
- * A reunião marcada pelo calendário do cronograma (§12).
+ * A reunião marcada pelo calendário do cronograma.
  *
- * ⭐ **É esta tela que substituiu a aba Reuniões.** Ela existe por causa das
+ * **É esta tela que substituiu a aba Reuniões.** Ela existe por causa das
  * observações: sem um lugar para escrever o que foi combinado, registrar a
  * reunião viraria só um ponto no calendário, e era exatamente isso que a aba
  * antiga fazia melhor.
  *
  * A diferença entre os dois tipos não é cosmética: a **inicial** grava
  * `projeto_escopo.data_inicio` e dá a largada da contagem de dias daquele
- * escopo (§5.4); a **geral** não mexe em contagem nenhuma. Por isso o aviso
- * aparece só num dos casos — quem está marcando precisa saber que aquele
+ * escopo; a **geral** não mexe em contagem nenhuma. Por isso o aviso
+ * aparece só num dos casos, quem está marcando precisa saber que aquele
  * clique começa o relógio.
  */
 export function MarcarReuniaoModal({
@@ -85,7 +85,7 @@ export function MarcarReuniaoModal({
           <p>
             {tipo === "inicial" ? (
               <>
-                <strong>{nomeEscopo}</strong> — reunião em {formatarData(dia)}.
+                <strong>{nomeEscopo}</strong>, reunião em {formatarData(dia)}.
               </>
             ) : (
               <>Reunião do projeto em {formatarData(dia)}.</>
@@ -94,7 +94,7 @@ export function MarcarReuniaoModal({
 
           {tipo === "inicial" && !editando && (
             <p>
-              ⭐ É esta reunião que <strong>abre a janela do escopo</strong> e começa
+              É esta reunião que <strong>abre a janela do escopo</strong> e começa
               a contagem dos dias vendidos.
             </p>
           )}

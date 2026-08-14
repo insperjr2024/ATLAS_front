@@ -3,7 +3,7 @@
  * pinta mais.
  *
  * O banco guarda um intervalo por linha de `cronograma_etapa`, e isso não
- * muda aqui. Um trecho separado é outra linha com o MESMO nome e cor — que é
+ * muda aqui. Um trecho separado é outra linha com o MESMO nome e cor, que é
  * o que o próprio modelo documenta como correto, porque o vão entre os
  * trechos é justamente a pausa que o cronograma quer visível. O agrupamento
  * em "uma etapa com N trechos" acontece só na interface.
@@ -56,7 +56,7 @@ function diaAnterior(chave: string): string {
 }
 
 /**
- * Tira um intervalo dos trechos — a borracha.
+ * Tira um intervalo dos trechos, a borracha.
  *
  * Apagar o miolo de um trecho o PARTE em dois, e é isso que faz a borracha
  * valer a pena: sem ela, tirar três dias do meio de uma etapa de duas semanas
@@ -74,7 +74,7 @@ export function subtrairTrecho(trechos: Trecho[], remover: Trecho): Trecho[] {
     if (remover.inicio > t.inicio) {
       resultado.push({ inicio: t.inicio, fim: diaAnterior(remover.inicio) });
     }
-    // Sobra à direita. As duas podem existir ao mesmo tempo — é o corte no meio.
+    // Sobra à direita. As duas podem existir ao mesmo tempo, é o corte no meio.
     if (remover.fim < t.fim) {
       resultado.push({ inicio: diaSeguinte(remover.fim), fim: t.fim });
     }
@@ -91,7 +91,7 @@ export interface LinhaExistente extends Trecho {
  * reaproveitando as linhas que já existem.
  *
  * Reaproveitar importa: apagar tudo e recriar trocaria os ids a cada pincelada,
- * e a etapa perderia `criado_em` e `criado_por` — que o histórico usa.
+ * e a etapa perderia `criado_em` e `criado_por`, que o histórico usa.
  */
 export interface PlanoDeEscrita {
   atualizar: { id: number; inicio: string; fim: string }[];
@@ -112,7 +112,7 @@ export function planejarEscrita(
     if (!linha) {
       criar.push(trecho);
     } else if (linha.inicio !== trecho.inicio || linha.fim !== trecho.fim) {
-      // Só escreve o que de fato mudou — trecho intacto não vira requisição.
+      // Só escreve o que de fato mudou, trecho intacto não vira requisição.
       atualizar.push({ id: linha.id, inicio: trecho.inicio, fim: trecho.fim });
     }
   });

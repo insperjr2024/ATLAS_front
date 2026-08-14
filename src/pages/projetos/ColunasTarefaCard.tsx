@@ -45,16 +45,16 @@ import {
 } from "./ColunasTarefa.styled";
 
 /**
- * A configuração das colunas do kanban **deste projeto** (§3: gerir é da
+ * A configuração das colunas do kanban **deste projeto** (gerir é da
  * diretoria).
  *
  * Eram um ENUM de 5 valores no banco, depois uma configuração global em
  * /config. Hoje moram dentro do projeto: cada projeto tem um fluxo, e mudar
  * o board de um não pode mexer no dos outros.
  *
- * ⭐ O campo que mais importa é **"encerra a tarefa"**: "vencida" não é
+ * O campo que mais importa é **"encerra a tarefa"**: "vencida" não é
  * campo, é prazo passado + tarefa ainda aberta. Com colunas livres, é a
- * diretoria que diz o que "aberta" significa em cada uma — sem isso, uma
+ * diretoria que diz o que "aberta" significa em cada uma, sem isso, uma
  * coluna "Arquivado" deixaria tudo que cai ali vencido para sempre.
  */
 export function ColunasTarefaCard({
@@ -115,7 +115,7 @@ export function ColunasTarefaCard({
         const outras = colunas.filter((c) => c.id !== coluna.id);
         const destino = prompt(
           `${mensagem}\n\nPara qual coluna? Digite o número:\n` +
-            outras.map((c, i) => `${i + 1} — ${c.nome}`).join("\n"),
+            outras.map((c, i) => `${i + 1}, ${c.nome}`).join("\n"),
         );
         const escolhida = outras[Number(destino) - 1];
         if (!escolhida) return;

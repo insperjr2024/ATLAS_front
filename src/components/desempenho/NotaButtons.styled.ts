@@ -45,7 +45,7 @@ export const NotaButtonsLabel = styled.label<{ $oculto?: boolean }>`
   line-height: 1.4;
 
   /* Some visualmente (mas continua acessível pra leitor de tela) quando o
-     rótulo do critério só repete o título da seção — comum nas seções de
+     rótulo do critério só repete o título da seção, comum nas seções de
      critério único do formulário de coordenador. */
   ${({ $oculto }) =>
     $oculto &&

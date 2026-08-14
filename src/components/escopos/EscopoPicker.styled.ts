@@ -19,7 +19,7 @@ export const EscopoLinha = styled.div`
   }
 `;
 
-/** As duas setinhas empilhadas — reordena a lista antes de criar o projeto,
+/** As duas setinhas empilhadas, reordena a lista antes de criar o projeto,
  *  não depois: mudar a ordem de escopo já salvo é outra tela, outro botão. */
 export const MoverBotoes = styled.div`
   display: flex;
@@ -84,7 +84,7 @@ export const RemoverBotao = styled.button`
 /**
  * O catálogo, agrupado por frente.
  *
- * Era um `<select>` só, com "Escopo · Frente" em cada linha — quarenta opções
+ * Era um `<select>` só, com "Escopo · Frente" em cada linha, quarenta opções
  * numa lista sem hierarquia, e a relação entre a frente marcada lá em cima e
  * o que aparecia aqui não se via. Em grupos, o vínculo é a própria estrutura:
  * marcar Business faz nascer o bloco Business, desmarcar faz sumir.
@@ -118,7 +118,7 @@ export const CatalogoChips = styled.div`
   gap: ${theme.spacing.xs};
 `;
 
-/** Um escopo do catálogo, pronto para entrar. Clicar adiciona — sem passo
+/** Um escopo do catálogo, pronto para entrar. Clicar adiciona, sem passo
  *  intermediário de "escolher e confirmar", que era o que o select exigia. */
 export const EscopoChip = styled.button<{ $outro?: boolean }>`
   display: inline-flex;

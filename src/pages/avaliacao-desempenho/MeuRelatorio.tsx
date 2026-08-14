@@ -30,7 +30,7 @@ export function MeuRelatorio() {
     setCarregando(true);
     setErro("");
     try {
-      // `getProjetos` já aplica o recorte de visão (§3): pra coordenador e
+      // `getProjetos` já aplica o recorte de visão: pra coordenador e
       // consultor, devolve só os projetos onde eles estão alocados hoje —
       // ou seja, é literalmente "meus projetos", sem endpoint extra.
       const [dadosRelatorio, dadosProjetos] = await Promise.all([

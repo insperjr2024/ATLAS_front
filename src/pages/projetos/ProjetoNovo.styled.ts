@@ -5,7 +5,7 @@ import { theme } from "@/styles/theme";
  * O formulário de criar projeto.
  *
  * A versão anterior era uma coluna só, com onze campos empilhados no mesmo
- * peso visual — nome do projeto, dias de ambientação e anexo da proposta
+ * peso visual, nome do projeto, dias de ambientação e anexo da proposta
  * pareciam a mesma coisa, e nada dizia quanto faltava. Aqui os campos viram
  * seções com título e uma frase de contexto: quem cadastra sabe em que
  * assunto está e o que ainda vem pela frente.
@@ -85,7 +85,7 @@ export const SecaoCorpo = styled.div`
   padding: ${theme.spacing.lg};
 `;
 
-/** Campos curtos lado a lado — empilhados desperdiçavam a metade da largura
+/** Campos curtos lado a lado, empilhados desperdiçavam a metade da largura
  *  e faziam a página parecer o dobro do tamanho que tem. */
 export const CamposGrade = styled.div<{ $colunas?: 2 | 3 }>`
   display: grid;
@@ -100,7 +100,7 @@ export const CamposGrade = styled.div<{ $colunas?: 2 | 3 }>`
 /**
  * Texto de apoio dentro de uma seção.
  *
- * Não é descrição de campo — essas saíram: uma frase debaixo de cada rótulo
+ * Não é descrição de campo, essas saíram: uma frase debaixo de cada rótulo
  * dobrava a altura do formulário para repetir o que o rótulo já dizia. Fica
  * só o que muda conforme a escolha (o projeto virou sinérgico, o anexo
  * escolhido), que é informação nova e não explicação.
@@ -121,7 +121,7 @@ export const CampoAjuda = styled.p`
  * antes: são quatro opções, cabem todas na largura, e uma lista com barra de
  * rolagem para quatro itens escondia opção sem motivo.
  *
- * O `<input type="checkbox">` continua lá dentro, só invisível — teclado,
+ * O `<input type="checkbox">` continua lá dentro, só invisível, teclado,
  * leitor de tela e o `:focus-visible` vêm de graça, e nenhum `aria-pressed`
  * feito à mão empata com isso.
  */
@@ -162,7 +162,7 @@ export const FrenteToggle = styled.label<{ $marcada: boolean }>`
           }
         `}
 
-  /* Fora da tela, e não display:none — escondido de verdade o input sai da
+  /* Fora da tela, e não display:none, escondido de verdade o input sai da
      ordem de tabulação e a pastilha vira inalcançável pelo teclado. */
   input {
     position: absolute;
@@ -181,7 +181,7 @@ export const FrenteToggle = styled.label<{ $marcada: boolean }>`
 /* Proposta                                                             */
 /* ------------------------------------------------------------------ */
 
-/** O par de botões "Link" / "Anexar PDF" como um segmentado — dois botões
+/** O par de botões "Link" / "Anexar PDF" como um segmentado, dois botões
  *  soltos não diziam que são alternativas exclusivas. */
 export const ModoLista = styled.div`
   display: inline-flex;
@@ -229,7 +229,7 @@ export const ModoBotao = styled.button<{ $ativo: boolean }>`
  * O `<input type="file">` cru é a única coisa da tela desenhada pelo sistema
  * operacional: fonte diferente, altura diferente, um "Nenhum arquivo
  * selecionado" em inglês ou português conforme o Chrome. Aqui ele fica
- * escondido dentro de um `<label>` com cara de botão — e continua focável,
+ * escondido dentro de um `<label>` com cara de botão, e continua focável,
  * porque num input de verdade Enter e Espaço já abrem o seletor.
  */
 export const ArquivoLinha = styled.div`
@@ -318,7 +318,7 @@ export const ArquivoRemover = styled.button`
  *
  * São cinco seções: com o botão no fim do documento, conferir um campo lá de
  * cima custava rolar até o fim de novo para submeter. `z-index: 20` fica
- * abaixo do painel lateral (40/50) — o painel precisa cobri-lo.
+ * abaixo do painel lateral (40/50), o painel precisa cobri-lo.
  */
 export const AcoesBarra = styled.div`
   position: sticky;
@@ -336,7 +336,7 @@ export const AcoesBarra = styled.div`
   box-shadow: ${theme.shadows.md};
 `;
 
-/** O erro mora na barra, ao lado do botão que falhou — no fim da página ele
+/** O erro mora na barra, ao lado do botão que falhou, no fim da página ele
  *  aparecia fora da tela, e o clique parecia não ter feito nada. */
 export const AcoesMensagem = styled.p<{ $erro?: boolean }>`
   flex: 1;
