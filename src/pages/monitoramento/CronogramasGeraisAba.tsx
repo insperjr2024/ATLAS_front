@@ -11,6 +11,7 @@ import {
 } from "@/styles/page.styled";
 import {
   AvisoSomenteLeitura,
+  BarraFiltros,
   CardCliente,
   CardGrid,
   CardTitle,
@@ -63,10 +64,10 @@ export function CronogramasGeraisAba() {
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
-    <>
+    <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
-    </>
+    </BarraFiltros>
   );
   const [dados, setDados] = useState<CronogramasGerais | null>(null);
   const [carregando, setCarregando] = useState(true);

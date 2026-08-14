@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { FieldSelect } from "./Monitoramento.styled";
+import { FiltroSelect } from "./Monitoramento.styled";
 import { useMonitoramento } from "./MonitoramentoLayout";
 
 /**
@@ -46,7 +46,7 @@ export function useFiltroEscopo(frenteEfetiva: number | null) {
   return {
     escopoId,
     seletor: (
-      <FieldSelect
+      <FiltroSelect
         value={escopoId ? String(escopoId) : ""}
         onChange={(e) => setEscopoId(e.target.value ? Number(e.target.value) : null)}
         aria-label="Filtrar por escopo"
@@ -57,7 +57,7 @@ export function useFiltroEscopo(frenteEfetiva: number | null) {
             {e.nome}
           </option>
         ))}
-      </FieldSelect>
+      </FiltroSelect>
     ),
   };
 }

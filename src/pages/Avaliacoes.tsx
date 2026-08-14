@@ -12,6 +12,7 @@ import {
 } from "@/lib/avaliacoes";
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
 import { DescricaoQuote } from "@/styles/shared.styled";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { getEscopos, getFrentes } from "@/lib/bancas";
 import { getHistoricoBancas } from "@/lib/historico";
 import { getBancas, getBancasFrentes, getCandidaturas } from "@/lib/bancas";
@@ -206,6 +207,23 @@ export function Avaliacoes() {
       .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
   }, [historico, filtroSemestre, filtroCoordenador, filtroConsultor, filtroEscopo, avaliacoes]);
 
+  /* Coordenador e escopo saem de OUTRAS listas (o histórico traz só o id), e
+     é o nome exibido que precisa ordenar — por isso as colunas dependem
+     delas em vez de serem constantes de módulo. */
+  const colunas = useMemo(
+    (): Colunas<HistoricoBanca> => ({
+      projeto: { valor: (b) => b.nome_projeto, inicial: "asc" },
+      data: { valor: (b) => b.data_hora, inicial: "desc" },
+      coordenador: { valor: (b) => nomeUsuario(usuarios, b.coordenador_id), inicial: "asc" },
+      escopo: { valor: (b) => nomeEscopo(escopos, b.escopo_id), inicial: "asc" },
+      semestre: { valor: (b) => b.semestre_nome, inicial: "desc" },
+      nota: { valor: (b) => b.nota_final, inicial: "desc" },
+    }),
+    [usuarios, escopos],
+  );
+  // Sem coluna inicial: a lista já vem da mais recente para a mais antiga.
+  const { itens: bancasOrdenadas, ordem, ordenarPor } = useOrdenacao(historicoFiltrado, colunas);
+
   if (usuario?.posicao !== "diretor") {
     return <Navigate to="/dashboard" replace />;
   }
@@ -292,17 +310,29 @@ export function Avaliacoes() {
             <DataTable>
               <TableHead>
                 <TableRow>
-                  <TableHeadCell>Projeto</TableHeadCell>
-                  <TableHeadCell>Data</TableHeadCell>
-                  <TableHeadCell>Coordenador</TableHeadCell>
-                  <TableHeadCell>Escopo</TableHeadCell>
-                  <TableHeadCell>Semestre</TableHeadCell>
-                  <TableHeadCell>Nota</TableHeadCell>
+                  <Th coluna="projeto" ordem={ordem} onOrdenar={ordenarPor}>
+                    Projeto
+                  </Th>
+                  <Th coluna="data" ordem={ordem} onOrdenar={ordenarPor}>
+                    Data
+                  </Th>
+                  <Th coluna="coordenador" ordem={ordem} onOrdenar={ordenarPor}>
+                    Coordenador
+                  </Th>
+                  <Th coluna="escopo" ordem={ordem} onOrdenar={ordenarPor}>
+                    Escopo
+                  </Th>
+                  <Th coluna="semestre" ordem={ordem} onOrdenar={ordenarPor}>
+                    Semestre
+                  </Th>
+                  <Th coluna="nota" ordem={ordem} onOrdenar={ordenarPor}>
+                    Nota
+                  </Th>
                   <TableHeadCell />
                 </TableRow>
               </TableHead>
               <TableBody>
-                {historicoFiltrado.map((banca) => (
+                {bancasOrdenadas.map((banca) => (
                   <TableRow key={banca.id}>
                     <NameCell>
                       {banca.nome_projeto}

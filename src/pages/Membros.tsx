@@ -15,6 +15,28 @@ import {
 } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
+
+/** As colunas ordenáveis da lista de membros. Recebe as frentes porque
+ *  "Frentes" é derivada de outra tabela, não um campo do usuário. */
+function colunasDeMembro(
+  usuariosFrentes: UsuarioFrente[],
+  frentes: Frente[],
+): Colunas<UsuarioResumo> {
+  return {
+    nome: { valor: (m) => m.nome, inicial: "asc" },
+    email: { valor: (m) => m.email_insper, inicial: "asc" },
+    // Pelo RÓTULO, que é o que está escrito na célula: ordenar pela chave
+    // ("consultor", "diretor") daria uma ordem que a tela não mostra.
+    posicao: { valor: (m) => ROTULO_POSICAO[m.posicao] ?? m.posicao, inicial: "asc" },
+    frentes: {
+      valor: (m) => frentesDoUsuario(usuariosFrentes, frentes, m.id).join(", "),
+      inicial: "asc",
+    },
+    semestre: { valor: (m) => m.semestre_graduacao, inicial: "asc" },
+    status: { valor: (m) => ROTULO_STATUS_USUARIO[m.status] ?? m.status, inicial: "asc" },
+  };
+}
 import type { Frente } from "@/types/banca";
 import type { Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import { pode, ROTULO_POSICAO, ROTULO_STATUS_USUARIO } from "@/utils/permissoes";
@@ -131,6 +153,40 @@ export function Membros() {
 
   const membrosAtivos = useMemo(() => membros.filter((m) => m.ativo).length, [membros]);
 
+  /* Filtro e ordenação ficam ACIMA dos `return` cedo abaixo: hook depois de
+     `return` é hook condicional, e o React desalinha o estado. Por isso os
+     acessos a `contexto` aqui são opcionais — quando ele ainda é nulo, a
+     tela nem chega a renderizar a tabela. */
+  const termo = normalizarTexto(termoPesquisa.trim());
+  const usuariosFrentes = contexto?.usuariosFrentes ?? [];
+  const frentesCadastradas = contexto?.frentes ?? [];
+  const membrosFiltrados = membros.filter((membro) => {
+    if (filtroPosicao && membro.posicao !== filtroPosicao) return false;
+    if (filtroFrente) {
+      const temFrente = usuariosFrentes.some(
+        (uf) => uf.usuario_id === membro.id && uf.frente_id === Number(filtroFrente),
+      );
+      if (!temFrente) return false;
+    }
+    if (!termo) return true;
+    const frentes = frentesDoUsuario(usuariosFrentes, frentesCadastradas, membro.id).join(" ");
+    const texto = normalizarTexto(
+      `${membro.nome} ${membro.email_insper ?? ""} ${ROTULO_POSICAO[membro.posicao] ?? ""} ${frentes}`,
+    );
+    return texto.includes(termo);
+  });
+
+  /* Ordena o que sobrou do filtro, não a lista crua. Sem coluna inicial: a
+     ordem que vem do backend é a do cadastro, e nenhuma coluna sozinha é
+     "a certa" para uma lista de 80 pessoas — quem procura ordena pelo que
+     está procurando. */
+  const colunas = useMemo(
+    () => colunasDeMembro(usuariosFrentes, frentesCadastradas),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contexto],
+  );
+  const { itens: membrosOrdenados, ordem, ordenarPor } = useOrdenacao(membrosFiltrados, colunas);
+
   if (!usuario?.permissoes.pode_gerir_membros) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -147,23 +203,6 @@ export function Membros() {
   }
 
   if (carregando || !contexto) return <PageLoadingBlock />;
-
-  const termo = normalizarTexto(termoPesquisa.trim());
-  const membrosFiltrados = membros.filter((membro) => {
-    if (filtroPosicao && membro.posicao !== filtroPosicao) return false;
-    if (filtroFrente) {
-      const temFrente = contexto.usuariosFrentes.some(
-        (uf) => uf.usuario_id === membro.id && uf.frente_id === Number(filtroFrente),
-      );
-      if (!temFrente) return false;
-    }
-    if (!termo) return true;
-    const frentes = frentesDoUsuario(contexto.usuariosFrentes, contexto.frentes, membro.id).join(" ");
-    const texto = normalizarTexto(
-      `${membro.nome} ${membro.email_insper ?? ""} ${ROTULO_POSICAO[membro.posicao] ?? ""} ${frentes}`,
-    );
-    return texto.includes(termo);
-  });
 
   return (
     <PageStack>
@@ -240,17 +279,29 @@ export function Membros() {
             <DataTable>
               <TableHead>
                 <TableRow>
-                  <TableHeadCell>Nome</TableHeadCell>
-                  <TableHeadCell>E-mail</TableHeadCell>
-                  <TableHeadCell>Posição</TableHeadCell>
-                  <TableHeadCell>Frentes</TableHeadCell>
-                  <TableHeadCell>Semestre</TableHeadCell>
-                  <TableHeadCell>Status</TableHeadCell>
+                  <Th coluna="nome" ordem={ordem} onOrdenar={ordenarPor}>
+                    Nome
+                  </Th>
+                  <Th coluna="email" ordem={ordem} onOrdenar={ordenarPor}>
+                    E-mail
+                  </Th>
+                  <Th coluna="posicao" ordem={ordem} onOrdenar={ordenarPor}>
+                    Posição
+                  </Th>
+                  <Th coluna="frentes" ordem={ordem} onOrdenar={ordenarPor}>
+                    Frentes
+                  </Th>
+                  <Th coluna="semestre" ordem={ordem} onOrdenar={ordenarPor}>
+                    Semestre
+                  </Th>
+                  <Th coluna="status" ordem={ordem} onOrdenar={ordenarPor}>
+                    Status
+                  </Th>
                   <TableHeadCell />
                 </TableRow>
               </TableHead>
               <TableBody>
-                {membrosFiltrados.map((membro) => {
+                {membrosOrdenados.map((membro) => {
                   const frentes = frentesDoUsuario(contexto.usuariosFrentes, contexto.frentes, membro.id);
                   return (
                     <TableRow key={membro.id}>
