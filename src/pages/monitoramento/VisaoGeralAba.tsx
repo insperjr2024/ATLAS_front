@@ -489,27 +489,23 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                 <AprovacaoDetalhe key={tipo} open={itens.length <= 3 || !!motivo}>
                   <summary>
                     <ItemAtencao as="span" $nivel={nivelAtencao(itens[0].dias)}>
-              <ConteudoPaginado estado={atencao}>
-                <ListaAtencaoGrid>
-                  {atencao.visiveis.map((item, i) => (
-                    /* A cor do marcador carrega a gravidade: sem ela uma lista
-                       de 15 itens grita igual e a diretoria não sabe por onde
-                       começar. */
-                    <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
                       <strong>
                         {itens.length} {ROTULO_ATENCAO[tipo as TipoAtencao] ?? tipo}
                       </strong>
                     </ItemAtencao>
                   </summary>
-                  <ListaSimples>
+                  <ListaAtencaoGrid>
                     {itens.map((item, i) => (
+                      /* A cor do marcador carrega a gravidade: sem ela uma lista
+                         de 15 itens grita igual e a diretoria não sabe por onde
+                         começar. */
                       <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
                         <strong>
                           <LinkProjeto to={`/projetos/${item.projeto_id}`}>
                             {item.projeto_nome}
                           </LinkProjeto>
                         </strong>
-                        {/* O motivo vem pronto e específico do backend — §7.1 é
+                        {/* O motivo vem pronto e específico do backend, §7.1 é
                             explícito que não pode ser rótulo genérico. */}
                         <span>
                           {item.motivo}
@@ -517,7 +513,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                         </span>
                       </ItemAtencao>
                     ))}
-                  </ListaSimples>
+                  </ListaAtencaoGrid>
                 </AprovacaoDetalhe>
               ))}
             </>

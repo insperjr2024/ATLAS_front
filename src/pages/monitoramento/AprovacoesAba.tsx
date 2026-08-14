@@ -118,59 +118,11 @@ export function AprovacoesAba() {
       <EntradasEmProjetoCard itens={dados.solicitacoes_de_entrada} onDecidiu={carregar} />
       <AtrasosSemJustificativaCard itens={dados.atrasos_sem_justificativa} onDecidiu={carregar} />
 
-      {/* ⚠ Havia aqui um card "Entregas sem classificação": as entregas
+      {/* Havia aqui um card "Entregas sem classificação": as entregas
           atrasadas ainda não marcadas como atraso interno ou por agenda do
-          cliente. Saiu em 2026-08-12 junto com o que lhe dava sentido — o
+          cliente. Saiu em 2026-08-12 junto com o que lhe dava sentido, o
           atraso de ENTREGA deixou de ser insight, e com ele a métrica que
           separava os dois tipos. */}
-      {/* Decide na própria lista: o pedido traz o motivo escrito, que é todo o
-          contexto de que a decisão precisa. */}
-      <PedidosDeDiasCard onDecidiu={carregar} />
-      <ExcecoesDeChoqueCard onDecidiu={carregar} />
-
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>
-            Atrasos sem justificativa
-            {dados.atrasos_sem_justificativa.length > 0 &&
-              ` (${dados.atrasos_sem_justificativa.length})`}
-          </PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          {dados.atrasos_sem_justificativa.length === 0 ? (
-            <EmptyText>Todo projeto atrasado já tem o porquê registrado.</EmptyText>
-          ) : (
-            <>
-              <EmptyText style={{ marginBottom: "0.75rem" }}>
-                O alerta de atraso é automático, mas o motivo é você quem escreve, e é ele que
-                explica o vermelho para quem olha o portfólio depois.
-              </EmptyText>
-              <ListaSimples>
-                {dados.atrasos_sem_justificativa.map((a) => (
-                  <ItemLista key={a.projeto_id}>
-                    <div>
-                      <LinkProjeto as={Link} to={`/projetos/${a.projeto_id}`}>
-                        {a.projeto_nome}
-                      </LinkProjeto>
-                      <EmptyText>{a.motivos.join(" · ")}</EmptyText>
-                    </div>
-                    <Pilula $tom="alerta">
-                      {a.dias_totais} {a.dias_totais === 1 ? "dia" : "dias"}
-                    </Pilula>
-                  </ItemLista>
-                ))}
-              </ListaSimples>
-            </>
-          )}
-        </PageCardContent>
-      </PageCard>
-
-      {/* Havia aqui um terceiro card, "Entregas sem classificação": as
-          entregas atrasadas ainda não marcadas como atraso interno ou por
-          agenda do cliente. Saiu em 2026-08-12 junto com o que lhe dava
-          sentido, o atraso de ENTREGA deixou de ser insight, e com ele a
-          métrica que separava os dois tipos. O card seguia pedindo à diretoria
-          uma classificação que não mudava mais número nenhum. */}
     </PageStack>
   );
 }
