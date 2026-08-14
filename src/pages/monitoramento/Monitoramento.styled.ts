@@ -2,8 +2,8 @@ import styled, { css } from "styled-components";
 import { Link as RouterLink, NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import { PALETA } from "@/components/cronograma-pintado/cores";
-import { DataTable as DataTableBase } from "../Bancas.styled";
-import { PageButtonSm } from "@/styles/page.styled";
+import { DataTable as DataTableBase, FieldSelect } from "../Bancas.styled";
+import { PageButtonSm, PageCard } from "@/styles/page.styled";
 
 export {
   PageHeaderRow,
@@ -38,6 +38,11 @@ export const DataTable = styled(DataTableBase)`
     text-transform: uppercase;
     letter-spacing: 0.04em;
     white-space: nowrap;
+    /* Quando um cabeçalho tem duas linhas (rótulo + unidade) e os vizinhos
+       têm uma, centralizar deixa os rótulos em alturas diferentes e a linha
+       parece torta. Ancorados embaixo, todos partem da mesma base. Nas
+       tabelas de cabeçalho uniforme não muda nada. */
+    vertical-align: bottom;
   }
 
   tbody tr {
@@ -268,14 +273,36 @@ export const BotaoLimparBusca = styled.button`
   }
 `;
 
-/** A linha do filtro de frente, no topo de cada aba.
+/**
+ * A linha de filtros no topo de cada aba, a MESMA em todas elas.
  *
- *  Alinhado à direita para não competir com o primeiro card: é um controle de
- *  recorte, e o assunto da aba é o conteúdo abaixo dele. */
-export const BarraFiltro = styled.div`
+ * Ancorada à esquerda, alinhada com os títulos dos cards abaixo: o filtro é
+ * lido antes do conteúdo que ele recorta, e a margem esquerda é a coluna por
+ * onde o olho desce.
+ *
+ * `flex-wrap` em vez de largura fixa porque o número de filtros varia por aba
+ * (algumas só têm frente, outras frente + escopo): num celular eles quebram
+ * de linha sozinhos em vez de espremer os selects abaixo do legível.
+ */
+export const BarraFiltros = styled.div`
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
   align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+/**
+ * Um select da barra de filtros.
+ *
+ * Existe só para dar um teto de largura: `SelectCustom` é `width: 100%` por
+ * padrão, o que faz sentido dentro de um formulário, mas solto num
+ * `PageStack` esticava o campo pela tela inteira. Com base de 13rem cabem
+ * dois lado a lado num notebook e ainda sobra tela para o conteúdo.
+ */
+export const FiltroSelect = styled(FieldSelect)`
+  flex: 0 1 13rem;
+  width: auto;
+  min-width: 9rem;
 `;
 
 /** O rodapé de navegação entre páginas de um card. Discreto e centrado: é
@@ -542,6 +569,186 @@ export const PainelGrid = styled.div`
   @media (min-width: ${theme.breakpoints.lg}px) {
     grid-template-columns: 1fr 1fr;
   }
+`;
+
+/** Um card do `PainelGrid` que ocupa a linha inteira.
+ *
+ *  Existe porque a grade tem 2 colunas e um número ÍMPAR de cards: o último
+ *  ficava sozinho com um buraco do mesmo tamanho ao lado. Largura inteira
+ *  resolve o vão e, no caso do "Tempo dos escopos", é o que a tabela de três
+ *  colunas numéricas queria de qualquer jeito. */
+export const CardLargura = styled(PageCard)`
+  @media (min-width: ${theme.breakpoints.lg}px) {
+    grid-column: 1 / -1;
+  }
+`;
+
+/**
+ * Um cabeçalho de coluna em duas linhas: o assunto em cima, a unidade embaixo.
+ *
+ * ⚠ **Existe por causa do `th` desta tabela**, que é caixa alta, xs e
+ * `nowrap`. Um rótulo honesto como "dias úteis sem nada no cronograma" nessa
+ * forma vira uma faixa de sete centímetros em versalete, e três colunas assim
+ * transformam o cabeçalho na coisa mais pesada da tela — mais pesada que os
+ * dados, que é o que se veio ler.
+ *
+ * A unidade desce para a segunda linha em caixa baixa, sem tracking e mais
+ * apagada: ela é a mesma em três colunas, então repeti-la com o mesmo peso é
+ * ruído. Continua escrita, porque "12" não diz se são dias corridos ou úteis,
+ * e aqui é sempre útil.
+ */
+export const RotuloColuna = styled.span`
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  line-height: 1.2;
+
+  small {
+    font-size: 0.9em;
+    font-weight: ${theme.fontWeight.normal};
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.7;
+  }
+`;
+
+/* ─── Atenção agora ───────────────────────────────────────────────────────
+   Um bloco por motivo, sempre aberto. A versão anterior escondia cada grupo
+   atrás de um `<details>` fechado e o filtro atrás de um `<select>`: para
+   saber o que havia era preciso abrir um por um. Aqui os motivos viram um
+   segmentado visível (com a contagem em cada um) e cada grupo mostra as
+   primeiras linhas direto. */
+
+export const AtencaoSecao = styled.section`
+  & + & {
+    margin-top: ${theme.spacing.md};
+    padding-top: ${theme.spacing.md};
+    border-top: 1px solid ${theme.colors.border};
+  }
+`;
+
+export const AtencaoSecaoTopo = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+  margin-bottom: 0.5rem;
+`;
+
+export const AtencaoSecaoTitulo = styled.h3`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** "mostrar os outros N": muda o filtro para este motivo em vez de expandir
+ *  no lugar, então a lista longa abre com a tela inteira para ela. */
+export const AtencaoVerTodos = styled.button`
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.primary};
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+    border-radius: ${theme.borderRadius.sm};
+  }
+`;
+
+export const AtencaoLista = styled.ul`
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+`;
+
+/**
+ * Uma linha do grupo.
+ *
+ * Linha, e não cartãozinho numa grade `auto-fill`: com 15 itens a grade
+ * quebrava em colunas de larguras diferentes e o olho perdia a coluna do
+ * nome. Empilhadas, os nomes ficam alinhados e a leitura desce reta.
+ *
+ * A linha INTEIRA é o link — em lista de trabalho o alvo útil é o item todo,
+ * não um trecho de texto no meio.
+ */
+export const AtencaoLinha = styled(RouterLink)<{ $nivel?: NivelSeveridade }>`
+  display: grid;
+  grid-template-columns: 0.4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.375rem;
+  border-radius: ${theme.borderRadius.md};
+  color: inherit;
+  text-decoration: none;
+  transition: background ${theme.transitions.fast};
+
+  &::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: ${theme.borderRadius.full};
+    background: ${({ $nivel }) => SEVERIDADE[$nivel ?? "media"]};
+  }
+
+  &:hover {
+    background: ${theme.colors.muted};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: -2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/** Nome do projeto e o motivo, um sobre o outro. O motivo vem pronto do
+ *  backend e é específico ("sem reunião registrada esta semana"), nunca
+ *  rótulo genérico. */
+export const AtencaoTexto = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+
+  strong {
+    font-size: ${theme.fontSize.sm};
+    font-weight: ${theme.fontWeight.medium};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/** O tempo, à direita e em números tabulares: é a coluna que se compara de
+ *  cima a baixo, e sem tabular os dígitos dançam entre as linhas. */
+export const AtencaoDias = styled.span<{ $nivel?: NivelSeveridade }>`
+  flex-shrink: 0;
+  font-size: ${theme.fontSize.xs};
+  font-variant-numeric: tabular-nums;
+  font-weight: ${theme.fontWeight.medium};
+  color: ${({ $nivel }) => ($nivel ? SEVERIDADE[$nivel] : theme.colors.mutedForeground)};
+  white-space: nowrap;
 `;
 
 export const ListaSimples = styled.ul`
@@ -2102,37 +2309,10 @@ export const HistAcoes = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
-/** O cabeçalho de coluna clicável para ordenar. Herda o tipo do `th` (caixa
- *  alta pequena) e ganha a seta só quando é a coluna ativa — uma seta em toda
- *  coluna viraria ruído. */
-export const HistOrdenar = styled.button<{ $ativo: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  color: ${({ $ativo }) => ($ativo ? theme.colors.foreground : "inherit")};
-
-  &:hover {
-    color: ${theme.colors.foreground};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${theme.colors.ring};
-    outline-offset: 2px;
-    border-radius: ${theme.borderRadius.sm};
-  }
-
-  .seta {
-    font-size: 0.7em;
-    line-height: 1;
-  }
-`;
+/** O cabeçalho de coluna clicável para ordenar. A definição vive em
+ *  `shared.styled`, porque o Dashboard de Bancas usa o mesmo controle; o nome
+ *  local fica para não mexer nas tabelas do histórico que já o importam. */
+export { BotaoOrdenar as HistOrdenar } from "@/styles/shared.styled";
 
 /** A linha-título de um grupo de semestre, quando a tabela está agrupada.
  *  Ocupa a largura inteira (colSpan) e fica levemente destacada do corpo. */
