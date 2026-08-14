@@ -49,7 +49,7 @@ export const WeekRowPreenche = styled(WeekRow)`
 `;
 
 /**
- * Sem o piso de `7.5rem` do `DayCell` padrão — aqui a célula encolhe ou
+ * Sem o piso de `7.5rem` do `DayCell` padrão, aqui a célula encolhe ou
  * cresce pra caber exatamente nas 5 ou 6 semanas do mês dentro da altura
  * disponível, em vez de empurrar a página quando o mês tem 6 linhas.
  *

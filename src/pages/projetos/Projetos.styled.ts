@@ -84,7 +84,7 @@ export const AvisoLink = styled(Link)`
   text-decoration: underline;
 `;
 
-/** O toggle "Link" / "Anexar PDF" do campo de proposta — um ou outro. */
+/** O toggle "Link" / "Anexar PDF" do campo de proposta, um ou outro. */
 export const ModoPropostaRow = styled.div`
   display: flex;
   gap: ${theme.spacing.sm};

@@ -59,7 +59,7 @@ import { useFiltroEscopo } from "./FiltroEscopo";
  *  de Monitoramento, então o destino é a pasta sem sub-rota. */
 const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento", voltarRotulo: "Voltar para Monitoramento" };
 
-/** "seg 11" — o dia da semana é o que a pessoa usa para se localizar numa
+/** "seg 11", o dia da semana é o que a pessoa usa para se localizar numa
  *  agenda de 7 dias; a data completa não acrescenta nada nessa janela. */
 function diaDaSemana(iso: string): string {
   const d = paraDataUtc(iso);
