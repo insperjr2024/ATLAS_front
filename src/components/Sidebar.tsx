@@ -6,7 +6,7 @@ import { rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, User, UserPlus } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarContainer,
@@ -66,10 +66,6 @@ const navItems: NavItemConfig[] = [
     visiblePorPosicao: (u) => u.posicao === "coordenador" || u.posicao === "gerente" || u.posicao === "diretor",
   },
   { icon: ClipboardList, label: "Bancas", path: "/bancas" },
-  // Sem trava: a página serve os dois lados e decide o que mostrar pelas
-  // flags que o back manda — consultor pede para entrar, quem coordena ou
-  // monta equipe responde aos pedidos.
-  { icon: UserPlus, label: "Vagas em projetos", path: "/vagas" },
   { icon: Calendar, label: "Calendário", path: "/calendario" },
   // Sem trava: a grade de aulas (§11) é de todo mundo, e cada um só vê a sua.
   { icon: User, label: "Meu perfil", path: "/meu-perfil" },

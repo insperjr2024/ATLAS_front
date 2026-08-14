@@ -149,7 +149,7 @@ export function ProjetosList() {
   }, [token]);
 
   // Só a contagem, pro botão "Vagas abertas" — a lista completa (com
-  // impedimento, coordenador, etc.) só é buscada dentro de /projetos/vagas.
+  // impedimento, coordenador, etc.) só é buscada dentro de /vagas.
   useEffect(() => {
     if (!token) return;
     let ativo = true;
@@ -159,7 +159,7 @@ export function ProjetosList() {
       })
       .catch(() => {
         // Contagem é só um adorno do botão — sem ela, o botão continua
-        // levando pra /projetos/vagas normalmente.
+        // levando pra /vagas normalmente.
       });
     return () => {
       ativo = false;
@@ -277,7 +277,7 @@ export function ProjetosList() {
           </PageSubheading>
           {!!vagasAbertas && (
             <VagasSelo
-              to="/projetos/vagas"
+              to="/vagas"
               state={{ voltarPara: `/projetos?modo=${modo}`, voltarRotulo: "Voltar para Projetos" }}
             >
               {vagasAbertas} {vagasAbertas === 1 ? "vaga aberta" : "vagas abertas"}
@@ -407,7 +407,7 @@ export function ProjetosList() {
           <EmptyText>
             Você ainda não está em nenhum projeto.{" "}
             <Link
-              to="/projetos/vagas"
+              to="/vagas"
               state={{ voltarPara: `/projetos?modo=${modo}`, voltarRotulo: "Voltar para Projetos" }}
             >
               Veja os projetos com vaga

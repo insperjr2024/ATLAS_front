@@ -399,7 +399,7 @@ export function ProjetoPage() {
           {pedidosPendentes} {pedidosPendentes === 1 ? "pedido de entrada" : "pedidos de entrada"}{" "}
           aguardando resposta.{" "}
           <AvisoLink
-            to="/projetos/solicitacoes"
+            to="/vagas?aba=solicitacoes"
             state={{ voltarPara: `/projetos/${projeto.id}`, voltarRotulo: `Voltar para ${projeto.nome}` }}
           >
             Responder

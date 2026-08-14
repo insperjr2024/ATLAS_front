@@ -150,35 +150,96 @@ export const PainelCores = styled.div`
   right: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  width: 12rem;
-  padding: 0.75rem;
+  width: 13rem;
+  padding: 0.5rem;
   border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.lg};
   background: ${theme.colors.card};
   box-shadow: ${theme.shadows.lg};
 `;
 
+export const TituloPainelCores = styled.p`
+  margin: 0.25rem 0.5rem 0.375rem;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.mutedForeground};
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+`;
+
+/** Cada linha é um botão de verdade (o `<label>` inteiro), não só o swatch —
+ *  a área de clique maior e o fundo no hover deixam claro que dá pra clicar
+ *  em qualquer parte da linha, não só no quadradinho de cor. */
 export const LinhaCor = styled.label`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: ${theme.borderRadius.md};
   font-size: ${theme.fontSize.sm};
   color: ${theme.colors.foreground};
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+
+  &:hover {
+    background: ${theme.colors.secondary};
+  }
 `;
 
-/** `<input type="color">` nativo — sem componente próprio de paleta: é uma
- *  preferência pessoal de leitura (§ comentário em `getCoresCustomizadas`),
- *  não algo que precise da mesma curadoria de cor das etapas do cronograma
- *  (aquelas SÃO gravadas e viram legenda compartilhada). */
+/**
+ * `<input type="color">` nativo, mas com a casca do navegador removida e
+ * redesenhada como uma bolinha — sem componente próprio de paleta, porque é
+ * uma preferência pessoal de leitura (§ comentário em
+ * `getCoresCustomizadas`), não algo que precise da mesma curadoria de cor
+ * das etapas do cronograma (aquelas SÃO gravadas e viram legenda
+ * compartilhada). O quadrado cru do input nativo, com a moldura em relevo do
+ * navegador, destoava do resto — pílulas e chips da tela são todos
+ * arredondados.
+ */
 export const ItemCorInput = styled.input`
   flex-shrink: 0;
-  width: 1.75rem;
-  height: 1.75rem;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.375rem;
+  height: 1.375rem;
   padding: 0;
-  border: 1px solid ${theme.colors.border};
-  border-radius: ${theme.borderRadius.md};
+  border: none;
+  border-radius: ${theme.borderRadius.full};
+  box-shadow: inset 0 0 0 1px ${theme.colors.border};
   cursor: pointer;
+
+  /* Sem isto o Chrome desenha o swatch com um respiro cinza por dentro —
+     a bolinha ficaria menor que a área clicável, com uma borda dupla feia. */
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: inherit;
+  }
+  &::-webkit-color-swatch {
+    border: none;
+    border-radius: inherit;
+  }
+  &::-moz-color-swatch {
+    border: none;
+    border-radius: inherit;
+  }
+
+  &:hover {
+    box-shadow:
+      inset 0 0 0 1px ${theme.colors.border},
+      0 0 0 3px ${theme.colors.secondary};
+  }
+  &:focus-visible {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 1px ${theme.colors.border},
+      0 0 0 3px ${theme.colors.ring};
+  }
+`;
+
+export const DivisorPainelCores = styled.div`
+  height: 1px;
+  margin: 0.375rem 0.125rem 0.5rem;
+  background: ${theme.colors.border};
 `;
 
 /**

@@ -35,6 +35,27 @@ export const ProjetoCard = styled.button<{ $indisponivel: boolean }>`
   }
 `;
 
+/** O mesmo cartão do projeto, mas para quando JÁ existe um pedido seu ali —
+ *  não é mais um botão (não há o que reabrir clicando: o pedido já existe),
+ *  e a linha de status embaixo substitui o texto de impedimento genérico
+ *  por um badge + o botão de cancelar, direto no cartão. */
+export const ProjetoCardEstatico = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+`;
+
+export const PedidoStatusLinha = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+`;
+
 export const CardTopo = styled.div`
   display: flex;
   align-items: flex-start;

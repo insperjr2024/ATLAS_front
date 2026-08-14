@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { ChevronDown, ChevronRight, Inbox, Users } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ChevronDown, ChevronRight, Inbox, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS, formatarDataHora } from "@/lib/projetos";
 import type { StatusProjeto } from "@/types/projeto";
@@ -46,6 +46,14 @@ import {
   FieldLabel,
   FieldSelect,
 } from "./Bancas.styled";
+import {
+  VoltarLink,
+  FrenteFilterWrap,
+  FrenteFilterButton,
+  FrenteFilterPanel,
+  FrenteFilterSecao,
+  CheckboxLabel,
+} from "./projetos/Projetos.styled";
 // A mesma pílula da aba de Alocação: é onde a situação de carga já é lida
 // hoje, e duas formas diferentes para o mesmo rótulo fariam a pessoa achar
 // que são coisas distintas.
@@ -60,6 +68,8 @@ import {
 import {
   VagasGrid,
   ProjetoCard,
+  ProjetoCardEstatico,
+  PedidoStatusLinha,
   CardTopo,
   CardNome,
   CardCliente,
@@ -229,6 +239,29 @@ export function Vagas() {
   // Grade da gestão: o filtro de frente e o projeto aberto no painel lateral.
   const [frenteDaGrade, setFrenteDaGrade] = useState(TODOS);
   const [alocarEm, setAlocarEm] = useState<ProjetoComVaga | null>(null);
+  const [filtroGestaoAberto, setFiltroGestaoAberto] = useState(false);
+  const filtroGestaoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!filtroGestaoAberto) return;
+    function aoClicarFora(e: MouseEvent) {
+      if (filtroGestaoRef.current && !filtroGestaoRef.current.contains(e.target as Node)) {
+        setFiltroGestaoAberto(false);
+      }
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, [filtroGestaoAberto]);
+
+  /** Quem navegou pra cá manda `state.voltarPara` (o selo de vagas em
+   *  Projetos, o link de quem não tem projeto, o banner "Responder" na
+   *  página do projeto) — mesmo padrão de `ProjetoPage`. Sem origem
+   *  reconhecida (entrou direto pela URL, ex.: a notificação), o destino
+   *  padrão é a lista de projetos. */
+  const location = useLocation();
+  const voltarState = location.state as { voltarPara?: string; voltarRotulo?: string } | null;
+  const voltarPara = voltarState?.voltarPara ?? "/projetos";
+  const voltarRotulo = voltarState?.voltarRotulo ?? "Voltar para Projetos";
 
   useEffect(() => {
     if (!token) return;
@@ -369,6 +402,11 @@ export function Vagas() {
 
   return (
     <PageStack>
+      <VoltarLink to={voltarPara}>
+        <ArrowLeft size={14} />
+        {voltarRotulo}
+      </VoltarLink>
+
       <PageHeader>
         <PageHeaderText>
           <PageTitle>Vagas em projetos</PageTitle>
@@ -470,7 +508,16 @@ export function Vagas() {
                 ) : (
                   <VagasGrid>
                     {dados.projetos.map((p) => (
-                      <CartaoProjeto key={p.id} projeto={p} modo="solicitar" onAbrir={setAberto} />
+                      <CartaoProjeto
+                        key={p.id}
+                        projeto={p}
+                        modo="solicitar"
+                        onAbrir={setAberto}
+                        pedidoPendente={meus.find(
+                          (s) => s.projeto_id === p.id && s.status === "pendente",
+                        )}
+                        onCancelar={desistir}
+                      />
                     ))}
                   </VagasGrid>
                 )}
@@ -482,32 +529,56 @@ export function Vagas() {
             <PageCard>
               <PageCardHeader>
                 <PageCardTitle>Projetos</PageCardTitle>
-              </PageCardHeader>
-              <PageCardContent>
                 {/* Filtro e agrupamento só para quem compara frentes. O
                     gerente de uma frente só já recebe a lista recortada
                     nela: o seletor teria uma opção e o agrupamento, um
                     grupo. Quem decide é o back, pelo recorte do §3. */}
                 {dados.filtraPorFrente && (
-                  <LinhaDeCampos>
-                    <FieldGroup>
-                      <FieldLabel htmlFor="grade-frente">Frente</FieldLabel>
-                      <FieldSelect
-                        id="grade-frente"
-                        value={frenteDaGrade}
-                        onChange={(e) => setFrenteDaGrade(e.target.value)}
-                      >
-                        <option value={TODOS}>Todas as frentes</option>
+                  <FrenteFilterWrap ref={filtroGestaoRef}>
+                    <FrenteFilterButton
+                      type="button"
+                      aria-haspopup="listbox"
+                      aria-expanded={filtroGestaoAberto}
+                      onClick={() => setFiltroGestaoAberto((aberto) => !aberto)}
+                    >
+                      {frenteDaGrade === TODOS ? "Todas as frentes" : frenteDaGrade}
+                      <ChevronDown size={14} />
+                    </FrenteFilterButton>
+                    {filtroGestaoAberto && (
+                      <FrenteFilterPanel role="listbox" aria-label="Filtrar por frente">
+                        <FrenteFilterSecao>Frente</FrenteFilterSecao>
+                        <CheckboxLabel>
+                          <input
+                            type="radio"
+                            name="frente-da-grade"
+                            checked={frenteDaGrade === TODOS}
+                            onChange={() => {
+                              setFrenteDaGrade(TODOS);
+                              setFiltroGestaoAberto(false);
+                            }}
+                          />
+                          Todas as frentes
+                        </CheckboxLabel>
                         {[...new Set(dados.projetos.flatMap((p) => p.frentes))].sort().map((f) => (
-                          <option key={f} value={f}>
+                          <CheckboxLabel key={f}>
+                            <input
+                              type="radio"
+                              name="frente-da-grade"
+                              checked={frenteDaGrade === f}
+                              onChange={() => {
+                                setFrenteDaGrade(f);
+                                setFiltroGestaoAberto(false);
+                              }}
+                            />
                             {f}
-                          </option>
+                          </CheckboxLabel>
                         ))}
-                      </FieldSelect>
-                    </FieldGroup>
-                  </LinhaDeCampos>
+                      </FrenteFilterPanel>
+                    )}
+                  </FrenteFilterWrap>
                 )}
-
+              </PageCardHeader>
+              <PageCardContent>
                 <GradeDaGestao
                   projetos={dados.projetos}
                   frente={dados.filtraPorFrente ? frenteDaGrade : TODOS}
@@ -704,20 +775,21 @@ function CartaoProjeto({
   projeto: p,
   modo,
   onAbrir,
+  pedidoPendente,
+  onCancelar,
 }: {
   projeto: ProjetoComVaga;
   modo: "solicitar" | "gestao";
   onAbrir: (p: ProjetoComVaga) => void;
+  /** Só existe em `modo="solicitar"` — é o pedido do próprio consultor
+   *  aberto NESTE projeto, quando há um. */
+  pedidoPendente?: MinhaSolicitacao;
+  onCancelar?: (id: number) => void;
 }) {
   const bloqueado = modo === "solicitar" && !!p.impedimento;
 
-  return (
-    <ProjetoCard
-      type="button"
-      $indisponivel={bloqueado}
-      disabled={bloqueado}
-      onClick={() => onAbrir(p)}
-    >
+  const conteudo = (
+    <>
       <CardTopo>
         <div>
           <CardNome>{p.nome}</CardNome>
@@ -749,6 +821,38 @@ function CartaoProjeto({
       </VagasDots>
 
       <CardLinha>Coordenador: {p.coordenador_nome ?? "—"}</CardLinha>
+    </>
+  );
+
+  // Já pedi pra entrar NESTE projeto: o cartão não é mais um botão (não há o
+  // que reabrir clicando, o pedido já existe) — mostra o status de verdade e
+  // deixa cancelar direto aqui, em vez do texto genérico de impedimento.
+  if (pedidoPendente) {
+    return (
+      <ProjetoCardEstatico>
+        {conteudo}
+        <PedidoStatusLinha>
+          <PageBadge $tone="warning">Pedido pendente</PageBadge>
+          <PageButtonSm
+            type="button"
+            $variant="outline"
+            onClick={() => onCancelar?.(pedidoPendente.id)}
+          >
+            Cancelar pedido
+          </PageButtonSm>
+        </PedidoStatusLinha>
+      </ProjetoCardEstatico>
+    );
+  }
+
+  return (
+    <ProjetoCard
+      type="button"
+      $indisponivel={bloqueado}
+      disabled={bloqueado}
+      onClick={() => onAbrir(p)}
+    >
+      {conteudo}
       {modo === "solicitar" && p.impedimento && <Impedimento>{p.impedimento}</Impedimento>}
     </ProjetoCard>
   );

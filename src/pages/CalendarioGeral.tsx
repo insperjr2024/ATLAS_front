@@ -39,6 +39,7 @@ import {
   DetailTerm,
   DetailValue,
   DiaViewWrap,
+  DivisorPainelCores,
   FiltroChips,
   FlutuanteEventos,
   GradeWrap,
@@ -62,6 +63,7 @@ import {
   PaginaCalendario,
   PainelCores,
   Pilula,
+  TituloPainelCores,
   PilulasWrap,
   PilulaTexto,
   WeekRowPreenche,
@@ -368,6 +370,7 @@ export function CalendarioGeral() {
             </PageButtonSm>
             {painelCoresAberto && (
               <PainelCores role="dialog" aria-label="Personalizar cores dos eventos">
+                <TituloPainelCores>Cor dos eventos</TituloPainelCores>
                 {TIPOS.map((tipo) => (
                   <LinhaCor key={tipo}>
                     <ItemCorInput
@@ -379,6 +382,7 @@ export function CalendarioGeral() {
                     <span>{ROTULO_TIPO[tipo]}</span>
                   </LinhaCor>
                 ))}
+                <DivisorPainelCores />
                 <PageButtonSm type="button" $variant="outline" onClick={restaurarCoresPadrao}>
                   Restaurar padrão
                 </PageButtonSm>
