@@ -34,6 +34,7 @@ import { ExecucaoAba } from "@/pages/monitoramento/ExecucaoAba";
 import { AlocacaoAba } from "@/pages/monitoramento/AlocacaoAba";
 import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
 import { GraficosAba } from "@/pages/monitoramento/GraficosAba";
+import { HistoricoAba } from "@/pages/monitoramento/HistoricoAba";
 import { AvaliacaoDesempenho } from "@/pages/avaliacao-desempenho/AvaliacaoDesempenho";
 import { MeuRelatorio } from "@/pages/avaliacao-desempenho/MeuRelatorio";
 import { MeusMentorados } from "@/pages/avaliacao-desempenho/MeusMentorados";
@@ -122,6 +123,7 @@ export default function App() {
                   <Route path="alocacao" element={<AlocacaoAba />} />
                   <Route path="atrasos" element={<AtrasosAba />} />
                   <Route path="graficos" element={<GraficosAba />} />
+                <Route path="historico" element={<HistoricoAba />} />
                   <Route path="tarefas" element={<TarefasGeraisAba />} />
                   <Route path="cronogramas" element={<CronogramasGeraisAba />} />
                 </Route>

@@ -455,7 +455,83 @@ export function getCronogramasGerais(token: string, frenteId?: number | null, es
 }
 
 /* ------------------------------------------------------------------ */
-/* Aprovações, a fila da diretoria                                    */
+/* Projetos ativos — o retrato do que está em curso                    */
+/* ------------------------------------------------------------------ */
+
+/** Uma linha da aba Projetos ativos. Espelha
+ *  `use_cases/monitoramento/projetos_ativos.py`. */
+export interface ProjetoAtivo {
+  id: number;
+  nome: string;
+  cliente: string | null;
+  status: StatusProjeto;
+  frentes: string[];
+  frente_ids: number[];
+  sinergico: boolean;
+  coordenador: string | null;
+  coordenador_id: number | null;
+  data_kickoff: string | null;
+  /** Dias corridos desde o kickoff até hoje; `null` = kickoff ainda pendente. */
+  dias_em_execucao: number | null;
+  kickoff_pendente: boolean;
+  /** A próxima banca ainda não realizada, de qualquer escopo; `null` se não há. */
+  proxima_banca: string | null;
+}
+
+export function getProjetosAtivos(token: string, frenteId?: number | null) {
+  return apiFetch<ProjetoAtivo[]>(`/monitoramento/projetos-ativos${query(frenteId)}`, { token });
+}
+
+/* ------------------------------------------------------------------ */
+/* Histórico de projetos — o portfólio encerrado (só diretoria/gerência)*/
+/* ------------------------------------------------------------------ */
+
+export type FiltroHistorico = "todos" | "finalizados" | "arquivados";
+
+/** Uma linha da aba Histórico. Espelha
+ *  `use_cases/monitoramento/historico_projetos.py`. */
+export interface HistoricoProjeto {
+  id: number;
+  nome: string;
+  cliente: string | null;
+  status: StatusProjeto;
+  /** Arquivar é ORTOGONAL ao status: dá para arquivar um projeto que nunca
+   *  chegou a "finalizado" (um pausado, por exemplo). */
+  arquivado: boolean;
+  /** Já vem com o NOME de cada frente resolvido pelo backend. */
+  frentes: string[];
+  frente_ids: number[];
+  sinergico: boolean;
+  coordenador: string | null;
+  coordenador_id: number | null;
+  data_kickoff: string | null;
+  /** Quando o projeto virou "finalizado"; ou, se só arquivado, o `arquivado_em`. */
+  encerrado_em: string | null;
+  /** O nome do semestre em que encerrou, casado por DATA (o projeto não tem
+   *  FK de semestre) — `null` quando a data não cai em nenhum semestre. */
+  semestre: string | null;
+  /** Dias corridos entre kickoff e encerramento; `null` sem uma das pontas. */
+  duracao_dias: number | null;
+}
+
+/**
+ * O portfólio encerrado que o usuário enxerga (§7.5, mesmo recorte do resto do
+ * painel). `filtro` estreita no servidor; a aba pede "todos" e segmenta na
+ * tela, para os contadores baterem sem três requisições.
+ */
+export function getHistoricoProjetos(
+  token: string,
+  frenteId?: number | null,
+  filtro: FiltroHistorico = "todos",
+) {
+  return apiFetch<HistoricoProjeto[]>(
+    `/monitoramento/historico-projetos${query(frenteId, null, { filtro })}`,
+    { token },
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Aprovações — a fila da diretoria                                    */
 /* ------------------------------------------------------------------ */
 
 export interface AprovacaoDiasDeAjuste {
