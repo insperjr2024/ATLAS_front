@@ -20,6 +20,7 @@ import {
 } from "@/lib/vagas";
 import { VagaProjetoModal } from "./VagaProjetoModal";
 import { VagasAlocarPainel } from "./VagasAlocarPainel";
+import { FormDecisao } from "./monitoramento/AprovacaoLinha";
 import {
   PageStack,
   PageHeader,
@@ -323,14 +324,15 @@ export function Vagas() {
     }
   }
 
-  async function responder(id: number, aprovar: boolean) {
+  async function responder(id: number, aprovar: boolean, resposta?: string) {
     if (!token) return;
     setRespondendo(id);
     try {
-      await responderSolicitacao(id, aprovar, token);
+      await responderSolicitacao(id, aprovar, token, resposta);
       recarregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao responder");
+      throw e;
     } finally {
       setRespondendo(null);
     }
@@ -1240,9 +1242,13 @@ function FilaDePedidos({
 }: {
   pedidos: SolicitacaoRecebida[];
   respondendo: number | null;
-  onResponder: (id: number, aprovar: boolean) => void;
+  onResponder: (id: number, aprovar: boolean, resposta?: string) => Promise<void>;
 }) {
   const grupos = porProjeto(pedidos);
+  // Mesmo par botões/formulário de `EntradasEmProjetoCard` (Monitoramento →
+  // Aprovações): aceitar não pede texto, recusar pede — quem foi recusado
+  // merece saber por quê, e é a única coisa que sobra do pedido.
+  const [decidindo, setDecidindo] = useState<{ id: number; aceitar: boolean } | null>(null);
 
   return (
     <>
@@ -1263,23 +1269,35 @@ function FilaDePedidos({
                 </SolTopo>
                 <CargaDoSolicitante pedido={s} />
                 <SolTexto>{s.justificativa}</SolTexto>
-                <SolAcoes>
-                  <PageButtonSm
-                    $variant="outline"
-                    type="button"
-                    disabled={respondendo === s.id}
-                    onClick={() => onResponder(s.id, false)}
-                  >
-                    Recusar
-                  </PageButtonSm>
-                  <PageButtonSm
-                    type="button"
-                    disabled={respondendo === s.id}
-                    onClick={() => onResponder(s.id, true)}
-                  >
-                    {respondendo === s.id ? "Salvando…" : "Aceitar no time"}
-                  </PageButtonSm>
-                </SolAcoes>
+                {decidindo?.id === s.id ? (
+                  <FormDecisao
+                    rotuloConfirmar={decidindo.aceitar ? "Confirmar entrada" : "Confirmar recusa"}
+                    exigeTexto={!decidindo.aceitar}
+                    onCancelar={() => setDecidindo(null)}
+                    onConfirmar={async (texto) => {
+                      await onResponder(s.id, decidindo.aceitar, texto || undefined);
+                      setDecidindo(null);
+                    }}
+                  />
+                ) : (
+                  <SolAcoes>
+                    <PageButtonSm
+                      $variant="outline"
+                      type="button"
+                      disabled={respondendo === s.id}
+                      onClick={() => setDecidindo({ id: s.id, aceitar: false })}
+                    >
+                      Recusar
+                    </PageButtonSm>
+                    <PageButtonSm
+                      type="button"
+                      disabled={respondendo === s.id}
+                      onClick={() => setDecidindo({ id: s.id, aceitar: true })}
+                    >
+                      Aceitar no time
+                    </PageButtonSm>
+                  </SolAcoes>
+                )}
               </SolCard>
             ))
           }
