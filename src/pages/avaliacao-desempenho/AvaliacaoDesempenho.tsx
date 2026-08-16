@@ -40,6 +40,9 @@ import {
   FilaList,
   FormErrorText,
   FormStack,
+  InfoBannerCard,
+  InfoBannerLinha,
+  InfoBannerTitulo,
   InstrucoesBox,
   InstrucoesTitulo,
   IntroTexto,
@@ -185,6 +188,24 @@ export function AvaliacaoDesempenho() {
   // acumular pendência de rodada antiga pra sempre. Aparece já na tela
   // inicial, antes de qualquer escolha de tipo.
   const itensFechados = useMemo(() => fila.filter((item) => !item.aberto), [fila]);
+
+  // `getProjetos` já aplica o recorte de visão: pra coordenador e
+  // consultor devolve só os projetos onde eles estão hoje, daí dá pra
+  // derivar o papel de cada um sem endpoint novo (coordenador_id/
+  // consultor_ids já vêm no resumo).
+  const minhasParticipacoes = useMemo(() => {
+    if (!usuario) return [];
+    return projetos.map((p) => ({
+      projeto: p.nome,
+      papel: (p.coordenador_id === usuario.id ? "coordenador" : "consultor") as "coordenador" | "consultor",
+    }));
+  }, [projetos, usuario]);
+
+  const textoParticipacoes = useMemo(() => {
+    const partes = minhasParticipacoes.map((p) => `${p.projeto} (${ROTULO_PAPEL[p.papel]})`);
+    if (partes.length <= 1) return partes.join("");
+    return `${partes.slice(0, -1).join(", ")} e ${partes[partes.length - 1]}`;
+  }, [minhasParticipacoes]);
 
   async function carregarFila() {
     if (!usuario || !token) return;
@@ -401,6 +422,24 @@ export function AvaliacaoDesempenho() {
 
   return (
     <>
+      {usuario && (
+        <InfoBannerCard>
+          <InfoBannerTitulo>Olá, {usuario.nome.split(" ")[0]}!</InfoBannerTitulo>
+          {minhasParticipacoes.length > 0 && (
+            <InfoBannerLinha>Você faz parte de {textoParticipacoes}.</InfoBannerLinha>
+          )}
+          <InfoBannerLinha>
+            {fila.filter((item) => item.aberto).length > 0
+              ? `Você tem ${fila.filter((item) => item.aberto).length} ${
+                  fila.filter((item) => item.aberto).length === 1
+                    ? "avaliação pendente"
+                    : "avaliações pendentes"
+                }.`
+              : "Você não tem avaliações pendentes no momento."}
+          </InfoBannerLinha>
+        </InfoBannerCard>
+      )}
+
       {itensFechados.length > 0 && (
         <AvisoFechadoCard>
           <AvisoFechadoTitulo>
