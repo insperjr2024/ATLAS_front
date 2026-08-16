@@ -29,3 +29,13 @@ export const MentoradoButton = styled.button`
 export const MentoradoNome = styled.span`
   flex: 1;
 `;
+
+/** Título de cabeçalho com a bolinha de iniciais na frente do nome — o
+ *  mesmo rosto que já aparece na lista, carregado pelas telas seguintes do
+ *  drill-down (mentorado -> relatório), pra não virar texto puro no meio
+ *  do caminho. */
+export const TituloComAvatar = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;

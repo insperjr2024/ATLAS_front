@@ -24,7 +24,7 @@ import {
   PageTitle,
 } from "@/styles/page.styled";
 import { theme } from "@/styles/theme";
-import { MentoradoButton, MentoradoNome, MentoradosList } from "./MeusMentorados.styled";
+import { MentoradoButton, MentoradoNome, MentoradosList, TituloComAvatar } from "./MeusMentorados.styled";
 import { Iniciais } from "./painel/Painel.styled";
 import {
   TipoCard,
@@ -149,10 +149,21 @@ export function MeusMentorados() {
       {selecionado && modo ? (
         <PageCard>
           <PageCardHeader>
-            <PageCardTitle>
-              {modo === "avaliacoes" ? "Relatório das avaliações" : "Relatórios de PDI"} —{" "}
-              {selecionado.mentorado_nome}
-            </PageCardTitle>
+            {modo === "avaliacoes" ? (
+              // Sem o nome aqui: o próprio RelatorioDesempenho já abre com um
+              // cabeçalho "Nome, Consultor(a)" — repetir duas vezes a
+              // poucos pixels de distância seria redundante. Esse cabeçalho
+              // interno também é o que dá título ao PDF exportado, então
+              // precisa continuar existindo mesmo sem o nosso.
+              <PageCardTitle>Relatório das avaliações</PageCardTitle>
+            ) : (
+              <PageCardTitle>
+                <TituloComAvatar>
+                  <Iniciais aria-hidden>{iniciais(selecionado.mentorado_nome)}</Iniciais>
+                  Relatórios de PDI — {selecionado.mentorado_nome}
+                </TituloComAvatar>
+              </PageCardTitle>
+            )}
             <PageButton $variant="outline" type="button" onClick={fecharModo}>
               Voltar
             </PageButton>
@@ -176,7 +187,12 @@ export function MeusMentorados() {
       ) : selecionado ? (
         <PageCard>
           <PageCardHeader>
-            <PageCardTitle>{selecionado.mentorado_nome}</PageCardTitle>
+            <PageCardTitle>
+              <TituloComAvatar>
+                <Iniciais aria-hidden>{iniciais(selecionado.mentorado_nome)}</Iniciais>
+                {selecionado.mentorado_nome}
+              </TituloComAvatar>
+            </PageCardTitle>
             <PageButton $variant="outline" type="button" onClick={fecharMentorado}>
               Voltar
             </PageButton>
