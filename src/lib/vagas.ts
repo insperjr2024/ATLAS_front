@@ -59,6 +59,7 @@ export interface ListaVagas {
 export interface MembroDoProjeto {
   usuario_id: number;
   nome: string | null;
+  foto: string | null;
   papel: "coordenador" | "consultor";
 }
 

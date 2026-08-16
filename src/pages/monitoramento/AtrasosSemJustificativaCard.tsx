@@ -79,9 +79,14 @@ function nivel(dias: number) {
 export function AtrasosSemJustificativaCard({
   itens,
   onDecidiu,
+  voltarPara,
+  voltarRotulo,
 }: {
   itens: AprovacaoAtraso[];
   onDecidiu: () => void;
+  /** Pra "voltar" do projeto cair de novo em quem chamou este card. */
+  voltarPara: string;
+  voltarRotulo: string;
 }) {
   const { token } = useAuth();
   const [justificando, setJustificando] = useState<{
@@ -122,7 +127,9 @@ export function AtrasosSemJustificativaCard({
                 desde={new Date(Date.now() - a.pior_motivo * 86_400_000).toISOString()}
                 titulo={
                   <AtrasoTitulo>
-                    <LinkProjeto to={`/projetos/${a.projeto_id}`}>{a.projeto_nome}</LinkProjeto>
+                    <LinkProjeto to={`/projetos/${a.projeto_id}`} state={{ voltarPara, voltarRotulo }}>
+                      {a.projeto_nome}
+                    </LinkProjeto>
                     <Pilula $tom="neutro">{a.status.replace(/_/g, " ")}</Pilula>
                   </AtrasoTitulo>
                 }

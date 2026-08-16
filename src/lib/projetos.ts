@@ -600,6 +600,30 @@ export function formatarDataHora(iso: string | null | undefined): string {
  * mostrar a data da próxima banca. Espaço inquebrável em volta do
  * "às" pra data e hora nunca se separarem numa quebra de linha do card.
  */
+/** Só a hora ("HH:mm"), ou `null` para eventos de dia inteiro (kickoff,
+ *  reunião, entrega — só banca tem hora de verdade, ver `GetEventosCalendarioUseCase`).
+ *  Usado no calendário geral, onde a data do dia já está no cabeçalho e só a
+ *  hora falta dizer qual evento é qual. */
+export function horaDoEvento(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const d = paraDataUtc(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Minutos desde 00:00, para posicionar o evento numa timeline (ver
+ *  `TimelineDia`). `null` nos mesmos casos que `horaDoEvento` — dia inteiro,
+ *  sem hora de verdade. */
+export function minutosDoEvento(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const d = paraDataUtc(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.getHours() * 60 + d.getMinutes();
+}
+
 export function formatarDataHoraBanca(iso: string | null | undefined): string {
   const completo = formatarDataHora(iso);
   const espaco = completo.indexOf(" ");

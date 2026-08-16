@@ -45,6 +45,9 @@ import {
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
+/** Pra "voltar" do projeto cair de novo aqui, não em `/projetos`. */
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/execucao", voltarRotulo: "Voltar para Execução" };
+
 const COLUNAS_TAREFAS: Colunas<Execucao["tarefas"][number]> = {
   projeto: { valor: (l) => l.projeto_nome, inicial: "asc" },
   // Booleano ordena com o problema no topo: "Não" (0) antes de "Sim" (1).
@@ -225,7 +228,9 @@ export function ExecucaoAba() {
                 {listaSemTarefa.visiveis.map((linha) => (
                   <ItemAtencao key={linha.projeto_id} $nivel={nivelSemTarefa(linha)}>
                     <strong>
-                      <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`}>{linha.projeto_nome}</LinkProjeto>{" "}
+                      <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`} state={VOLTAR_PARA_AQUI}>
+                        {linha.projeto_nome}
+                      </LinkProjeto>{" "}
                       {/* Mesmos tons da coluna "Ativas" da tabela abaixo, para as
                           duas leituras da mesma situação não se contradizerem. */}
                       {linha.sem_tarefas ? (
@@ -320,7 +325,7 @@ export function ExecucaoAba() {
                     {paginaTarefas.visiveis.map((linha) => (
                       <TableRow key={linha.projeto_id}>
                         <TableCell>
-                          <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`}>
+                          <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`} state={VOLTAR_PARA_AQUI}>
                             {linha.projeto_nome}
                           </LinkProjeto>
                         </TableCell>
@@ -441,7 +446,9 @@ export function ExecucaoAba() {
                         {/* A aba Reuniões deixou de existir: as reuniões
                             passaram a ser marcadas no calendário do
                             cronograma, que é para onde este link leva. */}
-                        <LinkProjeto to={`/projetos/${linha.projeto_id}/cronograma`}>{linha.projeto_nome}</LinkProjeto>
+                        <LinkProjeto to={`/projetos/${linha.projeto_id}/cronograma`} state={VOLTAR_PARA_AQUI}>
+                          {linha.projeto_nome}
+                        </LinkProjeto>
                       </TableCell>
                       <TableCell>
                         {/* "Não realizou" é AUSÊNCIA de linha na janela

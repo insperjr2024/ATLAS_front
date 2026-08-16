@@ -67,8 +67,35 @@ export const Footer = styled.div`
   border-top: 1px solid var(--sidebar-border);
 `;
 
-export const UserName = styled.div`
+export const UserRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0 1.25rem 0.5rem;
+`;
+
+/** Fotinho da pessoa quando existe, iniciais quando não — ver
+ *  `components/Avatar.tsx`. `overflow: hidden` é o que faz a foto (que
+ *  preenche 100% x 100%) respeitar o círculo. */
+export const UserAvatar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.65rem;
+  font-weight: 600;
+`;
+
+export const UserName = styled.div`
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.75rem;
   color: var(--muted-foreground);
 `;

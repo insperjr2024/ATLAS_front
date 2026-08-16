@@ -16,12 +16,7 @@ import {
   PageCardContent,
   PageCardHeader,
   PageCardTitle,
-  PageHeader,
-  PageHeaderText,
   PageLoadingBlock,
-  PageStack,
-  PageSubtitle,
-  PageTitle,
 } from "@/styles/page.styled";
 import {
   AvisoFechadoCard,
@@ -426,14 +421,7 @@ export function AvaliacaoDesempenho() {
   const mostrarBotaoFinalizarAgora = algumTipoConcluido && algumTipoPendente;
 
   return (
-    <PageStack>
-      <PageHeader>
-        <PageHeaderText>
-          <PageTitle>Avaliação de Desempenho</PageTitle>
-          <PageSubtitle>Avalie os colegas do seu projeto ao longo do semestre.</PageSubtitle>
-        </PageHeaderText>
-      </PageHeader>
-
+    <>
       {usuario && (
         <InfoBannerCard>
           <InfoBannerTitulo>Olá, {usuario.nome.split(" ")[0]}!</InfoBannerTitulo>
@@ -732,6 +720,6 @@ export function AvaliacaoDesempenho() {
           </PageCardContent>
         </PageCard>
       )}
-    </PageStack>
+    </>
   );
 }

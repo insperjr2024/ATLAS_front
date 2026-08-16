@@ -102,6 +102,7 @@ export const Card = styled.div<{
   $cor?: TonsColuna;
   $bloqueada?: boolean;
 }>`
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
@@ -145,6 +146,19 @@ export const CardTopo = styled.div`
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.25rem;
+`;
+
+/** Pedido de entrada pendente pra este projeto (§7.3) — sinal discreto no
+ *  canto do card, sem precisar abrir o projeto pra descobrir que alguém
+ *  está esperando resposta. Some sozinho quando o pedido é respondido. */
+export const PendenteDot = styled.span`
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.destructive};
 `;
 
 export const BotaoExcluir = styled.button`

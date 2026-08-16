@@ -16,6 +16,7 @@ interface UsuarioResponse {
   ativo: boolean;
   /** Primeiro acesso pendente, ver `Usuario.senha_provisoria`. */
   senha_provisoria: boolean;
+  foto: string | null;
 }
 
 interface AuthContextType {

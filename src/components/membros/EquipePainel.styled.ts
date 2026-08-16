@@ -82,6 +82,7 @@ export const PessoaIniciais = styled.span`
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   width: 1.75rem;
   height: 1.75rem;
   border-radius: ${theme.borderRadius.full};

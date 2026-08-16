@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
-import { DayCell, MonthGrid, WeekRow } from "@/components/calendario/CalendarGrid.styled";
+import { MonthGrid } from "@/components/calendario/CalendarGrid.styled";
 
 export const CalendarioWrap = styled.div`
   display: flex;
@@ -46,19 +46,43 @@ export const GradeWrap = styled.div`
   overflow-x: auto;
 `;
 
+/** Mesma largura mínima de referência do Calendário geral — a diferença é
+ *  que `PilulaBanca` (hora + projeto + vagas, várias linhas) precisa de mais
+ *  espaço horizontal por célula do que a pílula de uma linha só de lá. */
 export const Grade = styled(MonthGrid)`
   min-width: 44rem;
 `;
 
-/** Altura mínima em vez de fixa: um dia com três bancas cresce, e cortar a
- *  terceira esconderia justamente o choque de horário que a tela existe para
- *  mostrar. */
-export const LinhaSemana = styled(WeekRow)`
-  min-height: 5.5rem;
+export const LinhaDiaNumero = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
 `;
 
-export const CelulaDia = styled(DayCell)`
-  min-height: 5.5rem;
+/**
+ * O "+N mais" quando um dia tem mais bancas do que cabem na célula — mesmo
+ * padrão visual do Calendário geral (`AvisoMaisEventos` em
+ * `CalendarioGeral.styled.ts`), para as duas telas lerem como a mesma
+ * linguagem. Não mexe na pílula da banca em si: cor e estilo do evento
+ * continuam os de sempre, só a CONTAGEM de pílulas visíveis por dia muda.
+ */
+export const AvisoMaisBancas = styled.button`
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.3rem;
+  border: 1px solid ${theme.colors.primary};
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.card};
+  color: ${theme.colors.primary};
+  font-size: 0.62rem;
+  font-weight: ${theme.fontWeight.bold};
+  line-height: 1;
+  cursor: pointer;
 `;
 
 /**

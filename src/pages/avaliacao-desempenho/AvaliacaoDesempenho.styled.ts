@@ -1,7 +1,13 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
-export { FieldGroup, FieldLabel, FieldTextarea, FormErrorText, FormStack } from "@/pages/Bancas.styled";
+export {
+  FieldGroup,
+  FieldLabel,
+  FieldTextarea,
+  FormErrorText,
+  FormStack,
+} from "@/pages/Bancas.styled";
 
 export const InfoBannerCard = styled.div`
   display: flex;
@@ -26,8 +32,8 @@ export const InfoBannerLinha = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
-/** Formulário(s) que fecharam antes da pessoa responder, precisa gritar
- *  mais que o InfoBannerCard normal, por isso o tom destrutivo. */
+/** Formulário(s) que fecharam antes da pessoa responder, tom destrutivo
+ *  porque precisa gritar mais que o resto da tela. */
 export const AvisoFechadoCard = styled.div`
   display: flex;
   flex-direction: column;

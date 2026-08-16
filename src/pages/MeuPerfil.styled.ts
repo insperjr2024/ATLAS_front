@@ -13,14 +13,15 @@ export const PerfilCabecalho = styled.div`
   border-bottom: 1px solid ${theme.colors.border};
 `;
 
-/** Sem foto ainda, as iniciais em círculo já dão o "isto é uma pessoa" que
- *  a lista de dados sozinha não dava, e deixam o lugar reservado pronto pro
- *  dia em que upload de foto entrar. */
+/** Sem foto, as iniciais em círculo já dão o "isto é uma pessoa" que a lista
+ *  de dados sozinha não dava. Com foto, `overflow: hidden` é o que faz a
+ *  `FotoCircular` (que preenche 100% x 100%) respeitar o `border-radius`. */
 export const Avatar = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
   width: 3.5rem;
   height: 3.5rem;
   border-radius: ${theme.borderRadius.full};
@@ -29,6 +30,38 @@ export const Avatar = styled.div`
   font-size: ${theme.fontSize.lg};
   font-weight: ${theme.fontWeight.semibold};
   letter-spacing: 0.02em;
+`;
+
+export const FotoAcoes = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-top: 0.4rem;
+`;
+
+/** Um `<label>` estilizado como botão para envolver o `<input type="file">`
+ *  escondido — clicar no texto abre o seletor de arquivo do sistema. */
+export const FotoInputLabel = styled.label<{ $desabilitado: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.card};
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  cursor: ${({ $desabilitado }) => ($desabilitado ? "not-allowed" : "pointer")};
+  opacity: ${({ $desabilitado }) => ($desabilitado ? 0.6 : 1)};
+
+  &:hover {
+    color: ${({ $desabilitado }) => ($desabilitado ? undefined : theme.colors.primary)};
+    border-color: ${({ $desabilitado }) => ($desabilitado ? undefined : theme.colors.primary)};
+  }
+
+  input {
+    display: none;
+  }
 `;
 
 export const PerfilNome = styled.p`

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RealizarBancaModal } from "./RealizarBancaModal";
 import { AlocarPessoasModal } from "./AlocarPessoasModal";
+import { Desempenho } from "./Desempenho";
 import { Clock, Plus, User, Users, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -157,7 +158,7 @@ import {
   BancaAcoes,
 } from "./Bancas.styled";
 
-type AbaBancas = "meus" | "alocacao" | "avaliacao" | "calendario";
+type AbaBancas = "meus" | "alocacao" | "avaliacao" | "desempenho" | "calendario";
 
 function porDataMaisProxima(a: Banca, b: Banca): number {
   return new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime();
@@ -210,7 +211,14 @@ export function Bancas() {
   const [bancaAlocar, setBancaAlocar] = useState<Banca | null>(null);
   /** ⭐ A banca cujo resultado a diretoria vai registrar à mão (§8). */
   const [bancaResultado, setBancaResultado] = useState<Banca | null>(null);
-  const [aba, setAba] = useState<AbaBancas>("alocacao");
+  // `?aba=calendario` é o link do botão "Bancas" em /calendario — sem ler
+  // a query aqui, quem clicasse lá sempre caía na aba padrão (alocação) e
+  // precisava trocar de aba à mão.
+  const ABAS_VALIDAS: AbaBancas[] = ["meus", "alocacao", "avaliacao", "desempenho", "calendario"];
+  const abaDaQuery = searchParams.get("aba") as AbaBancas | null;
+  const [aba, setAba] = useState<AbaBancas>(
+    abaDaQuery && ABAS_VALIDAS.includes(abaDaQuery) ? abaDaQuery : "alocacao",
+  );
   const [avisoErro, setAvisoErro] = useState("");
   const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
   const [bancaConvidar, setBancaConvidar] = useState<Banca | null>(null);
@@ -541,9 +549,10 @@ export function Bancas() {
         </TabButton>
         <TabButton type="button" $ativa={aba === "avaliacao"} onClick={() => setAba("avaliacao")}>
           Avaliação
-          <TabCount>
-            {paraAvaliar.length + jaAvaliadas.length + realizadasSemAvaliador.length}
-          </TabCount>
+          <TabCount>{paraAvaliar.length + realizadasSemAvaliador.length}</TabCount>
+        </TabButton>
+        <TabButton type="button" $ativa={aba === "desempenho"} onClick={() => setAba("desempenho")}>
+          Desempenho
         </TabButton>
         {/* Por último: as três primeiras são filas de TRABALHO ("o que eu
             preciso fazer"); esta é consulta ("esse horário está livre?"). */}
@@ -679,19 +688,13 @@ export function Bancas() {
               onVerMais={setBancaDetalhe}
             />
           )}
-          <SecaoBancas
-          bancaDestacada={bancaDestacada}
-          refDestacada={refDestacada}
-            titulo="Avaliadas"
-            bancas={jaAvaliadas}
-            contexto={contexto}
-            acao="nenhuma"
-            usuarioId={usuario.id}
-            gerenciar={podeAgendar}
-            onVerMais={setBancaDetalhe}
-          />
+          {/* "Avaliadas" saiu daqui — virou o histórico da aba Desempenho, pra
+              não mostrar a mesma banca avaliada em dois lugares diferentes.
+              Esta aba fica só com o que pede ação; o retrospecto mora lá. */}
         </SectionGroup>
       )}
+
+      {aba === "desempenho" && <Desempenho embutido />}
 
       <VerMaisModal
         banca={bancaDetalhe}
@@ -1136,7 +1139,15 @@ function SecaoTrocas({
   onConfirmar: (solicitacaoId: number) => void;
   onCancelar: (solicitacaoId: number) => void;
 }) {
-  const pendentes = solicitacoes.filter((s) => s.status === "pendente");
+  // Defesa extra: o backend já cancela sozinho a troca pendente assim que a
+  // banca é marcada realizada (e filtra de novo na listagem), mas o front
+  // não deve confiar cegamente nisso — se a banca já não aceita mais
+  // inscrição, a troca não faz sentido aparecer aqui de jeito nenhum.
+  const pendentes = solicitacoes.filter((s) => {
+    if (s.status !== "pendente") return false;
+    const banca = bancas.find((b) => b.id === s.banca_id);
+    return !banca || aceitaInscricao(banca.status);
+  });
   // Convite pra outra pessoa não aparece pra mais ninguém: só quem pediu
   // ("Meu pedido") e quem foi convidado ("Convite pra você"), o resto do
   // pool nem sabe que existe (o backend também recusaria a confirmação).

@@ -35,3 +35,19 @@ export function marcarTodasLidas(token: string | null) {
     method: "POST",
   });
 }
+
+/** Só evento tem linha para apagar, e só depois de lido, ver
+ *  `deletar_notificacao.py` no backend. */
+export function excluirNotificacao(token: string | null, id: number) {
+  return apiFetch<{ ok: boolean }>(`/notificacoes/${id}`, {
+    token,
+    method: "DELETE",
+  });
+}
+
+export function limparNotificacoesLidas(token: string | null) {
+  return apiFetch<{ excluidas: number }>("/notificacoes/limpar-lidas", {
+    token,
+    method: "DELETE",
+  });
+}

@@ -11,11 +11,13 @@ export type TipoNotificacao =
   // eventos da plataforma
   | "alocado_em_projeto"
   | "entrega_registrada"
+  // 📌 Vagas em projetos (§7.3) — pedido de entrada, para quem pede E para
+  // quem responde (`solicitacao_projeto.py`)
   | "solicitacao_projeto"
   // pedido de dias de ajuste no cronograma (§13)
   | "reajuste_solicitado"
   | "reajuste_respondido"
-  // o plano mudou depois de combinado,  e a data prometida ao cliente
+  // 📌 o plano mudou depois de combinado — §5.6 e a data prometida ao cliente
   | "banca_remarcada"
   | "entrega_alterada"
   // Avaliação de Desempenho (Prioridade 2), não é de projeto

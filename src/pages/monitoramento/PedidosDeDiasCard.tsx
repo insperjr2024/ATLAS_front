@@ -40,13 +40,15 @@ import { AprovacaoLinha, FormDecisao } from "./AprovacaoLinha";
  * que abria o Monitoramento, já que a rota é `require_diretor`. A duplicata
  * saiu; a fila de decisões tem uma aba dedicada.
  */
-export function PedidosDeDiasCard({
-  itens,
-  onDecidiu,
-}: {
+interface Props {
   itens: AprovacaoDiasDeAjuste[];
   onDecidiu: () => void;
-}) {
+  /** Pra "voltar" do cronograma cair de novo em quem chamou este card. */
+  voltarPara: string;
+  voltarRotulo: string;
+}
+
+export function PedidosDeDiasCard({ itens, onDecidiu, voltarPara, voltarRotulo }: Props) {
   const { token } = useAuth();
   const [decidindo, setDecidindo] = useState<{ id: number; aprovado: boolean } | null>(null);
   const pedidos = itens;
@@ -73,7 +75,10 @@ export function PedidosDeDiasCard({
                   desde={p.criado_em}
                   titulo={
                     <AtrasoTitulo>
-                      <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`}>
+                      <LinkProjeto
+                        to={`/projetos/${p.projeto_id}/cronograma`}
+                        state={{ voltarPara, voltarRotulo }}
+                      >
                         {p.projeto_nome}, {p.escopo_nome}
                       </LinkProjeto>
                       {foraDoPrazo ? (

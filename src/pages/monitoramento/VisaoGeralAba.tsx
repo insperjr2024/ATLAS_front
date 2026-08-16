@@ -69,6 +69,10 @@ import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
+/** Pra "voltar" do projeto cair de novo aqui — Visão geral é a rota índice
+ *  de Monitoramento, então o destino é a pasta sem sub-rota. */
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento", voltarRotulo: "Voltar para Monitoramento" };
+
 /** Quantos itens cada grupo de "Atenção agora" mostra antes de oferecer o
  *  atalho para o filtro. Quatro cabe sem empurrar os grupos seguintes para
  *  fora da tela e já dá amostra do que há ali dentro. */
@@ -391,7 +395,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                             `data_inicio` ao próximo escopo, e é lá que isso se
                             faz. Cair na visão geral obrigaria mais um clique
                             justo em quem veio resolver. */}
-                        <LinhaItem to={`/projetos/${p.projeto_id}/cronograma`}>
+                        <LinhaItem to={`/projetos/${p.projeto_id}/cronograma`} state={VOLTAR_PARA_AQUI}>
                           {/* Os dias vêm para a esquerda, no lugar que a agenda
                               de bancas usa para a data: é o número que ordena a
                               lista, então é por ele que o olho desce. */}
@@ -508,7 +512,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                         return (
                           <TableRow key={p.projeto_id}>
                             <TableCell>
-                              <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`}>
+                              <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`} state={VOLTAR_PARA_AQUI}>
                                 {p.projeto_nome}
                               </LinkProjeto>
                             </TableCell>
@@ -674,6 +678,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                               direita, porque cor sozinha não é informação. */}
                           <AtencaoLinha
                             to={`/projetos/${item.projeto_id}`}
+                            state={VOLTAR_PARA_AQUI}
                             $nivel={nivelAtencao(item.dias)}
                           >
                             <AtencaoTexto>

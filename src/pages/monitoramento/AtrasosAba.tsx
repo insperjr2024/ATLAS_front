@@ -73,6 +73,11 @@ import { AprovacaoLinha, FormDecisao } from "./AprovacaoLinha";
  * A palavra "atraso" só aparece do lado esquerdo dessa tabela. O card da
  * direita se chama "Além do vendido" e o número dele vem com "+".
  */
+// Mesmo padrão de `TarefasGeraisAba`/`CronogramasGeraisAba`: sem isto, o link
+// "Voltar" da página do projeto caía sempre em `/projetos`, perdendo a aba de
+// Monitoramento de onde a pessoa realmente veio.
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/atrasos", voltarRotulo: "Voltar para Atrasos" };
+
 export function AtrasosAba() {
   const { token } = useAuth();
   const [dados, setDados] = useState<Atrasos | null>(null);
@@ -131,8 +136,18 @@ export function AtrasosAba() {
         {seletorEscopo}
       </BarraFiltros>
 
-      <CardBancasVencidas itens={bancasVencidas} onJustificou={carregar} />
-      <CardAlemDoVendido itens={alemDoVendido} onJustificou={carregar} />
+      <CardBancasVencidas
+        itens={bancasVencidas}
+        onJustificou={carregar}
+        voltarPara={VOLTAR_PARA_AQUI.voltarPara}
+        voltarRotulo={VOLTAR_PARA_AQUI.voltarRotulo}
+      />
+      <CardAlemDoVendido
+        itens={alemDoVendido}
+        onJustificou={carregar}
+        voltarPara={VOLTAR_PARA_AQUI.voltarPara}
+        voltarRotulo={VOLTAR_PARA_AQUI.voltarRotulo}
+      />
 
       <CardPorCoordenador itens={coordenadores} />
 
@@ -242,9 +257,13 @@ function nivel(dias: number) {
 function CardBancasVencidas({
   itens,
   onJustificou,
+  voltarPara,
+  voltarRotulo,
 }: {
   itens: BancaVencida[];
   onJustificou: () => void;
+  voltarPara: string;
+  voltarRotulo: string;
 }) {
   const { token } = useAuth();
   const [justificando, setJustificando] = useState<BancaVencida | null>(null);
@@ -279,7 +298,10 @@ function CardBancasVencidas({
                   unidade={m.dias === 1 ? "dia" : "dias"}
                   titulo={
                     <AtrasoTitulo>
-                      <LinkProjeto to={`/projetos/${m.projeto_id}/cronograma`}>
+                      <LinkProjeto
+                        to={`/projetos/${m.projeto_id}/cronograma`}
+                        state={{ voltarPara, voltarRotulo }}
+                      >
                         {m.projeto_nome} — {m.escopo}
                       </LinkProjeto>
                       <Pilula $tom={nivel(m.dias) === "critica" ? "alerta" : "atencao"}>
@@ -345,9 +367,13 @@ function CardBancasVencidas({
 function CardAlemDoVendido({
   itens,
   onJustificou,
+  voltarPara,
+  voltarRotulo,
 }: {
   itens: Atrasos["escopos_atrasados"];
   onJustificou: () => void;
+  voltarPara: string;
+  voltarRotulo: string;
 }) {
   const { token } = useAuth();
   const [justificando, setJustificando] = useState<number | null>(null);
@@ -377,7 +403,10 @@ function CardAlemDoVendido({
                   unidade="além"
                   titulo={
                     <AtrasoTitulo>
-                      <LinkProjeto to={`/projetos/${e.projeto_id}/cronograma`}>
+                      <LinkProjeto
+                        to={`/projetos/${e.projeto_id}/cronograma`}
+                        state={{ voltarPara, voltarRotulo }}
+                      >
                         {e.projeto_nome} — {e.escopo_nome}
                       </LinkProjeto>
                       <Pilula $tom="neutro">

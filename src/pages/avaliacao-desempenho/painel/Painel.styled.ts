@@ -494,6 +494,7 @@ export const Iniciais = styled.span<{ $mentor?: boolean }>`
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
   width: ${({ $mentor }) => ($mentor ? "2.25rem" : "1.75rem")};
   height: ${({ $mentor }) => ($mentor ? "2.25rem" : "1.75rem")};
   border-radius: ${theme.borderRadius.full};

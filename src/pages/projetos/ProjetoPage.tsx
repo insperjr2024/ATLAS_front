@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
+import { getSolicitacoesRecebidas } from "@/lib/vagas";
 import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
 import {
   baixarAnexoProposta,
@@ -32,6 +33,7 @@ import type { UsuarioResumo } from "@/types/auth";
 import type { Frente } from "@/types/banca";
 import type { ProjetoCompleto, StatusProjeto } from "@/types/projeto";
 import { Ponto } from "@/components/kanban/Kanban.styled";
+import { FotoCircular } from "@/components/Avatar";
 import { pode } from "@/utils/permissoes";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { CORES_SUGERIDAS } from "@/lib/colunas-tarefa";
@@ -56,6 +58,7 @@ import {
   TagRow,
   FrenteTag,
   AvisoBanner,
+  AvisoLink,
   TabBar,
   TabLink,
   EtapaSeletorWrap,
@@ -169,6 +172,7 @@ export function ProjetoPage() {
   const [editandoProjeto, setEditandoProjeto] = useState(false);
   const [descricaoInteira, setDescricaoInteira] = useState(false);
   const [baixandoAnexo, setBaixandoAnexo] = useState(false);
+  const [pedidosPendentes, setPedidosPendentes] = useState(0);
 
   const carregar = useCallback(async () => {
     if (!token || !projetoId) return;
@@ -204,9 +208,28 @@ export function ProjetoPage() {
     carregar();
   }, [carregar, location.pathname]);
 
-  // ⭐ Visitante da banca só tem uma aba. Um link antigo, o botão de voltar ou
-  // a rota-raiz do projeto o deixariam na Visão geral, que dispara chamadas que
-  // ele não pode fazer — a tela quebraria em erro em vez de dizer o que há.
+  // Aviso de pedido de entrada pendente (§7.3), o endpoint já vem escopado
+  // a quem PODE responder (coordenador, gerência ou diretoria), então some
+  // sozinho pra quem não tem nada a fazer aqui.
+  useEffect(() => {
+    if (!token || !projetoId) return;
+    let ativo = true;
+    getSolicitacoesRecebidas(token)
+      .then((r) => {
+        if (!ativo) return;
+        setPedidosPendentes(
+          r.filter((s) => s.projeto_id === projetoId && s.status === "pendente").length,
+        );
+      })
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
+  }, [token, projetoId]);
+
+  // Visitante da banca só tem uma aba. Um link antigo, o botão de voltar ou
+  // a rota-raiz do projeto o deixariam na Visão geral, que dispara chamadas
+  // que ele não pode fazer, quebrando a tela em erro em vez de dizer o que há.
   useEffect(() => {
     if (!projeto?.apenas_banca) return;
     if (location.pathname !== `/projetos/${projeto.id}/banca`) {
@@ -286,6 +309,7 @@ export function ProjetoPage() {
   }
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
+  const fotoUsuario = (id: number) => usuarios.find((u) => u.id === id)?.foto ?? null;
   const coordenadores = projeto.equipe.filter((m) => m.papel === "coordenador");
   const consultores = projeto.equipe.filter((m) => m.papel !== "coordenador");
   const teto = projeto.max_consultores ?? 0;
@@ -400,7 +424,11 @@ export function ProjetoPage() {
                 coordenadores.map((m) => (
                   <EquipePessoa key={m.usuario_id}>
                     <EquipeAvatar $cor={corDaPessoa(m.usuario_id)}>
-                      {iniciais(nomeUsuario(m.usuario_id))}
+                      {fotoUsuario(m.usuario_id) ? (
+                        <FotoCircular src={fotoUsuario(m.usuario_id)!} />
+                      ) : (
+                        iniciais(nomeUsuario(m.usuario_id))
+                      )}
                     </EquipeAvatar>
                     {nomeUsuario(m.usuario_id)}
                   </EquipePessoa>
@@ -423,7 +451,11 @@ export function ProjetoPage() {
                 consultores.map((m) => (
                   <EquipePessoa key={`${m.usuario_id}-${m.entrou_em}`}>
                     <EquipeAvatar $cor={corDaPessoa(m.usuario_id)}>
-                      {iniciais(nomeUsuario(m.usuario_id))}
+                      {fotoUsuario(m.usuario_id) ? (
+                        <FotoCircular src={fotoUsuario(m.usuario_id)!} />
+                      ) : (
+                        iniciais(nomeUsuario(m.usuario_id))
+                      )}
                     </EquipeAvatar>
                     {nomeUsuario(m.usuario_id)}
                   </EquipePessoa>
@@ -471,6 +503,19 @@ export function ProjetoPage() {
       </ShellHeader>
 
       {erroStatus && <FormErrorText>{erroStatus}</FormErrorText>}
+
+      {pedidosPendentes > 0 && (
+        <AvisoBanner>
+          {pedidosPendentes} {pedidosPendentes === 1 ? "pedido de entrada" : "pedidos de entrada"}{" "}
+          aguardando resposta.{" "}
+          <AvisoLink
+            to="/vagas?aba=solicitacoes"
+            state={{ voltarPara: `/projetos/${projeto.id}`, voltarRotulo: `Voltar para ${projeto.nome}` }}
+          >
+            Responder
+          </AvisoLink>
+        </AvisoBanner>
+      )}
 
       {projeto.arquivado_em && (
         <AvisoBanner>Projeto arquivado, não aparece nas listagens normais.</AvisoBanner>

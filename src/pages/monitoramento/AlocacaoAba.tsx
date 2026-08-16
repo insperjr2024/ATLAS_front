@@ -45,6 +45,9 @@ import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
+/** Pra "voltar" do projeto cair de novo aqui, não em `/projetos`. */
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/alocacao", voltarRotulo: "Voltar para Alocação" };
+
 type Papel = "consultor" | "coordenador";
 
 const ROTULO_PAPEL: Record<Papel, { singular: string; plural: string }> = {
@@ -423,7 +426,7 @@ function TabelaCarga({
                           {/* O chip agora leva ao projeto: o id veio junto
                               quando o gráfico passou a precisar do status. */}
                           {linha.projetos.map((p) => (
-                            <ChipProjeto key={p.id} to={`/projetos/${p.id}`}>
+                            <ChipProjeto key={p.id} to={`/projetos/${p.id}`} state={VOLTAR_PARA_AQUI}>
                               {p.nome}
                             </ChipProjeto>
                           ))}

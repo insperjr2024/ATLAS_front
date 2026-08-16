@@ -48,11 +48,23 @@ export const WeekRowPreenche = styled(WeekRow)`
   grid-template-rows: 1fr;
 `;
 
-/** Sem o piso de `7.5rem` do `DayCell` padrão, aqui a célula encolhe ou
- *  cresce pra caber exatamente nas 5 ou 6 semanas do mês dentro da altura
- *  disponível, em vez de empurrar a página quando o mês tem 6 linhas. */
-export const DayCellPreenche = styled(DayCell)`
+/**
+ * Sem o piso de `7.5rem` do `DayCell` padrão, aqui a célula encolhe ou
+ * cresce pra caber exatamente nas 5 ou 6 semanas do mês dentro da altura
+ * disponível, em vez de empurrar a página quando o mês tem 6 linhas.
+ *
+ * `$comEventos` dá o cursor de "isto abre algo" só quando há de fato o que abrir: dia
+ * vazio não vira alvo de clique/hover à toa.
+ */
+export const DayCellPreenche = styled(DayCell)<{ $comEventos?: boolean }>`
   min-height: 0;
+  cursor: ${({ $comEventos }) => ($comEventos ? "pointer" : "default")};
+
+  ${({ $comEventos }) =>
+    $comEventos &&
+    `&:hover {
+      background: ${theme.colors.secondary};
+    }`}
 `;
 
 export const Cabecalho = styled.div`
@@ -102,7 +114,6 @@ export const FiltroChips = styled.div`
   gap: 0.375rem;
 `;
 
-/** Filtro por tipo, glifo + cor, para funcionar impresso também. */
 export const Chip = styled.button<{ $ativo: boolean; $cor: string }>`
   display: inline-flex;
   align-items: center;
@@ -122,6 +133,114 @@ export const Chip = styled.button<{ $ativo: boolean; $cor: string }>`
   }
 `;
 
+/** Só o ancoradouro do botão + painel — `position: relative` pra
+ *  `PainelCores` (absoluto) abrir relativo A ELE, não à página. Não precisa
+ *  de portal como o dropdown do dia: `Cabecalho` não corta overflow (quem
+ *  corta é `GradeWrap`, mais abaixo, onde a grade em si vive), então um
+ *  painel um pouco mais alto que a barra não é cortado. */
+export const BotaoCores = styled.div`
+  position: relative;
+`;
+
+export const PainelCores = styled.div`
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 0.375rem);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: 13rem;
+  padding: 0.5rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.lg};
+`;
+
+export const TituloPainelCores = styled.p`
+  margin: 0.25rem 0.5rem 0.375rem;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.mutedForeground};
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+`;
+
+/** Cada linha é um botão de verdade (o `<label>` inteiro), não só o swatch —
+ *  a área de clique maior e o fundo no hover deixam claro que dá pra clicar
+ *  em qualquer parte da linha, não só no quadradinho de cor. */
+export const LinhaCor = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: ${theme.borderRadius.md};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+
+  &:hover {
+    background: ${theme.colors.secondary};
+  }
+`;
+
+/**
+ * `<input type="color">` nativo, mas com a casca do navegador removida e
+ * redesenhada como uma bolinha — sem componente próprio de paleta, porque é
+ * uma preferência pessoal de leitura (§ comentário em
+ * `getCoresCustomizadas`), não algo que precise da mesma curadoria de cor
+ * das etapas do cronograma (aquelas SÃO gravadas e viram legenda
+ * compartilhada). O quadrado cru do input nativo, com a moldura em relevo do
+ * navegador, destoava do resto — pílulas e chips da tela são todos
+ * arredondados.
+ */
+export const ItemCorInput = styled.input`
+  flex-shrink: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.375rem;
+  height: 1.375rem;
+  padding: 0;
+  border: none;
+  border-radius: ${theme.borderRadius.full};
+  box-shadow: inset 0 0 0 1px ${theme.colors.border};
+  cursor: pointer;
+
+  /* Sem isto o Chrome desenha o swatch com um respiro cinza por dentro —
+     a bolinha ficaria menor que a área clicável, com uma borda dupla feia. */
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: inherit;
+  }
+  &::-webkit-color-swatch {
+    border: none;
+    border-radius: inherit;
+  }
+  &::-moz-color-swatch {
+    border: none;
+    border-radius: inherit;
+  }
+
+  &:hover {
+    box-shadow:
+      inset 0 0 0 1px ${theme.colors.border},
+      0 0 0 3px ${theme.colors.secondary};
+  }
+  &:focus-visible {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 1px ${theme.colors.border},
+      0 0 0 3px ${theme.colors.ring};
+  }
+`;
+
+export const DivisorPainelCores = styled.div`
+  height: 1px;
+  margin: 0.375rem 0.125rem 0.5rem;
+  background: ${theme.colors.border};
+`;
+
 /**
  * A linha de um evento dentro da célula do dia, pintada com a cor do tipo
  * (fundo tingido + friso à esquerda), não mais uma caixa cheia com borda
@@ -129,8 +248,11 @@ export const Chip = styled.button<{ $ativo: boolean; $cor: string }>`
  * é ela que deixa ver, sem clicar em nada, "essa semana tem duas bancas e
  * uma entrega". Neutralizar isso (como uma versão anterior desta tela
  * chegou a fazer) tira exatamente o que faz um calendário ser lido de
- * relance. O glifo (★■▲●) continua vindo junto: é ele, não a cor sozinha,
- * que faz o calendário funcionar impresso ou pra quem não distingue cor.
+ * relance.
+ *
+ * Sem glifo: esta tela não é impressa nem exportada (ao contrário do
+ * cronograma pintado do projeto), então o símbolo tipográfico só ocupava
+ * espaço sem cumprir o papel de substituto da cor.
  */
 export const Pilula = styled.button<{ $cor: string }>`
   display: flex;
@@ -164,18 +286,105 @@ export const Pilula = styled.button<{ $cor: string }>`
   }
 `;
 
-export const PilulaGlifo = styled.span`
-  flex-shrink: 0;
-  font-weight: ${theme.fontWeight.semibold};
-`;
-
 export const PilulaTexto = styled.span`
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 `;
 
-export const MaisEventos = styled.span`
-  font-size: 0.62rem;
-  color: ${theme.colors.mutedForeground};
+/** Só aparece em evento com hora de verdade (banca) — ver `horaDoEvento`. */
+export const PilulaHora = styled.span`
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: ${theme.fontWeight.semibold};
+  opacity: 0.75;
 `;
+
+export const PilulasWrap = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+`;
+
+/**
+ * A linha do topo da célula: número do dia à esquerda, aviso de excedente
+ * à direita, os dois no mesmo eixo. Existe porque um `position: absolute`
+ * ancorado só pelo canto da célula (tentativa anterior) desalinhava o badge
+ * do número do dia — cada um seguia sua própria régua (fluxo normal vs.
+ * canto absoluto), e o resultado lia como torto. Os dois num flex-row com
+ * `align-items: center` compartilham a MESMA linha de base sempre, não
+ * importa a altura de cada um.
+ */
+export const LinhaDia = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+`;
+
+/**
+ * O aviso de quantos eventos ficaram fora das pílulas visíveis. Vermelho
+ * (a mesma cor de `theme.colors.primary`) de propósito — é o único
+ * elemento desta tela que pede atenção antes de qualquer clique, o
+ * equivalente a um contador de notificação.
+ *
+ * É `<span>`, não `<button>`: quem abre o dropdown (hover) e quem abre o
+ * dia inteiro (clique) é a CÉLULA — `DayCellPreenche` — não o badge; ele é
+ * só o aviso visual de que há mais.
+ */
+export const AvisoMaisEventos = styled.span`
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.3rem;
+  border: 1px solid ${theme.colors.primary};
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.card};
+  color: ${theme.colors.primary};
+  font-size: 0.62rem;
+  font-weight: ${theme.fontWeight.bold};
+  line-height: 1;
+  pointer-events: none;
+
+  ${DayCellPreenche}:hover & {
+    background: ${theme.colors.primary};
+    color: ${theme.colors.primaryForeground};
+  }
+`;
+
+/** O painel do hover do dia — portal pra `document.body` porque a célula
+ *  tem `overflow: hidden` (é o que corta as pílulas excedentes de
+ *  propósito); um painel filho ficaria cortado junto. Por isso também é
+ *  `position: fixed` com coordenadas calculadas na hora
+ *  (`getBoundingClientRect` da célula), em vez de `absolute` ancorado num
+ *  pai que ele nem está mais dentro. */
+export const FlutuanteEventos = styled.div`
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 11rem;
+  max-width: 16rem;
+  padding: 0.5rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.lg};
+`;
+
+/** A lista de eventos de UM dia — usada tanto no popover de "+N mais"
+ *  quanto na visão Dia (o mesmo conteúdo, só que embutido na página em vez
+ *  de flutuando). */
+export const ListaEventosDia = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+`;
+

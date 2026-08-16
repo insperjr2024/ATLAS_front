@@ -110,8 +110,10 @@ export interface DesempenhoMentoria {
   id: number;
   mentor_id: number;
   mentor_nome: string | null;
+  mentor_foto: string | null;
   mentorado_id: number;
   mentorado_nome: string | null;
+  mentorado_foto: string | null;
 }
 
 export interface DesempenhoRelatorioCriterio {

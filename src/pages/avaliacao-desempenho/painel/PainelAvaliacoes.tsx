@@ -12,8 +12,6 @@ import type { DesempenhoAvaliacao, DesempenhoAvaliacaoDetalhe, DesempenhoLote, D
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { ProjetoResumo } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
-
-const SEMESTRES_GRADUACAO = [1, 2, 3, 4, 5, 6, 7, 8];
 import {
   EmptyText,
   ErrorBlock,
@@ -28,6 +26,7 @@ import {
   PageLoadingBlock,
 } from "@/styles/page.styled";
 import { FieldSelect } from "@/pages/Bancas.styled";
+import { ViewToggleRow, ViewToggleBtn } from "@/pages/projetos/Projetos.styled";
 import { theme } from "@/styles/theme";
 import {
   AvaliacaoDetalheBlock,
@@ -54,10 +53,14 @@ import {
   SubLista,
 } from "./Painel.styled";
 
+type Modo = "avaliador" | "avaliado";
+
 function corPorNota(nota: number): "danger" | "default" {
   return nota < 3 ? "danger" : "default";
 }
 
+/** Vermelho abaixo do esperado, âmbar no meio, verde acima, mesma leitura
+ *  rápida de "isso é bom ou ruim" da escala 1-5 do formulário de origem. */
 function corDaNota(nota: number): string {
   if (nota < 3) return theme.colors.destructive;
   if (nota === 3) return theme.colors.warning;
@@ -69,8 +72,20 @@ function formatarData(iso?: string): string {
   return paraDataUtc(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-export function PainelAvaliados() {
+/**
+ * Auditoria do registro bruto de avaliações — antes duas telas quase
+ * idênticas ("Avaliadores" e "Avaliados"), agora uma só com um toggle.
+ *
+ * A ÚNICA diferença de verdade entre os dois modos é o lado do par
+ * (avaliador_id, avaliado_id) usado pra agrupar; todo o resto — filtros,
+ * expandir pra ver o detalhe de uma avaliação, remover — é idêntico. Esta
+ * tela é o "olhar o log cru e moderar se precisar"; pra "como está a
+ * pessoa X" o destino agora é a aba Relatórios, que já mostra o resultado
+ * agregado e bonito em vez de avaliação por avaliação.
+ */
+export function PainelAvaliacoes() {
   const { token } = useAuth();
+  const [modo, setModo] = useState<Modo>("avaliador");
   const [avaliacoes, setAvaliacoes] = useState<DesempenhoAvaliacao[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [lotes, setLotes] = useState<DesempenhoLote[]>([]);
@@ -82,7 +97,6 @@ export function PainelAvaliados() {
   const [expandido, setExpandido] = useState<number | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<DesempenhoTipo | "todos">("todos");
   const [filtroFrente, setFiltroFrente] = useState<string>("todas");
-  const [filtroSemestre, setFiltroSemestre] = useState<string>("todos");
 
   const [avaliacaoExpandidaId, setAvaliacaoExpandidaId] = useState<number | null>(null);
   const [detalhes, setDetalhes] = useState<Map<number, DesempenhoAvaliacaoDetalhe>>(new Map());
@@ -119,6 +133,12 @@ export function PainelAvaliados() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  function trocarModo(novoModo: Modo) {
+    setModo(novoModo);
+    setExpandido(null);
+    setAvaliacaoExpandidaId(null);
+  }
+
   const nomes = useMemo(() => new Map(usuarios.map((u) => [u.id, u.nome])), [usuarios]);
   const tipoPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.tipo])), [lotes]);
   const projetoIdsPorLote = useMemo(() => new Map(lotes.map((l) => [l.id, l.projeto_ids])), [lotes]);
@@ -129,6 +149,10 @@ export function PainelAvaliados() {
     [usuarios],
   );
 
+  // Só a(s) frente(s) que a PESSOA integra hoje (`usuario_frente`), nunca a
+  // união das frentes dos projetos que ela avaliou/foi avaliada, que pode
+  // juntar frentes de rodadas diferentes e não bate com "a pessoa está em
+  // 1 ou 2 frentes, nunca mais".
   const frenteIdsPorUsuario = useMemo(() => {
     const mapa = new Map<number, Set<number>>();
     for (const uf of usuariosFrentes) {
@@ -141,7 +165,8 @@ export function PainelAvaliados() {
 
   // O lote cobre MUITOS projetos (a rodada inteira), mas uma avaliação é
   // sempre sobre um par específico, o que se quer mostrar é só o(s)
-  // projeto(s) que ligam avaliador e avaliado, não a lista inteira da rodada.
+  // projeto(s) que ligam avaliador e avaliado (mesmo projeto, um como
+  // coordenador e o outro como consultor), não a lista inteira da rodada.
   function projetosDaAvaliacao(a: DesempenhoAvaliacao): string {
     const idsDoLote = projetoIdsPorLote.get(a.lote_id) ?? [];
     const comuns = idsDoLote.filter((id) => {
@@ -153,6 +178,9 @@ export function PainelAvaliados() {
     return comuns.map((id) => nomeProjetoPorId.get(id)).filter(Boolean).join(", ") || "—";
   }
 
+  // O resumo de contexto que aparece do lado do nome: a frente que a pessoa
+  // integra hoje e o semestre da graduação dela, atributos DA PESSOA, não
+  // da rodada de avaliação.
   function resumoContexto(pessoaId: number): string {
     const frentesPessoa = frentesDoUsuario(usuariosFrentes, frentes, pessoaId);
     const semestre = semestrePorUsuario.get(pessoaId);
@@ -165,25 +193,28 @@ export function PainelAvaliados() {
     return avaliacoes.filter((a) => tipoPorLote.get(a.lote_id) === filtroTipo);
   }, [avaliacoes, tipoPorLote, filtroTipo]);
 
-  const porAvaliado = useMemo(() => {
+  // A chave de agrupamento é o único lugar onde os dois modos divergem de
+  // verdade — o resto da tela (filtros, expandir, remover) é idêntico.
+  const porPessoa = useMemo(() => {
     const grupos = new Map<number, DesempenhoAvaliacao[]>();
     for (const a of avaliacoesFiltradas) {
-      const lista = grupos.get(a.avaliado_id) ?? [];
+      const chave = modo === "avaliador" ? a.avaliador_id : a.avaliado_id;
+      const lista = grupos.get(chave) ?? [];
       lista.push(a);
-      grupos.set(a.avaliado_id, lista);
+      grupos.set(chave, lista);
     }
+    // O filtro de frente é sobre a PESSOA do agrupamento, não sobre a
+    // avaliação em si, aplicado depois de agrupar, senão um filtro
+    // removeria linhas individuais e deixaria o grupo com contagem errada.
     return Array.from(grupos.entries())
-      .filter(([avaliadoId]) => {
-        if (filtroFrente !== "todas" && !frenteIdsPorUsuario.get(avaliadoId)?.has(Number(filtroFrente))) {
-          return false;
-        }
-        if (filtroSemestre !== "todos" && String(semestrePorUsuario.get(avaliadoId) ?? "") !== filtroSemestre) {
+      .filter(([pessoaId]) => {
+        if (filtroFrente !== "todas" && !frenteIdsPorUsuario.get(pessoaId)?.has(Number(filtroFrente))) {
           return false;
         }
         return true;
       })
       .sort(([, a], [, b]) => b.length - a.length);
-  }, [avaliacoesFiltradas, filtroFrente, filtroSemestre, frenteIdsPorUsuario, semestrePorUsuario]);
+  }, [avaliacoesFiltradas, filtroFrente, frenteIdsPorUsuario]);
 
   async function toggleDetalhe(avaliacaoId: number) {
     if (!token) return;
@@ -222,7 +253,27 @@ export function PainelAvaliados() {
   return (
     <PageCard>
       <PageCardHeader>
-        <PageCardTitle>Como cada um foi avaliado</PageCardTitle>
+        <PageCardTitle>{modo === "avaliador" ? "Quem avaliou quem" : "Como cada um foi avaliado"}</PageCardTitle>
+        <ViewToggleRow role="tablist" aria-label="Agrupar por">
+          <ViewToggleBtn
+            type="button"
+            role="tab"
+            aria-selected={modo === "avaliador"}
+            $ativo={modo === "avaliador"}
+            onClick={() => trocarModo("avaliador")}
+          >
+            Por avaliador
+          </ViewToggleBtn>
+          <ViewToggleBtn
+            type="button"
+            role="tab"
+            aria-selected={modo === "avaliado"}
+            $ativo={modo === "avaliado"}
+            onClick={() => trocarModo("avaliado")}
+          >
+            Por avaliado
+          </ViewToggleBtn>
+        </ViewToggleRow>
       </PageCardHeader>
       <PageCardContent>
         <FiltrosRow>
@@ -239,47 +290,47 @@ export function PainelAvaliados() {
               </option>
             ))}
           </FieldSelect>
-          <FieldSelect value={filtroSemestre} onChange={(e) => setFiltroSemestre(e.target.value)}>
-            <option value="todos">Todos os semestres</option>
-            {SEMESTRES_GRADUACAO.map((n) => (
-              <option key={n} value={n}>
-                {n}º semestre
-              </option>
-            ))}
-          </FieldSelect>
         </FiltrosRow>
 
-        {porAvaliado.length === 0 ? (
+        {porPessoa.length === 0 ? (
           <EmptyText>Nenhuma avaliação registrada ainda.</EmptyText>
         ) : (
           <ListaExpansivel>
-            {porAvaliado.map(([avaliadoId, lista]) => {
-              const media = lista.reduce((soma, a) => soma + a.nota_geral, 0) / lista.length;
+            {porPessoa.map(([pessoaId, lista]) => {
+              const media =
+                modo === "avaliado" ? lista.reduce((soma, a) => soma + a.nota_geral, 0) / lista.length : null;
               return (
-                <div key={avaliadoId}>
+                <div key={pessoaId}>
                   <PessoaHeader
                     type="button"
-                    onClick={() => setExpandido((atual) => (atual === avaliadoId ? null : avaliadoId))}
+                    onClick={() => setExpandido((atual) => (atual === pessoaId ? null : pessoaId))}
                   >
                     <span>
-                      {nomes.get(avaliadoId) ?? `Usuário ${avaliadoId}`}{" "}
-                      <PessoaContexto>({resumoContexto(avaliadoId)})</PessoaContexto>
+                      {nomes.get(pessoaId) ?? `Usuário ${pessoaId}`}{" "}
+                      <PessoaContexto>({resumoContexto(pessoaId)})</PessoaContexto>
                     </span>
                     <PessoaResumo>
-                      {lista.length} avaliações recebidas · média{" "}
-                      <PageBadge $tone={corPorNota(media)}>{media.toFixed(1)}</PageBadge>
+                      {modo === "avaliador" ? (
+                        `${lista.length} avaliações enviadas`
+                      ) : (
+                        <>
+                          {lista.length} avaliações recebidas · média{" "}
+                          <PageBadge $tone={corPorNota(media!)}>{media!.toFixed(1)}</PageBadge>
+                        </>
+                      )}
                     </PessoaResumo>
                   </PessoaHeader>
-                  {expandido === avaliadoId && (
+                  {expandido === pessoaId && (
                     <SubLista>
                       {lista.map((a) => {
+                        const outroLadoId = modo === "avaliador" ? a.avaliado_id : a.avaliador_id;
                         const detalhe = detalhes.get(a.id);
                         const expandidaAqui = avaliacaoExpandidaId === a.id;
                         return (
                           <div key={a.id}>
                             <SubItem>
                               <span>
-                                {nomes.get(a.avaliador_id) ?? `Usuário ${a.avaliador_id}`}
+                                {nomes.get(outroLadoId) ?? `Usuário ${outroLadoId}`}
                                 {" · "}
                                 {projetosDaAvaliacao(a)}
                                 {" · "}
@@ -361,9 +412,9 @@ export function PainelAvaliados() {
       {paraRemover && (
         <ConfirmarModal
           titulo="Remover avaliação"
-          mensagem={`Remover a avaliação enviada por ${
+          mensagem={`Remover a avaliação de ${
             nomes.get(paraRemover.avaliador_id) ?? `Usuário ${paraRemover.avaliador_id}`
-          }? Esta ação não pode ser desfeita.`}
+          } sobre ${nomes.get(paraRemover.avaliado_id) ?? `Usuário ${paraRemover.avaliado_id}`}? Esta ação não pode ser desfeita.`}
           rotuloConfirmar="Remover"
           onCancelar={() => setParaRemover(null)}
           onConfirmar={confirmarRemocao}

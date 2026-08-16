@@ -16,6 +16,10 @@ import {
 } from "@/styles/page.styled";
 import { FaixaResumo, ResumoItem, ResumoRotulo, ResumoValor } from "./Monitoramento.styled";
 
+/** Pra "voltar" do projeto cair de novo aqui, não em `/projetos` — mesmo
+ *  padrão de `AtrasosAba.tsx`. */
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/aprovacoes", voltarRotulo: "Voltar para Aprovações" };
+
 /**
  * A fila da diretoria, tudo que espera decisão dela, num lugar só.
  *
@@ -113,10 +117,20 @@ export function AprovacoesAba() {
       )}
 
       <ExcecoesDeChoqueCard itens={dados.excecoes_de_choque} onDecidiu={carregar} />
-      <PedidosDeDiasCard itens={dados.dias_de_ajuste} onDecidiu={carregar} />
+      <PedidosDeDiasCard
+        itens={dados.dias_de_ajuste}
+        onDecidiu={carregar}
+        voltarPara={VOLTAR_PARA_AQUI.voltarPara}
+        voltarRotulo={VOLTAR_PARA_AQUI.voltarRotulo}
+      />
       <BancasSemResultadoCard itens={dados.bancas_sem_resultado} onDecidiu={carregar} />
       <EntradasEmProjetoCard itens={dados.solicitacoes_de_entrada} onDecidiu={carregar} />
-      <AtrasosSemJustificativaCard itens={dados.atrasos_sem_justificativa} onDecidiu={carregar} />
+      <AtrasosSemJustificativaCard
+        itens={dados.atrasos_sem_justificativa}
+        onDecidiu={carregar}
+        voltarPara={VOLTAR_PARA_AQUI.voltarPara}
+        voltarRotulo={VOLTAR_PARA_AQUI.voltarRotulo}
+      />
 
       {/* Havia aqui um card "Entregas sem classificação": as entregas
           atrasadas ainda não marcadas como atraso interno ou por agenda do

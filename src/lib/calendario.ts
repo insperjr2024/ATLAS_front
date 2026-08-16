@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api";
 
-export type TipoEvento = "banca" | "kickoff" | "reuniao" | "entrega";
+export type TipoEvento = "banca" | "kickoff" | "reuniao" | "entrega" | "prova";
 
 export interface EventoCalendario {
   tipo: TipoEvento;
@@ -35,16 +35,7 @@ export const ROTULO_TIPO: Record<TipoEvento, string> = {
   kickoff: "Kickoff",
   reuniao: "Reunião",
   entrega: "Entrega",
-};
-
-/** Glifo + cor, nunca cor sozinha, o calendário também é impresso.
- *  Símbolos tipográficos, não emoji: precisam renderizar igual em qualquer
- *  fonte/SO e não competir visualmente com o resto da tela. */
-export const GLIFO_TIPO: Record<TipoEvento, string> = {
-  banca: "★",
-  kickoff: "■",
-  reuniao: "▲",
-  entrega: "●",
+  prova: "Prova",
 };
 
 export const COR_TIPO: Record<TipoEvento, string> = {
@@ -52,4 +43,32 @@ export const COR_TIPO: Record<TipoEvento, string> = {
   kickoff: "#397AD0",
   reuniao: "#39D09E",
   entrega: "#D07539",
+  prova: "#7839D0",
 };
+
+const CHAVE_CORES_CUSTOM = "atlas:calendario:cores";
+
+/**
+ * A cor de cada tipo de evento é customizável POR NAVEGADOR (`localStorage`),
+ * não por conta — é uma preferência de leitura, não um dado que precise
+ * sincronizar entre dispositivos ou aparecer pra outras pessoas. Evita a
+ * tabela e o endpoint que uma preferência de conta exigiria, pra algo que só
+ * muda como a MESMA informação é desenhada.
+ */
+export function getCoresCustomizadas(): Partial<Record<TipoEvento, string>> {
+  try {
+    const bruto = window.localStorage.getItem(CHAVE_CORES_CUSTOM);
+    return bruto ? JSON.parse(bruto) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function salvarCoresCustomizadas(cores: Partial<Record<TipoEvento, string>>): void {
+  try {
+    window.localStorage.setItem(CHAVE_CORES_CUSTOM, JSON.stringify(cores));
+  } catch {
+    // Modo privado ou quota cheia: a cor escolhida ainda vale pra sessão
+    // atual (já está no state React), só não sobrevive a um F5.
+  }
+}

@@ -1,5 +1,5 @@
 import styled, { css, keyframes } from "styled-components";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import type { TonsColuna } from "@/lib/colunas-tarefa";
 
@@ -50,6 +50,40 @@ export const FormFields = styled.div`
   gap: ${theme.spacing.lg};
 `;
 
+/** O selo de vagas abertas (§7.3): linha própria logo abaixo do subtítulo,
+ *  não mais dentro da frase "N projetos · N com kickoff pendente" — enterrado
+ *  no meio de uma frase de metadados, ninguém lia até o fim. Link sublinhado,
+ *  não um badge com fundo/borda: aquele formato lia como mais um status
+ *  (tipo `StatusPilula`), e isto é uma ação, não um estado do projeto. */
+export const VagasSelo = styled(Link)`
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: ${theme.spacing.sm};
+  color: ${theme.colors.primary};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  text-decoration: none;
+
+  svg {
+    transition: transform ${theme.transitions.fast};
+  }
+
+  &:hover svg {
+    transform: translateX(0.15rem);
+  }
+`;
+
+/** Link dentro de um `AvisoBanner` (ex.: "Responder" no aviso de pedido de
+ *  entrada pendente) — herda a cor do aviso em vez do azul padrão do
+ *  navegador, só ganha peso e sublinhado pra continuar lendo como ação. */
+export const AvisoLink = styled(Link)`
+  color: inherit;
+  font-weight: ${theme.fontWeight.semibold};
+  text-decoration: underline;
+`;
+
 /** O toggle "Link" / "Anexar PDF" do campo de proposta, um ou outro. */
 export const ModoPropostaRow = styled.div`
   display: flex;
@@ -57,7 +91,7 @@ export const ModoPropostaRow = styled.div`
 `;
 
 /* ------------------------------------------------------------------ */
-/* Lista, os cards do                                             */
+/* Lista — os cards do §6.2                                            */
 /* ------------------------------------------------------------------ */
 
 export const CardGrid = styled.div`
@@ -67,6 +101,7 @@ export const CardGrid = styled.div`
 `;
 
 export const ProjetoCard = styled(NavLink)`
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.sm};
@@ -88,6 +123,18 @@ export const ProjetoCard = styled(NavLink)`
     outline: none;
     box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 30%, transparent);
   }
+`;
+
+/** Mesmo sinal do Kanban (`Kanban.styled.ts`, `PendenteDot`) — pedido de
+ *  entrada pendente pra este projeto, sem precisar abrir pra descobrir. */
+export const PendenteDot = styled.span`
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.destructive};
 `;
 
 export const CardTitle = styled.h2`
@@ -1342,9 +1389,9 @@ export const DescricaoVerMais = styled.button`
 /** A equipe no cabeçalho: coordenação e consultores lado a lado. */
 export const EquipeCabecalho = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: ${theme.spacing.md};
+  flex-direction: column;
+  align-items: flex-start;
+  gap: ${theme.spacing.sm};
   margin-top: 0.35rem;
 `;
 
@@ -1395,6 +1442,7 @@ export const EquipeAvatar = styled.span<{ $cor: string }>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   width: 1.5rem;
   height: 1.5rem;
   border-radius: ${theme.borderRadius.full};
