@@ -12,18 +12,42 @@ import {
 import {
   DataTable,
   TableHead,
-  TableHeadCell,
   TableBody,
   TableRow,
   TableCell,
 } from "./Config.styled";
-import { TableScrollWrap } from "@/styles/shared.styled";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
+import {
+  ConteudoPaginado,
+  POR_PAGINA_TABELA,
+  Paginacao,
+  usePaginacao,
+} from "@/pages/monitoramento/Paginacao";
 
 interface Props {
   usuarios: UsuarioResumo[];
   candidaturas: Candidatura[];
   bancas: Banca[];
 }
+
+interface LinhaPresenca {
+  usuario: UsuarioResumo;
+  inscrito: number;
+  presente: number;
+  futuras: number;
+  faltas: number;
+  percentual: number | null;
+}
+
+const COLUNAS_PRESENCA: Colunas<LinhaPresenca> = {
+  membro: { valor: (l) => l.usuario.nome, inicial: "asc" },
+  presente: { valor: (l) => l.presente, inicial: "desc" },
+  faltas: { valor: (l) => l.faltas, inicial: "desc" },
+  // Quem nunca teve banca realizada não tem percentual: fica no fim nas duas
+  // direções, porque "—" não é 0%.
+  percentual: { valor: (l) => l.percentual, inicial: "desc" },
+  futuras: { valor: (l) => l.futuras, inicial: "desc" },
+};
 
 /**
  * Presença por membro, o controle da diretoria.
@@ -69,6 +93,17 @@ export function PresencaBancas({ usuarios, candidaturas, bancas }: Props) {
   }, [usuarios, candidaturas, bancas]);
 
   const semNenhuma = linhas.every((l) => l.inscrito === 0 && l.futuras === 0);
+  // Sem coluna inicial: a lista já abre por quem tem mais falta, que é a
+  // pergunta da tabela e não sai de uma coluna sozinha (empate desempata
+  // pelo nome).
+  const { itens: ordenadas, ordem, ordenarPor } = useOrdenacao(linhas, COLUNAS_PRESENCA);
+  /* Páginas no lugar da rolagem interna. A tabela lista o núcleo INTEIRO — 80
+     linhas — e o card virava uma tela sozinho. A rolagem que estava aqui é
+     pior que rolar a página: uma área rolável dentro dela captura a roda do
+     mouse, e quem queria descer a página fica preso na tabela.
+     ⚠ Pagina o ORDENADO, não a lista crua: paginar antes deixaria o clique no
+     cabeçalho reordenando só as 15 linhas da página aberta. */
+  const pagina = usePaginacao(ordenadas, POR_PAGINA_TABELA);
 
   return (
     <PageCard>
@@ -79,19 +114,29 @@ export function PresencaBancas({ usuarios, candidaturas, bancas }: Props) {
         {semNenhuma ? (
           <EmptyText>Ninguém se inscreveu em bancas ainda.</EmptyText>
         ) : (
-          <TableScrollWrap>
+          <ConteudoPaginado estado={pagina}>
             <DataTable>
               <TableHead>
                 <TableRow>
-                  <TableHeadCell>Membro</TableHeadCell>
-                  <TableHeadCell>Compareceu</TableHeadCell>
-                  <TableHeadCell>Faltou</TableHeadCell>
-                  <TableHeadCell>Presença</TableHeadCell>
-                  <TableHeadCell>Ainda vai ter</TableHeadCell>
+                  <Th coluna="membro" ordem={ordem} onOrdenar={ordenarPor}>
+                    Membro
+                  </Th>
+                  <Th coluna="presente" ordem={ordem} onOrdenar={ordenarPor}>
+                    Compareceu
+                  </Th>
+                  <Th coluna="faltas" ordem={ordem} onOrdenar={ordenarPor}>
+                    Faltou
+                  </Th>
+                  <Th coluna="percentual" ordem={ordem} onOrdenar={ordenarPor}>
+                    Presença
+                  </Th>
+                  <Th coluna="futuras" ordem={ordem} onOrdenar={ordenarPor}>
+                    Ainda vai ter
+                  </Th>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {linhas.map((l) => (
+                {pagina.visiveis.map((l) => (
                   <TableRow key={l.usuario.id}>
                     <TableCell>{l.usuario.nome}</TableCell>
                     <TableCell>
@@ -112,8 +157,9 @@ export function PresencaBancas({ usuarios, candidaturas, bancas }: Props) {
                 ))}
               </TableBody>
             </DataTable>
-          </TableScrollWrap>
+          </ConteudoPaginado>
         )}
+        {!semNenhuma && <Paginacao estado={pagina} />}
       </PageCardContent>
     </PageCard>
   );

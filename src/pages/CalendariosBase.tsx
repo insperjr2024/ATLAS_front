@@ -15,6 +15,7 @@ import {
   type Semestre,
 } from "@/lib/calendario-academico";
 import { formatarData } from "@/lib/projetos";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { PaintedCalendar } from "@/components/cronograma-pintado/PaintedCalendar";
 import { blocosDaVisao } from "@/components/cronograma-pintado/visao";
 import {
@@ -85,6 +86,16 @@ const FIM_DE_SEMANA_AUTOMATICO = true;
  * o Insper mudar o layout, então a diretoria filtra por categoria, confere numa
  * tabela e só então grava. É o mesmo contrato do  para a grade horária.
  */
+const COLUNAS_DIAS: Colunas<DiaNaoLetivo> = {
+  // ISO ordena como texto, que é para o que o formato serve.
+  data: { valor: (d) => d.data, inicial: "asc" },
+  tipo: { valor: (d) => ROTULO_TIPO_DIA[d.tipo] ?? d.tipo, inicial: "asc" },
+  descricao: { valor: (d) => d.descricao, inicial: "asc" },
+  // Dia de todas as frentes primeiro no crescente: é a base sobre a qual a
+  // frente adiciona os dela.
+  origem: { valor: (d) => (d.frente_id === null ? 0 : 1), inicial: "asc" },
+};
+
 export function CalendariosBase() {
   const { token } = useAuth();
   const inputArquivo = useRef<HTMLInputElement>(null);
@@ -144,6 +155,15 @@ export function CalendariosBase() {
   }, [carregarDias]);
 
   const nomeFrente = frentes.find((f) => f.id === frenteAtiva)?.nome ?? "";
+
+  /* Abre pela data, como sempre abriu — calendário se lê em ordem
+     cronológica. As outras colunas viram ferramenta: "quais são feriado?",
+     "o que veio do calendário geral e o que é desta frente?". */
+  const {
+    itens: diasOrdenados,
+    ordem: ordemDias,
+    ordenarPor: ordenarDias,
+  } = useOrdenacao(dias, COLUNAS_DIAS, "data");
 
   /** As datas escolhidas no filtro, e o que elas significam perante o salvo. */
   const selecionadas = useMemo(
@@ -364,16 +384,23 @@ export function CalendariosBase() {
               <DataTable>
                 <TableHead>
                   <TableRow>
-                    <TableHeadCell>Data</TableHeadCell>
-                    <TableHeadCell>Tipo</TableHeadCell>
-                    <TableHeadCell>Descrição</TableHeadCell>
-                    <TableHeadCell>Origem</TableHeadCell>
+                    <Th coluna="data" ordem={ordemDias} onOrdenar={ordenarDias}>
+                      Data
+                    </Th>
+                    <Th coluna="tipo" ordem={ordemDias} onOrdenar={ordenarDias}>
+                      Tipo
+                    </Th>
+                    <Th coluna="descricao" ordem={ordemDias} onOrdenar={ordenarDias}>
+                      Descrição
+                    </Th>
+                    <Th coluna="origem" ordem={ordemDias} onOrdenar={ordenarDias}>
+                      Origem
+                    </Th>
                     <TableHeadCell />
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {[...dias]
-                    .sort((a, b) => a.data.localeCompare(b.data))
+                  {diasOrdenados
                     .map((d) => (
                       <TableRow key={d.id}>
                         <TableCell>{formatarData(d.data)}</TableCell>

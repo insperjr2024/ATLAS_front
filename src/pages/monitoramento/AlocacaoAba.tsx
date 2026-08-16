@@ -20,6 +20,7 @@ import {
 import { ConteudoPaginado, Paginacao, usePaginacao } from "./Paginacao";
 import {
   BarraCarga,
+  BarraFiltros,
   BotaoAlternativa,
   BarraCargaPreenchida,
   BarraCargaTrilho,
@@ -40,6 +41,7 @@ import {
   TableRow,
   VagaLivre,
 } from "./Monitoramento.styled";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
@@ -63,10 +65,10 @@ export function AlocacaoAba() {
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
-    <>
+    <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
-    </>
+    </BarraFiltros>
   );
   const [papel, setPapel] = useState<Papel>("consultor");
   const [dados, setDados] = useState<Alocacao | null>(null);
@@ -196,6 +198,18 @@ export function AlocacaoAba() {
   );
 }
 
+const COLUNAS_CARGA: Colunas<LinhaCarga> = {
+  nome: { valor: (l) => l.nome, inicial: "asc" },
+  total: { valor: (l) => l.total, inicial: "desc" },
+};
+
+const COLUNAS_CAPACIDADE: Colunas<Alocacao["capacidade"]["por_frente"][number]> = {
+  frente: { valor: (f) => f.frente_nome, inicial: "asc" },
+  pessoas: { valor: (f) => f.pessoas, inicial: "desc" },
+  consultor: { valor: (f) => f.consultor, inicial: "desc" },
+  coordenador: { valor: (f) => f.coordenador, inicial: "desc" },
+};
+
 /**
  * Quanto ainda dá para vender, por frente.
  *
@@ -211,6 +225,9 @@ export function AlocacaoAba() {
 function CapacidadePorFrente({ capacidade }: { capacidade: Alocacao["capacidade"] }) {
   const { por_frente, total, teto } = capacidade;
   const semNenhuma = total.consultor === 0 && total.coordenador === 0;
+  // Sem coluna inicial: a ordem do backend já é a das frentes, e a
+  // ordenação entra como ferramenta ("onde ainda cabe coordenador?").
+  const { itens: frentes, ordem, ordenarPor } = useOrdenacao(por_frente, COLUNAS_CAPACIDADE);
 
   return (
     <PageCard>
@@ -225,18 +242,26 @@ function CapacidadePorFrente({ capacidade }: { capacidade: Alocacao["capacidade"
             <DataTable>
               <TableHead>
                 <TableRow>
-                  <TableHeadCell>Frente</TableHeadCell>
-                  <TableHeadCell>Pessoas</TableHeadCell>
+                  <Th coluna="frente" ordem={ordem} onOrdenar={ordenarPor}>
+                    Frente
+                  </Th>
+                  <Th coluna="pessoas" ordem={ordem} onOrdenar={ordenarPor}>
+                    Pessoas
+                  </Th>
                   {/* O teto vai no cabeçalho, e não num parágrafo acima: sem
                       ele em lugar nenhum, "vagas" fica sem régua, cabe mais
                       quanto? O número vem do backend, para as duas pontas não
                       divergirem. */}
-                  <TableHeadCell>Vagas de consultor (até {teto.consultor})</TableHeadCell>
-                  <TableHeadCell>Vagas de coordenador (até {teto.coordenador})</TableHeadCell>
+                  <Th coluna="consultor" ordem={ordem} onOrdenar={ordenarPor}>
+                    Vagas de consultor (até {teto.consultor})
+                  </Th>
+                  <Th coluna="coordenador" ordem={ordem} onOrdenar={ordenarPor}>
+                    Vagas de coordenador (até {teto.coordenador})
+                  </Th>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {por_frente.map((f) => (
+                {frentes.map((f) => (
                   <TableRow key={f.frente_id ?? "sem-frente"}>
                     <TableCell>{f.frente_nome}</TableCell>
                     <TableCell>{f.pessoas}</TableCell>
@@ -338,8 +363,12 @@ function TabelaCarga({
 }) {
   /* A escala é POR TABELA, não global: coordenador e consultor carregam
      volumes diferentes por natureza, e uma régua só faria a tabela dos
-     consultores parecer vazia ao lado da dos coordenadores. */
+     consultores parecer vazia ao lado da dos coordenadores.
+     ⚠ Sai de `linhas`, e não da lista ordenada: a barra tem que medir contra
+     o maior da tabela inteira, não contra o maior da ordem do momento. */
   const maiorCarga = Math.max(1, ...linhas.map((l) => l.total));
+  // Sem coluna inicial: a lista já chega do backend na ordem de carga.
+  const { itens: ordenadas, ordem, ordenarPor } = useOrdenacao(linhas, COLUNAS_CARGA);
 
   return (
     <PageCard>
@@ -359,14 +388,22 @@ function TabelaCarga({
               <DataTable>
               <TableHead>
                 <TableRow>
-                  <TableHeadCell>Nome</TableHeadCell>
-                  <TableHeadCell>Projetos ativos</TableHeadCell>
+                  <Th coluna="nome" ordem={ordem} onOrdenar={ordenarPor}>
+                    Nome
+                  </Th>
+                  <Th coluna="total" ordem={ordem} onOrdenar={ordenarPor}>
+                    Projetos ativos
+                  </Th>
+                  {/* "Quais" é uma lista de chips e "Situação" é derivada de
+                      "Projetos ativos" pela escala das Configurações — ordenar
+                      por ela daria exatamente a mesma ordem da coluna ao lado.
+                      Nenhuma das duas vira botão. */}
                   <TableHeadCell>Quais</TableHeadCell>
                   <TableHeadCell>Situação</TableHeadCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {linhas.map((linha) => (
+                {ordenadas.map((linha) => (
                   <TableRow key={linha.usuario_id}>
                     <TableCell>{linha.nome}</TableCell>
                     <TableCell>

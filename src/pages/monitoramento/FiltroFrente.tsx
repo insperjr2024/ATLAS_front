@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { pode } from "@/utils/permissoes";
-import { BarraFiltro, FieldSelect, FrenteTravadaAviso } from "./Monitoramento.styled";
+import { FiltroSelect, FrenteTravadaAviso } from "./Monitoramento.styled";
 import { useMonitoramento } from "./MonitoramentoLayout";
 
 /**
@@ -32,25 +32,23 @@ export function useFiltroFrente() {
     /** O que vai para a API. `null` quando não pode filtrar: o backend já
      *  restringe o gerente à frente dele sem precisar do parâmetro. */
     frenteId: podeFiltrar ? frenteId : null,
-    seletor: (
-      <BarraFiltro>
-        {podeFiltrar ? (
-          <FieldSelect
-            value={frenteId ? String(frenteId) : ""}
-            onChange={(e) => setFrenteId(e.target.value ? Number(e.target.value) : null)}
-            aria-label="Filtrar por frente"
-          >
-            <option value="">Todas as frentes</option>
-            {frentes.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nome}
-              </option>
-            ))}
-          </FieldSelect>
-        ) : (
-          <FrenteTravadaAviso>Visão restrita à sua frente</FrenteTravadaAviso>
-        )}
-      </BarraFiltro>
+    /** Só o campo. Quem posiciona é a aba, dentro da `BarraFiltros` que ela
+     *  compartilha com os outros filtros. */
+    seletor: podeFiltrar ? (
+      <FiltroSelect
+        value={frenteId ? String(frenteId) : ""}
+        onChange={(e) => setFrenteId(e.target.value ? Number(e.target.value) : null)}
+        aria-label="Filtrar por frente"
+      >
+        <option value="">Todas as frentes</option>
+        {frentes.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.nome}
+          </option>
+        ))}
+      </FiltroSelect>
+    ) : (
+      <FrenteTravadaAviso>Visão restrita à sua frente</FrenteTravadaAviso>
     ),
   };
 }

@@ -15,6 +15,7 @@ import type {
 import type { UsuarioResumo } from "@/types/auth";
 import { DesempenhoChart, type FatiaDonut } from "@/components/DesempenhoChart";
 import { PresencaBancas } from "./PresencaBancas";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import {
   PageCard,
   PageCardHeader,
@@ -30,14 +31,12 @@ import {
   LIST_MAX_VISIVEIS,
 } from "@/styles/shared.styled";
 import {
-  ChartCaption,
   CardHeaderRow,
   FilterGroup,
   FilterLabel,
   FieldSelect,
   DataTable,
   TableHead,
-  TableHeadCell,
   TableBody,
   TableRow,
   NameCell,
@@ -73,6 +72,13 @@ interface ResultadoAgregado {
   bancas: number;
   notaMedia: number | null;
 }
+
+/** As colunas ordenáveis da tabela de resultados. */
+const COLUNAS_RESULTADO: Colunas<ResultadoAgregado> = {
+  nome: { valor: (r) => r.nome, inicial: "asc" },
+  bancas: { valor: (r) => r.bancas, inicial: "desc" },
+  nota: { valor: (r) => r.notaMedia, inicial: "desc" },
+};
 
 interface Props {
   bancas: Banca[];
@@ -342,17 +348,24 @@ export function DashboardBancas({
     );
   }, [historicoSemestre, usuarios, escopos, frentes, bancasFrentes, resultadosModo]);
 
+  // Abre como a tabela sempre abriu: quem tem mais bancas primeiro.
+  const {
+    itens: resultadosOrdenados,
+    ordem: ordemResultados,
+    ordenarPor,
+  } = useOrdenacao(resultados, COLUNAS_RESULTADO, "bancas");
+
+  /* "do projeto" reforça de que lado da banca a pessoa está: ela é quem
+     coordena o trabalho avaliado, não quem senta na mesa para avaliar — a
+     mesma confusão que a coluna de nota ao lado precisa desfazer. */
   const rotuloResultados =
-    resultadosModo === "coordenador" ? "Coordenador" : resultadosModo === "escopo" ? "Escopo" : "Frente";
+    resultadosModo === "coordenador"
+      ? "Coordenador do projeto"
+      : resultadosModo === "escopo"
+        ? "Escopo"
+        : "Frente";
 
   const frenteSelecionadaNome = frentes.find((f) => f.id === Number(frenteAtivaId))?.nome;
-
-  const captionDistribuicao =
-    distribuicaoModo === "frentes"
-      ? `${totalDistribuicao} ${totalDistribuicao === 1 ? "banca realizada" : "bancas realizadas"} no semestre`
-      : frenteAtivaId
-        ? `${totalDistribuicao} ${totalDistribuicao === 1 ? "banca" : "bancas"} na frente selecionada`
-        : "Selecione uma frente para ver a distribuição por escopos";
 
   return (
     <>
@@ -454,7 +467,6 @@ export function DashboardBancas({
                 }
               />
             )}
-            <ChartCaption>{captionDistribuicao}</ChartCaption>
           </PageCardContent>
         </PageCard>
 
@@ -483,13 +495,25 @@ export function DashboardBancas({
                 <DataTable>
                   <TableHead>
                     <TableRow>
-                      <TableHeadCell>{rotuloResultados}</TableHeadCell>
-                      <TableHeadCell>Bancas</TableHeadCell>
-                      <TableHeadCell>Nota média</TableHeadCell>
+                      <Th coluna="nome" ordem={ordemResultados} onOrdenar={ordenarPor}>
+                        {rotuloResultados}
+                      </Th>
+                      <Th coluna="bancas" ordem={ordemResultados} onOrdenar={ordenarPor}>
+                        Bancas
+                      </Th>
+                      {/* ⭐ "Recebida" é a palavra que carrega a coluna inteira.
+                          Sem ela, "Ana Souza — 3,4" tem duas leituras opostas e
+                          plausíveis: a nota que as bancas DELA tiraram, ou a
+                          nota que ela COSTUMA DAR quando avalia. É a primeira —
+                          o agrupamento é por `banca.coordenador_id`, e quem
+                          avaliou não entra nesta tabela em lugar nenhum. */}
+                      <Th coluna="nota" ordem={ordemResultados} onOrdenar={ordenarPor}>
+                        Nota média recebida
+                      </Th>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {resultados.map((item) => (
+                    {resultadosOrdenados.map((item) => (
                       <TableRow key={`${resultadosModo}-${item.id}`}>
                         <NameCell>{item.nome}</NameCell>
                         <TableCell>{item.bancas}</TableCell>

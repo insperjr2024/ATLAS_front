@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getExecucao, type Execucao, type LinhaTarefas } from "@/lib/monitoramento";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
 import { ConteudoPaginado, POR_PAGINA_TABELA, Paginacao, usePaginacao } from "./Paginacao";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import {
   PageStack,
   PageCard,
@@ -17,6 +18,7 @@ import {
 } from "@/styles/page.styled";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import {
+  BarraFiltros,
   CelulaDias,
   ConteudoCarregando,
   DataTable,
@@ -46,6 +48,23 @@ import { useFiltroEscopo } from "./FiltroEscopo";
 /** Pra "voltar" do projeto cair de novo aqui, não em `/projetos`. */
 const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/execucao", voltarRotulo: "Voltar para Execução" };
 
+const COLUNAS_TAREFAS: Colunas<Execucao["tarefas"][number]> = {
+  projeto: { valor: (l) => l.projeto_nome, inicial: "asc" },
+  // Booleano ordena com o problema no topo: "Não" (0) antes de "Sim" (1).
+  distribuiu: { valor: (l) => (l.distribuiu_na_semana ? 1 : 0), inicial: "asc" },
+  ativas: { valor: (l) => l.ativas, inicial: "desc" },
+  vencidas: { valor: (l) => l.vencidas, inicial: "desc" },
+  atraso: { valor: (l) => l.atraso_maximo_dias_uteis, inicial: "desc" },
+  sem_tarefa: { valor: (l) => l.dias_uteis_sem_tarefa, inicial: "desc" },
+  // ISO ordena como texto — é justamente para isso que o formato serve.
+  movimentacao: { valor: (l) => l.ultima_movimentacao, inicial: "desc" },
+};
+
+const COLUNAS_REUNIOES: Colunas<Execucao["reunioes"][number]> = {
+  projeto: { valor: (l) => l.projeto_nome, inicial: "asc" },
+  realizou: { valor: (l) => (l.realizou ? 1 : 0), inicial: "asc" },
+};
+
 /**
  * , ver quem não está distribuindo tarefa nem fazendo reunião, sem
  * precisar abrir projeto por projeto.
@@ -60,10 +79,10 @@ export function ExecucaoAba() {
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
-    <>
+    <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
-    </>
+    </BarraFiltros>
   );
   const [dados, setDados] = useState<Execucao | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -122,8 +141,15 @@ export function ExecucaoAba() {
   // As duas tabelas da aba passam de 50 linhas com o núcleo cheio. Rolagem
   // interna dava ~5 telas dentro do card, capturando a roda do mouse; página
   // resolve sem aninhar rolagem.
-  const paginaTarefas = usePaginacao(tarefasOrdenadas, POR_PAGINA_TABELA);
-  const paginaReunioes = usePaginacao(dados?.reunioes ?? [], POR_PAGINA_TABELA);
+  /* Ordena ANTES de paginar, senão o clique no cabeçalho reordenaria só as
+     linhas da página aberta e a "maior vencida" ficaria escondida na página 3.
+     Sem coluna inicial de propósito: a lista chega ordenada por severidade
+     (ver `tarefasOrdenadas`), curadoria que nenhuma coluna sozinha reproduz —
+     a ordenação entra por cima dela, quando a pessoa pedir. */
+  const tarefas = useOrdenacao(tarefasOrdenadas, COLUNAS_TAREFAS);
+  const reunioes = useOrdenacao(dados?.reunioes ?? [], COLUNAS_REUNIOES);
+  const paginaTarefas = usePaginacao(tarefas.itens, POR_PAGINA_TABELA);
+  const paginaReunioes = usePaginacao(reunioes.itens, POR_PAGINA_TABELA);
 
   if (erro) {
     return (
@@ -272,13 +298,27 @@ export function ExecucaoAba() {
                 <DataTable>
                   <TableHead>
                     <TableRow>
-                      <TableHeadCell>Projeto</TableHeadCell>
-                      <TableHeadCell>Distribuiu na semana</TableHeadCell>
-                      <TableHeadCell>Ativas</TableHeadCell>
-                      <TableHeadCell>Vencidas</TableHeadCell>
-                      <TableHeadCell>Atraso</TableHeadCell>
-                      <TableHeadCell>Sem tarefa nova há</TableHeadCell>
-                      <TableHeadCell>Última movimentação</TableHeadCell>
+                      <Th coluna="projeto" ordem={tarefas.ordem} onOrdenar={tarefas.ordenarPor}>
+                        Projeto
+                      </Th>
+                      <Th coluna="distribuiu" ordem={tarefas.ordem} onOrdenar={tarefas.ordenarPor}>
+                        Distribuiu na semana
+                      </Th>
+                      <Th coluna="ativas" ordem={tarefas.ordem} onOrdenar={tarefas.ordenarPor}>
+                        Ativas
+                      </Th>
+                      <Th coluna="vencidas" ordem={tarefas.ordem} onOrdenar={tarefas.ordenarPor}>
+                        Vencidas
+                      </Th>
+                      <Th coluna="atraso" ordem={tarefas.ordem} onOrdenar={tarefas.ordenarPor}>
+                        Atraso
+                      </Th>
+                      <Th coluna="sem_tarefa" ordem={tarefas.ordem} onOrdenar={tarefas.ordenarPor}>
+                        Sem tarefa nova há
+                      </Th>
+                      <Th coluna="movimentacao" ordem={tarefas.ordem} onOrdenar={tarefas.ordenarPor}>
+                        Última movimentação
+                      </Th>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -389,8 +429,13 @@ export function ExecucaoAba() {
               <DataTable>
                 <TableHead>
                   <TableRow>
-                    <TableHeadCell>Projeto</TableHeadCell>
-                    <TableHeadCell>Realizou</TableHeadCell>
+                    <Th coluna="projeto" ordem={reunioes.ordem} onOrdenar={reunioes.ordenarPor}>
+                      Projeto
+                    </Th>
+                    <Th coluna="realizou" ordem={reunioes.ordem} onOrdenar={reunioes.ordenarPor}>
+                      Realizou
+                    </Th>
+                    {/* Lista de datas: não há "maior" nem "menor" que ordene. */}
                     <TableHeadCell>Dias registrados</TableHeadCell>
                   </TableRow>
                 </TableHead>

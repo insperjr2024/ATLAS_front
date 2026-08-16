@@ -66,7 +66,6 @@ import {
   EscopoNome,
   AtrasoCelula,
   JustificativaAtraso,
-  LegendaTabela,
   FrenteBloco,
   FrenteCabecalho,
   BancaLinha,
@@ -683,7 +682,22 @@ function BancasPorFrente() {
   return (
     <PageCard>
       <PageCardHeader>
-        <PageCardTitle>Bancas por escopo</PageCardTitle>
+        <PageCardTitle>
+          Bancas por escopo
+          {/* A legenda que ficava sempre visível no rodapé: explica um
+              mecanismo (uma banca pode cobrir vários escopos), não um dado —
+              lê-se uma vez e nunca mais. */}
+          <InfoDica rotulo="Como as bancas se relacionam com os escopos">
+            Cada escopo tem no máximo uma banca, mas <strong>uma banca pode avaliar vários
+            escopos</strong> do projeto — quem marca escolhe quais, no <strong>Cronograma</strong>.
+            <br />
+            <br />A banca herda as frentes dos escopos que cobre, e são elas que definem a
+            composição exigida e quem pode ser escalado.
+            <br />
+            <br />A data é a mesma que aparece em Bancas e no Cronograma: um registro só, lido de
+            três lugares.
+          </InfoDica>
+        </PageCardTitle>
       </PageCardHeader>
       <PageCardContent>
         {frenteIds.length === 0 ? (
@@ -691,7 +705,12 @@ function BancasPorFrente() {
         ) : (
           frenteIds.map((frenteId) => {
             const escoposDaFrente = projeto.escopos.filter((e) => e.frente_id === frenteId);
-            const marcadas = escoposDaFrente.filter((e) => e.banca).length;
+            /* ⚠ Conta banca COM DATA, não banca que existe.
+               O backend cria a linha da banca junto do escopo, ainda sem data
+               (`status: nao_marcada`) — então `filter(e => e.banca)` dizia
+               "1 de 1 banca marcada" na mesma tela em que a linha de baixo
+               dizia "Não marcada". Marcar uma banca é dar data a ela. */
+            const marcadas = escoposDaFrente.filter((e) => e.banca?.data_hora).length;
             return (
               <FrenteBloco key={frenteId}>
                 <FrenteCabecalho>
@@ -707,71 +726,66 @@ function BancasPorFrente() {
 
                 {escoposDaFrente.length === 0 ? (
                   <EmptyText>
-                    A frente foi vendida, mas ainda não há escopo cadastrado nela, e é o escopo que
+                    A frente foi vendida, mas ainda não há escopo cadastrado nela — e é o escopo que
                     tem banca.
                   </EmptyText>
                 ) : (
-                  escoposDaFrente.map((escopo) => (
-                    <BancaLinha key={escopo.id}>
-                      <BancaEscopo>
-                        {escopo.nome}
-                        {/* Sem esta linha, a mesma data repetida em dois
-                            escopos pareceria cadastro duplicado, e não é:
-                            é uma banca só avaliando os dois. */}
-                        {escopo.banca && escopo.banca.escopo_ids.length > 1 && (
-                          <small>
-                            mesma banca de{" "}
-                            {projeto.escopos
-                              .filter(
-                                (e) =>
-                                  e.id !== escopo.id && escopo.banca!.escopo_ids.includes(e.id),
-                              )
-                              .map((e) => e.nome)
-                              .join(", ")}
-                          </small>
+                  escoposDaFrente.map((escopo) => {
+                    const banca = escopo.banca;
+                    const temData = !!banca?.data_hora;
+                    return (
+                      <BancaLinha key={escopo.id}>
+                        <BancaEscopo>
+                          {escopo.nome}
+                          {/* Sem esta linha, a mesma data repetida em dois
+                              escopos pareceria cadastro duplicado, e não é:
+                              é uma banca só avaliando os dois. */}
+                          {banca && banca.escopo_ids.length > 1 && (
+                            <small>
+                              mesma banca de{" "}
+                              {projeto.escopos
+                                .filter((e) => e.id !== escopo.id && banca.escopo_ids.includes(e.id))
+                                .map((e) => e.nome)
+                                .join(", ")}
+                            </small>
+                          )}
+                        </BancaEscopo>
+
+                        {/* ⚠ Data OU status, nunca os dois. Sem data, "sem
+                            data" ao lado de "Não marcada" dizia a mesma coisa
+                            duas vezes; com data, o status é o que a data não
+                            conta (realizada, aprovada). */}
+                        {temData ? (
+                          <>
+                            <BancaData>{formatarDataHora(banca!.data_hora!)}</BancaData>
+                            <PageBadge $tone={tomDoStatusBanca(banca!.status)}>
+                              {ROTULO_STATUS_BANCA[banca!.status]}
+                            </PageBadge>
+                          </>
+                        ) : (
+                          <PageBadge $tone="muted">não marcada</PageBadge>
                         )}
-                      </BancaEscopo>
-                      {escopo.banca ? (
-                        <>
-                          <BancaData>
-                            {escopo.banca.data_hora
-                              ? formatarDataHora(escopo.banca.data_hora)
-                              : "sem data"}
-                          </BancaData>
-                          <PageBadge $tone={tomDoStatusBanca(escopo.banca.status)}>
-                            {ROTULO_STATUS_BANCA[escopo.banca.status]}
-                          </PageBadge>
-                        </>
-                      ) : (
-                        <PageBadge $tone="muted">não marcada</PageBadge>
-                      )}
-                      {podeMarcar && (
-                        /* A data da banca é agendada no Cronograma, onde dá
-                           para ver se ela cai dentro da janela do escopo —
-                           que é a regra que a governa. */
-                        <PageButtonSm
-                          as={Link}
-                          to={`/projetos/${projeto.id}/cronograma`}
-                          $variant="outline"
-                        >
-                          {escopo.banca ? "Remarcar no Cronograma" : "Marcar no Cronograma"}
-                        </PageButtonSm>
-                      )}
-                    </BancaLinha>
-                  ))
+
+                        {podeMarcar && (
+                          /* A data da banca é agendada no Cronograma, onde dá
+                             para ver se ela cai dentro da janela do escopo —
+                             que é a regra que a governa. */
+                          <PageButtonSm
+                            as={Link}
+                            to={`/projetos/${projeto.id}/cronograma`}
+                            $variant="outline"
+                          >
+                            {temData ? "Remarcar" : "Marcar no Cronograma"}
+                          </PageButtonSm>
+                        )}
+                      </BancaLinha>
+                    );
+                  })
                 )}
               </FrenteBloco>
             );
           })
         )}
-
-        <LegendaTabela>
-          Cada escopo tem no máximo uma banca, mas uma banca pode avaliar vários escopos do
-          projeto, quem marca escolhe quais, no <strong>Cronograma</strong>. A banca herda as
-          frentes dos escopos que cobre, e são elas que definem a composição exigida e quem pode ser
-          escalado. A data é a mesma que aparece em Bancas e no cronograma: um registro só, lido de
-          três lugares.
-        </LegendaTabela>
       </PageCardContent>
     </PageCard>
   );
