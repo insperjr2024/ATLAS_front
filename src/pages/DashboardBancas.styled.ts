@@ -1,4 +1,4 @@
-import styled, { css } from "styled-components";
+import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
 /* ------------------------------------------------------------------ */
@@ -15,47 +15,66 @@ export const KpiGrid = styled.div`
   gap: ${theme.spacing.md};
 `;
 
-export const KpiCard = styled.div<{ $tone?: "neutro" | "atencao" | "risco" }>`
+export const KpiCard = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  gap: ${theme.spacing.sm};
   padding: ${theme.spacing.md} ${theme.spacing.lg};
-  border-radius: ${theme.borderRadius.xl};
+  border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.border};
   background: ${theme.colors.card};
   box-shadow: ${theme.shadows.sm};
+`;
 
-  ${({ $tone = "neutro" }) =>
+/** O tom vive no ícone, não mais pintando o card inteiro — um card neutro
+ *  ao lado de um card em alerta precisa continuar parecendo do mesmo
+ *  produto, só o ícone é que muda de cor. */
+export const KpiIcone = styled.span<{ $tone?: "neutro" | "atencao" | "risco" }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: ${theme.borderRadius.md};
+  background: ${({ $tone = "neutro" }) =>
     $tone === "risco"
-      ? css`
-          border-color: color-mix(in srgb, ${theme.colors.destructive} 35%, transparent);
-          background: color-mix(in srgb, ${theme.colors.destructive} 5%, ${theme.colors.card});
-        `
+      ? `color-mix(in srgb, ${theme.colors.destructive} 14%, transparent)`
       : $tone === "atencao"
-        ? css`
-            border-color: color-mix(in srgb, ${theme.colors.warning} 45%, transparent);
-            background: color-mix(in srgb, ${theme.colors.warning} 8%, ${theme.colors.card});
-          `
-        : css``}
+        ? `color-mix(in srgb, ${theme.colors.warning} 20%, transparent)`
+        : `color-mix(in srgb, ${theme.colors.foreground} 6%, transparent)`};
+  color: ${({ $tone = "neutro" }) =>
+    $tone === "risco"
+      ? theme.colors.destructive
+      : $tone === "atencao"
+        ? theme.colors.warning
+        : theme.colors.mutedForeground};
+`;
+
+export const KpiTexto = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
 `;
 
 export const KpiRotulo = styled.span`
-  font-size: ${theme.fontSize.xs};
-  font-weight: ${theme.fontWeight.medium};
-  color: ${theme.colors.mutedForeground};
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
 `;
 
 export const KpiValor = styled.strong`
-  font-size: 1.75rem;
-  font-weight: ${theme.fontWeight.semibold};
-  line-height: 1.1;
+  font-size: ${theme.fontSize["2xl"]};
+  font-weight: ${theme.fontWeight.bold};
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
   color: ${theme.colors.cardForeground};
 `;
 
 export const KpiNota = styled.span`
   font-size: ${theme.fontSize.xs};
+  line-height: 1.3;
   color: ${theme.colors.mutedForeground};
 `;
 
