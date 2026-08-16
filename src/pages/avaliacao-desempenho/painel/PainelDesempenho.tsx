@@ -12,12 +12,15 @@ export function PainelDesempenho() {
         </PageHeaderText>
       </PageHeader>
 
+      {/* Relatórios primeiro: é a entrada principal, "me fale sobre esta
+          pessoa" (relatório agregado + PDI dela). Avaliações é a auditoria
+          do registro bruto — outra pergunta, não mais uma 2ª forma de
+          responder a mesma. */}
       <TabBar>
-        <TabLink to="/avaliacao-desempenho/painel/avaliadores">Avaliadores</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/avaliados">Avaliados</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/relatorio">Relatórios</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/avaliacoes">Avaliações</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/lotes">Formulários</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/mentoria">PDI</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/pdi">PDI</TabLink>
       </TabBar>
 
       <Outlet />

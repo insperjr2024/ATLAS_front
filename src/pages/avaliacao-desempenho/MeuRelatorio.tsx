@@ -10,12 +10,7 @@ import {
   PageButton,
   PageCard,
   PageCardContent,
-  PageHeader,
-  PageHeaderText,
   PageLoadingBlock,
-  PageStack,
-  PageSubtitle,
-  PageTitle,
 } from "@/styles/page.styled";
 
 export function MeuRelatorio() {
@@ -65,22 +60,13 @@ export function MeuRelatorio() {
   if (carregando || !relatorio) return <PageLoadingBlock />;
 
   return (
-    <PageStack>
-      <PageHeader>
-        <PageHeaderText>
-          <PageTitle>Relatório de desempenho</PageTitle>
-          <PageSubtitle>Como você foi avaliado pelos colegas de projeto.</PageSubtitle>
-        </PageHeaderText>
-      </PageHeader>
-
-      <PageCard>
-        <PageCardContent>
-          <RelatorioDesempenho
-            relatorio={relatorio}
-            pessoa={usuario ? { nome: usuario.nome, posicao: usuario.posicao, projetos: meusProjetos } : undefined}
-          />
-        </PageCardContent>
-      </PageCard>
-    </PageStack>
+    <PageCard>
+      <PageCardContent>
+        <RelatorioDesempenho
+          relatorio={relatorio}
+          pessoa={usuario ? { nome: usuario.nome, posicao: usuario.posicao, projetos: meusProjetos } : undefined}
+        />
+      </PageCardContent>
+    </PageCard>
   );
 }

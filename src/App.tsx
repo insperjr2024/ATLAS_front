@@ -15,6 +15,7 @@ import { MeuPerfil } from "@/pages/MeuPerfil";
 import { Vagas } from "@/pages/Vagas";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Membros } from "@/pages/Membros";
+import { Mentoria } from "@/pages/Mentoria";
 import { Notificacoes } from "@/pages/Notificacoes";
 import { Avaliacoes } from "@/pages/Avaliacoes";
 import { CalendariosBase } from "@/pages/CalendariosBase";
@@ -35,15 +36,13 @@ import { AlocacaoAba } from "@/pages/monitoramento/AlocacaoAba";
 import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
 import { GraficosAba } from "@/pages/monitoramento/GraficosAba";
 import { HistoricoAba } from "@/pages/monitoramento/HistoricoAba";
-import { AvaliacaoDesempenho } from "@/pages/avaliacao-desempenho/AvaliacaoDesempenho";
-import { MeuRelatorio } from "@/pages/avaliacao-desempenho/MeuRelatorio";
+import { AvaliacaoDesempenhoHub } from "@/pages/avaliacao-desempenho/AvaliacaoDesempenhoHub";
 import { MeusMentorados } from "@/pages/avaliacao-desempenho/MeusMentorados";
 import { PainelDesempenho } from "@/pages/avaliacao-desempenho/painel/PainelDesempenho";
-import { PainelAvaliadores } from "@/pages/avaliacao-desempenho/painel/PainelAvaliadores";
-import { PainelAvaliados } from "@/pages/avaliacao-desempenho/painel/PainelAvaliados";
+import { PainelAvaliacoes } from "@/pages/avaliacao-desempenho/painel/PainelAvaliacoes";
 import { PainelRelatorio } from "@/pages/avaliacao-desempenho/painel/PainelRelatorio";
 import { PainelLotes } from "@/pages/avaliacao-desempenho/painel/PainelLotes";
-import { PainelMentoria } from "@/pages/avaliacao-desempenho/painel/PainelMentoria";
+import { PainelPdi } from "@/pages/avaliacao-desempenho/painel/PainelPdi";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 import { CronogramasGeraisAba } from "@/pages/monitoramento/CronogramasGeraisAba";
@@ -131,31 +130,41 @@ export default function App() {
 
               {/* Avaliação de Desempenho (periódica/finalização), não
                   confundir com /avaliacoes (feedback de banca) nem com
-                  /dashboard (Desempenho.tsx, % de bancas atendidas). */}
-              <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenho />} />
-              <Route path="/avaliacao-desempenho/relatorio" element={<MeuRelatorio />} />
+                  /dashboard (Desempenho.tsx, % de bancas atendidas).
+                  Só quem pode ser avaliado por um colega (regra 2.3 é
+                  sempre via `projeto_membro.papel` = coordenador/consultor;
+                  diretor e gerente nunca entram nessa tabela, então nunca
+                  teriam nada pra responder aqui). */}
+              <Route element={<RequirePosicao posicoes={["coordenador", "consultor"]} />}>
+                <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenhoHub />} />
+              </Route>
 
-              {/* Mentor pode ser coordenador, gerente ou diretor (2026-08-06) —
-                  não só coordenador. */}
+              {/* Mentoria fica de propósito FORA do hub acima — vínculo
+                  independente do projeto, escolhido pela diretoria, sem
+                  relação com o processo de avaliação (ver
+                  `AvaliacaoDesempenhoHub`). Mentor pode ser coordenador,
+                  gerente ou diretor (2026-08-06). */}
               <Route element={<RequirePosicao posicoes={["coordenador", "gerente", "diretor"]} />}>
                 <Route path="/avaliacao-desempenho/mentorados" element={<MeusMentorados />} />
               </Route>
 
               <Route element={<AdminRoute permissao="pode_administrar_desempenho" />}>
                 <Route path="/avaliacao-desempenho/painel" element={<PainelDesempenho />}>
-                  <Route index element={<Navigate to="avaliadores" replace />} />
-                  <Route path="avaliadores" element={<PainelAvaliadores />} />
-                  <Route path="avaliados" element={<PainelAvaliados />} />
+                  {/* Relatórios é a entrada padrão: "me fale sobre esta
+                      pessoa" é a pergunta mais comum, não "me dê o log
+                      bruto" (essa é Avaliações, a auditoria). */}
+                  <Route index element={<Navigate to="relatorio" replace />} />
                   <Route path="relatorio" element={<PainelRelatorio />} />
+                  <Route path="avaliacoes" element={<PainelAvaliacoes />} />
                   <Route path="lotes" element={<PainelLotes />} />
-                  <Route path="mentoria" element={<PainelMentoria />} />
+                  <Route path="pdi" element={<PainelPdi />} />
                 </Route>
               </Route>
 
               {/* Fora do shell do painel acima, sem o TabBar do resto do
                   painel. Editar os formulários é mais sensível que administrar
-                  lotes/mentoria/pdi (muda o que todo mundo é avaliado), então
-                  tem caixa de cargo própria. */}
+                  lotes/PDI (muda o que todo mundo é avaliado), então tem
+                  caixa de cargo própria. */}
               <Route element={<AdminRoute permissao="pode_editar_formularios_desempenho" />}>
                 <Route path="/avaliacao-desempenho/painel/formularios" element={<PainelFormularios />} />
               </Route>
@@ -173,8 +182,14 @@ export default function App() {
                 <Route path="/config" element={<Config />} />
                 <Route path="/calendarios-base" element={<CalendariosBase />} />
               </Route>
+              {/* Alocação de mentoria vive junto de Membros, não de Avaliação
+                  de Desempenho: é a mesma decisão administrativa (atribuir
+                  um atributo relacional a uma pessoa), pela mesma diretoria
+                  que edita posição e frente. A única ligação com PDI é uma
+                  checagem de permissão, não um dado compartilhado. */}
               <Route element={<AdminRoute permissao="pode_gerir_membros" />}>
                 <Route path="/membros" element={<Membros />} />
+                <Route path="/mentoria" element={<Mentoria />} />
               </Route>
             </Route>
           </Route>

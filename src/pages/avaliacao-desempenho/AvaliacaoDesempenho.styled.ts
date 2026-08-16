@@ -1,33 +1,19 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
-export { FieldGroup, FieldLabel, FieldTextarea, FormErrorText, FormStack } from "@/pages/Bancas.styled";
+export {
+  FieldGroup,
+  FieldLabel,
+  FieldTextarea,
+  FormErrorText,
+  FormStack,
+  TabBar,
+  TabButton,
+  TabCount,
+} from "@/pages/Bancas.styled";
 
-export const InfoBannerCard = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  border-radius: ${theme.borderRadius.xl};
-  border: 1px solid ${theme.colors.border};
-  background: color-mix(in srgb, ${theme.colors.primary} 6%, ${theme.colors.card});
-`;
-
-export const InfoBannerTitulo = styled.p`
-  margin: 0;
-  font-size: ${theme.fontSize.base};
-  font-weight: ${theme.fontWeight.semibold};
-  color: ${theme.colors.foreground};
-`;
-
-export const InfoBannerLinha = styled.p`
-  margin: 0;
-  font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.mutedForeground};
-`;
-
-/** Formulário(s) que fecharam antes da pessoa responder, precisa gritar
- *  mais que o InfoBannerCard normal, por isso o tom destrutivo. */
+/** Formulário(s) que fecharam antes da pessoa responder, tom destrutivo
+ *  porque precisa gritar mais que o resto da tela. */
 export const AvisoFechadoCard = styled.div`
   display: flex;
   flex-direction: column;
