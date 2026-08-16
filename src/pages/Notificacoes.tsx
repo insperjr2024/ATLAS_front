@@ -21,6 +21,7 @@ import {
   NotebookPen,
   SlidersHorizontal,
   Star,
+  Trash2,
   Truck,
   UserPlus,
   Users,
@@ -28,7 +29,14 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificacoes } from "@/context/NotificacoesContext";
-import { getNotificacoes, marcarNotificacaoLida, marcarTodasLidas } from "@/lib/notificacoes";
+import {
+  excluirNotificacao,
+  getNotificacoes,
+  limparNotificacoesLidas,
+  marcarNotificacaoLida,
+  marcarTodasLidas,
+} from "@/lib/notificacoes";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Usuario } from "@/types/auth";
 import type { Notificacao, TipoNotificacao } from "@/types/notificacao";
 import {
@@ -202,6 +210,9 @@ export function Notificacoes() {
    *  efeito reage. Assim nada chama setState de forma síncrona no corpo do
    *  efeito, é o que a regra `react-hooks/set-state-in-effect` cobra. */
   const [recarga, setRecarga] = useState(0);
+  /** `null` = nenhuma confirmação aberta. `"todas"` = "Limpar lidas" em
+   *  massa. Uma notificação = excluir só aquela. */
+  const [confirmando, setConfirmando] = useState<Notificacao | "todas" | null>(null);
 
   const recarregarLista = useCallback(() => setRecarga((n) => n + 1), []);
 
@@ -298,6 +309,19 @@ export function Notificacoes() {
     }
   }
 
+  async function confirmarExclusao() {
+    if (confirmando === "todas") {
+      await limparNotificacoesLidas(token);
+    } else if (confirmando) {
+      await excluirNotificacao(token, confirmando.id as number);
+    }
+    setConfirmando(null);
+    recarregarLista();
+    recarregar();
+  }
+
+  const lidasEliminaveis = itens.filter((i) => i.lida && i.origem === "evento").length;
+
   function abrir(notificacao: Notificacao) {
     void marcarUma(notificacao);
     // `voltarPara` é lido só por quem entende o estado (hoje, `ProjetoPage`)
@@ -323,10 +347,21 @@ export function Notificacoes() {
               : "Nada pendente de leitura"}
           </PageSubheading>
         </PageHeaderText>
-        <PageButtonSm type="button" $variant="outline" onClick={marcarTodas} disabled={naoLidas === 0}>
-          <CheckCheck size={14} />
-          Marcar todas como lidas
-        </PageButtonSm>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <PageButtonSm
+            type="button"
+            $variant="outline"
+            onClick={() => setConfirmando("todas")}
+            disabled={lidasEliminaveis === 0}
+          >
+            <Trash2 size={14} />
+            Limpar lidas
+          </PageButtonSm>
+          <PageButtonSm type="button" $variant="outline" onClick={marcarTodas} disabled={naoLidas === 0}>
+            <CheckCheck size={14} />
+            Marcar todas como lidas
+          </PageButtonSm>
+        </div>
       </PageHeaderRow>
 
       <FiltroBar>
@@ -462,6 +497,16 @@ export function Notificacoes() {
                           Lida
                         </ItemAcao>
                       )}
+                      {/* Só evento tem linha para apagar — condição é a
+                          marcação de leitura, não a notificação, apagá-la
+                          faria o alerta voltar a contar no sino mesmo
+                          resolvido, por isso não ganha este botão. */}
+                      {notificacao.lida && notificacao.origem === "evento" && (
+                        <ItemAcao type="button" onClick={() => setConfirmando(notificacao)}>
+                          <Trash2 size={13} />
+                          Excluir
+                        </ItemAcao>
+                      )}
                     </Item>
                   );
                 })}
@@ -473,6 +518,19 @@ export function Notificacoes() {
             </>
           )}
         </PageCard>
+      )}
+
+      {confirmando && (
+        <ConfirmarModal
+          titulo={confirmando === "todas" ? "Limpar notificações lidas" : "Excluir notificação"}
+          mensagem={
+            confirmando === "todas"
+              ? `${lidasEliminaveis} ${lidasEliminaveis === 1 ? "notificação lida vai ser apagada" : "notificações lidas vão ser apagadas"}. Isso não afeta os alertas ainda em aberto.`
+              : `"${confirmando.titulo}" vai ser apagada.`
+          }
+          onConfirmar={confirmarExclusao}
+          onCancelar={() => setConfirmando(null)}
+        />
       )}
     </PageStack>
   );
