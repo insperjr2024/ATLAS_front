@@ -6,7 +6,7 @@ import { rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, User, UserCog } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
 import {
@@ -105,16 +105,6 @@ const navItems: NavItemConfig[] = [
     label: "Membros",
     path: "/membros",
     section: "admin",
-    visible: (c) => c.pode_gerir_membros,
-  },
-  {
-    icon: UserCog,
-    label: "Alocação de Mentorias",
-    path: "/mentoria",
-    section: "admin",
-    // Mesma trava de Membros — é a mesma decisão administrativa (atribuir
-    // um atributo relacional a uma pessoa). Não é "Avaliação de
-    // Desempenho": mentoria não é processo de avaliação.
     visible: (c) => c.pode_gerir_membros,
   },
   {

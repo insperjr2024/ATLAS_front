@@ -15,7 +15,6 @@ import { MeuPerfil } from "@/pages/MeuPerfil";
 import { Vagas } from "@/pages/Vagas";
 import { CalendarioGeral } from "@/pages/CalendarioGeral";
 import { Membros } from "@/pages/Membros";
-import { Mentoria } from "@/pages/Mentoria";
 import { Notificacoes } from "@/pages/Notificacoes";
 import { Avaliacoes } from "@/pages/Avaliacoes";
 import { CalendariosBase } from "@/pages/CalendariosBase";
@@ -182,14 +181,8 @@ export default function App() {
                 <Route path="/config" element={<Config />} />
                 <Route path="/calendarios-base" element={<CalendariosBase />} />
               </Route>
-              {/* Alocação de mentoria vive junto de Membros, não de Avaliação
-                  de Desempenho: é a mesma decisão administrativa (atribuir
-                  um atributo relacional a uma pessoa), pela mesma diretoria
-                  que edita posição e frente. A única ligação com PDI é uma
-                  checagem de permissão, não um dado compartilhado. */}
               <Route element={<AdminRoute permissao="pode_gerir_membros" />}>
                 <Route path="/membros" element={<Membros />} />
-                <Route path="/mentoria" element={<Mentoria />} />
               </Route>
             </Route>
           </Route>
