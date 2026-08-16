@@ -509,24 +509,37 @@ export function Vagas() {
                 <PageCardTitle>Projetos abertos</PageCardTitle>
               </PageCardHeader>
               <PageCardContent>
-                {dados.projetos.length === 0 ? (
-                  <EmptyText>Nenhum projeto aberto no momento.</EmptyText>
-                ) : (
-                  <VagasGrid>
-                    {dados.projetos.map((p) => (
-                      <CartaoProjeto
-                        key={p.id}
-                        projeto={p}
-                        modo="solicitar"
-                        onAbrir={setAberto}
-                        pedidoPendente={meus.find(
-                          (s) => s.projeto_id === p.id && s.status === "pendente",
-                        )}
-                        onCancelar={desistir}
-                      />
-                    ))}
-                  </VagasGrid>
-                )}
+                {/* Time completo sai da lista: "abertos" quer dizer que dá
+                    pra pedir, e um projeto sem vaga nenhuma não é isso. Só
+                    fica quem tem vaga de verdade, ou cujo próprio pedido do
+                    consultor segue pendente ali (mesmo que a vaga tenha
+                    fechado por outra via nesse meio-tempo) — sem isso, o
+                    pedido em análise sumiria da tela sem explicação. */}
+                {(() => {
+                  const projetosVisiveis = dados.projetos.filter(
+                    (p) =>
+                      p.vagas > 0 ||
+                      meus.some((s) => s.projeto_id === p.id && s.status === "pendente"),
+                  );
+                  return projetosVisiveis.length === 0 ? (
+                    <EmptyText>Nenhum projeto aberto no momento.</EmptyText>
+                  ) : (
+                    <VagasGrid>
+                      {projetosVisiveis.map((p) => (
+                        <CartaoProjeto
+                          key={p.id}
+                          projeto={p}
+                          modo="solicitar"
+                          onAbrir={setAberto}
+                          pedidoPendente={meus.find(
+                            (s) => s.projeto_id === p.id && s.status === "pendente",
+                          )}
+                          onCancelar={desistir}
+                        />
+                      ))}
+                    </VagasGrid>
+                  );
+                })()}
               </PageCardContent>
             </PageCard>
           )}
