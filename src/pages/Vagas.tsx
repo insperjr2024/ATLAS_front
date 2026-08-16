@@ -258,12 +258,12 @@ export function Vagas() {
 
   /** Quem navegou pra cá manda `state.voltarPara` (o selo de vagas em
    *  Projetos, o link de quem não tem projeto, o banner "Responder" na
-   *  página do projeto) — mesmo padrão de `ProjetoPage`. Sem origem
-   *  reconhecida (entrou direto pela URL, ex.: a notificação), o destino
-   *  padrão é a lista de projetos. */
+   *  página do projeto) — mesmo padrão de `ProjetoPage`. Sem essa origem
+   *  (sidebar, notificação, URL direta), não existe "voltar para" nenhum:
+   *  a pessoa não veio de dentro de Projetos, então o link não aparece. */
   const location = useLocation();
   const voltarState = location.state as { voltarPara?: string; voltarRotulo?: string } | null;
-  const voltarPara = voltarState?.voltarPara ?? "/projetos";
+  const voltarPara = voltarState?.voltarPara;
   const voltarRotulo = voltarState?.voltarRotulo ?? "Voltar para Projetos";
 
   useEffect(() => {
@@ -406,10 +406,12 @@ export function Vagas() {
 
   return (
     <PageStack>
-      <VoltarLink to={voltarPara}>
-        <ArrowLeft size={14} />
-        {voltarRotulo}
-      </VoltarLink>
+      {voltarPara && (
+        <VoltarLink to={voltarPara}>
+          <ArrowLeft size={14} />
+          {voltarRotulo}
+        </VoltarLink>
+      )}
 
       <PageHeader>
         <PageHeaderText>

@@ -6,7 +6,7 @@ import { rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, Gauge, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, User, UserPlus } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, User, UserPlus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
 import {
@@ -58,7 +58,6 @@ const navItems: NavItemConfig[] = [
   // O rótulo é definido no componente: para coord e consultor é "Meus
   // projetos", porque eles só enxergam onde estão alocados.
   { icon: FolderKanban, label: "Projetos", path: "/projetos", prefixo: true },
-  { icon: Gauge, label: "Desempenho em Bancas", path: "/dashboard" },
   {
     icon: Star,
     label: "Avaliação de Desempenho",
