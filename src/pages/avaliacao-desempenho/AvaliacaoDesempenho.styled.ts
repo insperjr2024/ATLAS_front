@@ -7,9 +7,6 @@ export {
   FieldTextarea,
   FormErrorText,
   FormStack,
-  TabBar,
-  TabButton,
-  TabCount,
 } from "@/pages/Bancas.styled";
 
 /** Formulário(s) que fecharam antes da pessoa responder, tom destrutivo

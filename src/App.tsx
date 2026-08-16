@@ -36,6 +36,7 @@ import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
 import { GraficosAba } from "@/pages/monitoramento/GraficosAba";
 import { HistoricoAba } from "@/pages/monitoramento/HistoricoAba";
 import { AvaliacaoDesempenhoHub } from "@/pages/avaliacao-desempenho/AvaliacaoDesempenhoHub";
+import { MeuRelatorio } from "@/pages/avaliacao-desempenho/MeuRelatorio";
 import { MeusMentorados } from "@/pages/avaliacao-desempenho/MeusMentorados";
 import { PainelDesempenho } from "@/pages/avaliacao-desempenho/painel/PainelDesempenho";
 import { PainelAvaliacoes } from "@/pages/avaliacao-desempenho/painel/PainelAvaliacoes";
@@ -137,6 +138,12 @@ export default function App() {
               <Route element={<RequirePosicao posicoes={["coordenador", "consultor"]} />}>
                 <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenhoHub />} />
               </Route>
+
+              {/* Sem guard e sem link em nenhum menu, igual já era antes do
+                  hub existir: ninguém vê o próprio relatório de desempenho,
+                  só o mentor vê o do mentorado (`MeusMentorados`, mais
+                  abaixo) e a diretoria/gerência vê tudo pelo painel admin. */}
+              <Route path="/avaliacao-desempenho/relatorio" element={<MeuRelatorio />} />
 
               {/* Mentoria fica de propósito FORA do hub acima — vínculo
                   independente do projeto, escolhido pela diretoria, sem
