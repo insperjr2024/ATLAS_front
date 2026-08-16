@@ -10,7 +10,7 @@ export const MentoradosList = styled.div`
 export const MentoradoButton = styled.button`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: ${theme.spacing.sm};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.border};
@@ -24,4 +24,8 @@ export const MentoradoButton = styled.button`
   &:hover {
     border-color: ${theme.colors.primary};
   }
+`;
+
+export const MentoradoNome = styled.span`
+  flex: 1;
 `;
