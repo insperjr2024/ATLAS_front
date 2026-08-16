@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getMeusMentorados } from "@/lib/desempenho-mentorias";
 import { getRelatorio } from "@/lib/desempenho-relatorio";
@@ -21,7 +22,9 @@ import {
   PageSubtitle,
   PageTitle,
 } from "@/styles/page.styled";
-import { MentoradoButton, MentoradosList } from "./MeusMentorados.styled";
+import { theme } from "@/styles/theme";
+import { MentoradoButton, MentoradoNome, MentoradosList } from "./MeusMentorados.styled";
+import { Iniciais } from "./painel/Painel.styled";
 import {
   TipoCard,
   TipoCardDescricao,
@@ -31,6 +34,15 @@ import {
 } from "./AvaliacaoDesempenho.styled";
 
 type ModoRelatorio = "avaliacoes" | "pdi";
+
+/** "Ana Souza" -> "AS". Duas letras bastam e cabem no círculo. */
+function iniciais(nome: string | null | undefined): string {
+  const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  const primeira = partes[0][0];
+  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : "";
+  return (primeira + ultima).toUpperCase();
+}
 
 export function MeusMentorados() {
   const { usuario, token } = useAuth();
@@ -165,7 +177,9 @@ export function MeusMentorados() {
               <MentoradosList>
                 {mentorados.map((m) => (
                   <MentoradoButton key={m.id} type="button" onClick={() => abrirMentorado(m)}>
-                    {m.mentorado_nome}
+                    <Iniciais aria-hidden>{iniciais(m.mentorado_nome)}</Iniciais>
+                    <MentoradoNome>{m.mentorado_nome}</MentoradoNome>
+                    <ChevronRight size={16} color={theme.colors.mutedForeground} />
                   </MentoradoButton>
                 ))}
               </MentoradosList>
