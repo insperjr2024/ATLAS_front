@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getMeusMentorados } from "@/lib/desempenho-mentorias";
 import { getRelatorio } from "@/lib/desempenho-relatorio";
@@ -37,11 +38,21 @@ export function MeusMentorados() {
   const [mentorados, setMentorados] = useState<DesempenhoMentoria[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-
-  const [selecionado, setSelecionado] = useState<DesempenhoMentoria | null>(null);
-  const [modo, setModo] = useState<ModoRelatorio | null>(null);
   const [relatorio, setRelatorio] = useState<DesempenhoRelatorio | null>(null);
   const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
+
+  /* Estado do drill-down (mentorado escolhido, tipo de relatório) vive na
+   * URL, não em useState solto: assim o botão Voltar do NAVEGADOR desfaz um
+   * nível por vez (relatório -> mentorado -> lista), em vez de sair da
+   * página inteira direto pra tela anterior a "Meus mentorados". */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const mentoradoIdParam = searchParams.get("mentorado");
+  const modoParam = searchParams.get("modo");
+  const modo: ModoRelatorio | null =
+    modoParam === "avaliacoes" || modoParam === "pdi" ? modoParam : null;
+  const selecionado = mentoradoIdParam
+    ? (mentorados.find((m) => String(m.mentorado_id) === mentoradoIdParam) ?? null)
+    : null;
 
   async function buscar() {
     if (!usuario || !token) return;
@@ -61,22 +72,44 @@ export function MeusMentorados() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.id, token]);
 
+  useEffect(() => {
+    if (modo !== "avaliacoes" || !selecionado || !token) {
+      setRelatorio(null);
+      return;
+    }
+    let ativo = true;
+    setCarregandoRelatorio(true);
+    getRelatorio(selecionado.mentorado_id, token)
+      .then((r) => {
+        if (ativo) setRelatorio(r);
+      })
+      .catch((err) => {
+        if (ativo) setErro(err instanceof Error ? err.message : "Erro ao carregar o relatório do mentorado");
+      })
+      .finally(() => {
+        if (ativo) setCarregandoRelatorio(false);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [modo, selecionado, token]);
+
   function abrirMentorado(mentoria: DesempenhoMentoria) {
-    setSelecionado(mentoria);
-    setModo(null);
+    setSearchParams({ mentorado: String(mentoria.mentorado_id) });
   }
 
-  async function abrirModo(modoEscolhido: ModoRelatorio) {
-    setModo(modoEscolhido);
-    if (modoEscolhido !== "avaliacoes" || !selecionado || !token) return;
-    setCarregandoRelatorio(true);
-    try {
-      setRelatorio(await getRelatorio(selecionado.mentorado_id, token));
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao carregar o relatório do mentorado");
-    } finally {
-      setCarregandoRelatorio(false);
-    }
+  function abrirModo(modoEscolhido: ModoRelatorio) {
+    if (!selecionado) return;
+    setSearchParams({ mentorado: String(selecionado.mentorado_id), modo: modoEscolhido });
+  }
+
+  function fecharModo() {
+    if (!selecionado) return;
+    setSearchParams({ mentorado: String(selecionado.mentorado_id) });
+  }
+
+  function fecharMentorado() {
+    setSearchParams({});
   }
 
   if (erro) {
@@ -108,7 +141,7 @@ export function MeusMentorados() {
               {modo === "avaliacoes" ? "Relatório das avaliações" : "Relatórios de PDI"} —{" "}
               {selecionado.mentorado_nome}
             </PageCardTitle>
-            <PageButton $variant="outline" type="button" onClick={() => setModo(null)}>
+            <PageButton $variant="outline" type="button" onClick={fecharModo}>
               Voltar
             </PageButton>
           </PageCardHeader>
@@ -132,7 +165,7 @@ export function MeusMentorados() {
         <PageCard>
           <PageCardHeader>
             <PageCardTitle>{selecionado.mentorado_nome}</PageCardTitle>
-            <PageButton $variant="outline" type="button" onClick={() => setSelecionado(null)}>
+            <PageButton $variant="outline" type="button" onClick={fecharMentorado}>
               Voltar
             </PageButton>
           </PageCardHeader>
