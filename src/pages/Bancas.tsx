@@ -211,7 +211,14 @@ export function Bancas() {
   const [bancaAlocar, setBancaAlocar] = useState<Banca | null>(null);
   /** ⭐ A banca cujo resultado a diretoria vai registrar à mão (§8). */
   const [bancaResultado, setBancaResultado] = useState<Banca | null>(null);
-  const [aba, setAba] = useState<AbaBancas>("alocacao");
+  // `?aba=calendario` é o link do botão "Bancas" em /calendario — sem ler
+  // a query aqui, quem clicasse lá sempre caía na aba padrão (alocação) e
+  // precisava trocar de aba à mão.
+  const ABAS_VALIDAS: AbaBancas[] = ["meus", "alocacao", "avaliacao", "desempenho", "calendario"];
+  const abaDaQuery = searchParams.get("aba") as AbaBancas | null;
+  const [aba, setAba] = useState<AbaBancas>(
+    abaDaQuery && ABAS_VALIDAS.includes(abaDaQuery) ? abaDaQuery : "alocacao",
+  );
   const [avisoErro, setAvisoErro] = useState("");
   const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
   const [bancaConvidar, setBancaConvidar] = useState<Banca | null>(null);

@@ -292,6 +292,14 @@ export const PilulaTexto = styled.span`
   text-overflow: ellipsis;
 `;
 
+/** Só aparece em evento com hora de verdade (banca) — ver `horaDoEvento`. */
+export const PilulaHora = styled.span`
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: ${theme.fontWeight.semibold};
+  opacity: 0.75;
+`;
+
 export const PilulasWrap = styled.div`
   display: flex;
   flex-direction: column;
@@ -380,12 +388,3 @@ export const ListaEventosDia = styled.div`
   gap: 0.375rem;
 `;
 
-/** Envolve `ListaEventosDia` na visão Dia, dentro do `GradeWrap` (que corta
- *  overflow) — sem `flex: 1` + `overflow-y: auto` aqui, um dia com muitos
- *  eventos vazava por baixo do card em vez de rolar dentro dele. */
-export const DiaViewWrap = styled.div`
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: ${theme.spacing.md};
-`;

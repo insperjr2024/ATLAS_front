@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { addDays, addMonths, format, isSameMonth, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Calendar, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Palette, X } from "lucide-react";
+import {
+  Calendar,
+  CalendarClock,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Palette,
+  X,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   COR_TIPO,
@@ -14,8 +23,10 @@ import {
   type EventoCalendario,
   type TipoEvento,
 } from "@/lib/calendario";
-import { formatarDataHora } from "@/lib/projetos";
+import { formatarDataHora, horaDoEvento, minutosDoEvento } from "@/lib/projetos";
 import { DayEvents, DayNumber, WeekdayCell, WeekdayRow } from "@/components/calendario/CalendarGrid.styled";
+import { TimelineDia, type ItemTimeline } from "@/components/calendario/TimelineDia";
+import { DiaInteiroRotulo, DiaInteiroWrap } from "@/components/calendario/TimelineDia.styled";
 import { chaveData, diasDaSemana, rotulosDiaSemana, semanasDoMes } from "@/components/calendario/semanas";
 import {
   PageBadge,
@@ -38,7 +49,6 @@ import {
   DetailRow,
   DetailTerm,
   DetailValue,
-  DiaViewWrap,
   DivisorPainelCores,
   FiltroChips,
   FlutuanteEventos,
@@ -65,6 +75,7 @@ import {
   Pilula,
   TituloPainelCores,
   PilulasWrap,
+  PilulaHora,
   PilulaTexto,
   WeekRowPreenche,
 } from "./CalendarioGeral.styled";
@@ -96,6 +107,11 @@ const MAX_PILULAS_MES = 2;
  *  célula do que no mês inteiro, então cabe bem mais antes de precisar do
  *  "+N mais". */
 const MAX_PILULAS_SEMANA = 8;
+/** Nenhum evento do calendário geral guarda duração (só banca tem hora de
+ *  verdade, e nem ela tem duração no banco) — a timeline da visão Dia
+ *  precisa de uma altura de bloco, então usa esta como estimativa visual,
+ *  não como dado real de agenda. */
+const DURACAO_PADRAO_MIN = 60;
 
 type Visao = "mes" | "semana" | "dia";
 
@@ -113,6 +129,7 @@ type Visao = "mes" | "semana" | "dia";
  */
 export function CalendarioGeral() {
   const { token, usuario } = useAuth();
+  const navigate = useNavigate();
   // Só diretor e gerente enxergam o portfólio inteiro, o texto
   // reflete o que a pessoa está de fato vendo, em vez de prometer "todos os
   // projetos" pra quem só vê os próprios.
@@ -379,6 +396,15 @@ export function CalendarioGeral() {
             ))}
           </FiltroChips>
 
+          <PageButtonSm
+            type="button"
+            $variant="outline"
+            onClick={() => navigate("/bancas?aba=calendario")}
+          >
+            <ClipboardList size={14} />
+            Bancas
+          </PageButtonSm>
+
           <BotaoCores ref={refPainelCores}>
             <PageButtonSm
               type="button"
@@ -417,13 +443,41 @@ export function CalendarioGeral() {
           <PageLoadingBlock />
         ) : visao === "dia" ? (
           <GradeWrap>
-            <DiaViewWrap>
-              <EventosDoDia
-                eventos={porDia.get(chaveData(data)) ?? []}
-                onAbrirEvento={setDetalhe}
-                corDoTipo={corDoTipo}
-              />
-            </DiaViewWrap>
+            {(() => {
+              const eventosDoDia = porDia.get(chaveData(data)) ?? [];
+              const semHora = eventosDoDia.filter((e) => minutosDoEvento(e.data) === null);
+              const comHora = eventosDoDia.filter((e) => minutosDoEvento(e.data) !== null);
+              const itensTimeline: ItemTimeline[] = comHora.map((e, i) => ({
+                chave: `${e.tipo}-${e.referencia_id}-${i}`,
+                inicioMin: minutosDoEvento(e.data)!,
+                duracaoMin: DURACAO_PADRAO_MIN,
+                conteudo: (
+                  <Pilula
+                    type="button"
+                    $cor={corDoTipo(e.tipo)}
+                    title={e.titulo}
+                    onClick={() => setDetalhe(e)}
+                  >
+                    <PilulaHora>{horaDoEvento(e.data)}</PilulaHora>
+                    <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
+                  </Pilula>
+                ),
+              }));
+              return (
+                <TimelineDia
+                  itens={itensTimeline}
+                  ehHoje={isToday(data)}
+                  topo={
+                    semHora.length > 0 ? (
+                      <DiaInteiroWrap>
+                        <DiaInteiroRotulo>Dia inteiro</DiaInteiroRotulo>
+                        <EventosDoDia eventos={semHora} onAbrirEvento={setDetalhe} corDoTipo={corDoTipo} />
+                      </DiaInteiroWrap>
+                    ) : undefined
+                  }
+                />
+              );
+            })()}
           </GradeWrap>
         ) : (
           <GradeWrap>
@@ -562,17 +616,21 @@ function EventosDoDia({
   }
   return (
     <ListaEventosDia>
-      {eventos.map((e, i) => (
-        <Pilula
-          key={`${e.tipo}-${e.referencia_id}-${i}`}
-          type="button"
-          $cor={corDoTipo(e.tipo)}
-          title={e.titulo}
-          onClick={() => onAbrirEvento(e)}
-        >
-          <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
-        </Pilula>
-      ))}
+      {eventos.map((e, i) => {
+        const hora = horaDoEvento(e.data);
+        return (
+          <Pilula
+            key={`${e.tipo}-${e.referencia_id}-${i}`}
+            type="button"
+            $cor={corDoTipo(e.tipo)}
+            title={e.titulo}
+            onClick={() => onAbrirEvento(e)}
+          >
+            {hora && <PilulaHora>{hora}</PilulaHora>}
+            <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
+          </Pilula>
+        );
+      })}
     </ListaEventosDia>
   );
 }
