@@ -4,6 +4,7 @@ import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { Frente } from "@/types/banca";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
 import { normalizarTexto } from "@/lib/nucleo";
+import { FotoCircular } from "@/components/Avatar";
 import { EmptyText, PageButton } from "@/styles/page.styled";
 import { FieldLabel, FieldSelect } from "@/pages/Bancas.styled";
 import {
@@ -400,7 +401,9 @@ export function EquipeCampo({
     const nome = pessoa?.nome ?? `Usuário ${id}`;
     return (
       <PessoaCard key={id}>
-        <PessoaIniciais aria-hidden="true">{iniciais(nome)}</PessoaIniciais>
+        <PessoaIniciais aria-hidden="true">
+          {pessoa?.foto ? <FotoCircular src={pessoa.foto} /> : iniciais(nome)}
+        </PessoaIniciais>
         <PessoaTexto>
           <PessoaNome>{nome}</PessoaNome>
           {pessoa && <PessoaMeta>{metaDe(pessoa)}</PessoaMeta>}

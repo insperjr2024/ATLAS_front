@@ -6,8 +6,9 @@ import { rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, User } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, User, UserCog } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { FotoCircular } from "@/components/Avatar";
 import {
   SidebarContainer,
   LogoContainer,
@@ -16,6 +17,8 @@ import {
   NavItem,
   SectionLabel,
   Footer,
+  UserRow,
+  UserAvatar,
   UserName,
   LogoutButton,
   NotificacoesWrap,
@@ -28,6 +31,14 @@ import {
 } from "./Sidebar.styled";
 
 type UsuarioLogado = NonNullable<ReturnType<typeof useAuth>["usuario"]>;
+
+/** "Ana Souza" -> "AS". Só entra em jogo quando a pessoa não tem foto. */
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
 
 interface NavItemConfig {
   icon: LucideIcon;
@@ -55,14 +66,19 @@ const navItems: NavItemConfig[] = [
     // Só quem pode ser avaliado por um colega (regra 2.3 é sempre via
     // `projeto_membro.papel` = coordenador/consultor, diretor e gerente
     // nunca entram nessa tabela, então nunca teriam nada pra responder aqui;
-    // sem isso, diretor via 2 botões "Avaliação de Desempenho" na sidebar).
+    // sem isso, diretor via 2 botões "Avaliação de Desempenho" na sidebar —
+    // este e o painel admin, que já usa o mesmo rótulo).
     visiblePorPosicao: (u) => u.posicao === "coordenador" || u.posicao === "consultor",
   },
   {
     icon: GraduationCap,
     label: "Meus Mentorados",
     path: "/avaliacao-desempenho/mentorados",
-    // Mentor pode ser coordenador, gerente ou diretor (2026-08-06).
+    // Vínculo independente do projeto, escolhido pela diretoria — mentor
+    // pode ser coordenador, gerente ou diretor (2026-08-06). Fica FORA do
+    // item "Avaliação de Desempenho" de propósito: mentoria não é processo
+    // de avaliação, é acompanhamento; juntar os dois também colidia com o
+    // rótulo do painel admin, que a diretoria já vê.
     visiblePorPosicao: (u) => u.posicao === "coordenador" || u.posicao === "gerente" || u.posicao === "diretor",
   },
   { icon: ClipboardList, label: "Bancas", path: "/bancas" },
@@ -89,6 +105,16 @@ const navItems: NavItemConfig[] = [
     label: "Membros",
     path: "/membros",
     section: "admin",
+    visible: (c) => c.pode_gerir_membros,
+  },
+  {
+    icon: UserCog,
+    label: "Alocação de Mentorias",
+    path: "/mentoria",
+    section: "admin",
+    // Mesma trava de Membros — é a mesma decisão administrativa (atribuir
+    // um atributo relacional a uma pessoa). Não é "Avaliação de
+    // Desempenho": mentoria não é processo de avaliação.
     visible: (c) => c.pode_gerir_membros,
   },
   {
@@ -172,8 +198,8 @@ export function Sidebar() {
   });
 
   // Dois itens de prefixo podem casar com a mesma rota (ex.: "Avaliação de
-  // Desempenho" em "/avaliacao-desempenho" e "Meus Mentorados" em
-  // "/avaliacao-desempenho/mentorados"), só o path mais específico deve
+  // Desempenho" em "/avaliacao-desempenho" e o painel admin dela em
+  // "/avaliacao-desempenho/painel"), só o path mais específico deve
   // acender, senão os dois ficam vermelhos ao mesmo tempo.
   const itemAtivo = itensVisiveis.reduce<NavItemConfig | null>((melhor, item) => {
     const corresponde = item.prefixo
@@ -208,7 +234,14 @@ export function Sidebar() {
       </Nav>
 
       <Footer>
-        {usuario && <UserName>{usuario.nome}</UserName>}
+        {usuario && (
+          <UserRow>
+            <UserAvatar>
+              {usuario.foto ? <FotoCircular src={usuario.foto} /> : iniciais(usuario.nome)}
+            </UserAvatar>
+            <UserName>{usuario.nome}</UserName>
+          </UserRow>
+        )}
         <NotificacoesWrap>
           <SinoButton type="button" onClick={() => setPainelAberto((v) => !v)} aria-expanded={painelAberto}>
             <Bell size={16} />

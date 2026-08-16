@@ -1389,9 +1389,9 @@ export const DescricaoVerMais = styled.button`
 /** A equipe no cabeçalho: coordenação e consultores lado a lado. */
 export const EquipeCabecalho = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: ${theme.spacing.md};
+  flex-direction: column;
+  align-items: flex-start;
+  gap: ${theme.spacing.sm};
   margin-top: 0.35rem;
 `;
 
@@ -1442,6 +1442,7 @@ export const EquipeAvatar = styled.span<{ $cor: string }>`
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   width: 1.5rem;
   height: 1.5rem;
   border-radius: ${theme.borderRadius.full};

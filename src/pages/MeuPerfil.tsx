@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
+import { Camera } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFaixasDisponiveis, getMinhaGrade, salvarGrade } from "@/lib/grade-horaria";
 import { getFrentes } from "@/lib/bancas";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
+import { atualizarMinhaFoto, removerMinhaFoto } from "@/lib/usuarios";
+import { redimensionarParaDataUri } from "@/lib/imagem";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
+import { FotoCircular } from "@/components/Avatar";
 import type { Frente } from "@/types/banca";
 import type { FaixaDisponivel, FaixaGrade } from "@/types/grade";
 import { GradeEditor } from "@/components/grade/GradeEditor";
@@ -22,6 +26,7 @@ import {
   ErrorText,
   PageButton,
 } from "@/styles/page.styled";
+import { FormErrorText } from "./Bancas.styled";
 import {
   Avatar,
   DadosGrid,
@@ -29,13 +34,15 @@ import {
   DadoRotulo,
   DadoValor,
   Explicacao,
+  FotoAcoes,
+  FotoInputLabel,
   PerfilCabecalho,
   PerfilNome,
   PerfilSubtitulo,
 } from "./MeuPerfil.styled";
 
-/** "Heloisa Nogueira" → "HN". Sem foto ainda, então as iniciais são o que
- *  identifica a pessoa de relance no topo do card. */
+/** "Heloisa Nogueira" → "HN". Só entra em jogo quando a pessoa não tem foto
+ *  (`FotoCircular`), é o que identifica ela de relance no topo do card. */
 function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return "?";
@@ -51,7 +58,7 @@ function iniciais(nome: string): string {
  * sempre do token.
  */
 export function MeuPerfil() {
-  const { usuario, token } = useAuth();
+  const { usuario, token, recarregarUsuario } = useAuth();
   const [faixasDisponiveis, setFaixasDisponiveis] = useState<FaixaDisponivel[]>([]);
   const [salvas, setSalvas] = useState<FaixaGrade[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
@@ -61,6 +68,8 @@ export function MeuPerfil() {
   // "Tentar novamente" incrementa isto em vez de chamar a busca direto:
   // disparar setState no corpo do efeito gera render em cascata.
   const [tentativa, setTentativa] = useState(0);
+  const [enviandoFoto, setEnviandoFoto] = useState(false);
+  const [erroFoto, setErroFoto] = useState("");
 
   const usuarioId = usuario?.id;
 
@@ -127,6 +136,39 @@ export function MeuPerfil() {
     setSalvas(resposta.faixas);
   }
 
+  async function aoEscolherFoto(evento: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = evento.target.files?.[0];
+    // Limpa o valor já aqui: sem isso, escolher o MESMO arquivo de novo (pra
+    // tentar de novo depois de um erro) não dispara o `onChange` outra vez.
+    evento.target.value = "";
+    if (!arquivo || !token) return;
+    setErroFoto("");
+    setEnviandoFoto(true);
+    try {
+      const dataUri = await redimensionarParaDataUri(arquivo);
+      await atualizarMinhaFoto(dataUri, token);
+      await recarregarUsuario();
+    } catch (e) {
+      setErroFoto(e instanceof Error ? e.message : "Não foi possível enviar a foto");
+    } finally {
+      setEnviandoFoto(false);
+    }
+  }
+
+  async function removerFoto() {
+    if (!token) return;
+    setErroFoto("");
+    setEnviandoFoto(true);
+    try {
+      await removerMinhaFoto(token);
+      await recarregarUsuario();
+    } catch (e) {
+      setErroFoto(e instanceof Error ? e.message : "Não foi possível remover a foto");
+    } finally {
+      setEnviandoFoto(false);
+    }
+  }
+
   return (
     <PageStack>
       <PageHeader>
@@ -142,10 +184,30 @@ export function MeuPerfil() {
         </PageCardHeader>
         <PageCardContent>
           <PerfilCabecalho>
-            <Avatar>{iniciais(usuario.nome)}</Avatar>
+            <Avatar>
+              {usuario.foto ? <FotoCircular src={usuario.foto} /> : iniciais(usuario.nome)}
+            </Avatar>
             <div>
               <PerfilNome>{usuario.nome}</PerfilNome>
               <PerfilSubtitulo>{ROTULO_POSICAO[usuario.posicao] ?? usuario.posicao}</PerfilSubtitulo>
+              <FotoAcoes>
+                <FotoInputLabel $desabilitado={enviandoFoto}>
+                  <Camera size={12} />
+                  {enviandoFoto ? "Enviando…" : usuario.foto ? "Trocar foto" : "Adicionar foto"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={enviandoFoto}
+                    onChange={(e) => void aoEscolherFoto(e)}
+                  />
+                </FotoInputLabel>
+                {usuario.foto && (
+                  <FotoInputLabel as="button" type="button" $desabilitado={enviandoFoto} onClick={removerFoto}>
+                    Remover foto
+                  </FotoInputLabel>
+                )}
+              </FotoAcoes>
+              {erroFoto && <FormErrorText>{erroFoto}</FormErrorText>}
             </div>
           </PerfilCabecalho>
 

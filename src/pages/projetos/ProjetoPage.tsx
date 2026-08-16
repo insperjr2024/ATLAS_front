@@ -33,6 +33,7 @@ import type { UsuarioResumo } from "@/types/auth";
 import type { Frente } from "@/types/banca";
 import type { ProjetoCompleto, StatusProjeto } from "@/types/projeto";
 import { Ponto } from "@/components/kanban/Kanban.styled";
+import { FotoCircular } from "@/components/Avatar";
 import { pode } from "@/utils/permissoes";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { CORES_SUGERIDAS } from "@/lib/colunas-tarefa";
@@ -308,6 +309,7 @@ export function ProjetoPage() {
   }
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
+  const fotoUsuario = (id: number) => usuarios.find((u) => u.id === id)?.foto ?? null;
   const coordenadores = projeto.equipe.filter((m) => m.papel === "coordenador");
   const consultores = projeto.equipe.filter((m) => m.papel !== "coordenador");
   const teto = projeto.max_consultores ?? 0;
@@ -422,7 +424,11 @@ export function ProjetoPage() {
                 coordenadores.map((m) => (
                   <EquipePessoa key={m.usuario_id}>
                     <EquipeAvatar $cor={corDaPessoa(m.usuario_id)}>
-                      {iniciais(nomeUsuario(m.usuario_id))}
+                      {fotoUsuario(m.usuario_id) ? (
+                        <FotoCircular src={fotoUsuario(m.usuario_id)!} />
+                      ) : (
+                        iniciais(nomeUsuario(m.usuario_id))
+                      )}
                     </EquipeAvatar>
                     {nomeUsuario(m.usuario_id)}
                   </EquipePessoa>
@@ -445,7 +451,11 @@ export function ProjetoPage() {
                 consultores.map((m) => (
                   <EquipePessoa key={`${m.usuario_id}-${m.entrou_em}`}>
                     <EquipeAvatar $cor={corDaPessoa(m.usuario_id)}>
-                      {iniciais(nomeUsuario(m.usuario_id))}
+                      {fotoUsuario(m.usuario_id) ? (
+                        <FotoCircular src={fotoUsuario(m.usuario_id)!} />
+                      ) : (
+                        iniciais(nomeUsuario(m.usuario_id))
+                      )}
                     </EquipeAvatar>
                     {nomeUsuario(m.usuario_id)}
                   </EquipePessoa>

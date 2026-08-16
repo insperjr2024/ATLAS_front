@@ -21,6 +21,7 @@ import {
 import { VagaProjetoModal } from "./VagaProjetoModal";
 import { VagasAlocarPainel } from "./VagasAlocarPainel";
 import { FormDecisao } from "./monitoramento/AprovacaoLinha";
+import { FotoCircular } from "@/components/Avatar";
 import {
   PageStack,
   PageHeader,
@@ -1050,7 +1051,7 @@ function ProjetoCoordenadoCard({
           {coordenador.map((m) => (
             <CoordPessoa key={m.usuario_id}>
               <CoordAvatar $destaque aria-hidden="true">
-                {iniciais(m.nome)}
+                {m.foto ? <FotoCircular src={m.foto} /> : iniciais(m.nome)}
               </CoordAvatar>
               <CoordPessoaNome>{m.nome}</CoordPessoaNome>
               <CoordPapel>coordenação</CoordPapel>
@@ -1059,7 +1060,9 @@ function ProjetoCoordenadoCard({
 
           {consultores.map((m) => (
             <CoordPessoa key={m.usuario_id}>
-              <CoordAvatar aria-hidden="true">{iniciais(m.nome)}</CoordAvatar>
+              <CoordAvatar aria-hidden="true">
+                {m.foto ? <FotoCircular src={m.foto} /> : iniciais(m.nome)}
+              </CoordAvatar>
               <CoordPessoaNome>{m.nome}</CoordPessoaNome>
               <CoordPapel>consultoria</CoordPapel>
             </CoordPessoa>

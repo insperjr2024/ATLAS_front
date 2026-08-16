@@ -437,6 +437,7 @@ export const CoordPessoa = styled.div`
  */
 export const CoordAvatar = styled.span<{ $destaque?: boolean }>`
   flex-shrink: 0;
+  overflow: hidden;
   width: 1.75rem;
   height: 1.75rem;
   display: inline-flex;
