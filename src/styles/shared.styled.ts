@@ -29,6 +29,46 @@ export const DescricaoQuote = styled.p`
   white-space: pre-wrap;
 `;
 
+/**
+ * O cabeçalho de coluna clicável para ordenar.
+ *
+ * Herda o tipo do `th` (caixa alta pequena) para não virar um botão colado
+ * dentro do cabeçalho, e ganha a seta só quando é a coluna ativa — seta em
+ * toda coluna vira ruído e some com a informação de qual está valendo.
+ *
+ * Mora aqui, e não na pasta de uma tela, porque é o MESMO controle no
+ * Histórico de Projetos e no Dashboard de Bancas: duas cópias iam divergir
+ * no primeiro ajuste de hover ou de foco.
+ */
+export const BotaoOrdenar = styled.button<{ $ativo: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: ${({ $ativo }) => ($ativo ? theme.colors.foreground : "inherit")};
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+    border-radius: ${theme.borderRadius.sm};
+  }
+
+  .seta {
+    font-size: 0.7em;
+    line-height: 1;
+  }
+`;
+
 const TABLE_HEADER_HEIGHT = "2.75rem";
 const ROW_HEIGHT = "3.35rem";
 

@@ -20,6 +20,7 @@ import {
   SwimCell,
   SwimCellVazia,
   BarraBusca,
+  BarraFiltros,
   BotaoLimparBusca,
   CabecalhoQuadro,
   LinhaColunas,
@@ -65,10 +66,10 @@ export function TarefasGeraisAba() {
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
-    <>
+    <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
-    </>
+    </BarraFiltros>
   );
   const [busca, setBusca] = useState("");
   /* O cabeçalho é um elemento separado do quadro (ver o JSX); esta referência

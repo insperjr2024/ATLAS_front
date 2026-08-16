@@ -59,15 +59,6 @@ export function BancasSemResultadoCard({
           <EmptyText>Toda banca realizada já tem o veredito registrado.</EmptyText>
         ) : (
           <>
-            {/* ⚠ A explicação fica AQUI, uma vez. Ela estava dentro de cada
-                item, e como é a mesma frase para todos, oito linhas viravam
-                oito cópias do mesmo parágrafo — parede de texto no lugar de
-                contexto. O que muda de item para item já está na linha de
-                fatos e na pílula. */}
-            <EmptyText style={{ marginBottom: "0.75rem" }}>
-              O veredito normal vem do voto dos avaliadores. Enquanto o prazo corre, a fila só
-              mostra quanto falta; passado o prazo sem a urna fechar, só a diretoria destrava.
-            </EmptyText>
             <ListaSimples>
             {itens.map((b) => {
               const { recebidos, esperados, aprovacoes, reprovacoes, motivo } = b.apuracao;

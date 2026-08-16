@@ -30,7 +30,18 @@ export interface PontoGrafico {
 export interface ResultadoGrafico {
   titulo: string;
   dados: PontoGrafico[];
+  /** Quantos REGISTROS a pergunta cobre. ⚠ Quando `sobrepoe`, não é a soma das
+   *  fatias: um projeto de duas frentes conta em duas fatias e uma vez aqui. */
   total: number;
+  /** As categorias se sobrepõem — o mesmo registro cai em mais de uma fatia.
+   *  Acontece quando o agrupamento é por uma relação (frente, tipo de escopo).
+   *  A tela usa isto para explicar a diferença e para recusar a rosca, que
+   *  desenha fração de um todo e aqui não há todo nenhum. */
+  sobrepoe: boolean;
+  /** A ressalva escrita para ESTE agrupamento — "projeto sinérgico entra na
+   *  barra de cada frente dele…". Vem do backend porque é lá que se sabe o
+   *  nome da situação em cada tabela; vazia quando não há sobreposição. */
+  nota: string;
 }
 
 export type Operacao = "contagem" | "soma" | "media";

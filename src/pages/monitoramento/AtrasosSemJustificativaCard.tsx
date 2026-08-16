@@ -111,11 +111,6 @@ export function AtrasosSemJustificativaCard({
           </EmptyText>
         ) : (
           <>
-            <EmptyText style={{ marginBottom: "0.75rem" }}>
-              §7.4: o alerta de atraso é automático, o porquê não. Peça a explicação ao
-              coordenador — ele recebe o aviso e responde na página do projeto — ou escreva
-              você mesma, se já souber. Nos dois casos a nota fica no histórico.
-            </EmptyText>
             {erro && <ErrorText>{erro}</ErrorText>}
             <ListaSimples>
             {itens.map((a) => (

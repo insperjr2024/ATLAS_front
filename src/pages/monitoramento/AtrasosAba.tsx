@@ -6,6 +6,13 @@ import { formatarData, registrarJustificativaAtraso } from "@/lib/projetos";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
 import { EstadoVazio } from "@/components/EstadoVazio";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
+import { ConteudoPaginado, Paginacao, usePaginacao } from "./Paginacao";
+
+/** Menor que o `POR_PAGINA` padrão (12): cada linha daqui tem título, faixa
+ *  de fatos, botão de ação e, quando já foi explicada, a citação — três a
+ *  quatro alturas de linha, contra uma de item de lista simples. */
+const POR_PAGINA_LISTA_LONGA = 10;
 import {
   PageStack,
   PageCard,
@@ -23,6 +30,7 @@ import {
   AprovacaoCitacao,
   AprovacaoMeta,
   AtrasoTitulo,
+  BarraFiltros,
   DataTable,
   Legenda,
   LegendaItem,
@@ -118,64 +126,15 @@ export function AtrasosAba() {
 
   return (
     <PageStack>
-      <>
+      <BarraFiltros>
         {seletorFrente}
         {seletorEscopo}
-      </>
+      </BarraFiltros>
 
       <CardBancasVencidas itens={bancasVencidas} onJustificou={carregar} />
       <CardAlemDoVendido itens={alemDoVendido} onJustificou={carregar} />
 
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>Por coordenador</PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          {coordenadores.length === 0 ? (
-            <EstadoVazio
-              causa="acesso"
-              titulo="Nenhum coordenador com banca vencida no recorte"
-              motivo="Esta tabela lista os coordenadores dos projetos das frentes que você acompanha. Vazia significa que nenhum projeto seu tem banca vencida agora, ou que você ainda não acompanha frente nenhuma."
-            />
-          ) : (
-            <>
-              <EmptyText style={{ marginBottom: "0.75rem" }}>
-                O objetivo é achar padrão recorrente, não julgar um caso isolado. Só aparece quem
-                tem banca vencida agora.
-              </EmptyText>
-              <DataTable>
-                <TableHead>
-                  <TableRow>
-                    <TableHeadCell>Coordenador</TableHeadCell>
-                    <TableHeadCell>Projetos em curso</TableHeadCell>
-                    <TableHeadCell>Com banca vencida</TableHeadCell>
-                    <TableHeadCell>Pior caso</TableHeadCell>
-                    <TableHeadCell>Qual é</TableHeadCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {coordenadores.map((c) => (
-                    <TableRow key={c.usuario_id}>
-                      <TableCell>{c.nome}</TableCell>
-                      <TableCell>{c.projetos}</TableCell>
-                      <TableCell>
-                        <Pilula $tom={c.atrasados > 1 ? "alerta" : "atencao"}>
-                          {c.atrasados}
-                        </Pilula>
-                      </TableCell>
-                      <TableCell>{c.pior_dias} dias</TableCell>
-                      <TableCell>
-                        {c.pior_projeto}
-                        {c.pior_motivo ? `, ${c.pior_motivo}` : ""}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </DataTable>
-            </>
-          )}
-        </PageCardContent>
-      </PageCard>
+      <CardPorCoordenador itens={coordenadores} />
 
       {/* A nota que impede a leitura errada de voltar. Sem ela, quem vê
           "0 bancas vencidas" e "2 escopos além do vendido" na mesma tela lê
@@ -190,6 +149,78 @@ export function AtrasosAba() {
         inicial ficam de fora das duas listas.
       </NotaRodape>
     </PageStack>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+type PorCoordenador = Atrasos["por_coordenador"][number];
+
+/** Abre pelo pior caso, que é a pergunta da tabela: quem está mais para trás.
+ *  "Qual é" fica de fora — é texto de contexto, não critério de comparação. */
+const COLUNAS_COORDENADOR: Colunas<PorCoordenador> = {
+  nome: { valor: (c) => c.nome, inicial: "asc" },
+  projetos: { valor: (c) => c.projetos, inicial: "desc" },
+  atrasados: { valor: (c) => c.atrasados, inicial: "desc" },
+  pior_dias: { valor: (c) => c.pior_dias, inicial: "desc" },
+};
+
+/** Componente próprio, como os cards irmãos: o hook de ordenação não podia
+ *  ficar na aba, onde há `return` cedo de erro e de carregando antes dele. */
+function CardPorCoordenador({ itens }: { itens: PorCoordenador[] }) {
+  const { itens: linhas, ordem, ordenarPor } = useOrdenacao(itens, COLUNAS_COORDENADOR, "atrasados");
+
+  return (
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>Por coordenador</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
+        {itens.length === 0 ? (
+          <EstadoVazio
+            causa="acesso"
+            titulo="Nenhum coordenador com banca vencida no recorte"
+            motivo="Esta tabela lista os coordenadores dos projetos das frentes que você acompanha. Vazia significa que nenhum projeto seu tem banca vencida agora, ou que você ainda não acompanha frente nenhuma."
+          />
+        ) : (
+          <DataTable>
+            <TableHead>
+              <TableRow>
+                <Th coluna="nome" ordem={ordem} onOrdenar={ordenarPor}>
+                  Coordenador
+                </Th>
+                <Th coluna="projetos" ordem={ordem} onOrdenar={ordenarPor}>
+                  Projetos em curso
+                </Th>
+                <Th coluna="atrasados" ordem={ordem} onOrdenar={ordenarPor}>
+                  Com banca vencida
+                </Th>
+                <Th coluna="pior_dias" ordem={ordem} onOrdenar={ordenarPor}>
+                  Pior caso
+                </Th>
+                <TableHeadCell>Qual é</TableHeadCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {linhas.map((c) => (
+                <TableRow key={c.usuario_id}>
+                  <TableCell>{c.nome}</TableCell>
+                  <TableCell>{c.projetos}</TableCell>
+                  <TableCell>
+                    <Pilula $tom={c.atrasados > 1 ? "alerta" : "atencao"}>{c.atrasados}</Pilula>
+                  </TableCell>
+                  <TableCell>{c.pior_dias} dias</TableCell>
+                  <TableCell>
+                    {c.pior_projeto}
+                    {c.pior_motivo ? `, ${c.pior_motivo}` : ""}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </DataTable>
+        )}
+      </PageCardContent>
+    </PageCard>
   );
 }
 
@@ -235,10 +266,6 @@ function CardBancasVencidas({
           </EmptyText>
         ) : (
           <>
-            <EmptyText style={{ marginBottom: "0.5rem" }}>
-              A data passou e a banca não foi registrada como realizada. O alerta é automático;
-              o porquê é você quem escreve, e ele fica no histórico do projeto.
-            </EmptyText>
             <Legenda>
               <LegendaItem $nivel="leve">até 3 dias</LegendaItem>
               <LegendaItem $nivel="media">4 a 10</LegendaItem>
@@ -324,6 +351,11 @@ function CardAlemDoVendido({
 }) {
   const { token } = useAuth();
   const [justificando, setJustificando] = useState<number | null>(null);
+  /* A lista não tem teto: com o núcleo cheio ela passa de 30 escopos e o card
+     vira uma tela inteira de rolagem, empurrando o resto da aba para baixo.
+     Páginas em vez de rolagem interna pelo mesmo motivo dos outros cards —
+     área rolável dentro da página captura a roda do mouse. */
+  const pagina = usePaginacao(itens, POR_PAGINA_LISTA_LONGA);
 
   return (
     <PageCard id="alem-do-vendido">
@@ -335,13 +367,9 @@ function CardAlemDoVendido({
           <EmptyText>Nenhum escopo passou do tempo que foi vendido.</EmptyText>
         ) : (
           <>
-            <EmptyText style={{ marginBottom: "0.5rem" }}>
-              Dias úteis consumidos acima de vendidos + ajustados, descontando pausas. A
-              contagem congela quando a banca acontece. <strong>Não é atraso de marco</strong>,
-              nenhum destes escopos entra na conta de projetos atrasados.
-            </EmptyText>
+            <ConteudoPaginado estado={pagina}>
             <ListaSimples>
-              {itens.map((e) => (
+              {pagina.visiveis.map((e) => (
                 <AprovacaoLinha
                   key={e.projeto_escopo_id}
                   dias={e.dias}
@@ -421,6 +449,8 @@ function CardAlemDoVendido({
                 </AprovacaoLinha>
               ))}
             </ListaSimples>
+            </ConteudoPaginado>
+            <Paginacao estado={pagina} />
           </>
         )}
       </PageCardContent>

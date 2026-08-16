@@ -126,6 +126,16 @@ export interface VisaoGeral {
       projeto_id: number;
       projeto_nome: string;
       dias_ajustados: number;
+      /** Dias úteis vendidos, somados os escopos não cancelados. É o
+       *  DENOMINADOR: sem ele "12 dias além do vendido" não tem tamanho —
+       *  12 sobre 60 é um projeto apertado, 12 sobre 10 é um que dobrou. */
+      dias_vendidos: number;
+      /** O nome do escopo que mais passou da janela — o mesmo de que vem o
+       *  `dias_de_atraso` da linha. `null` quando nenhum passou. */
+      escopo_alem_do_vendido: string | null;
+      /** Quantos escopos do projeto passaram da janela, de quantos há. */
+      escopos_alem_do_vendido: number;
+      escopos: number;
       dias_de_atraso: number;
       dias_parados: number;
     }[];
