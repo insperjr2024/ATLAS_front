@@ -18,7 +18,8 @@ export function PainelDesempenho() {
           responder a mesma. */}
       <TabBar>
         <TabLink to="/avaliacao-desempenho/painel/relatorio">Relatórios</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/avaliacoes">Avaliações</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/avaliadores">Avaliadores</TabLink>
+        <TabLink to="/avaliacao-desempenho/painel/avaliados">Avaliados</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/lotes">Formulários</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/pdi">PDI</TabLink>
       </TabBar>

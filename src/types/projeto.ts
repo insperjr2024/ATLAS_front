@@ -228,12 +228,8 @@ export interface ProjetoCompleto extends ProjetoResumo {
   dia_reuniao_padrao: number | null;
   criado_por: number | null;
   equipe: MembroProjeto[];
-  /**
-   * ⭐ Quem abriu é **visitante**: um avaliador escalado numa banca deste
-   * projeto, que entra só para votar. O §3 não lhe dá visão do projeto, então
-   * o shell mostra apenas a aba Banca — as outras devolveriam 404 no clique.
-   */
-  apenas_banca?: boolean;
+  /** Teto de consultores, decide quando o projeto sai da lista de vagas. */
+  max_consultores: number;
 }
 
 /**

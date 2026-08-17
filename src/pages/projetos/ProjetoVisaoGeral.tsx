@@ -18,6 +18,8 @@ import {
   rotuloDiaSemana,
   updateDiaReuniaoPadrao,
   updateDiasAmbientacao,
+  updateEquipe,
+  updateMaxConsultores,
 } from "@/lib/projetos";
 import type { BancaDoEscopo, EscopoVendido, ProjetoCompleto } from "@/types/projeto";
 import {
@@ -85,7 +87,104 @@ export function ProjetoVisaoGeral() {
 
   return (
     <PageStack>
-      <PendenciasProjeto projeto={projeto} />
+      <InfoGrid>
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>Descrição</PageCardTitle>
+            <HeaderAcoes>
+              {projeto.link_proposta && (
+                <LinkExterno href={projeto.link_proposta} target="_blank" rel="noreferrer">
+                  Abrir proposta
+                  <ExternalLink size={14} />
+                </LinkExterno>
+              )}
+              {projeto.anexo_proposta_nome && (
+                <PageButtonSm type="button" $variant="outline" onClick={handleBaixarAnexo} disabled={baixandoAnexo}>
+                  <Download size={14} />
+                  {baixandoAnexo ? "Baixando…" : "Baixar proposta"}
+                </PageButtonSm>
+              )}
+              {podeEditarEquipe && !editandoDescricao && (
+                <PageButtonSm
+                  type="button"
+                  $variant="outline"
+                  onClick={() => {
+                    setDescricao(projeto.descricao ?? "");
+                    setEditandoDescricao(true);
+                  }}
+                >
+                  Editar
+                </PageButtonSm>
+              )}
+            </HeaderAcoes>
+          </PageCardHeader>
+          <PageCardContent>
+            {editandoDescricao ? (
+              <>
+                <FieldGroup>
+                  <FieldTextarea
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    rows={5}
+                    aria-label="Descrição do projeto"
+                  />
+                </FieldGroup>
+                {erroDescricao && <FormErrorText>{erroDescricao}</FormErrorText>}
+                <EdicaoBotoes>
+                  <PageButtonSm type="button" disabled={salvandoDescricao} onClick={handleSalvarDescricao}>
+                    {salvandoDescricao ? "Salvando…" : "Salvar"}
+                  </PageButtonSm>
+                  <PageButtonSm
+                    type="button"
+                    $variant="ghost"
+                    onClick={() => {
+                      setEditandoDescricao(false);
+                      setErroDescricao("");
+                    }}
+                  >
+                    Cancelar
+                  </PageButtonSm>
+                </EdicaoBotoes>
+              </>
+            ) : projeto.descricao ? (
+              <DescricaoTexto>{projeto.descricao}</DescricaoTexto>
+            ) : (
+              <EmptyText>Sem descrição cadastrada.</EmptyText>
+            )}
+            {erroAnexo && <FormErrorText>{erroAnexo}</FormErrorText>}
+          </PageCardContent>
+        </PageCard>
+
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>Equipe</PageCardTitle>
+            {podeEditarEquipe && (
+              <PageButtonSm type="button" $variant="outline" onClick={() => setEditandoEquipe(true)}>
+                Editar equipe
+              </PageButtonSm>
+            )}
+          </PageCardHeader>
+          <PageCardContent>
+            <DataEditavelMaxConsultores projeto={projeto} token={token} recarregar={recarregar} />
+            {projeto.equipe.length === 0 ? (
+              <EmptyText>Nenhum membro alocado.</EmptyText>
+            ) : (
+              <EquipeList>
+                {[...projeto.equipe]
+                  .sort((a, b) => (a.papel === "coordenador" ? -1 : b.papel === "coordenador" ? 1 : 0))
+                  .map((membro) => (
+                    <EquipeItem key={`${membro.usuario_id}-${membro.entrou_em}`}>
+                      <span>{nomeUsuario(membro.usuario_id)}</span>
+                      <PapelTag $coordenador={membro.papel === "coordenador"}>
+                        {membro.papel === "coordenador" ? "Coordenador(a)" : "Consultor(a)"}
+                      </PapelTag>
+                    </EquipeItem>
+                  ))}
+              </EquipeList>
+            )}
+          </PageCardContent>
+        </PageCard>
+      </InfoGrid>
 
       <PageCard>
         <PageCardHeader>
@@ -965,6 +1064,96 @@ function DataEditavelEntregaPrevista({
             {podeEditar && (
               <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
                 {projeto.data_entrega_prevista_cliente ? "Alterar" : "Definir"}
+              </PageButtonSm>
+            )}
+          </>
+        )}
+      </DataItemValor>
+      {erro && <FormErrorText>{erro}</FormErrorText>}
+    </DataItem>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/** O teto de consultores, editável fora da criação do projeto. O backend
+ *  recusa (422) baixar o número abaixo da equipe atual, com a mensagem
+ *  dizendo quantos sobram — o front só repassa esse erro. */
+function DataEditavelMaxConsultores({
+  projeto,
+  token,
+  recarregar,
+}: {
+  projeto: ProjetoCompleto;
+  token: string | null;
+  recarregar: () => Promise<void>;
+}) {
+  const { usuario } = useAuth();
+  const podeEditar = !!usuario?.permissoes.pode_editar_equipe;
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(String(projeto.max_consultores));
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  const consultoresAtuais = projeto.equipe.filter((m) => m.papel === "consultor").length;
+
+  async function salvar() {
+    if (!token) return;
+    const numero = Number(valor);
+    if (!Number.isInteger(numero) || numero < 0 || numero > 20) {
+      setErro("Informe um número de 0 a 20.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      await updateMaxConsultores(projeto.id, numero, token);
+      setEditando(false);
+      await recarregar();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao salvar o teto de consultores");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <DataItem>
+      <DataItemLabel>Teto de consultores</DataItemLabel>
+      <DataItemValor>
+        {editando ? (
+          <>
+            <FieldInput
+              type="number"
+              min={0}
+              max={20}
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              aria-label="Teto de consultores"
+            />
+            <PageButtonSm type="button" disabled={salvando} onClick={salvar}>
+              {salvando ? "Salvando…" : "Salvar"}
+            </PageButtonSm>
+            <PageButtonSm
+              type="button"
+              $variant="ghost"
+              onClick={() => {
+                setEditando(false);
+                setValor(String(projeto.max_consultores));
+                setErro("");
+              }}
+            >
+              Cancelar
+            </PageButtonSm>
+          </>
+        ) : (
+          <>
+            <span>
+              {consultoresAtuais} de {projeto.max_consultores}
+            </span>
+            {podeEditar && (
+              <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
+                Alterar
               </PageButtonSm>
             )}
           </>
