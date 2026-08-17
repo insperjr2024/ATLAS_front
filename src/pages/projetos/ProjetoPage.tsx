@@ -595,8 +595,20 @@ export function ProjetoPage() {
       {confirmandoExclusao && (
         <ConfirmarModal
           titulo="Apagar projeto para sempre"
-          mensagem={`Apagar "${projeto.nome}" para sempre? Tarefas, bancas, avaliações, cronograma e histórico do projeto são todos apagados junto. Essa ação não pode ser desfeita.`}
+          mensagem={
+            <>
+              <p>
+                Tarefas, bancas, avaliações, cronograma, comentários e histórico deste projeto são
+                apagados junto. <strong>Não há como desfazer.</strong>
+              </p>
+              <p>Arquivar já tira o projeto das listagens sem apagar nada — considere antes.</p>
+            </>
+          }
+          /* O nome do projeto digitado à mão: é o que obriga a diretoria a
+             conferir QUAL projeto está prestes a sumir. */
+          confirmacaoTexto={projeto.nome}
           rotuloConfirmar="Apagar para sempre"
+          rotuloProcessando="Apagando…"
           onCancelar={() => setConfirmandoExclusao(false)}
           onConfirmar={confirmarExclusao}
         />
