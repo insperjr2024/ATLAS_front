@@ -485,6 +485,7 @@ function PastasPdiCard() {
     try {
       const atualizada = await updatePastaPdi(pastaId, { nome: editNome.trim(), prazo: editPrazo }, token);
       setPastas((atual) => atual.map((p) => (p.id === pastaId ? atualizada : p)));
+      fecharEdicao();
     } catch (err) {
       setEditErro(err instanceof Error ? err.message : "Erro ao salvar a pasta");
     } finally {
