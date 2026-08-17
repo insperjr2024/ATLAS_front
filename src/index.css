@@ -126,5 +126,48 @@
     }
   html {
     @apply font-sans;
+
+    /* Sem isto o iOS aumenta a fonte por conta própria ao girar o aparelho
+       para paisagem, e o layout que cabia deixa de caber. */
+    -webkit-text-size-adjust: 100%;
+    }
+
+  /* A rede de segurança do zoom travado: se alguma tela estourar a largura da
+     viewport, o usuário não pode mais dar zoom out para se achar. Então nada
+     pode vazar — quem precisa de mais largura (tabela, kanban) rola dentro do
+     próprio wrapper, nunca arrastando a página inteira.
+
+     `clip` e NÃO `hidden`: pela spec, `overflow-x: hidden` promove o eixo Y de
+     `visible` para `auto`, o body vira um container de rolagem e todo
+     `position: sticky` que se apoia na viewport para de grudar — a sidebar do
+     desktop e os `thead` das tabelas, justamente. `clip` corta o transbordo sem
+     criar container nenhum. */
+  html,
+  body {
+    overflow-x: clip;
+    }
+
+  body {
+    /* Mata o atraso de ~300ms do duplo-toque e, de quebra, o zoom por duplo
+       toque. Complementa `utils/travarZoom.ts`. */
+    touch-action: manipulation;
+
+    /* Sem isto o gesto de puxar para baixo no topo dispara o refresh do
+       Chrome mobile no meio de uma lista. */
+    overscroll-behavior-y: none;
+    }
+
+  /* O Safari do iOS amplia a tela sozinho ao focar qualquer campo com fonte
+     abaixo de 16px — e os campos do app usam `fontSize.sm` (14px). Combinado
+     com o zoom travado, a pessoa tocava num filtro e ficava presa na tela
+     ampliada, sem conseguir voltar. Esta regra é o que torna a trava viável.
+
+     Vale para os campos em styled-components e para os do shadcn de uma vez. */
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+      }
     }
 }

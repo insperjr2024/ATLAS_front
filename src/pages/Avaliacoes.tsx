@@ -306,7 +306,7 @@ export function Avaliacoes() {
 
           {historicoFiltrado.length === 0 && <EmptyText>Nenhuma banca encontrada com os filtros selecionados.</EmptyText>}
           {historicoFiltrado.length > 0 && (
-            <TableScrollWrap $scrollable={historicoFiltrado.length > LIST_MAX_VISIVEIS}>
+            <TableScrollWrap $scrollable={historicoFiltrado.length > LIST_MAX_VISIVEIS} $min="56rem">
             <DataTable>
               <TableHead>
                 <TableRow>

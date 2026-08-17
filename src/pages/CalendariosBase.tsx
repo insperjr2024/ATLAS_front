@@ -380,7 +380,7 @@ export function CalendariosBase() {
           )}
 
           {dias.length > 0 && !vendoCalendario && (
-            <TableScrollWrap>
+            <TableScrollWrap $min="44rem">
               <DataTable>
                 <TableHead>
                   <TableRow>
@@ -536,7 +536,7 @@ export function CalendariosBase() {
               {diff.novas.length === 0 ? (
                 <EmptyText>Nenhuma data nova com as categorias marcadas.</EmptyText>
               ) : (
-                <TableScrollWrap>
+                <TableScrollWrap $min="36rem">
                   <DataTable>
                     <TableHead>
                       <TableRow>

@@ -72,6 +72,7 @@ import {
   BancaEscopo,
   BancaData,
 } from "./Projetos.styled";
+import { TabelaRolagem } from "@/styles/shared.styled";
 import { PendenciasProjeto } from "./PendenciasProjeto";
 import { useProjeto } from "./ProjetoPage";
 
@@ -256,168 +257,172 @@ function TabelaEscopos() {
           <EmptyText>Nenhum escopo cadastrado neste projeto.</EmptyText>
         ) : (
           <>
-            <DataTable>
-              <TableHead>
-                <TableRow>
-                  <TableHeadCell>Escopo</TableHeadCell>
-                  <TableHeadCell>Status</TableHeadCell>
-                  <TableHeadCell>Dias usados</TableHeadCell>
-                  <TableHeadCell>
-                    Atraso
-                    <InfoDica rotulo="Sobre a coluna Atraso">
-                      Dias úteis além da janela do escopo.
-                    </InfoDica>
-                  </TableHeadCell>
-                  <TableHeadCell>
-                    Correções
-                    <InfoDica rotulo="Sobre a coluna Correções">
-                      Dias úteis pintados depois da banca — não consomem dias vendidos.
-                    </InfoDica>
-                  </TableHeadCell>
-                  <TableHeadCell>Banca</TableHeadCell>
-                  <TableHeadCell>Entrega</TableHeadCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {projeto.escopos.map((escopo) => {
-                  // A barra mede contra a JANELA (vendidos + ajustados):
-                  // quem ganhou 10 dias tem 10 dias a mais para gastar, senão a
-                  // autorização não teria efeito nenhum na tela.
-                  const janela = escopo.dias_uteis_vendidos + escopo.dias_uteis_ajustados;
-                  const percentual = janela > 0 ? (escopo.consumidos / janela) * 100 : 0;
-                  const banca = escopo.banca;
-                  return (
-                    <TableRow key={escopo.id}>
-                      <TableCell>
-                        <EscopoNome>
-                          <strong>{escopo.nome}</strong>
-                          {escopo.data_inicio && (
-                            <small>desde {formatarData(escopo.data_inicio)}</small>
-                          )}
-                        </EscopoNome>
-                      </TableCell>
-
-                      <TableCell>
-                        <PageBadge
-                          $tone={
-                            escopo.status === "entregue"
-                              ? "success"
-                              : escopo.status === "em_andamento"
-                                ? "default"
-                                : "muted"
-                          }
-                        >
-                          {ROTULO_STATUS_ESCOPO[escopo.status]}
-                        </PageBadge>
-                      </TableCell>
-
-                      <TableCell>
-                        <ProgressoWrap>
-                          <ProgressoTrilha>
-                            <ProgressoBarra
-                              $percentual={percentual}
-                              $estourou={escopo.estourou}
-                            />
-                          </ProgressoTrilha>
-                          <ProgressoTexto $estourou={escopo.estourou}>
-                            {escopo.consumidos}/{janela}
-                            {escopo.estourou && ` (+${Math.abs(escopo.restantes)})`}
-                          </ProgressoTexto>
-                          {/* Vendidos e ajustados NUNCA aparecem somados num
-                              número só: a diferença entre ter vendido 30 e ter
-                              vendido 20 e precisado de mais 10 é a informação
-                              inteira. A barra usa a soma; o texto, a separação. */}
-                          <small>
-                            {escopo.dias_uteis_vendidos} vendidos
-                            {escopo.dias_uteis_ajustados > 0 &&
-                              ` · ${escopo.dias_uteis_ajustados} ajustados`}
-                          </small>
-                        </ProgressoWrap>
-                      </TableCell>
-
-                      <TableCell>
-                        {escopo.atraso > 0 ? (
-                          <AtrasoCelula>
-                            <PageBadge $tone="danger">
-                              {escopo.atraso} {escopo.atraso === 1 ? "dia" : "dias"}
-                            </PageBadge>
-                            {/* o número diz QUANTO; só a nota diz POR
-                                QUÊ, e é ela que a diretoria lê no Monitoramento.
-                                Pedir aqui é pedir a quem está conduzindo o
-                                escopo, enquanto o motivo ainda está fresco. */}
-                            {escopo.justificativa_atraso ? (
-                              <JustificativaAtraso
-                                title={`${escopo.justificativa_atraso.registrado_por ?? "alguém"} em ${formatarData(escopo.justificativa_atraso.registrado_em)}`}
-                              >
-                                {escopo.justificativa_atraso.texto}
-                              </JustificativaAtraso>
-                            ) : podeJustificar ? (
-                              <PageButtonSm
-                                type="button"
-                                $variant="outline"
-                                onClick={() =>
-                                  setJustificando({
-                                    escopoId: escopo.id,
-                                    nome: escopo.nome,
-                                    dias: escopo.atraso,
-                                  })
-                                }
-                              >
-                                Justificar atraso
-                              </PageButtonSm>
-                            ) : (
-                              // Consultor vê o atraso, mas não escreve a nota
-                              // (o backend cobra `require_lideranca`).
-                              <EmptyText>Sem justificativa</EmptyText>
+            {/* 7 colunas, três delas com dica de rodapé: é a tabela mais larga
+                da página do projeto. */}
+            <TabelaRolagem $min="56rem">
+              <DataTable>
+                <TableHead>
+                  <TableRow>
+                    <TableHeadCell>Escopo</TableHeadCell>
+                    <TableHeadCell>Status</TableHeadCell>
+                    <TableHeadCell>Dias usados</TableHeadCell>
+                    <TableHeadCell>
+                      Atraso
+                      <InfoDica rotulo="Sobre a coluna Atraso">
+                        Dias úteis além da janela do escopo.
+                      </InfoDica>
+                    </TableHeadCell>
+                    <TableHeadCell>
+                      Correções
+                      <InfoDica rotulo="Sobre a coluna Correções">
+                        Dias úteis pintados depois da banca — não consomem dias vendidos.
+                      </InfoDica>
+                    </TableHeadCell>
+                    <TableHeadCell>Banca</TableHeadCell>
+                    <TableHeadCell>Entrega</TableHeadCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {projeto.escopos.map((escopo) => {
+                    // A barra mede contra a JANELA (vendidos + ajustados):
+                    // quem ganhou 10 dias tem 10 dias a mais para gastar, senão a
+                    // autorização não teria efeito nenhum na tela.
+                    const janela = escopo.dias_uteis_vendidos + escopo.dias_uteis_ajustados;
+                    const percentual = janela > 0 ? (escopo.consumidos / janela) * 100 : 0;
+                    const banca = escopo.banca;
+                    return (
+                      <TableRow key={escopo.id}>
+                        <TableCell>
+                          <EscopoNome>
+                            <strong>{escopo.nome}</strong>
+                            {escopo.data_inicio && (
+                              <small>desde {formatarData(escopo.data_inicio)}</small>
                             )}
-                          </AtrasoCelula>
-                        ) : (
-                          <EmptyText>—</EmptyText>
-                        )}
-                      </TableCell>
+                          </EscopoNome>
+                        </TableCell>
 
-                      <TableCell>
-                        {escopo.correcoes > 0 ? (
-                          <PageBadge $tone="muted">
-                            {escopo.correcoes} {escopo.correcoes === 1 ? "dia" : "dias"}
+                        <TableCell>
+                          <PageBadge
+                            $tone={
+                              escopo.status === "entregue"
+                                ? "success"
+                                : escopo.status === "em_andamento"
+                                  ? "default"
+                                  : "muted"
+                            }
+                          >
+                            {ROTULO_STATUS_ESCOPO[escopo.status]}
                           </PageBadge>
-                        ) : (
-                          <EmptyText>—</EmptyText>
-                        )}
-                      </TableCell>
+                        </TableCell>
 
-                      <TableCell>
-                        {banca ? (
-                          <PageBadge $tone={tomDoStatusBanca(banca.status)}>
-                            {banca.data_hora ? formatarDataHoraBanca(banca.data_hora) : "—"} ·{" "}
-                            {ROTULO_STATUS_BANCA[banca.status]}
-                          </PageBadge>
-                        ) : (
-                          <EmptyText>—</EmptyText>
-                        )}
-                      </TableCell>
+                        <TableCell>
+                          <ProgressoWrap>
+                            <ProgressoTrilha>
+                              <ProgressoBarra
+                                $percentual={percentual}
+                                $estourou={escopo.estourou}
+                              />
+                            </ProgressoTrilha>
+                            <ProgressoTexto $estourou={escopo.estourou}>
+                              {escopo.consumidos}/{janela}
+                              {escopo.estourou && ` (+${Math.abs(escopo.restantes)})`}
+                            </ProgressoTexto>
+                            {/* Vendidos e ajustados NUNCA aparecem somados num
+                                número só: a diferença entre ter vendido 30 e ter
+                                vendido 20 e precisado de mais 10 é a informação
+                                inteira. A barra usa a soma; o texto, a separação. */}
+                            <small>
+                              {escopo.dias_uteis_vendidos} vendidos
+                              {escopo.dias_uteis_ajustados > 0 &&
+                                ` · ${escopo.dias_uteis_ajustados} ajustados`}
+                            </small>
+                          </ProgressoWrap>
+                        </TableCell>
 
-                      <TableCell>
-                        {escopo.data_entrega_real || escopo.entrega_liberada ? (
-                          <CelulaEntrega
-                            escopo={escopo}
-                            projetoId={projeto.id}
-                            podeConfirmar={podeConfirmar}
-                            podeConduzir={podeConduzir}
-                            onConfirmou={recarregar}
-                          />
-                        ) : (
-                          <Cadeado title={motivoDaTrava(escopo.banca)}>
-                            <Lock size={12} />
-                            travada
-                          </Cadeado>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </DataTable>
+                        <TableCell>
+                          {escopo.atraso > 0 ? (
+                            <AtrasoCelula>
+                              <PageBadge $tone="danger">
+                                {escopo.atraso} {escopo.atraso === 1 ? "dia" : "dias"}
+                              </PageBadge>
+                              {/* o número diz QUANTO; só a nota diz POR
+                                  QUÊ, e é ela que a diretoria lê no Monitoramento.
+                                  Pedir aqui é pedir a quem está conduzindo o
+                                  escopo, enquanto o motivo ainda está fresco. */}
+                              {escopo.justificativa_atraso ? (
+                                <JustificativaAtraso
+                                  title={`${escopo.justificativa_atraso.registrado_por ?? "alguém"} em ${formatarData(escopo.justificativa_atraso.registrado_em)}`}
+                                >
+                                  {escopo.justificativa_atraso.texto}
+                                </JustificativaAtraso>
+                              ) : podeJustificar ? (
+                                <PageButtonSm
+                                  type="button"
+                                  $variant="outline"
+                                  onClick={() =>
+                                    setJustificando({
+                                      escopoId: escopo.id,
+                                      nome: escopo.nome,
+                                      dias: escopo.atraso,
+                                    })
+                                  }
+                                >
+                                  Justificar atraso
+                                </PageButtonSm>
+                              ) : (
+                                // Consultor vê o atraso, mas não escreve a nota
+                                // (o backend cobra `require_lideranca`).
+                                <EmptyText>Sem justificativa</EmptyText>
+                              )}
+                            </AtrasoCelula>
+                          ) : (
+                            <EmptyText>—</EmptyText>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {escopo.correcoes > 0 ? (
+                            <PageBadge $tone="muted">
+                              {escopo.correcoes} {escopo.correcoes === 1 ? "dia" : "dias"}
+                            </PageBadge>
+                          ) : (
+                            <EmptyText>—</EmptyText>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {banca ? (
+                            <PageBadge $tone={tomDoStatusBanca(banca.status)}>
+                              {banca.data_hora ? formatarDataHoraBanca(banca.data_hora) : "—"} ·{" "}
+                              {ROTULO_STATUS_BANCA[banca.status]}
+                            </PageBadge>
+                          ) : (
+                            <EmptyText>—</EmptyText>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {escopo.data_entrega_real || escopo.entrega_liberada ? (
+                            <CelulaEntrega
+                              escopo={escopo}
+                              projetoId={projeto.id}
+                              podeConfirmar={podeConfirmar}
+                              podeConduzir={podeConduzir}
+                              onConfirmou={recarregar}
+                            />
+                          ) : (
+                            <Cadeado title={motivoDaTrava(escopo.banca)}>
+                              <Lock size={12} />
+                              travada
+                            </Cadeado>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </DataTable>
+            </TabelaRolagem>
           </>
         )}
       </PageCardContent>

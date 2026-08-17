@@ -9,6 +9,15 @@ export const ChartWrapper = styled.div`
   display: flex;
   align-items: center;
   gap: 1.5rem;
+
+  /* Empilha em vez de encolher o donut: com o donut de 128px e 1,5rem de folga,
+     sobram ~200px de largura para a legenda numa tela de 375px, e os nomes das
+     frentes ("Engenharia de Processos") quebravam em três linhas cada. */
+  @media (max-width: ${theme.breakpoints.sm - 1}px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
   /* Cor por FRENTE, fixa (ver CORES_POR_FRENTE em DesempenhoChart.tsx):
      Business = preto, Direito = vermelho claro (fixo), Tech = azul,
      Engenharia de Processos = verde. Nenhuma delas em cinza de propósito:

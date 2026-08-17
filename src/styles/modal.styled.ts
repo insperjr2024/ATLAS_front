@@ -69,6 +69,14 @@ export const ModalClose = styled.button`
     background: ${theme.colors.muted};
     color: ${theme.colors.foreground};
   }
+
+  /* 32px é confortável com um mouse e pequeno demais para o polegar — e este é
+     o botão que tira a pessoa de um modal em tela cheia, ou seja, o pior lugar
+     para errar o alvo. O ícone dentro não muda de tamanho, só a área de toque. */
+  @media (max-width: ${theme.breakpoints.md}px) {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
 `;
 
 export const ModalBody = styled.div`

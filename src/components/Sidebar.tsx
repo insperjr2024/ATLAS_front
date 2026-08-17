@@ -9,6 +9,7 @@ import insperJrLogo from "@/assets/insperjr.png";
 import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
+import { ID_MENU_LATERAL } from "./Layout.styled";
 import {
   SidebarContainer,
   LogoContainer,
@@ -174,7 +175,14 @@ const navItems: NavItemConfig[] = [
   },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  /** Só tem efeito abaixo de `lg`, onde a sidebar é um drawer que desliza. No
+   *  desktop ela é sempre visível e a prop é ignorada pelo CSS. Quem controla é
+   *  o `Layout` — ver `SidebarContainer` no .styled. */
+  aberta?: boolean;
+}
+
+export function Sidebar({ aberta = false }: SidebarProps) {
   const { usuario, token, logout } = useAuth();
   // O contador vem do contexto, não desta lista: ele é atualizado a cada ~60s
   // e também pela página /notificacoes. Contar `notificacoes.filter(...)` aqui
@@ -237,7 +245,7 @@ export function Sidebar() {
   }, null);
 
   return (
-    <SidebarContainer>
+    <SidebarContainer id={ID_MENU_LATERAL} $aberta={aberta} aria-label="Navegação principal">
       <LogoContainer>
         <LogoImg src={insperJrLogo} alt="Insper Jr." />
       </LogoContainer>

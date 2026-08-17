@@ -11,6 +11,25 @@ export const Board = styled.div<{ $colunas: number }>`
   padding-bottom: ${theme.spacing.sm};
   align-items: start;
 
+  /* Com 5 colunas de 13,5rem o board pede 68rem: no celular ele fica sempre
+     parado no meio de duas colunas, e nenhuma se lê inteira. Colunas mais
+     estreitas e um snap por coluna fazem o board se comportar como as telas
+     lado a lado que a pessoa já conhece — um deslize, uma coluna. */
+  @media (max-width: ${theme.breakpoints.md - 1}px) {
+    grid-template-columns: repeat(${({ $colunas }) => Math.max(1, $colunas)}, minmax(11rem, 1fr));
+    /* proximity, não mandatory: o board é arrastável com @dnd-kit, que rola o
+       container por conta própria quando o card chega na borda. Com mandatory o
+       navegador puxa de volta para o ponto de encaixe no meio desse auto-scroll
+       e o card fica pulando. Com proximity o encaixe só acontece quando o dedo
+       solta perto de uma coluna. */
+    scroll-snap-type: x proximity;
+
+    /* O snap é do FILHO; sem isto o container não tem em que parar. */
+    > * {
+      scroll-snap-align: start;
+    }
+  }
+
   /* A barra padrão do SO (grossa, com setinha) destoa do resto da UI, aqui
      fica fina e some quando não tem o quê rolar. Firefox usa as propriedades
      scrollbar-width/scrollbar-color; o resto, os pseudo-elementos

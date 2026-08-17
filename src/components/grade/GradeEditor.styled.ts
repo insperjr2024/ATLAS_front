@@ -21,6 +21,14 @@ export const Quadro = styled.table`
   min-width: 44rem;
   border-collapse: collapse;
   table-layout: fixed;
+
+  /* O quadro rola de qualquer jeito (QuadroWrap), mas em 44rem o celular mostra
+     dois dias e meio de cada vez, e marcar disponibilidade vira um vaivém. Em
+     30rem os cinco dias cabem na tela: as células são só alvos de toque, quem
+     precisa de largura são os cabeçalhos, e "Segunda" cabe em 4,4rem. */
+  @media (max-width: ${theme.breakpoints.md - 1}px) {
+    min-width: 30rem;
+  }
 `;
 
 export const CabecalhoCelula = styled.th`
@@ -37,6 +45,12 @@ export const CabecalhoCelula = styled.th`
 export const CabecalhoHora = styled(CabecalhoCelula)`
   width: 5.5rem;
   font-size: ${theme.fontSize.xs};
+
+  /* As duas colunas de horário comiam 11rem dos 30rem do quadro em mobile — mais
+     de um terço da grade para repetir a mesma informação em toda linha. */
+  @media (max-width: ${theme.breakpoints.md - 1}px) {
+    width: 4rem;
+  }
 `;
 
 export const CelulaHora = styled.td`

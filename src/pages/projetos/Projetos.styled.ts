@@ -415,14 +415,45 @@ export const AvisoBanner = styled.div`
   color: ${theme.colors.warningForeground};
 `;
 
+/**
+ * As abas do projeto (Visão geral, Cronograma, Tarefas, …).
+ *
+ * Em mobile ela ROLA na horizontal em vez de quebrar linha: com `flex-wrap` as
+ * seis abas viravam um bloco de três linhas empurrando o conteúdo da página para
+ * baixo da dobra. É o mesmo padrão da `TabBar` do monitoramento — a diferença é
+ * que aqui as abas são sublinhadas, não pílulas.
+ */
 export const TabBar = styled.nav`
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
   border-bottom: 1px solid ${theme.colors.border};
+
+  @media (max-width: ${theme.breakpoints.md - 1}px) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+
+    /* overflow-x: auto promove o eixo Y para auto, e o margin-bottom de -1px do
+       link ativo passaria a render uma barra de rolagem vertical de 1px. O
+       padding devolve esse 1px, e o hidden fecha a porta. */
+    padding-bottom: 1px;
+    overflow-y: hidden;
+
+    /* A barra de rolagem sobre as abas suja mais do que orienta; o corte na
+       borda da tela já indica que há mais aba para o lado. */
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
 `;
 
 export const TabLink = styled(NavLink)<{ $desabilitada?: boolean }>`
+  /* Sem os dois, o flex espremeria as abas até "Cronograma" quebrar no meio em
+     vez de deixar a barra rolar. */
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 0.5rem 0.875rem;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;

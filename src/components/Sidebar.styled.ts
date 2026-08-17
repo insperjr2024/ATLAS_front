@@ -1,7 +1,17 @@
 import styled from "styled-components";
 import { Link } from "react-router-dom";
+import { DRAWER_ATE } from "./Layout.styled";
 
-export const SidebarContainer = styled.aside`
+/**
+ * Acima de `lg` é a coluna fixa de sempre. Abaixo, vira drawer: 16rem de menu
+ * mais a página ao lado não cabem em 375px — sobravam ~71px de conteúdo, e era
+ * essa a causa raiz do app ser inutilizável no celular.
+ *
+ * O estado de aberto/fechado vive no `Layout`, que é o dono do shell, e chega
+ * aqui como `$aberta`. `Sidebar.tsx` só repassa a prop: a lista de navegação e
+ * suas regras de permissão continuam intocadas.
+ */
+export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
   width: 16rem;
   flex-shrink: 0;
   background: var(--background);
@@ -12,6 +22,29 @@ export const SidebarContainer = styled.aside`
   top: 0;
   height: 100vh;
   overflow-y: auto;
+
+  @media (max-width: ${DRAWER_ATE - 1}px) {
+    /* fixed e não absolute: o menu tem de ficar parado na tela enquanto a
+       página rola por baixo dele. Acima do Overlay (z 50) e da Topbar (z 40)
+       — ver Layout.styled.ts. */
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 60;
+    transform: translateX(${({ $aberta }) => ($aberta ? "0" : "-100%")});
+
+    /* visibility junto com o transform: fora da tela o painel continuaria
+       alcançável por Tab, e o foco desapareceria dentro de um menu fechado.
+       Sendo propriedade discreta, ela só troca no fim da transição — o menu
+       não pisca ao sair. */
+    visibility: ${({ $aberta }) => ($aberta ? "visible" : "hidden")};
+    transition: transform 200ms ease, visibility 200ms ease;
+    box-shadow: 4px 0 16px -4px rgb(0 0 0 / 0.25);
+  }
+
+  @media (max-width: ${DRAWER_ATE - 1}px) and (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 `;
 
 export const LogoContainer = styled.div`
@@ -123,6 +156,14 @@ export const UserName = styled.div`
 export const NotificacoesWrap = styled.div`
   position: relative;
   padding: 0 1.25rem 0.5rem;
+
+  /* Em mobile o sino mora na Topbar, alcançável sem abrir o menu — que é o
+     ponto de uma notificação. Deixar os dois criaria duas portas para a mesma
+     coisa; e o painel, que abre para CIMA a partir do rodapé, ficaria preso
+     dentro do drawer que rola. Lá o sino leva direto para /notificacoes. */
+  @media (max-width: ${DRAWER_ATE - 1}px) {
+    display: none;
+  }
 `;
 
 export const SinoButton = styled.button`

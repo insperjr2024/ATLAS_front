@@ -38,6 +38,7 @@ import {
   ListaSimples,
   NotaRodape,
   Pilula,
+  TabelaRolagem,
   TableBody,
   TableCell,
   TableHead,
@@ -198,41 +199,43 @@ function CardPorCoordenador({ itens }: { itens: PorCoordenador[] }) {
             motivo="Esta tabela lista os coordenadores dos projetos das frentes que você acompanha. Vazia significa que nenhum projeto seu tem banca vencida agora, ou que você ainda não acompanha frente nenhuma."
           />
         ) : (
-          <DataTable>
-            <TableHead>
-              <TableRow>
-                <Th coluna="nome" ordem={ordem} onOrdenar={ordenarPor}>
-                  Coordenador
-                </Th>
-                <Th coluna="projetos" ordem={ordem} onOrdenar={ordenarPor}>
-                  Projetos em curso
-                </Th>
-                <Th coluna="atrasados" ordem={ordem} onOrdenar={ordenarPor}>
-                  Com banca vencida
-                </Th>
-                <Th coluna="pior_dias" ordem={ordem} onOrdenar={ordenarPor}>
-                  Pior caso
-                </Th>
-                <TableHeadCell>Qual é</TableHeadCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {linhas.map((c) => (
-                <TableRow key={c.usuario_id}>
-                  <TableCell>{c.nome}</TableCell>
-                  <TableCell>{c.projetos}</TableCell>
-                  <TableCell>
-                    <Pilula $tom={c.atrasados > 1 ? "alerta" : "atencao"}>{c.atrasados}</Pilula>
-                  </TableCell>
-                  <TableCell>{c.pior_dias} dias</TableCell>
-                  <TableCell>
-                    {c.pior_projeto}
-                    {c.pior_motivo ? `, ${c.pior_motivo}` : ""}
-                  </TableCell>
+          <TabelaRolagem $min="44rem">
+            <DataTable>
+              <TableHead>
+                <TableRow>
+                  <Th coluna="nome" ordem={ordem} onOrdenar={ordenarPor}>
+                    Coordenador
+                  </Th>
+                  <Th coluna="projetos" ordem={ordem} onOrdenar={ordenarPor}>
+                    Projetos em curso
+                  </Th>
+                  <Th coluna="atrasados" ordem={ordem} onOrdenar={ordenarPor}>
+                    Com banca vencida
+                  </Th>
+                  <Th coluna="pior_dias" ordem={ordem} onOrdenar={ordenarPor}>
+                    Pior caso
+                  </Th>
+                  <TableHeadCell>Qual é</TableHeadCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </DataTable>
+              </TableHead>
+              <TableBody>
+                {linhas.map((c) => (
+                  <TableRow key={c.usuario_id}>
+                    <TableCell>{c.nome}</TableCell>
+                    <TableCell>{c.projetos}</TableCell>
+                    <TableCell>
+                      <Pilula $tom={c.atrasados > 1 ? "alerta" : "atencao"}>{c.atrasados}</Pilula>
+                    </TableCell>
+                    <TableCell>{c.pior_dias} dias</TableCell>
+                    <TableCell>
+                      {c.pior_projeto}
+                      {c.pior_motivo ? `, ${c.pior_motivo}` : ""}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </DataTable>
+          </TabelaRolagem>
         )}
       </PageCardContent>
     </PageCard>

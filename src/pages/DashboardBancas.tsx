@@ -527,7 +527,7 @@ export function DashboardBancas({
           <PageCardContent>
             {resultados.length === 0 && <EmptyText>Nenhum resultado neste semestre.</EmptyText>}
             {resultados.length > 0 && (
-              <TableScrollWrap $scrollable={resultados.length > LIST_MAX_VISIVEIS}>
+              <TableScrollWrap $scrollable={resultados.length > LIST_MAX_VISIVEIS} $min="30rem">
                 <DataTable>
                   <TableHead>
                     <TableRow>

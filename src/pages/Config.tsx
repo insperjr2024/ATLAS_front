@@ -273,7 +273,7 @@ export function Config() {
           <PageCardContent>
             {frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
             {frentes.length > 0 && (
-              <TableScrollWrap $scrollable={frentes.length > LIST_MAX_VISIVEIS}>
+              <TableScrollWrap $scrollable={frentes.length > LIST_MAX_VISIVEIS} $min="30rem">
                 <DataTable>
                   <TableHead>
                     <TableRow>
@@ -366,7 +366,7 @@ export function Config() {
                 Só quem já tem esta permissão pode editar, impede auto-concessão de acesso.
               </EmptyText>
             )}
-            <TableScrollWrap $scrollable={posicoes.length > LIST_MAX_VISIVEIS}>
+            <TableScrollWrap $scrollable={posicoes.length > LIST_MAX_VISIVEIS} $min="30rem">
               <DataTable>
                 <TableHead>
                   <TableRow>
