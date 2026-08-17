@@ -100,6 +100,21 @@ export const SecaoDescricao = styled.p`
   color: ${theme.colors.mutedForeground};
 `;
 
+/** O nome da frente acima do grupo de escopos dela — separa visualmente sem
+ *  precisar de filtro: rola a lista e já sabe de qual frente é cada um. */
+export const GrupoFrenteTitulo = styled.h3`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+
+  &:not(:first-child) {
+    margin-top: ${theme.spacing.md};
+  }
+`;
+
 export const PermissoesGrid = styled.div`
   display: flex;
   flex-direction: column;

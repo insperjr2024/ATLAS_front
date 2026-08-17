@@ -46,6 +46,16 @@ export function removerMinhaFoto(token: string) {
   });
 }
 
+/** `desativadas` é a lista INTEIRA (substitui, não soma) dos tipos
+ *  opcionais que a pessoa não quer mais por e-mail. Vazio liga tudo de
+ *  volta. Sempre a PRÓPRIA preferência, a rota não aceita `usuario_id`. */
+export function atualizarMinhasNotificacoesEmail(desativadas: string[], token: string) {
+  return apiFetch<{ notificacoes_email_desativadas: string[] }>(
+    "/usuarios/me/notificacoes-email",
+    { method: "PATCH", token, body: JSON.stringify({ desativadas }) },
+  );
+}
+
 /** Sem volta, o backend só aceita se o usuário já estiver desligado. */
 export function deletarUsuarioPermanente(usuarioId: number, token: string) {
   return apiFetch<{ nome: string }>(`/usuarios/${usuarioId}/permanente`, {

@@ -76,6 +76,10 @@ export interface Usuario {
   /** Data URI já redimensionada, ou `null` para cair nas iniciais — ver
    *  `src/components/Avatar.tsx`. */
   foto: string | null;
+  /** Tipos de notificação que a pessoa desligou do e-mail. Vazio (o padrão)
+   *  = tudo ligado. Só os tipos opcionais podem entrar aqui — ver
+   *  TIPOS_NOTIFICACAO_OPCIONAIS no backend. */
+  notificacoes_email_desativadas: string[];
 }
 
 export interface UsuarioFrente {
