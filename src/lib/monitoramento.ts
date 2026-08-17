@@ -126,6 +126,16 @@ export interface VisaoGeral {
       projeto_id: number;
       projeto_nome: string;
       dias_ajustados: number;
+      /** Dias úteis vendidos, somados os escopos não cancelados. É o
+       *  DENOMINADOR: sem ele "12 dias além do vendido" não tem tamanho —
+       *  12 sobre 60 é um projeto apertado, 12 sobre 10 é um que dobrou. */
+      dias_vendidos: number;
+      /** O nome do escopo que mais passou da janela — o mesmo de que vem o
+       *  `dias_de_atraso` da linha. `null` quando nenhum passou. */
+      escopo_alem_do_vendido: string | null;
+      /** Quantos escopos do projeto passaram da janela, de quantos há. */
+      escopos_alem_do_vendido: number;
+      escopos: number;
       dias_de_atraso: number;
       dias_parados: number;
     }[];
@@ -455,7 +465,83 @@ export function getCronogramasGerais(token: string, frenteId?: number | null, es
 }
 
 /* ------------------------------------------------------------------ */
-/* Aprovações, a fila da diretoria                                    */
+/* Projetos ativos — o retrato do que está em curso                    */
+/* ------------------------------------------------------------------ */
+
+/** Uma linha da aba Projetos ativos. Espelha
+ *  `use_cases/monitoramento/projetos_ativos.py`. */
+export interface ProjetoAtivo {
+  id: number;
+  nome: string;
+  cliente: string | null;
+  status: StatusProjeto;
+  frentes: string[];
+  frente_ids: number[];
+  sinergico: boolean;
+  coordenador: string | null;
+  coordenador_id: number | null;
+  data_kickoff: string | null;
+  /** Dias corridos desde o kickoff até hoje; `null` = kickoff ainda pendente. */
+  dias_em_execucao: number | null;
+  kickoff_pendente: boolean;
+  /** A próxima banca ainda não realizada, de qualquer escopo; `null` se não há. */
+  proxima_banca: string | null;
+}
+
+export function getProjetosAtivos(token: string, frenteId?: number | null) {
+  return apiFetch<ProjetoAtivo[]>(`/monitoramento/projetos-ativos${query(frenteId)}`, { token });
+}
+
+/* ------------------------------------------------------------------ */
+/* Histórico de projetos — o portfólio encerrado (só diretoria/gerência)*/
+/* ------------------------------------------------------------------ */
+
+export type FiltroHistorico = "todos" | "finalizados" | "arquivados";
+
+/** Uma linha da aba Histórico. Espelha
+ *  `use_cases/monitoramento/historico_projetos.py`. */
+export interface HistoricoProjeto {
+  id: number;
+  nome: string;
+  cliente: string | null;
+  status: StatusProjeto;
+  /** Arquivar é ORTOGONAL ao status: dá para arquivar um projeto que nunca
+   *  chegou a "finalizado" (um pausado, por exemplo). */
+  arquivado: boolean;
+  /** Já vem com o NOME de cada frente resolvido pelo backend. */
+  frentes: string[];
+  frente_ids: number[];
+  sinergico: boolean;
+  coordenador: string | null;
+  coordenador_id: number | null;
+  data_kickoff: string | null;
+  /** Quando o projeto virou "finalizado"; ou, se só arquivado, o `arquivado_em`. */
+  encerrado_em: string | null;
+  /** O nome do semestre em que encerrou, casado por DATA (o projeto não tem
+   *  FK de semestre) — `null` quando a data não cai em nenhum semestre. */
+  semestre: string | null;
+  /** Dias corridos entre kickoff e encerramento; `null` sem uma das pontas. */
+  duracao_dias: number | null;
+}
+
+/**
+ * O portfólio encerrado que o usuário enxerga (§7.5, mesmo recorte do resto do
+ * painel). `filtro` estreita no servidor; a aba pede "todos" e segmenta na
+ * tela, para os contadores baterem sem três requisições.
+ */
+export function getHistoricoProjetos(
+  token: string,
+  frenteId?: number | null,
+  filtro: FiltroHistorico = "todos",
+) {
+  return apiFetch<HistoricoProjeto[]>(
+    `/monitoramento/historico-projetos${query(frenteId, null, { filtro })}`,
+    { token },
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Aprovações — a fila da diretoria                                    */
 /* ------------------------------------------------------------------ */
 
 export interface AprovacaoDiasDeAjuste {
@@ -469,6 +555,36 @@ export interface AprovacaoDiasDeAjuste {
   motivo: string;
   solicitado_por_nome: string | null;
   criado_em: string;
+  /** O fim da janela como está hoje. `null` = escopo sem reunião inicial. */
+  fim_janela: string | null;
+  /**
+   * ⭐ O fim da janela SE a diretoria aprovar — a resposta à pergunta que a
+   * decisão faz de verdade. Não é somar: são N dias ÚTEIS a partir da reunião
+   * inicial, pulando feriado, prova e recesso, e essa conta ninguém faz de
+   * cabeça olhando "+5 sobre 8 vendidos".
+   */
+  fim_se_aprovar: string | null;
+  /** §8: último dia em que ainda cabia pedir. Passou, o pedido é fora do prazo. */
+  prazo_pedido_ajuste: string | null;
+}
+
+/** Um motivo de atraso — a mesma forma que a aba Atrasos consome. */
+export interface MotivoDeAtraso {
+  tipo: string;
+  descricao: string;
+  dias: number;
+  escopo: string | null;
+  projeto_escopo_id: number | null;
+  data_referencia: string | null;
+  /** §7.4: já existe nota da diretoria cobrindo ESTE motivo. */
+  justificado: boolean;
+  justificativa_id: number | null;
+  /**
+   * §7.4: quando a diretoria PEDIU a explicação ao coordenador. `null` =
+   * ninguém cobrou ainda. Com data, a fila mostra "aguardando o coordenador"
+   * em vez de oferecer o pedido de novo.
+   */
+  pedido_em: string | null;
 }
 
 export interface AprovacaoAtraso {
@@ -476,7 +592,13 @@ export interface AprovacaoAtraso {
   projeto_nome: string;
   status: string;
   dias_totais: number;
-  motivos: string[];
+  /** ⭐ O pior motivo isolado — é ele que ordena, nunca a soma. */
+  pior_motivo: number;
+  /**
+   * Estruturados, não frases. Sem o escopo e os dias de cada um, a diretoria
+   * não tinha como escrever uma nota específica sem abrir o projeto.
+   */
+  motivos: MotivoDeAtraso[];
 }
 
 /** Alguém pediu para entrar num projeto e está parado esperando resposta. */
@@ -497,8 +619,42 @@ export interface AprovacaoBancaSemResultado {
   banca_id: number;
   projeto_id: number;
   projeto_nome: string;
+  /** O primeiro escopo — mantido para quem já lê o campo. */
   escopo_nome: string;
+  /** Todos os escopos que esta banca cobre: a decisão destrava a entrega de cada um. */
+  escopos: { projeto_escopo_id: number; nome: string }[];
   realizado_em: string;
+  prazo_avaliacao_em: string;
+  /** Passou o prazo de 2 dias sem a urna fechar. */
+  prazo_vencido: boolean;
+  /**
+   * ⭐ A urna. Sem ela, duas situações que exigem respostas OPOSTAS ficavam
+   * idênticas na tela: "ninguém votou e o prazo venceu" (a diretoria decide
+   * no lugar deles) e "falta um voto e o prazo corre" (cobra, não decide).
+   */
+  apuracao: {
+    recebidos: number;
+    esperados: number;
+    aprovacoes: number;
+    reprovacoes: number;
+    /** "maioria" | "empate" | "sem_votos" | "aguardando" */
+    motivo: string;
+  };
+}
+
+/** §8: um pedido para marcar banca em horário já ocupado. */
+export interface AprovacaoExcecaoChoque {
+  id: number;
+  projeto_id: number;
+  projeto_nome: string;
+  projeto_escopo_id: number | null;
+  escopo_nome: string | null;
+  data_hora_pretendida: string;
+  /** O nome do projeto da banca que já ocupa o horário. */
+  conflita_com: string | null;
+  justificativa: string;
+  solicitado_por_nome: string | null;
+  criado_em: string;
 }
 
 /**
@@ -510,7 +666,11 @@ export interface AprovacaoBancaSemResultado {
 export interface Aprovacoes {
   dias_de_ajuste: AprovacaoDiasDeAjuste[];
   atrasos_sem_justificativa: AprovacaoAtraso[];
-  /** Servido pronto pelo backend, o badge da aba precisa dele antes de
+  solicitacoes_de_entrada: AprovacaoEntrada[];
+  bancas_sem_resultado: AprovacaoBancaSemResultado[];
+  /** §8: pedidos para marcar banca em horário já ocupado. */
+  excecoes_de_choque: AprovacaoExcecaoChoque[];
+  /** Servido pronto pelo backend — o badge da aba precisa dele antes de
    *  qualquer render, e somar no front duplicaria a conta. */
   total: number;
 }

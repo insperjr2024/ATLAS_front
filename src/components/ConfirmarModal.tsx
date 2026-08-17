@@ -10,12 +10,35 @@ import {
 } from "@/styles/modal.styled";
 import { PageButton } from "@/styles/page.styled";
 import { FormErrorText } from "@/pages/Bancas.styled";
+import {
+  ConfirmacaoAlvo,
+  ConfirmacaoCampo,
+  ConfirmacaoInput,
+  ConfirmacaoRotulo,
+} from "./ConfirmarModal.styled";
 
 interface Props {
   titulo: string;
   /** O que exatamente vai acontecer, não "tem certeza?", que não informa nada. */
   mensagem: ReactNode;
   rotuloConfirmar?: string;
+  /**
+   * O rótulo enquanto a ação roda. O padrão é "Excluindo…" porque a maioria
+   * dos usos é destrutiva — mas nem todo uso é: confirmar uma entrega não
+   * exclui nada, e o botão não pode dizer que exclui.
+   */
+  rotuloProcessando?: string;
+  /**
+   * Quando presente, exige que a pessoa DIGITE exatamente este texto antes de
+   * o botão liberar. É a trava para o que não tem desfazer.
+   *
+   * Existe porque o modal comum protege contra o clique errado, e não contra
+   * o clique distraído: quem está varrendo uma lista confirma no automático.
+   * Ter de copiar o nome do projeto força a pessoa a ler qual projeto está na
+   * frente dela — que é justamente o erro caro aqui, apagar o projeto certo
+   * pelo motivo errado.
+   */
+  confirmacaoTexto?: string;
   onConfirmar: () => Promise<void> | void;
   onCancelar: () => void;
 }
@@ -36,11 +59,20 @@ export function ConfirmarModal({
   titulo,
   mensagem,
   rotuloConfirmar = "Excluir",
+  rotuloProcessando = "Excluindo…",
+  confirmacaoTexto,
   onConfirmar,
   onCancelar,
 }: Props) {
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState("");
+  const [digitado, setDigitado] = useState("");
+
+  // `trim` nas duas pontas: copiar o nome da tela costuma trazer um espaço
+  // junto, e recusar por causa disso seria implicância — a intenção está
+  // provada do mesmo jeito. A comparação segue sensível a maiúscula, porque
+  // é o que faz a pessoa olhar o nome em vez de digitar de memória.
+  const liberado = !confirmacaoTexto || digitado.trim() === confirmacaoTexto.trim();
 
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
@@ -51,6 +83,7 @@ export function ConfirmarModal({
   }, [onCancelar]);
 
   async function confirmar() {
+    if (!liberado) return;
     setErro("");
     setProcessando(true);
     try {
@@ -72,6 +105,24 @@ export function ConfirmarModal({
 
         <ModalBody>
           {mensagem}
+          {confirmacaoTexto && (
+            <ConfirmacaoCampo>
+              <ConfirmacaoRotulo htmlFor="confirmacao-digitada">
+                Para confirmar, digite <ConfirmacaoAlvo>{confirmacaoTexto}</ConfirmacaoAlvo> abaixo:
+              </ConfirmacaoRotulo>
+              <ConfirmacaoInput
+                id="confirmacao-digitada"
+                type="text"
+                value={digitado}
+                autoFocus
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={confirmacaoTexto}
+                disabled={processando}
+                onChange={(e) => setDigitado(e.target.value)}
+              />
+            </ConfirmacaoCampo>
+          )}
           {erro && <FormErrorText>{erro}</FormErrorText>}
         </ModalBody>
 
@@ -79,8 +130,10 @@ export function ConfirmarModal({
           <PageButton type="button" $variant="outline" onClick={onCancelar}>
             Cancelar
           </PageButton>
-          <PageButton type="button" disabled={processando} onClick={confirmar}>
-            {processando ? "Excluindo…" : rotuloConfirmar}
+          {/* Desabilitado enquanto o texto não bate — e não "clica e reclama":
+              o botão apagado diz que falta algo antes de a pessoa tentar. */}
+          <PageButton type="button" disabled={processando || !liberado} onClick={confirmar}>
+            {processando ? rotuloProcessando : rotuloConfirmar}
           </PageButton>
         </ModalFooter>
       </ModalContent>

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
+import { Activity, AlertTriangle, ChevronRight, Flag, FolderKanban, Target } from "lucide-react";
 import { ConteudoPaginado, POR_PAGINA, Paginacao, usePaginacao } from "./Paginacao";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -12,7 +12,6 @@ import { paraDataUtc } from "@/lib/projetos";
 // `formatarData`/`formatarDataHora` saíram no merge de propósito: os dois
 // únicos lugares que formatavam data crua aqui (o sparkline de entregas e a
 // lista antiga de bancas) viraram `LinhaEntregas` e `diaDaSemana`/`horaDaBanca`.
-import { PedidosDeDiasCard } from "./PedidosDeDiasCard";
 
 // Sob demanda: o recharts pesa ~450KB num bundle que já está acima do limite
 // de aviso do Vite, e os gráficos só existem dentro do monitoramento.
@@ -31,29 +30,72 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  AtencaoDias,
+  AtencaoLinha,
+  AtencaoLista,
+  AtencaoSecao,
+  AtencaoSecaoTitulo,
+  AtencaoSecaoTopo,
+  AtencaoTexto,
+  AtencaoVerTodos,
+  BarraFiltros,
+  BotaoAlternativa,
+  CardLargura,
+  CelulaDias,
   ControlesGrafico,
-  FieldSelect,
-  ItemAtencao,
+  DataTable,
+  GrupoBotoes,
   ItemDestaque,
-  // A main tirou `ItemLista` daqui porque converteu bancas e tempo parado para
-  // `LinhaItem`; o card "Janela dos escopos" da `ajustes` ainda usa a linha
-  // simples (nome + resumo, sem navegação por linha inteira), então volta.
-  ItemLista,
   ItemTexto,
   KpiCard,
   KpiGrid,
+  KpiIcone,
   KpiNota,
   KpiRotulo,
+  KpiTexto,
   KpiValor,
   LinhaItem,
   LinkProjeto,
-  ListaAtencaoGrid,
   ListaSimples,
   PainelGrid,
+  RotuloColuna,
+  SemDado,
+  TabelaRolagem,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
   type NivelSeveridade,
 } from "./Monitoramento.styled";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
+
+/** Pra "voltar" do projeto cair de novo aqui — Visão geral é a rota índice
+ *  de Monitoramento, então o destino é a pasta sem sub-rota. */
+const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento", voltarRotulo: "Voltar para Monitoramento" };
+
+/** Quantos itens cada grupo de "Atenção agora" mostra antes de oferecer o
+ *  atalho para o filtro. Quatro cabe sem empurrar os grupos seguintes para
+ *  fora da tela e já dá amostra do que há ali dentro. */
+const ITENS_POR_GRUPO = 4;
+
+type LinhaJanela = VisaoGeral["janela"]["por_projeto"][number];
+
+/** A janela inteira do projeto: o que foi vendido mais o que a diretoria
+ *  autorizou depois. É contra ela que o consumo é medido — quem ganhou 10
+ *  dias tem 10 dias a mais para gastar. */
+function janelaTotal(p: LinhaJanela): number {
+  return p.dias_vendidos + p.dias_ajustados;
+}
+
+const COLUNAS_JANELA: Colunas<LinhaJanela> = {
+  projeto: { valor: (p) => p.projeto_nome, inicial: "asc" },
+  janela: { valor: janelaTotal, inicial: "desc" },
+  escopo: { valor: (p) => p.escopo_alem_do_vendido, inicial: "asc" },
+  alem: { valor: (p) => p.dias_de_atraso, inicial: "desc" },
+  parados: { valor: (p) => p.dias_parados, inicial: "desc" },
+};
 
 /** "seg 11", o dia da semana é o que a pessoa usa para se localizar numa
  *  agenda de 7 dias; a data completa não acrescenta nada nessa janela. */
@@ -82,10 +124,10 @@ export function VisaoGeralAba() {
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
-    <>
+    <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
-    </>
+    </BarraFiltros>
   );
   const [dados, setDados] = useState<VisaoGeral | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -170,58 +212,122 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
   );
 
   // Estes três crescem com o tamanho do núcleo e não têm teto no backend.
-  const atencao = usePaginacao(filtrados, POR_PAGINA);
+  // Motivo → itens, na ordem em que o backend já ordenou (pior primeiro).
+  const grupos = useMemo(() => {
+    const mapa = new Map<string, typeof filtrados>();
+    for (const item of filtrados) {
+      const lista = mapa.get(item.tipo) ?? [];
+      lista.push(item);
+      mapa.set(item.tipo, lista);
+    }
+    // Grupo menor primeiro: um caso isolado é mais acionável que vinte, e a
+    // pilha de vinte não pode empurrar o item único para fora da vista.
+    return [...mapa.entries()].sort((a, b) => a[1].length - b[1].length);
+  }, [filtrados]);
   const bancas = usePaginacao(dados.bancas_proximas, POR_PAGINA);
   const parados = usePaginacao(dados.tempo_parado, POR_PAGINA);
   // A janela do escopo, por projeto: dias ajustados, atraso e dias
   // parados. Só entram os projetos com algum número diferente de zero —
   // listar o portfólio inteiro com três zeros esconderia os que importam.
+  /* Só quem tem algo a mostrar. Listar o portfólio inteiro com todas as
+     colunas em travessão esconderia os que importam. */
   const comJanela = (dados.janela?.por_projeto ?? []).filter(
     (p) => p.dias_ajustados || p.dias_de_atraso || p.dias_parados,
   );
-  const janela = usePaginacao(comJanela, POR_PAGINA);
+  /* Ordena antes de paginar: ordenar depois reorganizaria só a página aberta
+     e o pior caso de uma coluna continuaria escondido na página 2.
+
+     Abre pelo maior tempo além do vendido — a coluna "Janela" ao lado é o
+     tamanho contra o qual esse número se lê. */
+  const {
+    itens: janelaOrdenada,
+    ordem: ordemJanela,
+    ordenarPor: ordenarJanela,
+  } = useOrdenacao(comJanela, COLUNAS_JANELA, "alem");
+  const janela = usePaginacao(janelaOrdenada, POR_PAGINA);
 
   return (
     <PageStack>
       {seletor}
+      {/* ⭐ **Quatro caixas, não cinco, e cada uma responde a uma pergunta.**
+          Havia "0% Atrasados" e "100% Placar da gestão" lado a lado: desde que
+          o pilar de ENTREGA saiu do cálculo (2026-08-12), o único motivo de
+          atraso é a banca — que é exatamente o que o placar mede. Os dois
+          somavam 100 sempre, e o comentário que jurava o contrário ficou para
+          trás. Ficou o placar, que é o número que o §7.1 pede por nome.
+
+          ⚠ E o "29" ganhou nota: a tela mostrava 29, 21 e 26 em lugares
+          diferentes sem dizer que 26 é o denominador de tudo. */}
       <KpiGrid>
         <KpiCard>
-          <KpiValor>{dados.kpis.total}</KpiValor>
-          <KpiRotulo>Projetos</KpiRotulo>
+          <KpiIcone aria-hidden>
+            <FolderKanban size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiValor>{dados.kpis.total}</KpiValor>
+            <KpiRotulo>Projetos</KpiRotulo>
+            <KpiNota>
+              {dados.placar_gestao.total_ativos} em curso
+              {dados.kpis.pausados > 0 && ` · ${dados.kpis.pausados} pausado${dados.kpis.pausados > 1 ? "s" : ""}`}
+              {dados.kpis.finalizados > 0 && ` · ${dados.kpis.finalizados} finalizado${dados.kpis.finalizados > 1 ? "s" : ""}`}
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
         <KpiCard>
-          <KpiValor>{dados.kpis.em_execucao}</KpiValor>
-          <KpiRotulo>Em execução</KpiRotulo>
+          <KpiIcone aria-hidden>
+            <Activity size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiValor>{dados.kpis.em_execucao}</KpiValor>
+            <KpiRotulo>Em execução</KpiRotulo>
+            <KpiNota>ambientação, andamento e bancas</KpiNota>
+          </KpiTexto>
         </KpiCard>
         <KpiCard>
-          <KpiValor>{dados.kpis.perto_de_finalizar}</KpiValor>
-          <KpiRotulo>Perto de finalizar</KpiRotulo>
+          <KpiIcone aria-hidden>
+            <Flag size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiValor>{dados.kpis.perto_de_finalizar}</KpiValor>
+            <KpiRotulo>Perto de finalizar</KpiRotulo>
+            <KpiNota>TEP e período de ajustes</KpiNota>
+          </KpiTexto>
         </KpiCard>
-        <KpiCard $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined}>
+        <KpiCard>
+          <KpiIcone $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined} aria-hidden>
+            <AlertTriangle size={18} />
+          </KpiIcone>
           {/* Percentual como valor grande, contagem na nota, mesmo formato do
               placar ao lado. Os dois medem a MESMA população (`em_curso`), mas
               coisas diferentes: o placar só olha banca, este olha qualquer
               motivo. `100 - placar` não dá este número, e é por isso que os
               rótulos precisam ser explícitos. */}
-          <KpiValor $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined}>
-            {dados.atrasados_gestao.percentual}%
-          </KpiValor>
-          <KpiRotulo>Atrasados</KpiRotulo>
-          <KpiNota>
-            {dados.atrasados_gestao.atrasados}/{dados.atrasados_gestao.total_ativos} com algum
-            atraso
-          </KpiNota>
+          <KpiTexto>
+            <KpiValor $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined}>
+              {dados.atrasados_gestao.percentual}%
+            </KpiValor>
+            <KpiRotulo>Atrasados</KpiRotulo>
+            <KpiNota>
+              {dados.atrasados_gestao.atrasados}/{dados.atrasados_gestao.total_ativos} com algum
+              atraso
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
         <KpiCard>
           {/* O placar da gestão: só as bancas contam, a entrega ao cliente
               depende da agenda dele e é acompanhada à parte. */}
-          <KpiValor $destaque={dados.placar_gestao.percentual >= 80 ? "ok" : "alerta"}>
-            {dados.placar_gestao.percentual}%
-          </KpiValor>
-          <KpiRotulo>Placar da gestão</KpiRotulo>
-          <KpiNota>
-            {dados.placar_gestao.no_prazo}/{dados.placar_gestao.total_ativos} com bancas em dia
-          </KpiNota>
+          <KpiIcone $destaque={dados.placar_gestao.percentual >= 80 ? "ok" : "alerta"} aria-hidden>
+            <Target size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiValor $destaque={dados.placar_gestao.percentual >= 80 ? "ok" : "alerta"}>
+              {dados.placar_gestao.percentual}%
+            </KpiValor>
+            <KpiRotulo>Placar da gestão</KpiRotulo>
+            <KpiNota>
+              {dados.placar_gestao.no_prazo}/{dados.placar_gestao.total_ativos} sem banca vencida
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
       </KpiGrid>
 
@@ -316,7 +422,7 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
                             `data_inicio` ao próximo escopo, e é lá que isso se
                             faz. Cair na visão geral obrigaria mais um clique
                             justo em quem veio resolver. */}
-                        <LinhaItem to={`/projetos/${p.projeto_id}/cronograma`}>
+                        <LinhaItem to={`/projetos/${p.projeto_id}/cronograma`} state={VOLTAR_PARA_AQUI}>
                           {/* Os dias vêm para a esquerda, no lugar que a agenda
                               de bancas usa para a data: é o número que ordena a
                               lista, então é por ele que o olho desce. */}
@@ -356,50 +462,162 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
             dias ÚTEIS EM BRANCO do cronograma inteiro desde o kickoff, dia
             sem etapa, reunião, banca ou entrega. Um responde "está entre
             escopos?", o outro "está andando?". */}
-        <PageCard>
+        {/* ⚠ **A palavra "atraso" não aparece neste card.** Ela tem dono: na
+            aba Atrasos, "atrasado" é banca vencida. O número daqui é outro —
+            dias consumidos além do vendido — e chamá-lo de atraso fazia esta
+            tela dizer "0 atrasados" no topo e "19 em atraso" no meio.
+
+            ⚠ **Não há total.** "352 parados na gestão" somava dias de projetos
+            diferentes: não existe pergunta cuja resposta seja esse número.
+            Cada projeto tem o seu, e é por projeto que se age. */}
+        <CardLargura>
           <PageCardHeader>
-            <PageCardTitle>Janela dos escopos</PageCardTitle>
+            <PageCardTitle>Tempo dos escopos</PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
             {comJanela.length === 0 ? (
-              <EmptyText>Nenhum projeto com dias ajustados, atraso ou parada.</EmptyText>
+              <EmptyText>
+                Nenhum projeto passou dos dias vendidos, ganhou dias ajustados ou tem dia útil
+                em branco no cronograma.
+              </EmptyText>
             ) : (
               <>
-                <KpiNota>
-                  {dados.janela.totais.dias_ajustados} dias ajustados ·{" "}
-                  {dados.janela.totais.dias_de_atraso} em atraso ·{" "}
-                  {dados.janela.totais.dias_parados} parados na gestão
-                </KpiNota>
-                <ConteudoPaginado estado={janela}>
-                  <ListaSimples>
-                    {janela.visiveis.map((p) => (
-                      <ItemLista key={p.projeto_id}>
-                        <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`}>
-                          {p.projeto_nome}
-                        </LinkProjeto>
-                        <small>
-                          {[
-                            p.dias_ajustados && `+${p.dias_ajustados} ajustados`,
-                            p.dias_de_atraso && `${p.dias_de_atraso} em atraso`,
-                            p.dias_parados && `${p.dias_parados} parados`,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </small>
-                      </ItemLista>
-                    ))}
-                  </ListaSimples>
-                </ConteudoPaginado>
+                {/* Tabela, e não uma frase por projeto. São TRÊS medidas
+                    independentes: espremidas numa linha de texto miúdo
+                    separada por "·", cada projeto mostrava um subconjunto
+                    diferente em posição diferente, e não dava para comparar
+                    dois projetos nem achar o pior de uma medida. Em colunas,
+                    cada número tem lugar fixo e a coluna se lê de cima a
+                    baixo — e o cabeçalho ordena, como no resto do painel. */}
+                <TabelaRolagem $min="44rem">
+                  <DataTable>
+                    <TableHead>
+                      <TableRow>
+                        <Th coluna="projeto" ordem={ordemJanela} onOrdenar={ordenarJanela}>
+                          Projeto
+                        </Th>
+                        {/* ⚠ Os rótulos anteriores eram jargão de quem
+                            construiu a tela: "Janela", "Além do vendido",
+                            "Sem planejamento" — nenhum dizia de QUE coisa
+                            falava nem em que unidade.
+
+                            A unidade fica na segunda linha, apagada: ela é a
+                            MESMA em três colunas, e escrita por extenso em
+                            todas elas o cabeçalho pesava mais que os dados.
+                            Continua escrita porque "12" não diz se são dias
+                            corridos ou úteis, e a régua desta tela é o
+                            calendário do Insper. */}
+                        <Th coluna="janela" ordem={ordemJanela} onOrdenar={ordenarJanela}>
+                          <RotuloColuna>
+                            Vendidos
+                            <small>dias úteis</small>
+                          </RotuloColuna>
+                        </Th>
+                        <Th coluna="escopo" ordem={ordemJanela} onOrdenar={ordenarJanela}>
+                          <RotuloColuna>
+                            Escopo que passou
+                            <small>do que foi vendido</small>
+                          </RotuloColuna>
+                        </Th>
+                        <Th coluna="alem" ordem={ordemJanela} onOrdenar={ordenarJanela}>
+                          <RotuloColuna>
+                            Acima do vendido
+                            <small>dias úteis</small>
+                          </RotuloColuna>
+                        </Th>
+                        <Th coluna="parados" ordem={ordemJanela} onOrdenar={ordenarJanela}>
+                          <RotuloColuna>
+                            Sem nada no cronograma
+                            <small>dias úteis</small>
+                          </RotuloColuna>
+                        </Th>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {janela.visiveis.map((p) => {
+                        const outros = p.escopos_alem_do_vendido - 1;
+                        return (
+                          <TableRow key={p.projeto_id}>
+                            <TableCell>
+                              <LinkProjeto to={`/projetos/${p.projeto_id}/cronograma`} state={VOLTAR_PARA_AQUI}>
+                                {p.projeto_nome}
+                              </LinkProjeto>
+                            </TableCell>
+                            {/* Vendidos e ajustados nunca somados num número
+                                só: a diferença entre ter vendido 30 e ter
+                                vendido 20 e precisado de mais 10 é a
+                                informação inteira. */}
+                            <TableCell>
+                              <CelulaDias>
+                                {p.dias_vendidos}
+                                {p.dias_ajustados > 0 && <small>+{p.dias_ajustados} ajustados</small>}
+                              </CelulaDias>
+                            </TableCell>
+                            {/* ⭐ O NOME, não só a contagem. "2 de 3" dizia que
+                                havia problema e não dizia onde; com o nome, a
+                                linha vira o endereço da conversa. É o escopo
+                                que mais passou — o mesmo de que vem o número
+                                da coluna ao lado, então os dois falam da mesma
+                                coisa.
+
+                                ⚠ E a sobra é dita por EXTENSO. "+2 de 3" era
+                                aritmética sem substantivo: não dava para saber
+                                se contava escopo, dia ou projeto. "e mais 2
+                                escopos" responde sozinho.
+
+                                Sem tom de alerta: quem carrega a gravidade é o
+                                número ao lado. Nome de escopo pintado de
+                                vermelho em toda linha vira ruído e rouba o
+                                destaque da coluna que mede. */}
+                            <TableCell>
+                              {p.escopo_alem_do_vendido ? (
+                                <CelulaDias>
+                                  {p.escopo_alem_do_vendido}
+                                  {outros > 0 && (
+                                    <small>
+                                      e mais {outros} {outros === 1 ? "escopo" : "escopos"}
+                                    </small>
+                                  )}
+                                </CelulaDias>
+                              ) : (
+                                <SemDado>—</SemDado>
+                              )}
+                            </TableCell>
+                            {/* Zero vira travessão: a coluna passa a mostrar só
+                                onde há algo, e o que sobra salta à vista. */}
+                            <TableCell>
+                              {p.dias_de_atraso ? (
+                                <CelulaDias $tom="alerta">{p.dias_de_atraso}</CelulaDias>
+                              ) : (
+                                <SemDado>—</SemDado>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {p.dias_parados ? (
+                                <CelulaDias $tom="atencao">{p.dias_parados}</CelulaDias>
+                              ) : (
+                                <SemDado>—</SemDado>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </DataTable>
+                </TabelaRolagem>
                 <Paginacao estado={janela} />
               </>
             )}
           </PageCardContent>
-        </PageCard>
+        </CardLargura>
       </PainelGrid>
 
-      {/* Antes de "Atenção agora" de propósito: pedido pendente é uma decisão
-          esperando pessoa, não um alerta para observar. */}
-      <PedidosDeDiasCard />
+      {/* ⚠ Havia aqui um card "Pedidos de dias de ajuste", o MESMO componente
+          da aba Aprovações. Saiu: pedido pendente é uma decisão esperando
+          pessoa, e a fila de decisões tem uma aba inteira dedicada a ela desde
+          que Aprovações passou a existir. Duplicá-lo aqui obrigava a manter
+          dois lugares em sincronia, e este ignorava os dois seletores do topo
+          — o mesmo pedido aparecia mesmo com a frente filtrada. */}
 
       <PageCard>
         <PageCardHeader>
@@ -413,51 +631,102 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
             <EmptyText>Nada pedindo ação no momento.</EmptyText>
           ) : (
             <>
-              {/* As opções saem do que EXISTE hoje, não de uma lista fixa:
+              {/* ⭐ O filtro é um SEGMENTADO, não um `select`.
+                  São no máximo cinco opções e a contagem de cada uma é a
+                  informação mais útil do card: dentro de um `select` ela só
+                  aparecia depois de abrir a lista, e a pessoa tinha de abrir
+                  para descobrir se valia a pena filtrar. Aberto, o card já
+                  responde "o que tem hoje e quanto de cada" antes do
+                  primeiro clique.
+
+                  As opções saem do que EXISTE hoje, não de uma lista fixa:
                   oferecer "Kickoff" quando nenhum projeto está sem kickoff
-                  devolve card vazio e a impressão de que quebrou. A contagem
-                  ao lado evita ter que filtrar para descobrir se vale a pena. */}
+                  devolve card vazio e a impressão de que quebrou. */}
               <ControlesGrafico>
-                <FieldSelect
-                  value={motivo}
-                  onChange={(e) => setMotivoPedido(e.target.value as TipoAtencao | "")}
-                  aria-label="Filtrar por motivo"
-                >
-                  <option value="">Todos os motivos ({dados.atencao_agora.length})</option>
+                <GrupoBotoes role="group" aria-label="Filtrar por motivo">
+                  <BotaoAlternativa
+                    type="button"
+                    $ativo={motivo === ""}
+                    aria-pressed={motivo === ""}
+                    onClick={() => setMotivoPedido("")}
+                  >
+                    Todos ({dados.atencao_agora.length})
+                  </BotaoAlternativa>
                   {motivosPresentes.map(([tipo, n]) => (
-                    <option key={tipo} value={tipo}>
+                    <BotaoAlternativa
+                      key={tipo}
+                      type="button"
+                      $ativo={motivo === tipo}
+                      aria-pressed={motivo === tipo}
+                      onClick={() => setMotivoPedido(tipo)}
+                    >
                       {ROTULO_ATENCAO[tipo]} ({n})
-                    </option>
+                    </BotaoAlternativa>
                   ))}
-                </FieldSelect>
+                </GrupoBotoes>
               </ControlesGrafico>
 
-              <ConteudoPaginado estado={atencao}>
-                <ListaAtencaoGrid>
-                  {atencao.visiveis.map((item, i) => (
-                    /* A cor do marcador carrega a gravidade: sem ela uma lista
-                       de 15 itens grita igual e a diretoria não sabe por onde
-                       começar. */
-                    <ItemAtencao key={i} $nivel={nivelAtencao(item.dias)}>
-                      <strong>
-                        <LinkProjeto to={`/projetos/${item.projeto_id}`}>
-                          {item.projeto_nome}
-                        </LinkProjeto>
-                      </strong>
-                      {/* O motivo vem pronto e específico do backend,  é
-                          explícito que não pode ser rótulo genérico. */}
-                      <span>
-                        {item.motivo}
-                        {item.dias != null && ` · há ${item.dias} dias`}
-                      </span>
-                    </ItemAtencao>
-                  ))}
-                </ListaAtencaoGrid>
-              </ConteudoPaginado>
-              {/* Este é o card que mais cresce da tela: 77 itens com o núcleo
-                  cheio. A lista vem ordenada por gravidade, então a página 1 é
-                  o que pede ação e as seguintes são a cauda. */}
-              <Paginacao estado={atencao} />
+              {/* ⭐ **Agrupado por motivo, não uma linha por projeto.**
+                  Numa quinta-feira típica a lista abria com 20 cópias exatas de
+                  "sem reunião registrada esta semana" — o mesmo texto, o mesmo
+                  ponto colorido, mudando só o nome do projeto. Card que repete
+                  a mesma frase vinte vezes deixa de ser lido.
+
+                  ⚠ Mas o grupo não fica mais FECHADO atrás de um `<details>`:
+                  com tudo recolhido, descobrir o que havia exigia abrir um por
+                  um. Cada grupo mostra as primeiras linhas direto e, quando
+                  passa disso, oferece "mostrar as outras N" — que troca o
+                  filtro acima em vez de expandir aqui, para a lista longa abrir
+                  com o card inteiro para ela. */}
+              {grupos.map(([tipo, itens]) => {
+                const visiveis = motivo ? itens : itens.slice(0, ITENS_POR_GRUPO);
+                const restantes = itens.length - visiveis.length;
+                return (
+                  <AtencaoSecao key={tipo}>
+                    <AtencaoSecaoTopo>
+                      <AtencaoSecaoTitulo>
+                        {ROTULO_ATENCAO[tipo as TipoAtencao] ?? tipo} · {itens.length}
+                      </AtencaoSecaoTitulo>
+                      {restantes > 0 && (
+                        <AtencaoVerTodos
+                          type="button"
+                          onClick={() => setMotivoPedido(tipo as TipoAtencao)}
+                        >
+                          mostrar as outras {restantes}
+                        </AtencaoVerTodos>
+                      )}
+                    </AtencaoSecaoTopo>
+                    <AtencaoLista>
+                      {visiveis.map((item, i) => (
+                        <li key={`${item.projeto_id}-${i}`}>
+                          {/* A cor do ponto carrega a gravidade: sem ela uma
+                              lista de 15 itens grita igual e a diretoria não
+                              sabe por onde começar. O tempo repete a cor à
+                              direita, porque cor sozinha não é informação. */}
+                          <AtencaoLinha
+                            to={`/projetos/${item.projeto_id}`}
+                            state={VOLTAR_PARA_AQUI}
+                            $nivel={nivelAtencao(item.dias)}
+                          >
+                            <AtencaoTexto>
+                              <strong>{item.projeto_nome}</strong>
+                              {/* O motivo vem pronto e específico do backend,
+                                  §7.1 é explícito que não pode ser rótulo
+                                  genérico. */}
+                              <span>{item.motivo}</span>
+                            </AtencaoTexto>
+                            {item.dias != null && (
+                              <AtencaoDias $nivel={nivelAtencao(item.dias)}>
+                                há {item.dias} {item.dias === 1 ? "dia" : "dias"}
+                              </AtencaoDias>
+                            )}
+                          </AtencaoLinha>
+                        </li>
+                      ))}
+                    </AtencaoLista>
+                  </AtencaoSecao>
+                );
+              })}
             </>
           )}
         </PageCardContent>

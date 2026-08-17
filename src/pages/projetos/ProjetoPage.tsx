@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { Archive, ArchiveRestore, ArrowLeft, ChevronDown, Pencil, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowLeft,
+  ChevronDown,
+  Download,
+  ExternalLink,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
+import { getSolicitacoesRecebidas } from "@/lib/vagas";
 import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
 import {
+  baixarAnexoProposta,
   arquivarProjeto,
   CORES_STATUS,
   deletarProjetoPermanente,
@@ -14,7 +25,6 @@ import {
   getProjeto,
   mudarStatus,
   podePausar,
-  renomearProjeto,
   ROTULO_STATUS,
   tomDoStatus,
 } from "@/lib/projetos";
@@ -23,8 +33,11 @@ import type { UsuarioResumo } from "@/types/auth";
 import type { Frente } from "@/types/banca";
 import type { ProjetoCompleto, StatusProjeto } from "@/types/projeto";
 import { Ponto } from "@/components/kanban/Kanban.styled";
+import { FotoCircular } from "@/components/Avatar";
 import { pode } from "@/utils/permissoes";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
+import { CORES_SUGERIDAS } from "@/lib/colunas-tarefa";
+import { EditarProjetoModal } from "./EditarProjetoModal";
 import {
   PageBadge,
   PageButtonSm,
@@ -37,7 +50,6 @@ import {
   PageHeaderText,
   PageHeading,
   PageSubheading,
-  FieldInput,
   FormErrorText,
   ProjetoShell,
   ShellHeader,
@@ -46,6 +58,7 @@ import {
   TagRow,
   FrenteTag,
   AvisoBanner,
+  AvisoLink,
   TabBar,
   TabLink,
   EtapaSeletorWrap,
@@ -54,7 +67,17 @@ import {
   EtapaOpcaoBotao,
   NomeEditavel,
   NomeBotaoEditar,
-  EdicaoBotoes,
+  PropostaLink,
+  PropostaBotao,
+  DescricaoCabecalho,
+  DescricaoVerMais,
+  EquipeCabecalho,
+  EquipeGrupo,
+  EquipeRotulo,
+  EquipeOcupacao,
+  EquipePessoa,
+  EquipeAvatar,
+  EquipeVazia,
   StatusPilula,
 } from "./Projetos.styled";
 
@@ -100,6 +123,23 @@ function voltarDoLocation(state: unknown): { to: string; rotulo: string } {
   return { to: "/projetos", rotulo: "Voltar para projetos" };
 }
 
+/** Quantos caracteres cabem em duas linhas do cabeçalho, aproximadamente. */
+const CORTE_DESCRICAO = 150;
+
+/** "Ana Souza" → "AS". Duas letras: três não se leem em 1.5rem. */
+function iniciais(nome: string): string {
+  const partes = nome.trim().split(/\s+/);
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+}
+
+/** Cor estável por pessoa: o id não muda, então o avatar não troca de cor
+ *  entre telas. Mesma paleta das colunas de tarefa, para não inventar uma
+ *  segunda linguagem de cor na plataforma. */
+function corDaPessoa(usuarioId: number): string {
+  return CORES_SUGERIDAS[usuarioId % CORES_SUGERIDAS.length];
+}
+
 export function ProjetoPage() {
   const { id } = useParams();
   const location = useLocation();
@@ -129,10 +169,10 @@ export function ProjetoPage() {
   const [confirmandoArquivamento, setConfirmandoArquivamento] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
-  const [editandoNome, setEditandoNome] = useState(false);
-  const [nomeEditado, setNomeEditado] = useState("");
-  const [salvandoNome, setSalvandoNome] = useState(false);
-  const [erroNome, setErroNome] = useState("");
+  const [editandoProjeto, setEditandoProjeto] = useState(false);
+  const [descricaoInteira, setDescricaoInteira] = useState(false);
+  const [baixandoAnexo, setBaixandoAnexo] = useState(false);
+  const [pedidosPendentes, setPedidosPendentes] = useState(0);
 
   const carregar = useCallback(async () => {
     if (!token || !projetoId) return;
@@ -167,6 +207,35 @@ export function ProjetoPage() {
   useEffect(() => {
     carregar();
   }, [carregar, location.pathname]);
+
+  // Aviso de pedido de entrada pendente (§7.3), o endpoint já vem escopado
+  // a quem PODE responder (coordenador, gerência ou diretoria), então some
+  // sozinho pra quem não tem nada a fazer aqui.
+  useEffect(() => {
+    if (!token || !projetoId) return;
+    let ativo = true;
+    getSolicitacoesRecebidas(token)
+      .then((r) => {
+        if (!ativo) return;
+        setPedidosPendentes(
+          r.filter((s) => s.projeto_id === projetoId && s.status === "pendente").length,
+        );
+      })
+      .catch(() => {});
+    return () => {
+      ativo = false;
+    };
+  }, [token, projetoId]);
+
+  // Visitante da banca só tem uma aba. Um link antigo, o botão de voltar ou
+  // a rota-raiz do projeto o deixariam na Visão geral, que dispara chamadas
+  // que ele não pode fazer, quebrando a tela em erro em vez de dizer o que há.
+  useEffect(() => {
+    if (!projeto?.apenas_banca) return;
+    if (location.pathname !== `/projetos/${projeto.id}/banca`) {
+      navigate(`/projetos/${projeto.id}/banca`, { replace: true });
+    }
+  }, [projeto, location.pathname, navigate]);
 
   async function aplicarStatus(statusNovo: string) {
     if (!token || !projeto) return;
@@ -209,24 +278,7 @@ export function ProjetoPage() {
     }
   }
 
-  async function salvarNome() {
-    if (!token || !projeto) return;
-    if (!nomeEditado.trim()) {
-      setErroNome("O nome do projeto não pode ficar vazio.");
-      return;
-    }
-    setSalvandoNome(true);
-    setErroNome("");
-    try {
-      await renomearProjeto(projeto.id, nomeEditado.trim(), token);
-      setEditandoNome(false);
-      await carregar();
-    } catch (err) {
-      setErroNome(err instanceof Error ? err.message : "Erro ao renomear");
-    } finally {
-      setSalvandoNome(false);
-    }
-  }
+
 
   if (erro) {
     return (
@@ -243,6 +295,30 @@ export function ProjetoPage() {
 
   const nomeFrente = (frenteId: number) =>
     frentes.find((f) => f.id === frenteId)?.nome ?? `Frente ${frenteId}`;
+
+  async function baixarProposta() {
+    if (!token || !projeto?.anexo_proposta_nome) return;
+    setBaixandoAnexo(true);
+    try {
+      await baixarAnexoProposta(projeto.id, projeto.anexo_proposta_nome, token);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao baixar a proposta");
+    } finally {
+      setBaixandoAnexo(false);
+    }
+  }
+
+  const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
+  const fotoUsuario = (id: number) => usuarios.find((u) => u.id === id)?.foto ?? null;
+  const coordenadores = projeto.equipe.filter((m) => m.papel === "coordenador");
+  const consultores = projeto.equipe.filter((m) => m.papel !== "coordenador");
+  const teto = projeto.max_consultores ?? 0;
+  const equipeCheia = teto > 0 && consultores.length >= teto;
+
+  const descricao = projeto.descricao?.trim();
+  /* Acima disso o "ver mais" aparece; abaixo, ele seria um botão que não faz
+     nada, porque as duas linhas já cabem o texto inteiro. */
+  const descricaoCortavel = !!descricao && descricao.length > CORTE_DESCRICAO;
 
   const podeMudarStatus = pode(usuario, "mudar_status_projeto");
   const podeArquivar = pode(usuario, "arquivar_projeto");
@@ -279,51 +355,43 @@ export function ProjetoPage() {
             <ArrowLeft size={14} />
             {voltar.rotulo}
           </VoltarLink>
-          {editandoNome ? (
-            <>
-              <NomeEditavel>
-                <FieldInput
-                  value={nomeEditado}
-                  onChange={(e) => setNomeEditado(e.target.value)}
-                  aria-label="Nome do projeto"
-                  autoFocus
-                />
-              </NomeEditavel>
-              {erroNome && <FormErrorText>{erroNome}</FormErrorText>}
-              <EdicaoBotoes>
-                <PageButtonSm type="button" disabled={salvandoNome} onClick={salvarNome}>
-                  {salvandoNome ? "Salvando…" : "Salvar"}
-                </PageButtonSm>
-                <PageButtonSm
-                  type="button"
-                  $variant="ghost"
-                  onClick={() => {
-                    setEditandoNome(false);
-                    setErroNome("");
-                  }}
-                >
-                  Cancelar
-                </PageButtonSm>
-              </EdicaoBotoes>
-            </>
-          ) : (
-            <NomeEditavel>
-              <PageHeading>{projeto.nome}</PageHeading>
-              {podeRenomear && (
-                <NomeBotaoEditar
-                  type="button"
-                  aria-label="Editar nome do projeto"
-                  title="Editar nome do projeto"
-                  onClick={() => {
-                    setNomeEditado(projeto.nome);
-                    setEditandoNome(true);
-                  }}
-                >
-                  <Pencil size={14} />
-                </NomeBotaoEditar>
-              )}
-            </NomeEditavel>
-          )}
+          {/* ⭐ Um lápis só, ao lado do nome, para TODO o cadastro do projeto
+              (14/08/2026). Antes eram três botões em dois lugares — nome aqui,
+              descrição e equipe em cards da Visão geral —, e o cabeçalho ficava
+              coberto de afordâncias para a mesma ideia. */}
+          <NomeEditavel>
+            <PageHeading>{projeto.nome}</PageHeading>
+            {podeRenomear && (
+              <NomeBotaoEditar
+                type="button"
+                aria-label="Editar projeto"
+                title="Editar nome, descrição e equipe"
+                onClick={() => setEditandoProjeto(true)}
+              >
+                <Pencil size={14} />
+              </NomeBotaoEditar>
+            )}
+            {/* ⭐ A proposta ao lado do nome: é documento do projeto, e mora
+                junto da identidade dele. Antes era uma linha solta no meio da
+                Visão geral, sem nada dizendo de onde vinha.
+                ⚠ O rótulo é VERBO + "proposta", não "Proposta" sozinho — um
+                substantivo ao lado de um botão não diz o que o clique faz.
+                Mesmo par ícone/texto que a plataforma já usava antes de o
+                botão morar aqui: seta pra fora = abre outra aba; download =
+                baixa um arquivo. */}
+            {projeto.link_proposta && (
+              <PropostaLink href={projeto.link_proposta} target="_blank" rel="noreferrer">
+                <ExternalLink size={13} />
+                Abrir proposta
+              </PropostaLink>
+            )}
+            {projeto.anexo_proposta_nome && (
+              <PropostaBotao type="button" onClick={baixarProposta} disabled={baixandoAnexo}>
+                <Download size={13} />
+                {baixandoAnexo ? "Baixando…" : "Baixar proposta"}
+              </PropostaBotao>
+            )}
+          </NomeEditavel>
           <PageSubheading>{projeto.cliente}</PageSubheading>
           <TagRow>
             {projeto.frente_ids.map((frenteId) => (
@@ -331,6 +399,70 @@ export function ProjetoPage() {
             ))}
             {projeto.sinergico && <FrenteTag>sinérgico</FrenteTag>}
           </TagRow>
+
+          {/* Descrição e equipe subiram da Visão geral: são contexto do
+              projeto, e quem precisa deles precisa em qualquer aba. */}
+          {descricao && (
+            <>
+              <DescricaoCabecalho $inteira={descricaoInteira || !descricaoCortavel}>
+                {descricao}
+              </DescricaoCabecalho>
+              {descricaoCortavel && (
+                <DescricaoVerMais type="button" onClick={() => setDescricaoInteira((v) => !v)}>
+                  {descricaoInteira ? "Ver menos" : "Ver mais"}
+                </DescricaoVerMais>
+              )}
+            </>
+          )}
+
+          <EquipeCabecalho>
+            <EquipeGrupo>
+              <EquipeRotulo>Coordenação</EquipeRotulo>
+              {coordenadores.length === 0 ? (
+                <EquipeVazia>sem coordenador</EquipeVazia>
+              ) : (
+                coordenadores.map((m) => (
+                  <EquipePessoa key={m.usuario_id}>
+                    <EquipeAvatar $cor={corDaPessoa(m.usuario_id)}>
+                      {fotoUsuario(m.usuario_id) ? (
+                        <FotoCircular src={fotoUsuario(m.usuario_id)!} />
+                      ) : (
+                        iniciais(nomeUsuario(m.usuario_id))
+                      )}
+                    </EquipeAvatar>
+                    {nomeUsuario(m.usuario_id)}
+                  </EquipePessoa>
+                ))
+              )}
+            </EquipeGrupo>
+
+            <EquipeGrupo>
+              <EquipeRotulo>
+                Consultores
+                {teto > 0 && (
+                  <EquipeOcupacao $cheio={equipeCheia}>
+                    {consultores.length} de {teto}
+                  </EquipeOcupacao>
+                )}
+              </EquipeRotulo>
+              {consultores.length === 0 ? (
+                <EquipeVazia>ninguém alocado</EquipeVazia>
+              ) : (
+                consultores.map((m) => (
+                  <EquipePessoa key={`${m.usuario_id}-${m.entrou_em}`}>
+                    <EquipeAvatar $cor={corDaPessoa(m.usuario_id)}>
+                      {fotoUsuario(m.usuario_id) ? (
+                        <FotoCircular src={fotoUsuario(m.usuario_id)!} />
+                      ) : (
+                        iniciais(nomeUsuario(m.usuario_id))
+                      )}
+                    </EquipeAvatar>
+                    {nomeUsuario(m.usuario_id)}
+                  </EquipePessoa>
+                ))
+              )}
+            </EquipeGrupo>
+          </EquipeCabecalho>
         </PageHeaderText>
 
         <StatusRow>
@@ -372,6 +504,19 @@ export function ProjetoPage() {
 
       {erroStatus && <FormErrorText>{erroStatus}</FormErrorText>}
 
+      {pedidosPendentes > 0 && (
+        <AvisoBanner>
+          {pedidosPendentes} {pedidosPendentes === 1 ? "pedido de entrada" : "pedidos de entrada"}{" "}
+          aguardando resposta.{" "}
+          <AvisoLink
+            to="/vagas?aba=solicitacoes"
+            state={{ voltarPara: `/projetos/${projeto.id}`, voltarRotulo: `Voltar para ${projeto.nome}` }}
+          >
+            Responder
+          </AvisoLink>
+        </AvisoBanner>
+      )}
+
       {projeto.arquivado_em && (
         <AvisoBanner>Projeto arquivado, não aparece nas listagens normais.</AvisoBanner>
       )}
@@ -394,20 +539,44 @@ export function ProjetoPage() {
         </AvisoBanner>
       )}
 
+      {/* ⭐ Visitante da banca: quem foi ESCALADO para avaliar entra aqui para
+          votar, mas o §3 não lhe dá visão do projeto. Mostrar as outras abas
+          seria oferecer cinco portas e abrir uma — as quatro restantes
+          devolvem 404. */}
       <TabBar>
-        <TabLink to={`/projetos/${projeto.id}`} end>
-          Visão geral
-        </TabLink>
-        <TabLink to={`/projetos/${projeto.id}/cronograma`}>Cronograma</TabLink>
-        {/* Depois do Cronograma: é lá que a banca é marcada, e daqui se vê
-            como ela foi. Antes de Tarefas porque a banca é marco do projeto,
-            não rotina de execução. */}
-        <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
-        <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
-        <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
+        {projeto.apenas_banca ? (
+          <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
+        ) : (
+          <>
+            <TabLink to={`/projetos/${projeto.id}`} end>
+              Visão geral
+            </TabLink>
+            <TabLink to={`/projetos/${projeto.id}/cronograma`}>Cronograma</TabLink>
+            {/* Depois do Cronograma: é lá que a banca é marcada, e daqui se vê
+                como ela foi. Antes de Tarefas porque a banca é marco do projeto,
+                não rotina de execução. */}
+            <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
+            <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
+            <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
+          </>
+        )}
       </TabBar>
 
       <Outlet context={contexto} />
+
+      {editandoProjeto && token && (
+        <EditarProjetoModal
+          projeto={projeto}
+          usuarios={usuarios}
+          frentes={frentes}
+          token={token}
+          onClose={() => setEditandoProjeto(false)}
+          onSalvo={async () => {
+            setEditandoProjeto(false);
+            await carregar();
+          }}
+        />
+      )}
 
       {confirmandoArquivamento && (
         <ConfirmarModal
@@ -426,8 +595,20 @@ export function ProjetoPage() {
       {confirmandoExclusao && (
         <ConfirmarModal
           titulo="Apagar projeto para sempre"
-          mensagem={`Apagar "${projeto.nome}" para sempre? Tarefas, bancas, avaliações, cronograma e histórico do projeto são todos apagados junto. Essa ação não pode ser desfeita.`}
+          mensagem={
+            <>
+              <p>
+                Tarefas, bancas, avaliações, cronograma, comentários e histórico deste projeto são
+                apagados junto. <strong>Não há como desfazer.</strong>
+              </p>
+              <p>Arquivar já tira o projeto das listagens sem apagar nada — considere antes.</p>
+            </>
+          }
+          /* O nome do projeto digitado à mão: é o que obriga a diretoria a
+             conferir QUAL projeto está prestes a sumir. */
+          confirmacaoTexto={projeto.nome}
           rotuloConfirmar="Apagar para sempre"
+          rotuloProcessando="Apagando…"
           onCancelar={() => setConfirmandoExclusao(false)}
           onConfirmar={confirmarExclusao}
         />

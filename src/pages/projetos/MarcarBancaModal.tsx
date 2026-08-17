@@ -129,7 +129,13 @@ export function MarcarBancaModal({
   const foraDaJanela = !!fimJanela && dia > fimJanela;
   const emCimaDaHora =
     jaTemData && folgaAtual !== null && folgaAtual <= FOLGA_LIVRE_DIAS_UTEIS;
-  const exigeJustificativa = jaTemData || foraDaJanela;
+  // `choque` só é conhecido depois de uma tentativa recusada pelo backend
+  // (não dá pra prever colisão de horário no cliente), por isso entra aqui
+  // e não em `foraDaJanela`/`jaTemData`: sem ele, marcar uma banca NOVA
+  // dentro da janela nunca mostrava o campo de justificativa, e o botão
+  // "Pedir exceção à diretoria" ficava desabilitado para sempre, sem
+  // nenhum jeito de escrever o motivo que ele mesmo pede para preencher.
+  const exigeJustificativa = jaTemData || foraDaJanela || choque;
   const exigeDiretoria = foraDaJanela || emCimaDaHora;
   const bloqueado = exigeDiretoria && !ehDiretor;
 

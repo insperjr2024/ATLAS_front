@@ -34,15 +34,15 @@ import { ExecucaoAba } from "@/pages/monitoramento/ExecucaoAba";
 import { AlocacaoAba } from "@/pages/monitoramento/AlocacaoAba";
 import { AtrasosAba } from "@/pages/monitoramento/AtrasosAba";
 import { GraficosAba } from "@/pages/monitoramento/GraficosAba";
-import { AvaliacaoDesempenho } from "@/pages/avaliacao-desempenho/AvaliacaoDesempenho";
+import { HistoricoAba } from "@/pages/monitoramento/HistoricoAba";
+import { AvaliacaoDesempenhoHub } from "@/pages/avaliacao-desempenho/AvaliacaoDesempenhoHub";
 import { MeuRelatorio } from "@/pages/avaliacao-desempenho/MeuRelatorio";
 import { MeusMentorados } from "@/pages/avaliacao-desempenho/MeusMentorados";
 import { PainelDesempenho } from "@/pages/avaliacao-desempenho/painel/PainelDesempenho";
-import { PainelAvaliadores } from "@/pages/avaliacao-desempenho/painel/PainelAvaliadores";
-import { PainelAvaliados } from "@/pages/avaliacao-desempenho/painel/PainelAvaliados";
+import { PainelAvaliacoes } from "@/pages/avaliacao-desempenho/painel/PainelAvaliacoes";
 import { PainelRelatorio } from "@/pages/avaliacao-desempenho/painel/PainelRelatorio";
 import { PainelLotes } from "@/pages/avaliacao-desempenho/painel/PainelLotes";
-import { PainelMentoria } from "@/pages/avaliacao-desempenho/painel/PainelMentoria";
+import { PainelPdi } from "@/pages/avaliacao-desempenho/painel/PainelPdi";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 import { CronogramasGeraisAba } from "@/pages/monitoramento/CronogramasGeraisAba";
@@ -69,8 +69,7 @@ export default function App() {
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />
                 <Route path="/meu-perfil" element={<MeuPerfil />} />
-                <Route path="/vagas" element={<Vagas />} />
-              {/* /calendario agora agrega os 4 tipos; a visão
+              {/* /calendario agora agrega os 4 tipos (§6.5); a visão
                   só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
               {/* /calendario agrega os 4 tipos; a página só-de-bancas
                   foi removida, o filtro "Banca" aqui já cobre o mesmo caso
@@ -83,6 +82,7 @@ export default function App() {
               <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
+              <Route path="/vagas" element={<Vagas />} />
               {/* Criar projeto é a caixa de permissão `pode_criar_projeto` —
                   a mesma que decide o botão em `ProjetosList` e que o backend
                   já checava (`require_pode_criar_projeto`). Guard por posição
@@ -122,6 +122,7 @@ export default function App() {
                   <Route path="alocacao" element={<AlocacaoAba />} />
                   <Route path="atrasos" element={<AtrasosAba />} />
                   <Route path="graficos" element={<GraficosAba />} />
+                <Route path="historico" element={<HistoricoAba />} />
                   <Route path="tarefas" element={<TarefasGeraisAba />} />
                   <Route path="cronogramas" element={<CronogramasGeraisAba />} />
                 </Route>
@@ -129,31 +130,47 @@ export default function App() {
 
               {/* Avaliação de Desempenho (periódica/finalização), não
                   confundir com /avaliacoes (feedback de banca) nem com
-                  /dashboard (Desempenho.tsx, % de bancas atendidas). */}
-              <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenho />} />
+                  /dashboard (Desempenho.tsx, % de bancas atendidas).
+                  Só quem pode ser avaliado por um colega (regra 2.3 é
+                  sempre via `projeto_membro.papel` = coordenador/consultor;
+                  diretor e gerente nunca entram nessa tabela, então nunca
+                  teriam nada pra responder aqui). */}
+              <Route element={<RequirePosicao posicoes={["coordenador", "consultor"]} />}>
+                <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenhoHub />} />
+              </Route>
+
+              {/* Sem guard e sem link em nenhum menu, igual já era antes do
+                  hub existir: ninguém vê o próprio relatório de desempenho,
+                  só o mentor vê o do mentorado (`MeusMentorados`, mais
+                  abaixo) e a diretoria/gerência vê tudo pelo painel admin. */}
               <Route path="/avaliacao-desempenho/relatorio" element={<MeuRelatorio />} />
 
-              {/* Mentor pode ser coordenador, gerente ou diretor (2026-08-06) —
-                  não só coordenador. */}
+              {/* Mentoria fica de propósito FORA do hub acima — vínculo
+                  independente do projeto, escolhido pela diretoria, sem
+                  relação com o processo de avaliação (ver
+                  `AvaliacaoDesempenhoHub`). Mentor pode ser coordenador,
+                  gerente ou diretor (2026-08-06). */}
               <Route element={<RequirePosicao posicoes={["coordenador", "gerente", "diretor"]} />}>
                 <Route path="/avaliacao-desempenho/mentorados" element={<MeusMentorados />} />
               </Route>
 
               <Route element={<AdminRoute permissao="pode_administrar_desempenho" />}>
                 <Route path="/avaliacao-desempenho/painel" element={<PainelDesempenho />}>
-                  <Route index element={<Navigate to="avaliadores" replace />} />
-                  <Route path="avaliadores" element={<PainelAvaliadores />} />
-                  <Route path="avaliados" element={<PainelAvaliados />} />
+                  {/* Relatórios é a entrada padrão: "me fale sobre esta
+                      pessoa" é a pergunta mais comum, não "me dê o log
+                      bruto" (essa é Avaliações, a auditoria). */}
+                  <Route index element={<Navigate to="relatorio" replace />} />
                   <Route path="relatorio" element={<PainelRelatorio />} />
+                  <Route path="avaliacoes" element={<PainelAvaliacoes />} />
                   <Route path="lotes" element={<PainelLotes />} />
-                  <Route path="mentoria" element={<PainelMentoria />} />
+                  <Route path="pdi" element={<PainelPdi />} />
                 </Route>
               </Route>
 
               {/* Fora do shell do painel acima, sem o TabBar do resto do
                   painel. Editar os formulários é mais sensível que administrar
-                  lotes/mentoria/pdi (muda o que todo mundo é avaliado), então
-                  tem caixa de cargo própria. */}
+                  lotes/PDI (muda o que todo mundo é avaliado), então tem
+                  caixa de cargo própria. */}
               <Route element={<AdminRoute permissao="pode_editar_formularios_desempenho" />}>
                 <Route path="/avaliacao-desempenho/painel/formularios" element={<PainelFormularios />} />
               </Route>

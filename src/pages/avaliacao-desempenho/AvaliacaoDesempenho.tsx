@@ -6,6 +6,7 @@ import { getProjetos } from "@/lib/projetos";
 import { NotaButtons, NotaButtonsGroup } from "@/components/desempenho/NotaButtons";
 import type { DesempenhoFilaItem, DesempenhoFormulario, DesempenhoNotaInput, DesempenhoTipo } from "@/types/desempenho";
 import type { ProjetoResumo } from "@/types/projeto";
+import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import {
   ErrorBlock,
   ErrorText,
@@ -15,12 +16,7 @@ import {
   PageCardContent,
   PageCardHeader,
   PageCardTitle,
-  PageHeader,
-  PageHeaderText,
   PageLoadingBlock,
-  PageStack,
-  PageSubtitle,
-  PageTitle,
 } from "@/styles/page.styled";
 import {
   AvisoFechadoCard,
@@ -425,14 +421,7 @@ export function AvaliacaoDesempenho() {
   const mostrarBotaoFinalizarAgora = algumTipoConcluido && algumTipoPendente;
 
   return (
-    <PageStack>
-      <PageHeader>
-        <PageHeaderText>
-          <PageTitle>Avaliação de Desempenho</PageTitle>
-          <PageSubtitle>Avalie os colegas do seu projeto ao longo do semestre.</PageSubtitle>
-        </PageHeaderText>
-      </PageHeader>
-
+    <>
       {usuario && (
         <InfoBannerCard>
           <InfoBannerTitulo>Olá, {usuario.nome.split(" ")[0]}!</InfoBannerTitulo>
@@ -547,8 +536,16 @@ export function AvaliacaoDesempenho() {
                 const fechado = !item.aberto;
                 const concluido = !!rascunhos[chave(item)];
                 return (
-                  <FilaItem
+                  <MotivoDesabilitado
                     key={chave(item)}
+                    motivo={
+                      fechado
+                        ? "O lote de avaliação foi fechado antes de você responder, e a plataforma não aceita mais o envio. " +
+                          "Avise a diretoria se esta avaliação ainda precisa entrar."
+                        : null
+                    }
+                  >
+                  <FilaItem
                     type="button"
                     $clicavel={!fechado}
                     disabled={fechado}
@@ -562,6 +559,7 @@ export function AvaliacaoDesempenho() {
                       {fechado ? "Fechado" : concluido ? "Concluída · editar" : "Pendente"}
                     </PageBadge>
                   </FilaItem>
+                  </MotivoDesabilitado>
                 );
               })}
             </FilaList>
@@ -569,9 +567,28 @@ export function AvaliacaoDesempenho() {
             {erroForm && <FormErrorText>{erroForm}</FormErrorText>}
             {erroEnvio && <FormErrorText>{erroEnvio}</FormErrorText>}
 
-            <PageButton type="button" disabled={!prontoParaEnviar || enviandoTudo} onClick={handleEnviarTodas}>
-              {enviandoTudo ? "Enviando..." : "Enviar avaliações"}
-            </PageButton>
+            {/* ⭐ Quantas faltam, e não só que falta. O envio é tudo-ou-nada,
+                então o número é a única informação capaz de dizer quanto ainda
+                há pela frente — sem ele, quem tem 12 colegas para avaliar não
+                sabe se parou na segunda ou na décima primeira. */}
+            <MotivoDesabilitado
+              motivo={
+                prontoParaEnviar
+                  ? null
+                  : totalNaRodada === 0
+                    ? "Não há ninguém para avaliar nesta rodada."
+                    : `Faltam ${totalNaRodada - concluidosNaRodada} de ${totalNaRodada} — ` +
+                      "as avaliações são enviadas todas juntas, então preencha as que ficaram abertas na lista acima."
+              }
+            >
+              <PageButton
+                type="button"
+                disabled={!prontoParaEnviar || enviandoTudo}
+                onClick={handleEnviarTodas}
+              >
+                {enviandoTudo ? "Enviando..." : "Enviar avaliações"}
+              </PageButton>
+            </MotivoDesabilitado>
           </PageCardContent>
         </PageCard>
       )}
@@ -703,6 +720,6 @@ export function AvaliacaoDesempenho() {
           </PageCardContent>
         </PageCard>
       )}
-    </PageStack>
+    </>
   );
 }

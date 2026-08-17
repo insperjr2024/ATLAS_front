@@ -15,6 +15,7 @@ import {
   updatePastaPdi,
 } from "@/lib/desempenho-pdi";
 import { formatarData } from "@/lib/projetos";
+import { FotoCircular } from "@/components/Avatar";
 import type { DesempenhoMentoria } from "@/types/desempenho";
 import type { UsuarioResumo } from "@/types/auth";
 import type {
@@ -44,8 +45,8 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  ModalOverlay,
   ModalTitle,
+  ModalOverlay,
 } from "@/styles/modal.styled";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
@@ -80,7 +81,31 @@ function iniciais(nome: string | null | undefined): string {
   return (primeira + ultima).toUpperCase();
 }
 
-export function PainelMentoria() {
+const ROTULO_TIPO: Record<DesempenhoPdiPastaTipo, string> = {
+  inicial: "PDI inicial (só a diretoria envia)",
+  encontro: "Encontro (o mentor envia, pelo mentorado)",
+};
+
+const ROTULO_TIPO_CURTO: Record<DesempenhoPdiPastaTipo, string> = {
+  inicial: "Inicial",
+  encontro: "Encontro",
+};
+
+const ROTULO_TIPO_ARQUIVO: Record<DesempenhoPdiItemTipoArquivo, string> = {
+  documento: "Documento (PDF/Word)",
+  foto: "Foto (JPG/PNG)",
+  qualquer: "Qualquer arquivo",
+};
+
+/**
+ * Aba PDI do painel: quem mentora quem, e as pastas/prazos de PDI. Os dois
+ * ficam juntos aqui porque, na prática, é a diretoria olhando pra mentoria
+ * como um todo — mesmo a alocação (quem mentora quem) sendo independente do
+ * conteúdo das pastas (que é um template global, não pertence a nenhum
+ * vínculo específico; ver `pode_enviar_pdi` no backend, a única ponte real
+ * entre os dois é essa permissão, não um dado compartilhado).
+ */
+export function PainelPdi() {
   const { token } = useAuth();
   const [mentorias, setMentorias] = useState<DesempenhoMentoria[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
@@ -217,8 +242,6 @@ export function PainelMentoria() {
         </PageCardContent>
       </PageCard>
 
-      <PastasPdiCard />
-
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>
@@ -255,7 +278,11 @@ export function PainelMentoria() {
                 <MentoriaGrupo key={lista[0].mentor_id}>
                   <MentoriaCabecalho>
                     <Iniciais $mentor aria-hidden>
-                      {iniciais(lista[0].mentor_nome)}
+                      {lista[0].mentor_foto ? (
+                        <FotoCircular src={lista[0].mentor_foto} />
+                      ) : (
+                        iniciais(lista[0].mentor_nome)
+                      )}
                     </Iniciais>
                     <div>
                       <MentoriaGrupoTitulo>{lista[0].mentor_nome}</MentoriaGrupoTitulo>
@@ -268,7 +295,13 @@ export function PainelMentoria() {
                   <MentoradosLista>
                     {lista.map((m) => (
                       <MentoriaLinha key={m.id}>
-                        <Iniciais aria-hidden>{iniciais(m.mentorado_nome)}</Iniciais>
+                        <Iniciais aria-hidden>
+                          {m.mentorado_foto ? (
+                            <FotoCircular src={m.mentorado_foto} />
+                          ) : (
+                            iniciais(m.mentorado_nome)
+                          )}
+                        </Iniciais>
                         <span>{m.mentorado_nome}</span>
                         <PageButtonSm $variant="outline" type="button" onClick={() => setParaRemover(m)}>
                           Remover
@@ -282,6 +315,8 @@ export function PainelMentoria() {
           )
         )}
       </PageCard>
+
+      <PastasPdiCard />
 
       {paraRemover && (
         <ConfirmarModal
@@ -298,29 +333,14 @@ export function PainelMentoria() {
 
 /* ------------------------------------------------------------------ */
 
-const ROTULO_TIPO: Record<DesempenhoPdiPastaTipo, string> = {
-  inicial: "PDI inicial (só a diretoria envia)",
-  encontro: "Encontro (o mentor envia, pelo mentorado)",
-};
-
-const ROTULO_TIPO_CURTO: Record<DesempenhoPdiPastaTipo, string> = {
-  inicial: "Inicial",
-  encontro: "Encontro",
-};
-
-const ROTULO_TIPO_ARQUIVO: Record<DesempenhoPdiItemTipoArquivo, string> = {
-  documento: "Documento (PDF/Word)",
-  foto: "Foto (JPG/PNG)",
-  qualquer: "Qualquer arquivo",
-};
-
 /**
- * As pastas de PDI, card do meio entre "Alocar mentoria" e "Mentorias
- * ativas". Cada pasta é um cartão curto na grade (número, nome, prazo), no
- * espírito de um board de etapas de processo seletivo — abrir UMA pasta pra
- * editar expande só o cartão dela; as outras continuam fechadas do lado.
- * Criar pasta nova saiu do card fixo de antes e virou modal, pra grade não
- * competir de saída com um formulário sempre aberto.
+ * As pastas de PDI — prazos e documentos exigidos (ex.: "Encontro 3", até
+ * tal data). Componente separado, com o próprio fetch: um template global,
+ * não pertence a nenhum vínculo de mentoria específico. Card no espírito de
+ * um board de etapas de processo seletivo — abrir UMA pasta pra editar
+ * expande só o cartão dela; as outras continuam fechadas do lado. Criar
+ * pasta nova é modal, pra grade não competir de saída com um formulário
+ * sempre aberto.
  */
 function PastasPdiCard() {
   const { token } = useAuth();

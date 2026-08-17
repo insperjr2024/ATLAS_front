@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RealizarBancaModal } from "./RealizarBancaModal";
 import { AlocarPessoasModal } from "./AlocarPessoasModal";
+import { Desempenho } from "./Desempenho";
 import { Clock, Plus, User, Users, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -18,6 +19,7 @@ import {
   getEscoposVendidos,
   getFrentes,
   podeGerenciarBanca,
+  pushAlocacao,
   realizarBanca,
   registrarDescricaoCoordenador,
   registrarResultado,
@@ -120,6 +122,7 @@ import {
   ModalFooterSplit,
   NarrowModalContent,
   WideModalContent,
+  PageHeaderAcoes,
   PageHeaderRow,
   PageHeaderText,
   PageHeading,
@@ -155,7 +158,7 @@ import {
   BancaAcoes,
 } from "./Bancas.styled";
 
-type AbaBancas = "meus" | "alocacao" | "avaliacao" | "calendario";
+type AbaBancas = "meus" | "alocacao" | "avaliacao" | "desempenho" | "calendario";
 
 function porDataMaisProxima(a: Banca, b: Banca): number {
   return new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime();
@@ -208,10 +211,20 @@ export function Bancas() {
   const [bancaAlocar, setBancaAlocar] = useState<Banca | null>(null);
   /** ⭐ A banca cujo resultado a diretoria vai registrar à mão (§8). */
   const [bancaResultado, setBancaResultado] = useState<Banca | null>(null);
-  const [aba, setAba] = useState<AbaBancas>("alocacao");
+  // `?aba=calendario` é o link do botão "Bancas" em /calendario — sem ler
+  // a query aqui, quem clicasse lá sempre caía na aba padrão (alocação) e
+  // precisava trocar de aba à mão.
+  const ABAS_VALIDAS: AbaBancas[] = ["meus", "alocacao", "avaliacao", "desempenho", "calendario"];
+  const abaDaQuery = searchParams.get("aba") as AbaBancas | null;
+  const [aba, setAba] = useState<AbaBancas>(
+    abaDaQuery && ABAS_VALIDAS.includes(abaDaQuery) ? abaDaQuery : "alocacao",
+  );
   const [avisoErro, setAvisoErro] = useState("");
   const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
   const [bancaConvidar, setBancaConvidar] = useState<Banca | null>(null);
+  const [distribuindo, setDistribuindo] = useState(false);
+  /** O que a distribuição fez — dito em números, não em "pronto!". */
+  const [resultadoPush, setResultadoPush] = useState("");
 
   const podeAgendar = !!usuario?.permissoes.pode_definir_cronograma;
   const ehDiretor = usuario?.posicao === "diretor";
@@ -376,6 +389,33 @@ export function Bancas() {
     recarregar();
   }
 
+  /** ⭐ Roda na hora o mesmo rodízio do agendador das 6h (§8).
+   *
+   *  Diz quantas bancas e quantas pessoas — "nenhuma banca precisava" é
+   *  resultado legítimo e frequente (só entram bancas dos próximos 7 dias
+   *  ainda abaixo do piso), e sem o texto o clique pareceria não ter feito
+   *  nada. */
+  async function handleDistribuirAgora() {
+    if (!token) return;
+    setDistribuindo(true);
+    setResultadoPush("");
+    setAvisoErro("");
+    try {
+      const preenchidas = await pushAlocacao(token);
+      const pessoas = preenchidas.reduce((total, b) => total + b.usuarios_alocados.length, 0);
+      setResultadoPush(
+        preenchidas.length === 0
+          ? "Nenhuma banca dos próximos 7 dias precisava de gente."
+          : `${preenchidas.length} banca(s) preenchida(s), ${pessoas} pessoa(s) escalada(s).`,
+      );
+      recarregar();
+    } catch (err) {
+      setAvisoErro(err instanceof Error ? err.message : "Erro ao distribuir avaliadores");
+    } finally {
+      setDistribuindo(false);
+    }
+  }
+
   async function handleDesalocar(bancaId: number) {
     const candidatura = candidaturaDe(bancaId);
     if (!token || !candidatura) return;
@@ -427,7 +467,7 @@ export function Bancas() {
   }
 
   function handleExcluir(banca: Banca) {
-    if (!token || !podeGerenciarBanca(banca, usuarioLogado.id)) return;
+    if (!token || !podeGerenciarBanca(banca, usuarioLogado.id, ehDiretor)) return;
     setBancaParaExcluir(banca);
   }
 
@@ -466,16 +506,34 @@ export function Bancas() {
             <PageSubheading>
               Bancas dos próximos 7 dias que ainda estiverem sem gente são preenchidas
               automaticamente todo dia às 6h, por rodízio e priorizando a mesma frente. Use
-              “Alocar pessoas” num card para escalar alguém antes disso.
+              “Distribuir agora” para rodar a mesma distribuição na hora, ou “Alocar pessoas”
+              num card para escalar alguém específico.
             </PageSubheading>
           )}
+          {resultadoPush && <PageSubheading>{resultadoPush}</PageSubheading>}
         </PageHeaderText>
-        {podeAgendar && (
-          <PageButton type="button" onClick={() => setCriarAberto(true)}>
-            <Plus size={16} />
-            Criar banca
-          </PageButton>
-        )}
+        <PageHeaderAcoes>
+          {/* ⭐ A distribuição automática existia só no agendador das 6h: a
+              rota estava pronta e nenhuma tela a chamava, então a diretoria não
+              tinha como rodá-la ao fechar uma escala em cima da hora. */}
+          {ehDiretor && (
+            <PageButton
+              type="button"
+              $variant="outline"
+              disabled={distribuindo}
+              onClick={handleDistribuirAgora}
+            >
+              <Users size={16} />
+              {distribuindo ? "Distribuindo…" : "Distribuir agora"}
+            </PageButton>
+          )}
+          {podeAgendar && (
+            <PageButton type="button" onClick={() => setCriarAberto(true)}>
+              <Plus size={16} />
+              Criar banca
+            </PageButton>
+          )}
+        </PageHeaderAcoes>
       </PageHeaderRow>
 
       <TabBar>
@@ -491,9 +549,10 @@ export function Bancas() {
         </TabButton>
         <TabButton type="button" $ativa={aba === "avaliacao"} onClick={() => setAba("avaliacao")}>
           Avaliação
-          <TabCount>
-            {paraAvaliar.length + jaAvaliadas.length + realizadasSemAvaliador.length}
-          </TabCount>
+          <TabCount>{paraAvaliar.length + realizadasSemAvaliador.length}</TabCount>
+        </TabButton>
+        <TabButton type="button" $ativa={aba === "desempenho"} onClick={() => setAba("desempenho")}>
+          Desempenho
         </TabButton>
         {/* Por último: as três primeiras são filas de TRABALHO ("o que eu
             preciso fazer"); esta é consulta ("esse horário está livre?"). */}
@@ -606,11 +665,14 @@ export function Bancas() {
             onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
             onVerMais={setBancaDetalhe}
           />
-          {/* Realizada, sem resultado e sem avaliador, ver
-              `realizadasSemAvaliador`. Sem ação por enquanto: registrar
-              resultado ainda não tem tela (o `registrarResultado` de
-              `lib/bancas.ts` não é chamado por ninguém). Aparecer já resolve o
-              pior, que era sumir sem deixar rastro. */}
+          {/* Realizada, sem resultado e sem avaliador — ver
+              `realizadasSemAvaliador`. Estas não caem em nenhuma das outras
+              seções: as de alocação exigem status aberto, e a de avaliação
+              pendente só lista quem é avaliador. Sem esta seção elas existiam
+              no banco e a tela inteira as ignorava.
+
+              Quem chega aqui registra o resultado pela própria seção — só a
+              diretoria, já que sem avaliador não há votação de onde apurar. */}
           {realizadasSemAvaliador.length > 0 && (
             <SecaoBancas
               bancaDestacada={bancaDestacada}
@@ -622,22 +684,17 @@ export function Bancas() {
               usuarioId={usuario.id}
               gerenciar={podeAgendar}
               ehDiretorLista={ehDiretor}
+              onRegistrarResultado={setBancaResultado}
               onVerMais={setBancaDetalhe}
             />
           )}
-          <SecaoBancas
-          bancaDestacada={bancaDestacada}
-          refDestacada={refDestacada}
-            titulo="Avaliadas"
-            bancas={jaAvaliadas}
-            contexto={contexto}
-            acao="nenhuma"
-            usuarioId={usuario.id}
-            gerenciar={podeAgendar}
-            onVerMais={setBancaDetalhe}
-          />
+          {/* "Avaliadas" saiu daqui — virou o histórico da aba Desempenho, pra
+              não mostrar a mesma banca avaliada em dois lugares diferentes.
+              Esta aba fica só com o que pede ação; o retrospecto mora lá. */}
         </SectionGroup>
       )}
+
+      {aba === "desempenho" && <Desempenho embutido />}
 
       <VerMaisModal
         banca={bancaDetalhe}
@@ -815,7 +872,10 @@ function SecaoBancas({
               const diaSemana = dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
               const hora = dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
               const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
-              const podeGerenciar = gerenciar && usuarioId != null && podeGerenciarBanca(banca, usuarioId);
+              const podeGerenciar =
+                gerenciar &&
+                usuarioId != null &&
+                podeGerenciarBanca(banca, usuarioId, ehDiretorLista);
               // Banca legada (sem escopo vendido vinculado) mostra o escopo do
               // catálogo, singular, como sempre foi. Banca costurada a
               // escopo(s) do projeto mostra todos os que ela cobre, uma
@@ -1046,7 +1106,7 @@ function SecaoBancas({
                               : acao === "alocar"
                                 ? "Alocar-se"
                                 : acao === "deslocar"
-                                  ? "Deslocar-se"
+                                  ? "Desalocar-se"
                                   : "Avaliar"}
                         </PageButtonSm>
                       </MotivoDesabilitado>
@@ -1079,7 +1139,15 @@ function SecaoTrocas({
   onConfirmar: (solicitacaoId: number) => void;
   onCancelar: (solicitacaoId: number) => void;
 }) {
-  const pendentes = solicitacoes.filter((s) => s.status === "pendente");
+  // Defesa extra: o backend já cancela sozinho a troca pendente assim que a
+  // banca é marcada realizada (e filtra de novo na listagem), mas o front
+  // não deve confiar cegamente nisso — se a banca já não aceita mais
+  // inscrição, a troca não faz sentido aparecer aqui de jeito nenhum.
+  const pendentes = solicitacoes.filter((s) => {
+    if (s.status !== "pendente") return false;
+    const banca = bancas.find((b) => b.id === s.banca_id);
+    return !banca || aceitaInscricao(banca.status);
+  });
   // Convite pra outra pessoa não aparece pra mais ninguém: só quem pediu
   // ("Meu pedido") e quem foi convidado ("Convite pra você"), o resto do
   // pool nem sabe que existe (o backend também recusaria a confirmação).
@@ -1577,7 +1645,7 @@ function VerMaisModal({
 }) {
   if (!banca) return null;
 
-  const podeGerenciar = podeGerenciarBanca(banca, usuarioId);
+  const podeGerenciar = podeGerenciarBanca(banca, usuarioId, ehDiretor);
   // O coordenador não é avaliador da própria banca ("ninguém avalia o
   // próprio grupo"), no lugar do formulário de notas, ele só registra este
   // relato livre, e só depois que a banca de fato aconteceu.

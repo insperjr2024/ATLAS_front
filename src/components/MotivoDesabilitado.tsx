@@ -6,17 +6,21 @@ const MARGEM = 8;
 
 interface Props {
   /**
-   * Por que o controle está desabilitado.
+   * Por que o controle está desabilitado — ou, quando o filho não é um botão
+   * desabilitado, a explicação que o ícone de informação existe para dar.
    *
    * ⭐ Escreva as três coisas, nessa ordem: **o que está bloqueado, por quê, e
    * o que fazer agora.** É a terceira que faz a pessoa parar de perguntar —
    * "Prazo esgotado" diz o estado e deixa quem leu no mesmo lugar de antes.
    *
+   * `ReactNode`, não só texto: uma legenda com várias regras cabe como lista,
+   * sem precisar virar uma frase só separada por ponto e vírgula.
+   *
    * Vazio (ou nulo) = não há motivo a explicar, e o componente sai de cena
    * devolvendo o filho puro. É o que permite usá-lo em botão que só às vezes
    * está desabilitado, sem `if` na chamada.
    */
-  motivo?: string | null;
+  motivo?: ReactNode;
   children: ReactNode;
 }
 
@@ -36,25 +40,22 @@ interface Props {
 export function MotivoDesabilitado({ motivo, children }: Props) {
   const id = useId();
   const balaoRef = useRef<HTMLSpanElement>(null);
+  const envolucroRef = useRef<HTMLSpanElement>(null);
   const [aberto, setAberto] = useState(false);
 
   /**
-   * ⭐ **O empurrão que mantém o balão dentro da tela.**
+   * ⭐ **A posição do balão na JANELA, não no card.**
    *
-   * Centralizado no botão, ele estoura a janela sempre que o botão está perto
-   * de uma borda — e estes controles vivem no canto direito de cards, então
-   * era o caso comum, não a exceção. Em telas estreitas estoura dos dois
-   * lados.
-   *
-   * Só o eixo horizontal precisa disto: o balão abre para cima, e a altura de
-   * um card nunca chega ao topo da janela.
+   * Como o balão é `position: fixed` (ver o styled — é o que o tira do
+   * `overflow: hidden` dos cards), o CSS não sabe mais sozinho onde ele fica.
+   * Estas coordenadas saem da medição do gatilho, feita na hora de abrir.
    */
-  const [deslocamento, setDeslocamento] = useState(0);
+  const [posicao, setPosicao] = useState({ esquerda: 0, baixo: 0 });
 
   /**
    * ⚠ Medido no evento, não num efeito — a regra `set-state-in-effect` do lint
    * proíbe o segundo, e aqui o primeiro é melhor de qualquer forma: dá para
-   * corrigir a posição ANTES de o balão ficar visível, sem o pulo de um quadro
+   * calcular a posição ANTES de o balão ficar visível, sem o pulo de um quadro
    * mal posicionado.
    *
    * O balão fica sempre no DOM (escondido por `visibility`) justamente para
@@ -62,25 +63,27 @@ export function MotivoDesabilitado({ motivo, children }: Props) {
    * caixa, e não haveria o que medir.
    */
   function abrir() {
+    const alvo = envolucroRef.current;
     const balao = balaoRef.current;
-    if (balao) {
-      const caixa = balao.getBoundingClientRect();
-      // Desconta o empurrão que já está aplicado: sem isso cada abertura
-      // corrigiria em cima da correção anterior e o balão iria embora andando.
-      const esquerdaNeutra = caixa.left - deslocamento;
-      const direitaNeutra = caixa.right - deslocamento;
+    if (alvo && balao) {
+      const gatilho = alvo.getBoundingClientRect();
+      const largura = balao.offsetWidth;
 
-      let ajuste = 0;
-      if (direitaNeutra > window.innerWidth - MARGEM) {
-        ajuste = window.innerWidth - MARGEM - direitaNeutra;
-      }
+      // Centralizado no gatilho, e então trazido de volta para dentro da
+      // janela: estes controles vivem no canto de cards, então estourar a
+      // borda é o caso comum, não a exceção.
+      let esquerda = gatilho.left + gatilho.width / 2 - largura / 2;
+      esquerda = Math.min(esquerda, window.innerWidth - largura - MARGEM);
       // A esquerda vem depois de propósito: numa janela estreita demais para o
       // balão, os dois lados estouram e encostar na esquerda é o que mantém o
       // começo da frase legível.
-      if (esquerdaNeutra + ajuste < MARGEM) {
-        ajuste = MARGEM - esquerdaNeutra;
-      }
-      setDeslocamento(ajuste);
+      esquerda = Math.max(esquerda, MARGEM);
+
+      // `bottom` medido a partir do rodapé da janela: é o que faz o balão
+      // crescer para CIMA conforme o texto, sem cobrir o gatilho.
+      const baixo = window.innerHeight - gatilho.top + MARGEM;
+
+      setPosicao({ esquerda, baixo });
     }
     setAberto(true);
   }
@@ -89,6 +92,7 @@ export function MotivoDesabilitado({ motivo, children }: Props) {
 
   return (
     <Envolucro
+      ref={envolucroRef}
       tabIndex={0}
       aria-describedby={aberto ? id : undefined}
       onMouseEnter={abrir}
@@ -97,7 +101,14 @@ export function MotivoDesabilitado({ motivo, children }: Props) {
       onBlur={() => setAberto(false)}
     >
       {children}
-      <Balao ref={balaoRef} id={id} role="tooltip" $aberto={aberto} $deslocamento={deslocamento}>
+      <Balao
+        ref={balaoRef}
+        id={id}
+        role="tooltip"
+        $aberto={aberto}
+        $esquerda={posicao.esquerda}
+        $baixo={posicao.baixo}
+      >
         {motivo}
       </Balao>
     </Envolucro>

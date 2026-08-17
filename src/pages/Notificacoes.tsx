@@ -4,7 +4,9 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   Bell,
+  CalendarCheck,
   CalendarClock,
+  CalendarPlus,
   CalendarSync,
   CalendarX,
   Check,
@@ -19,13 +21,22 @@ import {
   NotebookPen,
   SlidersHorizontal,
   Star,
+  Trash2,
   Truck,
   UserPlus,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificacoes } from "@/context/NotificacoesContext";
-import { getNotificacoes, marcarNotificacaoLida, marcarTodasLidas } from "@/lib/notificacoes";
+import {
+  excluirNotificacao,
+  getNotificacoes,
+  limparNotificacoesLidas,
+  marcarNotificacaoLida,
+  marcarTodasLidas,
+} from "@/lib/notificacoes";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Usuario } from "@/types/auth";
 import type { Notificacao, TipoNotificacao } from "@/types/notificacao";
 import {
@@ -82,7 +93,14 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   banca_hoje: { icone: CalendarClock, rotulo: "Banca hoje", alerta: false },
   alocado_em_projeto: { icone: UserPlus, rotulo: "Alocado em projeto", alerta: false },
   entrega_registrada: { icone: CheckCircle2, rotulo: "Entrega registrada", alerta: false },
-  // Vindos do módulo de bancas, que passou a escrever nesta mesma central.
+  // Pedido de entrada em projeto (§7.3) — tanto o aviso pra quem coordena
+  // quanto a resposta pra quem pediu usam este mesmo tipo.
+  solicitacao_projeto: { icone: Users, rotulo: "Pedido de entrada em projeto", alerta: false },
+  // Pedido de dias de ajuste no cronograma (§13). O pedido é alerta porque
+  // espera decisão de quem recebe; a resposta não é, já foi resolvida.
+  reajuste_solicitado: { icone: CalendarPlus, rotulo: "Pedido de dias", alerta: true },
+  reajuste_respondido: { icone: CalendarCheck, rotulo: "Pedido de dias respondido", alerta: false },
+  // Vindos do módulo de bancas (§8), que passou a escrever nesta mesma central.
   troca_banca: { icone: ArrowLeftRight, rotulo: "Troca de banca", alerta: false },
   avaliacao_pendente: { icone: ClipboardCheck, rotulo: "Avaliação pendente", alerta: true },
   descricao_coordenador_pendente: { icone: NotebookPen, rotulo: "Descrição de banca pendente", alerta: true },
@@ -100,6 +118,29 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   pdi_prazo_vencido: { icone: GraduationCap, rotulo: "Prazo de PDI vencido", alerta: true },
 };
 
+/**
+ * A aparência de um tipo, com rede de proteção.
+ *
+ * ⚠ **Ler `APARENCIA[tipo]` direto derrubava a página inteira.** O tipo que
+ * não estivesse no mapa devolvia `undefined`, o destructure estourava, e o
+ * ErrorBoundary trocava a tela toda por "Algo deu errado" — uma notificação
+ * desconhecida apagava as outras cinquenta.
+ *
+ * Foi o que aconteceu: o backend ganhou `solicitacao_projeto`,
+ * `reajuste_solicitado` e `reajuste_respondido`, o `TipoNotificacao` do front
+ * não foi atualizado junto, e o `Record<>` deixou de cobrar as entradas.
+ *
+ * ⭐ O tipo completo, corrigido, impede a próxima omissão em tempo de
+ * compilação. Este fallback cobre o que ele não alcança: o backend sobe antes
+ * do front, e por alguns minutos manda um tipo que esta versão não conhece.
+ * Aí a notificação aparece genérica, em vez de derrubar a central.
+ */
+function aparenciaDe(tipo: TipoNotificacao) {
+  return (
+    APARENCIA[tipo] ?? { icone: Bell, rotulo: "Aviso", alerta: false }
+  );
+}
+
 /** A ordem dos chips: os 5 do briefing primeiro, na ordem em que ele os
  *  lista, e depois os três que vieram na sequência. Fixa e não derivada do que
  *  chegou, assim o filtro não muda de lugar a cada recarga. */
@@ -114,6 +155,9 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "entrega_alterada",
   "alocado_em_projeto",
   "entrega_registrada",
+  "solicitacao_projeto",
+  "reajuste_solicitado",
+  "reajuste_respondido",
   "troca_banca",
   "avaliacao_pendente",
   "descricao_coordenador_pendente",
@@ -166,6 +210,9 @@ export function Notificacoes() {
    *  efeito reage. Assim nada chama setState de forma síncrona no corpo do
    *  efeito, é o que a regra `react-hooks/set-state-in-effect` cobra. */
   const [recarga, setRecarga] = useState(0);
+  /** `null` = nenhuma confirmação aberta. `"todas"` = "Limpar lidas" em
+   *  massa. Uma notificação = excluir só aquela. */
+  const [confirmando, setConfirmando] = useState<Notificacao | "todas" | null>(null);
 
   const recarregarLista = useCallback(() => setRecarga((n) => n + 1), []);
 
@@ -262,9 +309,29 @@ export function Notificacoes() {
     }
   }
 
+  async function confirmarExclusao() {
+    if (confirmando === "todas") {
+      await limparNotificacoesLidas(token);
+    } else if (confirmando) {
+      await excluirNotificacao(token, confirmando.id as number);
+    }
+    setConfirmando(null);
+    recarregarLista();
+    recarregar();
+  }
+
+  const lidasEliminaveis = itens.filter((i) => i.lida && i.origem === "evento").length;
+
   function abrir(notificacao: Notificacao) {
     void marcarUma(notificacao);
-    if (notificacao.rota) navigate(notificacao.rota);
+    // `voltarPara` é lido só por quem entende o estado (hoje, `ProjetoPage`)
+    // — inofensivo nas rotas que ignoram `location.state`, e é o que faz
+    // "voltar" de dentro de um projeto cair de novo aqui, não em /projetos.
+    if (notificacao.rota) {
+      navigate(notificacao.rota, {
+        state: { voltarPara: "/notificacoes", voltarRotulo: "Voltar para notificações" },
+      });
+    }
   }
 
   const naoLidas = itens.filter((i) => !i.lida).length;
@@ -280,10 +347,21 @@ export function Notificacoes() {
               : "Nada pendente de leitura"}
           </PageSubheading>
         </PageHeaderText>
-        <PageButtonSm type="button" $variant="outline" onClick={marcarTodas} disabled={naoLidas === 0}>
-          <CheckCheck size={14} />
-          Marcar todas como lidas
-        </PageButtonSm>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <PageButtonSm
+            type="button"
+            $variant="outline"
+            onClick={() => setConfirmando("todas")}
+            disabled={lidasEliminaveis === 0}
+          >
+            <Trash2 size={14} />
+            Limpar lidas
+          </PageButtonSm>
+          <PageButtonSm type="button" $variant="outline" onClick={marcarTodas} disabled={naoLidas === 0}>
+            <CheckCheck size={14} />
+            Marcar todas como lidas
+          </PageButtonSm>
+        </div>
       </PageHeaderRow>
 
       <FiltroBar>
@@ -336,7 +414,7 @@ export function Notificacoes() {
                     <OpcaoCaixa $marcada={marcada}>
                       {marcada && <Check size={11} strokeWidth={3} />}
                     </OpcaoCaixa>
-                    <OpcaoTexto>{APARENCIA[tipo].rotulo}</OpcaoTexto>
+                    <OpcaoTexto>{aparenciaDe(tipo).rotulo}</OpcaoTexto>
                     <OpcaoContagem>{total}</OpcaoContagem>
                   </OpcaoLinha>
                 );
@@ -396,7 +474,7 @@ export function Notificacoes() {
             <>
               <Lista>
                 {visiveis.map((notificacao) => {
-                  const { icone: Icone, alerta } = APARENCIA[notificacao.tipo];
+                  const { icone: Icone, alerta } = aparenciaDe(notificacao.tipo);
                   return (
                     <Item key={notificacao.chave} $lida={notificacao.lida}>
                       <ItemIcone $alerta={alerta}>
@@ -419,6 +497,16 @@ export function Notificacoes() {
                           Lida
                         </ItemAcao>
                       )}
+                      {/* Só evento tem linha para apagar — condição é a
+                          marcação de leitura, não a notificação, apagá-la
+                          faria o alerta voltar a contar no sino mesmo
+                          resolvido, por isso não ganha este botão. */}
+                      {notificacao.lida && notificacao.origem === "evento" && (
+                        <ItemAcao type="button" onClick={() => setConfirmando(notificacao)}>
+                          <Trash2 size={13} />
+                          Excluir
+                        </ItemAcao>
+                      )}
                     </Item>
                   );
                 })}
@@ -430,6 +518,19 @@ export function Notificacoes() {
             </>
           )}
         </PageCard>
+      )}
+
+      {confirmando && (
+        <ConfirmarModal
+          titulo={confirmando === "todas" ? "Limpar notificações lidas" : "Excluir notificação"}
+          mensagem={
+            confirmando === "todas"
+              ? `${lidasEliminaveis} ${lidasEliminaveis === 1 ? "notificação lida vai ser apagada" : "notificações lidas vão ser apagadas"}. Isso não afeta os alertas ainda em aberto.`
+              : `"${confirmando.titulo}" vai ser apagada.`
+          }
+          onConfirmar={confirmarExclusao}
+          onCancelar={() => setConfirmando(null)}
+        />
       )}
     </PageStack>
   );

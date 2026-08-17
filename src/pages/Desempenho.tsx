@@ -27,7 +27,6 @@ import {
   ErrorText,
 } from "@/styles/page.styled";
 import {
-  TopGrid,
   ListCardContent,
   ListScrollWrap,
   LIST_MAX_VISIVEIS,
@@ -82,7 +81,12 @@ function formatResposta(nota: AvaliacaoNota, pergunta?: Pergunta): string {
   return nota.resposta_texto?.trim() || "—";
 }
 
-export function Desempenho() {
+/** `embutido`: renderizado como aba dentro de Bancas, não como página cheia
+ *  — some o `PageStack`/saudação próprios (Bancas já tem os dela) e sobra só
+ *  o conteúdo (gráfico + histórico). A rota solta `/dashboard` continua
+ *  existindo por baixo (é destino de fallback de várias guards de permissão
+ *  — `AdminRoute`, `FormularioRoute` etc.), só não aparece mais no menu. */
+export function Desempenho({ embutido = false }: { embutido?: boolean } = {}) {
   const { usuario, token } = useAuth();
   const [dados, setDados] = useState<DesempenhoDados | null>(null);
   const [bancas, setBancas] = useState<Banca[]>([]);
@@ -156,68 +160,42 @@ export function Desempenho() {
 
   const avaliacoesDoSemestre = avaliacoesSubmetidas.filter((item) => item.banca.semestre_id === dados.semestre_id);
 
-  const pontosPorFrente = new Map<string, number>();
+  const pontosPorFrente = new Map<string, { valor: number; itens: string[] }>();
   for (const { banca } of avaliacoesDoSemestre) {
     const frentesDaBanca = bancasFrentes.filter((bf) => bf.banca_id === banca.id);
     const peso = frentesDaBanca.length > 0 ? 1 / frentesDaBanca.length : 0;
     for (const bf of frentesDaBanca) {
       const nome = frentes.find((f) => f.id === bf.frente_id)?.nome ?? "—";
-      pontosPorFrente.set(nome, (pontosPorFrente.get(nome) ?? 0) + peso);
+      const atual = pontosPorFrente.get(nome) ?? { valor: 0, itens: [] };
+      atual.valor += peso;
+      atual.itens.push(banca.nome_projeto);
+      pontosPorFrente.set(nome, atual);
     }
   }
-  const fatias: FatiaDonut[] = Array.from(pontosPorFrente.entries()).map(([nome, valor]) => ({
+  const fatias: FatiaDonut[] = Array.from(pontosPorFrente.entries()).map(([nome, { valor, itens }]) => ({
     nome,
     valor: Math.round(valor * 10) / 10,
+    itens,
   }));
 
-  const ultimasBancas = avaliacoesSubmetidas.slice(0, 3);
   const primeiroNome = usuario?.nome.split(" ")[0];
 
-  return (
-    <PageStack>
-      <GreetingHeader>
-        <GreetingTitle>
-          {saudacao()}
-          {primeiroNome ? `, ${primeiroNome}!` : "!"}
-        </GreetingTitle>
-        <GreetingSubtitle>Confira seu desempenho em {dados.semestre_nome}.</GreetingSubtitle>
-      </GreetingHeader>
-
-      <TopGrid>
-        <PageCard>
-          <PageCardHeader>
-            <PageCardTitle>Porcentagem de bancas atendidas, {dados.semestre_nome}</PageCardTitle>
-          </PageCardHeader>
-          <PageCardContent>
-            <DesempenhoChart fatias={fatias} percentual={dados.percentual} />
-            <ChartCaption>
-              {dados.bancas_atendidas} de {dados.total_bancas_realizadas} bancas no semestre
-            </ChartCaption>
-          </PageCardContent>
-        </PageCard>
-
-        <PageCard>
-          <PageCardHeader>
-            <PageCardTitle>Últimas bancas atendidas</PageCardTitle>
-          </PageCardHeader>
-          <ListCardContent>
-            {ultimasBancas.length === 0 && <EmptyText>Nenhuma banca atendida ainda.</EmptyText>}
-            {ultimasBancas.length > 0 && (
-              <ListScrollWrap $scrollable={ultimasBancas.length > LIST_MAX_VISIVEIS}>
-                {ultimasBancas.map(({ avaliacao, banca }) => (
-                  <HistoricoRow key={avaliacao.id} type="button" onClick={() => setAvaliacaoSelecionada({ avaliacao, banca })}>
-                    <RowGroup>
-                      <RowDot aria-hidden />
-                      <RowLabel>{banca.nome_projeto}</RowLabel>
-                    </RowGroup>
-                    <RowMeta>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
-                  </HistoricoRow>
-                ))}
-              </ListScrollWrap>
-            )}
-          </ListCardContent>
-        </PageCard>
-      </TopGrid>
+  const conteudo = (
+    <>
+      {/* "Últimas bancas atendidas" saiu daqui — era só as 3 primeiras linhas
+          do Histórico de avaliações logo abaixo (a mesma lista, já ordenada
+          da mais recente pra mais antiga), repetidas num card à parte. */}
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Porcentagem de bancas atendidas — {dados.semestre_nome}</PageCardTitle>
+        </PageCardHeader>
+        <PageCardContent>
+          <DesempenhoChart fatias={fatias} percentual={dados.percentual} />
+          <ChartCaption>
+            {dados.bancas_atendidas} de {dados.total_bancas_realizadas} bancas no semestre
+          </ChartCaption>
+        </PageCardContent>
+      </PageCard>
 
       <PageCard>
         <PageCardHeader>
@@ -256,6 +234,21 @@ export function Desempenho() {
           onClose={() => setAvaliacaoSelecionada(null)}
         />
       )}
+    </>
+  );
+
+  if (embutido) return conteudo;
+
+  return (
+    <PageStack>
+      <GreetingHeader>
+        <GreetingTitle>
+          {saudacao()}
+          {primeiroNome ? `, ${primeiroNome}!` : "!"}
+        </GreetingTitle>
+        <GreetingSubtitle>Confira seu desempenho em {dados.semestre_nome}.</GreetingSubtitle>
+      </GreetingHeader>
+      {conteudo}
     </PageStack>
   );
 }

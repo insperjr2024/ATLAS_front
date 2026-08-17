@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Download,
   HelpCircle,
+  Info,
   Lock,
   Plus,
   Trash2,
@@ -1199,9 +1200,25 @@ export function ProjetoCronograma() {
       const inicial = modoMarcacao === "reuniao_inicial";
       if (inicial && !escopo) return;
       const escopoId = inicial ? (escopo?.id ?? null) : null;
-      const existente = (dados?.reunioes ?? []).find(
-        (r) => r.data_reuniao.slice(0, 10) === dia && (r.projeto_escopo_id ?? null) === escopoId,
-      );
+      /**
+       * ⭐ A reunião INICIAL é uma só por escopo — clicar noutro dia MOVE a
+       * que existe, não cria outra.
+       *
+       * ⚠ Antes a busca era só por dia, então clicar num dia diferente caía no
+       * caminho de criação e nascia uma segunda "reunião inicial" para o mesmo
+       * escopo. Pior que a duplicata na tela: `data_inicio` do escopo deriva da
+       * reunião mais antiga, então marcar uma segunda numa data anterior movia
+       * a janela inteira para trás — prazos, banca e atraso recalculados sem
+       * ninguém ter pedido.
+       *
+       * A geral continua por dia: ela é semanal, e o projeto tem várias.
+       */
+      const existente = inicial
+        ? (dados?.reunioes ?? []).find((r) => (r.projeto_escopo_id ?? null) === escopoId)
+        : (dados?.reunioes ?? []).find(
+            (r) =>
+              r.data_reuniao.slice(0, 10) === dia && (r.projeto_escopo_id ?? null) === escopoId,
+          );
       setReuniaoAberta({
         dia,
         tipo: inicial ? "inicial" : "geral",
@@ -1308,8 +1325,14 @@ export function ProjetoCronograma() {
     await Promise.all([carregar(), recarregarProjeto()]);
   }
 
-  /** registrar a entrega é livre; alterá-la é decisão da diretoria. */
-  async function confirmarEntrega(justificativa: string) {
+  /**
+   * §13: registrar a DATA da entrega é livre; alterá-la é decisão da diretoria.
+   *
+   * ⚠ Isto não entrega o escopo — só grava o dia. Quem move o status para
+   * "Entregue" é a confirmação na Visão geral (`confirmarEntregaEscopo`), e por
+   * isso o nome daqui fala de data, não de entrega.
+   */
+  async function salvarDataDeEntrega(justificativa: string) {
     if (!token || !entregaAberta) return;
     const anterior = dados?.escopos.find((e) => e.id === entregaAberta.escopoId)?.data_entrega_real ?? null;
     await marcarEntregaEscopo(
@@ -1360,6 +1383,51 @@ export function ProjetoCronograma() {
     if (!escopoDoPincel) return;
     setAviso("");
     setPedindoDias({ escopoId: escopoDoPincel.id, dias: diasExtras, ateDia: ultimoDia });
+  }
+
+  /**
+   * ⭐ A pessoa tentou pintar um dia travado — e agora a tela diz por quê.
+   *
+   * ⚠ **Antes isto era silêncio.** O calendário desistia do arrasto e não
+   * acontecia nada: nem pintava, nem avisava. Quem tentava pintar antes da
+   * reunião inicial ficava clicando numa parede muda, sem descobrir que existe
+   * uma ordem a seguir — e o backend, que tem a explicação pronta, nunca era
+   * chamado, porque a requisição não chegava a sair.
+   *
+   * 📐 A frase é montada AQUI, e não no calendário, porque ela precisa do nome
+   * do escopo, das datas da janela e de saber se ainda dá para pedir dias. O
+   * calendário só sabe que o dia está travado.
+   */
+  function explicarBloqueio(_dia: string, motivo: { tipo: string; descricao: string | null }) {
+    const alvo = escopoDoPincel;
+
+    if (motivo.tipo === "sem_janela") {
+      setAviso(
+        `${alvo ? `O escopo "${alvo.nome}"` : "Este escopo"} ainda não teve reunião ` +
+          "inicial, e é ela que abre a janela de dias vendidos. Marque a reunião inicial " +
+          "primeiro — só depois dá para pintar etapas e marcar a banca.",
+      );
+      return;
+    }
+
+    if (motivo.tipo === "fora_da_janela") {
+      const ate = alvo?.fim_janela ? ` A janela termina em ${formatarData(alvo.fim_janela)}.` : "";
+      // O pedido de dias só existe enquanto o prazo dele está aberto — oferecer
+      // a saída fora do prazo seria mandar a pessoa levar outra recusa.
+      const saida =
+        diasNegociaveis.size > 0
+          ? " Para esticar, arraste além do fim da janela: isso abre um pedido de dias à diretoria."
+          : " O prazo para pedir dias de ajuste já passou, então a janela deste escopo não muda mais.";
+      return setAviso(
+        `Este dia está fora da janela${alvo ? ` de "${alvo.nome}"` : ""}.${ate}${saida}`,
+      );
+    }
+
+    // Fim de semana, feriado, recesso: fato, não regra negociável.
+    setAviso(
+      `${motivo.descricao ?? "Este dia não é útil"} — as etapas contam só dias úteis, ` +
+        "então feriados e fins de semana ficam de fora da contagem.",
+    );
   }
 
   /**
@@ -1534,9 +1602,17 @@ export function ProjetoCronograma() {
           </GrupoVisao>
         )}
 
+        {/* Só quando realmente não há escopo escolhido: com um selecionado os
+            botões voltam e a caixa não teria o que explicar. */}
         {podeEditar && !escopo && (
           <DicaEscopo>
-            Escolha um escopo acima para marcar reunião inicial, banca e entrega.
+            <Info size={15} aria-hidden />
+            <span>
+              <strong>Escolha um escopo acima para continuar.</strong> Reunião inicial, banca e
+              entrega pertencem a um escopo específico — cada um tem a própria janela de dias
+              vendidos. Os botões deles aparecem assim que você escolher um. Kickoff e reunião
+              geral são do projeto inteiro e já estão disponíveis aqui.
+            </span>
           </DicaEscopo>
         )}
 
@@ -1688,6 +1764,7 @@ export function ProjetoCronograma() {
           onNegociar={negociarDias}
           onArrasteMudou={setPreviewIntervalo}
           onDiaClicado={modoMarcacao ? marcarDia : undefined}
+          onBloqueado={explicarBloqueio}
           semScrollProprio
         />
 
@@ -2014,7 +2091,7 @@ export function ProjetoCronograma() {
           entregaAtual={escopo.data_entrega_real}
           ehDiretor={ehDiretor}
           onCancelar={() => setEntregaAberta(null)}
-          onConfirmar={confirmarEntrega}
+          onConfirmar={salvarDataDeEntrega}
         />
       )}
 

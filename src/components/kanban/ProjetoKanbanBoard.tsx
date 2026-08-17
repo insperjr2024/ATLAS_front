@@ -32,6 +32,7 @@ import {
   ColunaTitulo,
   ColunaVazia,
   Contador,
+  PendenteDot,
   Ponto,
 } from "./Kanban.styled";
 
@@ -56,9 +57,18 @@ interface ProjetoKanbanBoardProps {
   podeArrastar: boolean;
   nomeFrente: (id: number) => string;
   onMover: (projetoId: number, statusNovo: StatusProjeto) => void;
+  /** Projetos com pedido de entrada pendente (§7.3) — quem pode responder
+   *  vê a bolinha no card, sem precisar abrir o projeto. */
+  projetosComPendencia?: Set<number>;
 }
 
-export function ProjetoKanbanBoard({ projetos, podeArrastar, nomeFrente, onMover }: ProjetoKanbanBoardProps) {
+export function ProjetoKanbanBoard({
+  projetos,
+  podeArrastar,
+  nomeFrente,
+  onMover,
+  projetosComPendencia,
+}: ProjetoKanbanBoardProps) {
   const [arrastando, setArrastando] = useState<ProjetoResumo | null>(null);
 
   const tons = useMemo(() => {
@@ -100,6 +110,7 @@ export function ProjetoKanbanBoard({ projetos, podeArrastar, nomeFrente, onMover
             projetos={projetos.filter((p) => p.status === coluna.status)}
             podeArrastar={podeArrastar}
             nomeFrente={nomeFrente}
+            projetosComPendencia={projetosComPendencia}
           />
         ))}
       </Board>
@@ -122,6 +133,7 @@ function ColunaDrop({
   projetos,
   podeArrastar,
   nomeFrente,
+  projetosComPendencia,
 }: {
   status: StatusProjeto;
   rotulo: string;
@@ -129,6 +141,7 @@ function ColunaDrop({
   projetos: ProjetoResumo[];
   podeArrastar: boolean;
   nomeFrente: (id: number) => string;
+  projetosComPendencia?: Set<number>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
@@ -150,6 +163,7 @@ function ColunaDrop({
           tons={tons}
           podeArrastar={podeArrastar}
           nomeFrente={nomeFrente}
+          temPendencia={!!projetosComPendencia?.has(projeto.id)}
         />
       ))}
     </Coluna>
@@ -161,11 +175,13 @@ function CardArrastavel({
   tons,
   podeArrastar,
   nomeFrente,
+  temPendencia,
 }: {
   projeto: ProjetoResumo;
   tons: TonsColuna;
   podeArrastar: boolean;
   nomeFrente: (id: number) => string;
+  temPendencia: boolean;
 }) {
   const arrastavel = podeArrastar && statusAlvoValidos(projeto.status, !!projeto.data_kickoff).length > 0;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -199,6 +215,7 @@ function CardArrastavel({
         }
       }}
     >
+      {temPendencia && <PendenteDot title="Pedido de entrada pendente" />}
       <CardTopo>
         <CardTitulo>{projeto.nome}</CardTitulo>
         {projeto.kickoff_pendente && (

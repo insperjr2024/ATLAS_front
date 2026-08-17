@@ -8,10 +8,10 @@ import {
   ErrorBlock,
   ErrorText,
   PageButton,
-  EmptyText,
 } from "@/styles/page.styled";
 import {
   AvisoSomenteLeitura,
+  BarraFiltros,
   CardCliente,
   CardGrid,
   CardTitle,
@@ -21,6 +21,7 @@ import {
   type TomPilula,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import { useFiltroEscopo } from "./FiltroEscopo";
 
 /** Um limiar curto o bastante para chamar atenção antes de estourar, não
@@ -63,10 +64,10 @@ export function CronogramasGeraisAba() {
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
   const seletor = (
-    <>
+    <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
-    </>
+    </BarraFiltros>
   );
   const [dados, setDados] = useState<CronogramasGerais | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -114,10 +115,26 @@ export function CronogramasGeraisAba() {
   }
 
   if (dados.projetos.length === 0) {
+    // ⭐ Duas causas MUITO diferentes chegam aqui, e a régua que as separa são
+    // os filtros: com algum ligado, o dado provavelmente existe e está a um
+    // clique de distância; sem nenhum, é o recorte de visão da pessoa.
+    const filtrando = frenteId !== null || escopoId !== null;
     return (
       <PageStack>
         {seletor}
-        <EmptyText>Nenhum projeto na sua visão.</EmptyText>
+        {filtrando ? (
+          <EstadoVazio
+            causa="filtro"
+            titulo="Nenhum projeto com esse recorte"
+            motivo="Os filtros acima estão escondendo o resto. Volte para “Todas as frentes” para ver tudo o que você acompanha."
+          />
+        ) : (
+          <EstadoVazio
+            causa="acesso"
+            titulo="Nenhum projeto para acompanhar"
+            motivo="Você vê aqui os projetos das frentes que acompanha. Se falta algum que deveria estar, peça à diretoria para conferir a sua frente no cadastro de membros."
+          />
+        )}
       </PageStack>
     );
   }

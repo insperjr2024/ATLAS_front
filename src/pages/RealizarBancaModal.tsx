@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { nomeUsuario } from "@/lib/nucleo";
 import { toDateInputValue, toTimeInputValue } from "@/lib/bancas";
+import { CODIGO_BANCA_ABAIXO_DO_MINIMO, codigoDoErro } from "@/lib/api";
 import type { Banca, Candidatura } from "@/types/banca";
 import type { UsuarioResumo } from "@/types/auth";
 import {
@@ -125,10 +126,15 @@ export function RealizarBancaModal({
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : "Erro ao registrar";
       setErro(mensagem);
-      // A assinatura da recusa de composição (ver `_exigir_composicao`). Só
-      // ela destrava o "registrar assim mesmo", um erro de rede ou de data
-      // não deve virar convite para forçar.
-      setRecusaDeComposicao(mensagem.includes("Composição incompleta"));
+      // ⭐ O CÓDIGO da recusa, não um trecho do texto. Só ele destrava o
+      // "registrar assim mesmo" — erro de rede ou de data não deve virar
+      // convite para forçar.
+      //
+      // Antes isto procurava a frase "Composição incompleta" dentro da
+      // mensagem. A frase mudou quando o piso por frente saiu do §8, e o botão
+      // da diretoria sumiu sem ninguém perceber: a plataforma recusava e não
+      // oferecia saída. Texto é para ler; código é contrato.
+      setRecusaDeComposicao(codigoDoErro(err) === CODIGO_BANCA_ABAIXO_DO_MINIMO);
       setSalvando(false);
     }
   }
@@ -225,7 +231,18 @@ export function RealizarBancaModal({
                 {salvando ? "Registrando…" : "Registrar assim mesmo"}
               </PageButton>
             ) : (
-              <PageButton type="submit" disabled={salvando}>
+              /* ⭐ Desligado para quem NUNCA vai conseguir forçar.
+                 O aviso acima já diz quantos faltam; deixar o botão aceso
+                 fazia o coordenador clicar para receber de volta a mesma frase
+                 que estava na tela. Só para ele: para a diretoria o botão
+                 continua ativo, porque é o clique dela que revela a recusa do
+                 backend — a régua completa, com os pisos por frente — e destrava
+                 o "Registrar assim mesmo". Desligá-lo para ela recriaria o beco
+                 que este modal existe para não ter. */
+              <PageButton
+                type="submit"
+                disabled={salvando || (totalAbaixoDoMinimo && !ehDiretor)}
+              >
                 {salvando ? "Registrando…" : "Registrar realização"}
               </PageButton>
             )}

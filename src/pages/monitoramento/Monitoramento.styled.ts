@@ -2,8 +2,8 @@ import styled, { css } from "styled-components";
 import { Link as RouterLink, NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import { PALETA } from "@/components/cronograma-pintado/cores";
-import { DataTable as DataTableBase } from "../Bancas.styled";
-import { PageButtonSm } from "@/styles/page.styled";
+import { DataTable as DataTableBase, FieldSelect } from "../Bancas.styled";
+import { PageButtonSm, PageCard } from "@/styles/page.styled";
 
 export {
   PageHeaderRow,
@@ -38,6 +38,11 @@ export const DataTable = styled(DataTableBase)`
     text-transform: uppercase;
     letter-spacing: 0.04em;
     white-space: nowrap;
+    /* Quando um cabeçalho tem duas linhas (rótulo + unidade) e os vizinhos
+       têm uma, centralizar deixa os rótulos em alturas diferentes e a linha
+       parece torta. Ancorados embaixo, todos partem da mesma base. Nas
+       tabelas de cabeçalho uniforme não muda nada. */
+    vertical-align: bottom;
   }
 
   tbody tr {
@@ -268,14 +273,36 @@ export const BotaoLimparBusca = styled.button`
   }
 `;
 
-/** A linha do filtro de frente, no topo de cada aba.
+/**
+ * A linha de filtros no topo de cada aba, a MESMA em todas elas.
  *
- *  Alinhado à direita para não competir com o primeiro card: é um controle de
- *  recorte, e o assunto da aba é o conteúdo abaixo dele. */
-export const BarraFiltro = styled.div`
+ * Ancorada à esquerda, alinhada com os títulos dos cards abaixo: o filtro é
+ * lido antes do conteúdo que ele recorta, e a margem esquerda é a coluna por
+ * onde o olho desce.
+ *
+ * `flex-wrap` em vez de largura fixa porque o número de filtros varia por aba
+ * (algumas só têm frente, outras frente + escopo): num celular eles quebram
+ * de linha sozinhos em vez de espremer os selects abaixo do legível.
+ */
+export const BarraFiltros = styled.div`
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
   align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+/**
+ * Um select da barra de filtros.
+ *
+ * Existe só para dar um teto de largura: `SelectCustom` é `width: 100%` por
+ * padrão, o que faz sentido dentro de um formulário, mas solto num
+ * `PageStack` esticava o campo pela tela inteira. Com base de 13rem cabem
+ * dois lado a lado num notebook e ainda sobra tela para o conteúdo.
+ */
+export const FiltroSelect = styled(FieldSelect)`
+  flex: 0 1 13rem;
+  width: auto;
+  min-width: 9rem;
 `;
 
 /** O rodapé de navegação entre páginas de um card. Discreto e centrado: é
@@ -435,24 +462,46 @@ export const KpiGrid = styled.div`
   gap: ${theme.spacing.md};
 `;
 
-export const KpiCard = styled.div<{ $destaque?: "alerta" | "ok" }>`
+export const KpiCard = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  gap: ${theme.spacing.sm};
   padding: ${theme.spacing.md};
-  border-radius: ${theme.borderRadius.xl};
-  border: 1px solid
-    ${({ $destaque }) =>
-      $destaque === "alerta"
-        ? `color-mix(in srgb, ${theme.colors.destructive} 35%, transparent)`
-        : theme.colors.border};
-  /* O card em alerta recebe um véu da própria cor. Só a borda vermelha some
-     no meio de cinco cards iguais; o fundo é o que faz o olho parar nele. */
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.sm};
+`;
+
+/** O tom vive no ícone, não mais pintando o card inteiro — um card neutro
+ *  ao lado de um card em alerta precisa continuar parecendo do mesmo
+ *  produto, só o ícone é que muda de cor. */
+export const KpiIcone = styled.span<{ $destaque?: "alerta" | "ok" }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: ${theme.borderRadius.md};
   background: ${({ $destaque }) =>
     $destaque === "alerta"
-      ? `color-mix(in srgb, ${theme.colors.destructive} 4%, ${theme.colors.card})`
-      : theme.colors.card};
-  box-shadow: ${theme.shadows.sm};
+      ? `color-mix(in srgb, ${theme.colors.destructive} 14%, transparent)`
+      : $destaque === "ok"
+        ? `color-mix(in srgb, ${theme.colors.success} 16%, transparent)`
+        : `color-mix(in srgb, ${theme.colors.foreground} 6%, transparent)`};
+  color: ${({ $destaque }) =>
+    $destaque === "alerta"
+      ? theme.colors.destructive
+      : $destaque === "ok"
+        ? theme.colors.success
+        : theme.colors.mutedForeground};
+`;
+
+export const KpiTexto = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
 `;
 
 export const KpiValor = styled.strong<{ $destaque?: "alerta" | "ok" }>`
@@ -460,7 +509,7 @@ export const KpiValor = styled.strong<{ $destaque?: "alerta" | "ok" }>`
   font-weight: ${theme.fontWeight.bold};
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.15;
   color: ${({ $destaque }) =>
     $destaque === "alerta"
       ? theme.colors.destructive
@@ -470,10 +519,9 @@ export const KpiValor = styled.strong<{ $destaque?: "alerta" | "ok" }>`
 `;
 
 export const KpiRotulo = styled.span`
-  font-size: ${theme.fontSize.xs};
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: ${theme.colors.mutedForeground};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
 `;
 
 /**
@@ -542,6 +590,186 @@ export const PainelGrid = styled.div`
   @media (min-width: ${theme.breakpoints.lg}px) {
     grid-template-columns: 1fr 1fr;
   }
+`;
+
+/** Um card do `PainelGrid` que ocupa a linha inteira.
+ *
+ *  Existe porque a grade tem 2 colunas e um número ÍMPAR de cards: o último
+ *  ficava sozinho com um buraco do mesmo tamanho ao lado. Largura inteira
+ *  resolve o vão e, no caso do "Tempo dos escopos", é o que a tabela de três
+ *  colunas numéricas queria de qualquer jeito. */
+export const CardLargura = styled(PageCard)`
+  @media (min-width: ${theme.breakpoints.lg}px) {
+    grid-column: 1 / -1;
+  }
+`;
+
+/**
+ * Um cabeçalho de coluna em duas linhas: o assunto em cima, a unidade embaixo.
+ *
+ * ⚠ **Existe por causa do `th` desta tabela**, que é caixa alta, xs e
+ * `nowrap`. Um rótulo honesto como "dias úteis sem nada no cronograma" nessa
+ * forma vira uma faixa de sete centímetros em versalete, e três colunas assim
+ * transformam o cabeçalho na coisa mais pesada da tela — mais pesada que os
+ * dados, que é o que se veio ler.
+ *
+ * A unidade desce para a segunda linha em caixa baixa, sem tracking e mais
+ * apagada: ela é a mesma em três colunas, então repeti-la com o mesmo peso é
+ * ruído. Continua escrita, porque "12" não diz se são dias corridos ou úteis,
+ * e aqui é sempre útil.
+ */
+export const RotuloColuna = styled.span`
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  line-height: 1.2;
+
+  small {
+    font-size: 0.9em;
+    font-weight: ${theme.fontWeight.normal};
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.7;
+  }
+`;
+
+/* ─── Atenção agora ───────────────────────────────────────────────────────
+   Um bloco por motivo, sempre aberto. A versão anterior escondia cada grupo
+   atrás de um `<details>` fechado e o filtro atrás de um `<select>`: para
+   saber o que havia era preciso abrir um por um. Aqui os motivos viram um
+   segmentado visível (com a contagem em cada um) e cada grupo mostra as
+   primeiras linhas direto. */
+
+export const AtencaoSecao = styled.section`
+  & + & {
+    margin-top: ${theme.spacing.md};
+    padding-top: ${theme.spacing.md};
+    border-top: 1px solid ${theme.colors.border};
+  }
+`;
+
+export const AtencaoSecaoTopo = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+  margin-bottom: 0.5rem;
+`;
+
+export const AtencaoSecaoTitulo = styled.h3`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** "mostrar os outros N": muda o filtro para este motivo em vez de expandir
+ *  no lugar, então a lista longa abre com a tela inteira para ela. */
+export const AtencaoVerTodos = styled.button`
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.primary};
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+    border-radius: ${theme.borderRadius.sm};
+  }
+`;
+
+export const AtencaoLista = styled.ul`
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+`;
+
+/**
+ * Uma linha do grupo.
+ *
+ * Linha, e não cartãozinho numa grade `auto-fill`: com 15 itens a grade
+ * quebrava em colunas de larguras diferentes e o olho perdia a coluna do
+ * nome. Empilhadas, os nomes ficam alinhados e a leitura desce reta.
+ *
+ * A linha INTEIRA é o link — em lista de trabalho o alvo útil é o item todo,
+ * não um trecho de texto no meio.
+ */
+export const AtencaoLinha = styled(RouterLink)<{ $nivel?: NivelSeveridade }>`
+  display: grid;
+  grid-template-columns: 0.4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.375rem;
+  border-radius: ${theme.borderRadius.md};
+  color: inherit;
+  text-decoration: none;
+  transition: background ${theme.transitions.fast};
+
+  &::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: ${theme.borderRadius.full};
+    background: ${({ $nivel }) => SEVERIDADE[$nivel ?? "media"]};
+  }
+
+  &:hover {
+    background: ${theme.colors.muted};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: -2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/** Nome do projeto e o motivo, um sobre o outro. O motivo vem pronto do
+ *  backend e é específico ("sem reunião registrada esta semana"), nunca
+ *  rótulo genérico. */
+export const AtencaoTexto = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+
+  strong {
+    font-size: ${theme.fontSize.sm};
+    font-weight: ${theme.fontWeight.medium};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/** O tempo, à direita e em números tabulares: é a coluna que se compara de
+ *  cima a baixo, e sem tabular os dígitos dançam entre as linhas. */
+export const AtencaoDias = styled.span<{ $nivel?: NivelSeveridade }>`
+  flex-shrink: 0;
+  font-size: ${theme.fontSize.xs};
+  font-variant-numeric: tabular-nums;
+  font-weight: ${theme.fontWeight.medium};
+  color: ${({ $nivel }) => ($nivel ? SEVERIDADE[$nivel] : theme.colors.mutedForeground)};
+  white-space: nowrap;
 `;
 
 export const ListaSimples = styled.ul`
@@ -939,6 +1167,242 @@ export const AtrasoFlagIcone = styled.span`
   align-items: center;
   color: color-mix(in srgb, ${theme.colors.warning} 70%, black);
   cursor: help;
+`;
+
+/* ──────────────────────────────────────────────────────────────────────
+   A LINHA DA FILA DE APROVAÇÕES
+
+   ⭐ **É a `LinhaAtraso` com uma terceira coluna.** A aba Atrasos já tinha
+   resolvido "item de lista que carrega muito contexto": número que ordena à
+   esquerda, corpo respirando no meio, motivos empilhados embaixo. A fila de
+   Aprovações precisava do mesmo mais um lugar fixo para a ação.
+
+   ⚠ **Por que não dava para seguir com o `ItemLista`.** Ele foi desenhado
+   para item de UMA linha: `align-items: baseline` e `small { display:
+   inline-flex; white-space: nowrap }`. Com três informações dentro (título,
+   fatos, texto escrito), os `<small>` fluíam na MESMA linha e nada quebrava —
+   era isso que fazia o nome do projeto emendar no metadado e no motivo
+   ("Análise Mercadológica+5 dias sobre 8 vendidos · Ana Souza emOs 8 dias
+   vendidos não cobrem…"). O conteúdo se espremia na horizontal em vez de
+   usar a altura que sobrava.
+   ────────────────────────────────────────────────────────────────────── */
+
+export const LinhaAprovacao = styled.li`
+  display: grid;
+  /* A coluna de ação tem largura MÍNIMA, não fixa: o formulário de decisão
+     abre dentro dela e precisa poder crescer. */
+  grid-template-columns: 3.75rem minmax(0, 1fr) minmax(10rem, auto);
+  align-items: start;
+  gap: 0 ${theme.spacing.md};
+  padding: 0.9rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: ${theme.borderRadius.lg};
+  transition: background ${theme.transitions.fast};
+
+  &:nth-of-type(even) {
+    background: ${theme.alpha(theme.colors.foreground, 0.015)};
+  }
+
+  &:hover {
+    background: ${theme.alpha(theme.colors.foreground, 0.03)};
+  }
+
+  & + & {
+    border-top: 1px solid ${theme.colors.border};
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  /* Em telas médias a ação desce para baixo do corpo em vez de espremer a
+     citação: texto de motivo com 40 caracteres por linha não se lê. */
+  @media (max-width: ${theme.breakpoints.md}px) {
+    grid-template-columns: 3.75rem minmax(0, 1fr);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}px) {
+    grid-template-columns: 1fr;
+    gap: ${theme.spacing.xs};
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/**
+ * A linha de FATOS do item — números e nomes, separados por espaço.
+ *
+ * ⭐ Substitui o `EmptyText` que fazia esse papel. `EmptyText` é o parágrafo
+ * de estado vazio, em `sm`: usado como metadado, ele ficava quase do tamanho
+ * do nome do projeto, e a linha inteira lia com um peso só.
+ *
+ * ⚠ `flex-wrap` é o ponto: cada fato é um `<span>` que QUEBRA para a linha
+ * de baixo quando não cabe. É o oposto do `white-space: nowrap` do
+ * `ItemLista`, e é o que faz o item usar altura em vez de se espremer.
+ */
+export const AprovacaoMeta = styled.p`
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.75rem;
+  row-gap: 0.2rem;
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+
+  /* O número dentro do fato — mais escuro que o rótulo que o cerca. */
+  strong {
+    color: ${theme.colors.foreground};
+    font-weight: ${theme.fontWeight.medium};
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* O número que PREOCUPA. Sem itálico: aqui o em marca ênfase semântica,
+     e o itálico em xs prejudica a leitura de dígito. */
+  em {
+    font-style: normal;
+    color: ${SEVERIDADE_TEXTO.critica};
+    font-weight: ${theme.fontWeight.medium};
+  }
+`;
+
+/**
+ * O que a PESSOA escreveu — motivo do pedido, justificativa da vaga.
+ *
+ * ⭐ Ganha filete e tamanho `sm` porque é o dado que decide: nas duas filas
+ * que já decidiam aqui, é lendo esta frase que a diretoria diz sim ou não.
+ * Estava em `<small>` cinza, do mesmo peso da data.
+ *
+ * Filete NEUTRO de propósito: no ATLAS o vermelho é severidade, e uma citação
+ * não é severa.
+ */
+export const AprovacaoCitacao = styled.blockquote`
+  margin: 0;
+  max-width: 65ch;
+  padding-left: ${theme.spacing.sm};
+  border-left: 3px solid ${theme.alpha(theme.colors.foreground, 0.15)};
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.55;
+  color: ${theme.colors.foreground};
+`;
+
+/** A coluna da direita: os botões, ou o formulário quando ele abre. */
+export const AprovacaoAcoes = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  min-width: 0;
+
+  @media (max-width: ${theme.breakpoints.md}px) {
+    grid-column: 2;
+    flex-direction: row;
+    align-items: center;
+    padding-top: 0.2rem;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}px) {
+    grid-column: 1;
+  }
+`;
+
+/**
+ * O formulário da decisão, aberto no lugar do par de botões.
+ *
+ * ⚠ Nasce com `min-width` porque a coluna é `auto`: sem isso o textarea
+ * encolheria até a largura do maior botão.
+ */
+export const AprovacaoForm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 16rem;
+
+  textarea {
+    width: 100%;
+    resize: vertical;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}px) {
+    min-width: 0;
+  }
+`;
+
+/** Os dois botões do formulário, lado a lado. */
+export const AprovacaoFormBotoes = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+`;
+
+/**
+ * O segundo nível de leitura — fechado por padrão, SEMPRE.
+ *
+ * ⚠ Chegou a existir a ideia de abrir sozinho nos casos "duvidosos" (carga
+ * alta, janela estourada, empate na urna). Ficou de fora porque a régua do
+ * que é duvidoso seria um chute não calibrado: numa semana ruim, tudo casa
+ * com alguma regra e a tela abre inteira — que é o estado que este
+ * componente existe para evitar.
+ */
+export const AprovacaoDetalhe = styled.details`
+  summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: fit-content;
+    padding: 0.15rem 0;
+    cursor: pointer;
+    list-style: none;
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: "▾";
+      transition: transform ${theme.transitions.fast};
+    }
+
+    &:hover {
+      color: ${theme.colors.foreground};
+    }
+
+    &:focus-visible {
+      outline: 2px solid ${theme.colors.ring};
+      outline-offset: 2px;
+      border-radius: ${theme.borderRadius.sm};
+    }
+  }
+
+  &[open] summary::after {
+    transform: rotate(180deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    summary::after {
+      transition: none;
+    }
+  }
+`;
+
+/** O conteúdo do `<details>`: pares rótulo/valor em colunas que se acomodam. */
+export const AprovacaoGrade = styled.dl`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.4rem ${theme.spacing.md};
+  margin: 0.5rem 0 0;
+  font-size: ${theme.fontSize.xs};
+
+  dt {
+    color: ${theme.colors.mutedForeground};
+  }
+
+  dd {
+    margin: 0 0 0.4rem;
+    color: ${theme.colors.foreground};
+    font-variant-numeric: tabular-nums;
+  }
 `;
 
 export const MotivoLista = styled.ul`
@@ -1797,4 +2261,196 @@ export const CronogramaCardRodape = styled.p`
   border-top: 1px solid ${theme.colors.border};
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.foreground};
+`;
+
+/* ─── Histórico de projetos (§7) ──────────────────────────────────────────
+   O portfólio ENCERRADO — finalizados ou arquivados —, só para diretoria e
+   gerência. Uma tabela de referência: o nome leva ao projeto, e as demais
+   colunas respondem "quem coordenou, em que semestre fechou, quanto durou".
+   Os controles (segmento + busca) ficam numa faixa acima da tabela. */
+
+/** A faixa de controles acima da tabela: o segmento (Todos/Finalizados/
+ *  Arquivados) à esquerda, a busca à direita, quebrando em telas estreitas. */
+export const HistControles = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+`;
+
+/** A célula do projeto: o nome (que é link) sobre o cliente em tom apagado. */
+export const HistCelulaProjeto = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 12rem;
+`;
+
+export const HistCliente = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** Envolve as pílulas de uma célula (as frentes, ou o status + "Arquivado")
+ *  para elas quebrarem juntas sem colar uma na outra. */
+export const HistTags = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+`;
+
+/** O intervalo kickoff → encerramento. `tabular-nums` para as datas alinharem
+ *  na vertical; a seta em tom apagado para separar sem competir. */
+export const HistDatas = styled.span`
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: ${theme.colors.foreground};
+
+  .seta {
+    margin: 0 0.3rem;
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/** O bloco de controles à esquerda: o segmento e o toggle de agrupar, lado a
+ *  lado, quebrando junto em tela estreita. */
+export const HistSegmentos = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
+/** As ações do cabeçalho do card (exportar CSV/PDF). */
+export const HistAcoes = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+/** O cabeçalho de coluna clicável para ordenar. A definição vive em
+ *  `shared.styled`, porque o Dashboard de Bancas usa o mesmo controle; o nome
+ *  local fica para não mexer nas tabelas do histórico que já o importam. */
+export { BotaoOrdenar as HistOrdenar } from "@/styles/shared.styled";
+
+/** A linha-título de um grupo de semestre, quando a tabela está agrupada.
+ *  Ocupa a largura inteira (colSpan) e fica levemente destacada do corpo. */
+export const HistGrupoCelula = styled.td`
+  padding: 0.5rem ${theme.spacing.md};
+  background: ${theme.colors.muted};
+  border-top: 1px solid ${theme.colors.border};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  letter-spacing: 0.03em;
+  color: ${theme.colors.foreground};
+
+  small {
+    margin-left: 0.4rem;
+    font-weight: ${theme.fontWeight.normal};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+/* ─── Modal "Ações recentes" (a partir de uma linha do histórico) ──────────
+   Abre as últimas ações do projeto sem sair da aba: mudanças de status,
+   bancas, entregas, reuniões e decisões — o que o backend já compõe em
+   `/projetos/{id}/historico`. */
+
+/** O subtítulo do modal (o nome do projeto sob "Ações recentes"). */
+export const HistModalSub = styled.p`
+  margin: 0.15rem 0 0;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const AcaoLista = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+`;
+
+export const AcaoItem = styled.li`
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: ${theme.spacing.sm};
+  align-items: start;
+`;
+
+type CorAcao = "azul" | "roxo" | "ambar" | "verde" | "vermelho" | "neutro";
+
+const COR_ACAO: Record<CorAcao, string> = {
+  azul: theme.colors.primary,
+  roxo: "#7c3aed",
+  ambar: theme.colors.warning,
+  verde: theme.colors.success,
+  vermelho: theme.colors.destructive,
+  neutro: theme.colors.mutedForeground,
+};
+
+/** O ponto colorido por categoria de ação — cor além do texto, para a lista
+ *  se ler de relance (status, banca, entrega, reunião…). */
+export const AcaoDot = styled.span<{ $cor: CorAcao }>`
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-top: 0.35rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $cor }) => COR_ACAO[$cor]};
+`;
+
+export const AcaoConteudo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+`;
+
+export const AcaoTitulo = styled.span`
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+`;
+
+export const AcaoDetalhe = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const AcaoMeta = styled.span`
+  margin-top: 0.1rem;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  font-variant-numeric: tabular-nums;
+`;
+
+/** O botão de "ver ações" numa linha da tabela — discreto, ícone + texto. */
+export const HistBotaoAcoes = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.card};
+  color: ${theme.colors.mutedForeground};
+  font-size: ${theme.fontSize.xs};
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color ${theme.transitions.fast}, border-color ${theme.transitions.fast},
+    background ${theme.transitions.fast};
+
+  &:hover {
+    color: ${theme.colors.primary};
+    border-color: ${theme.colors.primary};
+    background: ${theme.colors.muted};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+  }
 `;

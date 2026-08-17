@@ -1,5 +1,5 @@
 import styled, { css, keyframes } from "styled-components";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import type { TonsColuna } from "@/lib/colunas-tarefa";
 
@@ -50,6 +50,40 @@ export const FormFields = styled.div`
   gap: ${theme.spacing.lg};
 `;
 
+/** O selo de vagas abertas (§7.3): linha própria logo abaixo do subtítulo,
+ *  não mais dentro da frase "N projetos · N com kickoff pendente" — enterrado
+ *  no meio de uma frase de metadados, ninguém lia até o fim. Link sublinhado,
+ *  não um badge com fundo/borda: aquele formato lia como mais um status
+ *  (tipo `StatusPilula`), e isto é uma ação, não um estado do projeto. */
+export const VagasSelo = styled(Link)`
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: ${theme.spacing.sm};
+  color: ${theme.colors.primary};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  text-decoration: none;
+
+  svg {
+    transition: transform ${theme.transitions.fast};
+  }
+
+  &:hover svg {
+    transform: translateX(0.15rem);
+  }
+`;
+
+/** Link dentro de um `AvisoBanner` (ex.: "Responder" no aviso de pedido de
+ *  entrada pendente) — herda a cor do aviso em vez do azul padrão do
+ *  navegador, só ganha peso e sublinhado pra continuar lendo como ação. */
+export const AvisoLink = styled(Link)`
+  color: inherit;
+  font-weight: ${theme.fontWeight.semibold};
+  text-decoration: underline;
+`;
+
 /** O toggle "Link" / "Anexar PDF" do campo de proposta, um ou outro. */
 export const ModoPropostaRow = styled.div`
   display: flex;
@@ -57,7 +91,7 @@ export const ModoPropostaRow = styled.div`
 `;
 
 /* ------------------------------------------------------------------ */
-/* Lista, os cards do                                             */
+/* Lista — os cards do §6.2                                            */
 /* ------------------------------------------------------------------ */
 
 export const CardGrid = styled.div`
@@ -67,6 +101,7 @@ export const CardGrid = styled.div`
 `;
 
 export const ProjetoCard = styled(NavLink)`
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.sm};
@@ -88,6 +123,18 @@ export const ProjetoCard = styled(NavLink)`
     outline: none;
     box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 30%, transparent);
   }
+`;
+
+/** Mesmo sinal do Kanban (`Kanban.styled.ts`, `PendenteDot`) — pedido de
+ *  entrada pendente pra este projeto, sem precisar abrir pra descobrir. */
+export const PendenteDot = styled.span`
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.destructive};
 `;
 
 export const CardTitle = styled.h2`
@@ -457,6 +504,9 @@ export const DataItem = styled.div`
 `;
 
 export const DataItemLabel = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: ${theme.fontSize.xs};
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -570,6 +620,31 @@ export const DataItemValor = styled.div`
   font-size: ${theme.fontSize.base};
   font-weight: ${theme.fontWeight.medium};
   color: ${theme.colors.foreground};
+`;
+
+/** O complemento discreto de um valor — "· até 20/08" ao lado de "5 dias
+ *  úteis". Peso normal e cor apagada: é contexto do número, não o número. */
+export const DataItemDetalhe = styled.span`
+  font-weight: ${theme.fontWeight.normal};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/**
+ * A variante de metadado do `DataItem` — "Criado em" e afins.
+ *
+ * ⭐ Menor e mais apagada de propósito: é dado de auditoria, não algo que
+ * alguém vem à Visão geral procurar. Competir em tamanho com Kickoff ou
+ * Entrega faria a tela sugerir que as duas coisas pesam igual.
+ */
+export const DataItemMeta = styled(DataItem)`
+  ${DataItemLabel} {
+    font-size: 0.65rem;
+  }
+  ${DataItemValor} {
+    font-size: ${theme.fontSize.sm};
+    font-weight: ${theme.fontWeight.normal};
+    color: ${theme.colors.mutedForeground};
+  }
 `;
 
 /**
@@ -692,6 +767,26 @@ export const AtrasoCelula = styled.div`
   flex-direction: column;
   align-items: flex-start;
   gap: 0.25rem;
+`;
+
+/**
+ * A célula "Entrega": a data e, embaixo, o estado da confirmação.
+ *
+ * ⭐ Data e confirmação empilhadas, e não num badge só, porque são duas
+ * informações diferentes — *quando* foi e se alguém já **afirmou** que foi. Uma
+ * data sozinha na coluna era lida como "entregue", que é justamente a confusão
+ * que a confirmação existe para desfazer.
+ */
+export const EntregaCelula = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+
+  small {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
 `;
 
 /**
@@ -1243,4 +1338,173 @@ export const HistoricoAguardando = styled.span`
   font-size: ${theme.fontSize.xs};
   font-style: italic;
   color: ${theme.colors.mutedForeground};
+`;
+
+/* ---------------------------------------------- contexto no cabeçalho fixo */
+
+/**
+ * A descrição do projeto no cabeçalho, cortada em duas linhas.
+ *
+ * ⭐ Ela subiu do card "Descrição" da Visão geral para cá em 14/08/2026: é a
+ * resposta para "do que se trata este projeto", e quem precisa dela precisa em
+ * qualquer aba — não só na primeira.
+ *
+ * 📐 Cortada em duas linhas porque é texto livre e cresce sem limite. Um
+ * cabeçalho fixo que muda de altura conforme o tamanho da descrição empurraria
+ * as abas para baixo em uns projetos e não em outros.
+ */
+export const DescricaoCabecalho = styled.p<{ $inteira: boolean }>`
+  margin: 0.15rem 0 0;
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.45;
+  color: ${theme.colors.mutedForeground};
+  max-width: 68ch;
+
+  ${({ $inteira }) =>
+    !$inteira &&
+    `
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  `}
+`;
+
+export const DescricaoVerMais = styled.button`
+  align-self: flex-start;
+  margin-top: 0.1rem;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.primary};
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+/** A equipe no cabeçalho: coordenação e consultores lado a lado. */
+export const EquipeCabecalho = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: ${theme.spacing.sm};
+  margin-top: 0.35rem;
+`;
+
+export const EquipeGrupo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  flex-wrap: wrap;
+`;
+
+export const EquipeRotulo = styled.span`
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/**
+ * "2 de 3" — a ocupação da equipe.
+ *
+ * ⭐ Responde "ainda cabe gente?" sem ninguém contar avatares, que é a
+ * pergunta de quem vai alocar. Colado ao rótulo que ele conta: solto, o número
+ * não diz de quê.
+ */
+export const EquipeOcupacao = styled.span<{ $cheio: boolean }>`
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: 0;
+  color: ${({ $cheio }) => ($cheio ? theme.colors.mutedForeground : theme.colors.primary)};
+`;
+
+export const EquipePessoa = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+`;
+
+/** As iniciais. Cor derivada do id: a mesma pessoa é sempre a mesma cor. */
+export const EquipeAvatar = styled.span<{ $cor: string }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $cor }) => $cor};
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: ${theme.fontWeight.semibold};
+  flex-shrink: 0;
+`;
+
+export const EquipeVazia = styled.span`
+  font-size: ${theme.fontSize.sm};
+  font-style: italic;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** A linha da proposta na Visão geral: link e/ou anexo, lado a lado. */
+export const PropostaLinha = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  flex-wrap: wrap;
+`;
+
+/**
+ * A proposta no cabeçalho, ao lado do nome.
+ *
+ * ⭐ **Pílula com borda, não texto solto.** A primeira versão era só um ícone
+ * cinza sem contorno — do tamanho de um pixel perdido ao lado de um título
+ * grande, ninguém achava que aquilo era clicável. A mesma borda e o mesmo
+ * arredondamento da `FrenteTag` ao lado fazem ela se anunciar como algo que
+ * se aperta, sem competir em peso visual com o nome do projeto.
+ */
+const propostaBase = css`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.secondary};
+  cursor: pointer;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.foreground};
+  text-decoration: none;
+
+  &:hover {
+    background: ${theme.colors.muted};
+    border-color: ${theme.colors.mutedForeground};
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+`;
+
+export const PropostaLink = styled.a`
+  ${propostaBase}
+`;
+
+export const PropostaBotao = styled.button`
+  ${propostaBase}
 `;

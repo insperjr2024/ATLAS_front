@@ -37,19 +37,33 @@ export const SelectMontador = styled.select`
   }
 `;
 
-/** A explicação da tabela escolhida. É o que dispensa conhecer o banco. */
-export const DescricaoFonte = styled.p`
-  margin: ${theme.spacing.md} 0 0;
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  border-left: 3px solid ${theme.colors.border};
-  font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.mutedForeground};
-`;
-
 export const TipoBotoes = styled.div`
   display: flex;
   gap: ${theme.spacing.xs};
   flex-wrap: wrap;
+`;
+
+/**
+ * O aviso de que as categorias se sobrepõem, entre o título e o gráfico.
+ *
+ * ⭐ **Fica ANTES das barras de propósito.** Ninguém olha um gráfico chamado
+ * "Projetos por frente" sem somar as barras, e a soma dá um número que não
+ * existe — 66 onde há 61 projetos. Dito só no rodapé, o aviso chega depois de
+ * a conta errada já ter sido feita.
+ *
+ * Uma linha, não um parágrafo: é ressalva, não documentação.
+ */
+export const AvisoSobreposicao = styled.p`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+
+  svg {
+    flex-shrink: 0;
+  }
 `;
 
 export const ResumoLinha = styled.p`

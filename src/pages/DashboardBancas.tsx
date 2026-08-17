@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { AlertTriangle, Clock, TrendingDown, Users } from "lucide-react";
 import { semestreAtual } from "@/lib/semestres";
 import { nomeEscopo, nomeUsuario } from "@/lib/nucleo";
 import { paraDataUtc } from "@/lib/projetos";
@@ -15,6 +16,7 @@ import type {
 import type { UsuarioResumo } from "@/types/auth";
 import { DesempenhoChart, type FatiaDonut } from "@/components/DesempenhoChart";
 import { PresencaBancas } from "./PresencaBancas";
+import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import {
   PageCard,
   PageCardHeader,
@@ -30,14 +32,12 @@ import {
   LIST_MAX_VISIVEIS,
 } from "@/styles/shared.styled";
 import {
-  ChartCaption,
   CardHeaderRow,
   FilterGroup,
   FilterLabel,
   FieldSelect,
   DataTable,
   TableHead,
-  TableHeadCell,
   TableBody,
   TableRow,
   NameCell,
@@ -48,6 +48,8 @@ import {
 import {
   KpiGrid,
   KpiCard,
+  KpiIcone,
+  KpiTexto,
   KpiRotulo,
   KpiValor,
   KpiNota,
@@ -73,6 +75,13 @@ interface ResultadoAgregado {
   bancas: number;
   notaMedia: number | null;
 }
+
+/** As colunas ordenáveis da tabela de resultados. */
+const COLUNAS_RESULTADO: Colunas<ResultadoAgregado> = {
+  nome: { valor: (r) => r.nome, inicial: "asc" },
+  bancas: { valor: (r) => r.bancas, inicial: "desc" },
+  nota: { valor: (r) => r.notaMedia, inicial: "desc" },
+};
 
 interface Props {
   bancas: Banca[];
@@ -271,36 +280,49 @@ export function DashboardBancas({
 
   const fatias: FatiaDonut[] = useMemo(() => {
     if (distribuicaoModo === "frentes") {
-      const pontosPorFrente = new Map<string, number>();
+      // Pontos (peso fracionado pra banca sinérgica) e itens (nomes pro
+      // balão de hover) andam juntos, senão precisaria varrer as bancas de
+      // novo só pra saber quem está em cada fatia.
+      const pontosPorFrente = new Map<string, { valor: number; itens: string[] }>();
+      function somar(nome: string, peso: number, nomeBanca: string) {
+        const atual = pontosPorFrente.get(nome) ?? { valor: 0, itens: [] };
+        atual.valor += peso;
+        atual.itens.push(nomeBanca);
+        pontosPorFrente.set(nome, atual);
+      }
       for (const banca of historicoSemestre) {
         const frentesDaBanca = bancasFrentes.filter((bf) => bf.banca_id === banca.id);
         const peso = frentesDaBanca.length > 0 ? 1 / frentesDaBanca.length : 0;
         if (frentesDaBanca.length === 0) {
-          pontosPorFrente.set("Sem frente", (pontosPorFrente.get("Sem frente") ?? 0) + 1);
+          somar("Sem frente", 1, banca.nome_projeto);
           continue;
         }
         for (const bf of frentesDaBanca) {
           const nome = frentes.find((f) => f.id === bf.frente_id)?.nome ?? "—";
-          pontosPorFrente.set(nome, (pontosPorFrente.get(nome) ?? 0) + peso);
+          somar(nome, peso, banca.nome_projeto);
         }
       }
-      return Array.from(pontosPorFrente.entries()).map(([nome, valor]) => ({
+      return Array.from(pontosPorFrente.entries()).map(([nome, { valor, itens }]) => ({
         nome,
         valor: Math.round(valor * 10) / 10,
+        itens,
       }));
     }
 
     const frenteId = Number(frenteAtivaId);
     if (!frenteId) return [];
 
-    const pontosPorEscopo = new Map<string, number>();
+    const pontosPorEscopo = new Map<string, { valor: number; itens: string[] }>();
     for (const banca of historicoSemestre) {
       const pertence = bancasFrentes.some((bf) => bf.banca_id === banca.id && bf.frente_id === frenteId);
       if (!pertence) continue;
       const nome = nomeEscopo(escopos, banca.escopo_id);
-      pontosPorEscopo.set(nome, (pontosPorEscopo.get(nome) ?? 0) + 1);
+      const atual = pontosPorEscopo.get(nome) ?? { valor: 0, itens: [] };
+      atual.valor += 1;
+      atual.itens.push(banca.nome_projeto);
+      pontosPorEscopo.set(nome, atual);
     }
-    return Array.from(pontosPorEscopo.entries()).map(([nome, valor]) => ({ nome, valor }));
+    return Array.from(pontosPorEscopo.entries()).map(([nome, { valor, itens }]) => ({ nome, valor, itens }));
   }, [historicoSemestre, bancasFrentes, frentes, escopos, distribuicaoModo, frenteAtivaId]);
 
   const totalDistribuicao = useMemo(() => {
@@ -342,64 +364,91 @@ export function DashboardBancas({
     );
   }, [historicoSemestre, usuarios, escopos, frentes, bancasFrentes, resultadosModo]);
 
+  // Abre como a tabela sempre abriu: quem tem mais bancas primeiro.
+  const {
+    itens: resultadosOrdenados,
+    ordem: ordemResultados,
+    ordenarPor,
+  } = useOrdenacao(resultados, COLUNAS_RESULTADO, "bancas");
+
+  /* "do projeto" reforça de que lado da banca a pessoa está: ela é quem
+     coordena o trabalho avaliado, não quem senta na mesa para avaliar — a
+     mesma confusão que a coluna de nota ao lado precisa desfazer. */
   const rotuloResultados =
-    resultadosModo === "coordenador" ? "Coordenador" : resultadosModo === "escopo" ? "Escopo" : "Frente";
+    resultadosModo === "coordenador"
+      ? "Coordenador do projeto"
+      : resultadosModo === "escopo"
+        ? "Escopo"
+        : "Frente";
 
   const frenteSelecionadaNome = frentes.find((f) => f.id === Number(frenteAtivaId))?.nome;
-
-  const captionDistribuicao =
-    distribuicaoModo === "frentes"
-      ? `${totalDistribuicao} ${totalDistribuicao === 1 ? "banca realizada" : "bancas realizadas"} no semestre`
-      : frenteAtivaId
-        ? `${totalDistribuicao} ${totalDistribuicao === 1 ? "banca" : "bancas"} na frente selecionada`
-        : "Selecione uma frente para ver a distribuição por escopos";
 
   return (
     <>
       <KpiGrid>
         <KpiCard>
-          <KpiRotulo>Comparecimento do núcleo</KpiRotulo>
-          <KpiValor>
-            {presencaNucleo.percentual == null ? "—" : `${presencaNucleo.percentual}%`}
-          </KpiValor>
-          <KpiNota>
-            {presencaNucleo.percentual == null
-              ? "Nenhuma banca realizada ainda"
-              : `${presencaNucleo.presentes} de ${presencaNucleo.inscritos} presenças`}
-            {presencaNucleo.delta != null && presencaNucleo.anteriorNome
-              ? ` · ${presencaNucleo.delta >= 0 ? "+" : ""}${presencaNucleo.delta} p.p. vs ${presencaNucleo.anteriorNome}`
-              : ""}
-          </KpiNota>
+          <KpiIcone aria-hidden>
+            <Users size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiRotulo>Comparecimento do núcleo</KpiRotulo>
+            <KpiValor>
+              {presencaNucleo.percentual == null ? "—" : `${presencaNucleo.percentual}%`}
+            </KpiValor>
+            <KpiNota>
+              {presencaNucleo.percentual == null
+                ? "Nenhuma banca realizada ainda"
+                : `${presencaNucleo.presentes} de ${presencaNucleo.inscritos} presenças`}
+              {presencaNucleo.delta != null && presencaNucleo.anteriorNome
+                ? ` · ${presencaNucleo.delta >= 0 ? "+" : ""}${presencaNucleo.delta} p.p. vs ${presencaNucleo.anteriorNome}`
+                : ""}
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
 
-        <KpiCard $tone={emRisco.length > 0 ? "atencao" : "neutro"}>
-          <KpiRotulo>Bancas em risco</KpiRotulo>
-          <KpiValor>{emRisco.length}</KpiValor>
-          <KpiNota>
-            {emRisco.length === 0
-              ? "Todas as próximas fecharam composição"
-              : "Ainda sem o mínimo de avaliadores"}
-          </KpiNota>
+        <KpiCard>
+          <KpiIcone $tone={emRisco.length > 0 ? "atencao" : "neutro"} aria-hidden>
+            <AlertTriangle size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiRotulo>Bancas em risco</KpiRotulo>
+            <KpiValor>{emRisco.length}</KpiValor>
+            <KpiNota>
+              {emRisco.length === 0
+                ? "Todas as próximas fecharam composição"
+                : "Ainda sem o mínimo de avaliadores"}
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
 
-        <KpiCard $tone={totalVencidas > 0 ? "risco" : "neutro"}>
-          <KpiRotulo>Avaliações vencendo</KpiRotulo>
-          <KpiValor>{avaliacoesVencendo.length}</KpiValor>
-          <KpiNota>
-            {avaliacoesVencendo.length === 0
-              ? "Nada pendente"
-              : `${totalVencidas} com prazo já vencido`}
-          </KpiNota>
+        <KpiCard>
+          <KpiIcone $tone={totalVencidas > 0 ? "risco" : "neutro"} aria-hidden>
+            <Clock size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiRotulo>Avaliações vencendo</KpiRotulo>
+            <KpiValor>{avaliacoesVencendo.length}</KpiValor>
+            <KpiNota>
+              {avaliacoesVencendo.length === 0
+                ? "Nada pendente"
+                : `${totalVencidas} com prazo já vencido`}
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
 
-        <KpiCard $tone={abaixoDoMinimo.length > 0 ? "atencao" : "neutro"}>
-          <KpiRotulo>Feitas abaixo do mínimo</KpiRotulo>
-          <KpiValor>{abaixoDoMinimo.length}</KpiValor>
-          <KpiNota>
-            {abaixoDoMinimo.length === 0
-              ? "Nenhuma exceção usada"
-              : `de ${bancasSemestre.filter((b) => b.realizado_em).length} realizadas`}
-          </KpiNota>
+        <KpiCard>
+          <KpiIcone $tone={abaixoDoMinimo.length > 0 ? "atencao" : "neutro"} aria-hidden>
+            <TrendingDown size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiRotulo>Feitas abaixo do mínimo</KpiRotulo>
+            <KpiValor>{abaixoDoMinimo.length}</KpiValor>
+            <KpiNota>
+              {abaixoDoMinimo.length === 0
+                ? "Nenhuma exceção usada"
+                : `de ${bancasSemestre.filter((b) => b.realizado_em).length} realizadas`}
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
       </KpiGrid>
 
@@ -454,7 +503,6 @@ export function DashboardBancas({
                 }
               />
             )}
-            <ChartCaption>{captionDistribuicao}</ChartCaption>
           </PageCardContent>
         </PageCard>
 
@@ -483,13 +531,25 @@ export function DashboardBancas({
                 <DataTable>
                   <TableHead>
                     <TableRow>
-                      <TableHeadCell>{rotuloResultados}</TableHeadCell>
-                      <TableHeadCell>Bancas</TableHeadCell>
-                      <TableHeadCell>Nota média</TableHeadCell>
+                      <Th coluna="nome" ordem={ordemResultados} onOrdenar={ordenarPor}>
+                        {rotuloResultados}
+                      </Th>
+                      <Th coluna="bancas" ordem={ordemResultados} onOrdenar={ordenarPor}>
+                        Bancas
+                      </Th>
+                      {/* ⭐ "Recebida" é a palavra que carrega a coluna inteira.
+                          Sem ela, "Ana Souza — 3,4" tem duas leituras opostas e
+                          plausíveis: a nota que as bancas DELA tiraram, ou a
+                          nota que ela COSTUMA DAR quando avalia. É a primeira —
+                          o agrupamento é por `banca.coordenador_id`, e quem
+                          avaliou não entra nesta tabela em lugar nenhum. */}
+                      <Th coluna="nota" ordem={ordemResultados} onOrdenar={ordenarPor}>
+                        Nota média recebida
+                      </Th>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {resultados.map((item) => (
+                    {resultadosOrdenados.map((item) => (
                       <TableRow key={`${resultadosModo}-${item.id}`}>
                         <NameCell>{item.nome}</NameCell>
                         <TableCell>{item.bancas}</TableCell>

@@ -59,6 +59,12 @@ export const SectionLabel = styled.div`
   color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+
+  /* O primeiro rótulo encosta no logo se levar a folga de separação, que
+     existe para afastar um grupo do grupo ANTERIOR. Aqui não há anterior. */
+  &:first-child {
+    margin-top: 0;
+  }
 `;
 
 export const Footer = styled.div`
@@ -67,10 +73,51 @@ export const Footer = styled.div`
   border-top: 1px solid var(--sidebar-border);
 `;
 
+/** A identidade no rodapé É o link para o perfil.
+ *
+ *  "Meu perfil" saiu da lista de navegação: procurar o próprio perfil pelo
+ *  nome e pela foto é o gesto que as pessoas já têm de outras plataformas, e
+ *  mantê-lo como item deixava uma linha de página no meio do trabalho do dia. */
+export const UserRow = styled(Link)<{ $isActive: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 1.25rem 0.5rem;
+  text-decoration: none;
+  transition: color 150ms ease;
+  color: ${({ $isActive }) => ($isActive ? "var(--destructive)" : "var(--muted-foreground)")};
+
+  &:hover {
+    color: var(--destructive);
+  }
+`;
+
+/** Fotinho da pessoa quando existe, iniciais quando não — ver
+ *  `components/Avatar.tsx`. `overflow: hidden` é o que faz a foto (que
+ *  preenche 100% x 100%) respeitar o círculo. */
+export const UserAvatar = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 0.65rem;
+  font-weight: 600;
+`;
+
+/** `inherit` e não `--muted-foreground`: a cor é decidida pelo `UserRow`, que
+ *  precisa acender inteiro no hover e quando a página do perfil está aberta. */
 export const UserName = styled.div`
-  padding: 0 1.25rem 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.75rem;
-  color: var(--muted-foreground);
+  color: inherit;
 `;
 
 export const NotificacoesWrap = styled.div`

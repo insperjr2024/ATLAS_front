@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Info } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -36,14 +37,15 @@ import {
   ErrorText,
   PageButton,
 } from "@/styles/page.styled";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import { CaixaGrafico } from "./Monitoramento.styled";
 import {
   MontadorGrid,
   CampoMontador,
   RotuloMontador,
   SelectMontador,
-  DescricaoFonte,
   TipoBotoes,
+  AvisoSobreposicao,
   ResumoLinha,
 } from "./Graficos.styled";
 
@@ -56,6 +58,11 @@ const TIPOS = [
 type TipoGrafico = (typeof TIPOS)[number]["chave"];
 
 const CORES = PALETA.map((p) => p.amostra);
+
+/** Contagem sai inteira; média e soma podem ter casa decimal. */
+function formatarValor(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
 
 /**
  * Montador de gráficos do monitoramento.
@@ -153,11 +160,19 @@ export function GraficosAba() {
 
   const dados = resultado?.chave === chave ? resultado.dados : null;
 
+  /* A rosca escolhida antes não pode sobreviver a uma troca de agrupamento que
+     passe a sobrepor as fatias: sem isto, quem tinha rosca aberta e trocava
+     "Status" por "Frente" continuava vendo uma rosca com porcentagens falsas.
+     Cai para barra, e é a barra que fica acesa nos botões. */
+  const tipoEfetivo: TipoGrafico = dados?.sobrepoe && tipo === "rosca" ? "barra" : tipo;
+
+  const somaDasFatias = (dados?.dados ?? []).reduce((acc, p) => acc + p.valor, 0);
+
   const conteudo = useMemo(() => {
     if (!dados || dados.dados.length === 0) return null;
     const pontos = dados.dados;
 
-    if (tipo === "rosca") {
+    if (tipoEfetivo === "rosca") {
       return (
         <PieChart>
           <Pie data={pontos} dataKey="valor" nameKey="rotulo" innerRadius="55%" outerRadius="80%">
@@ -171,7 +186,7 @@ export function GraficosAba() {
       );
     }
 
-    if (tipo === "linha") {
+    if (tipoEfetivo === "linha") {
       return (
         <LineChart data={pontos} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -196,7 +211,7 @@ export function GraficosAba() {
         </Bar>
       </BarChart>
     );
-  }, [dados, tipo]);
+  }, [dados, tipoEfetivo]);
 
   if (erro && fontes.length === 0) {
     return (
@@ -310,8 +325,6 @@ export function GraficosAba() {
               </CampoMontador>
             )}
           </MontadorGrid>
-
-          {fonte && <DescricaoFonte>{fonte.descricao}</DescricaoFonte>}
         </PageCardContent>
       </PageCard>
 
@@ -319,17 +332,32 @@ export function GraficosAba() {
         <PageCardHeader>
           <PageCardTitle>{dados ? dados.titulo : "Gráfico"}</PageCardTitle>
           <TipoBotoes>
-            {TIPOS.map((t) => (
-              <PageButtonSm
-                key={t.chave}
-                type="button"
-                $variant={tipo === t.chave ? "primary" : "outline"}
-                aria-pressed={tipo === t.chave}
-                onClick={() => setTipo(t.chave)}
-              >
-                {t.rotulo}
-              </PageButtonSm>
-            ))}
+            {TIPOS.map((t) => {
+              /* ⭐ Rosca fora quando as fatias se sobrepõem. Fatia de rosca é
+                 fração de um todo, e agrupado por frente não há todo: um
+                 projeto de duas frentes está nas duas, as fatias somam mais
+                 que o portfólio e toda porcentagem que o desenho sugere está
+                 errada. Barra não faz essa promessa — compara categorias sem
+                 afirmar que elas particionam alguma coisa. */
+              const invalido = t.chave === "rosca" && !!dados?.sobrepoe;
+              return (
+                <PageButtonSm
+                  key={t.chave}
+                  type="button"
+                  disabled={invalido}
+                  title={
+                    invalido
+                      ? "Indisponível aqui: o mesmo registro aparece em mais de uma fatia, então elas não formam um todo."
+                      : undefined
+                  }
+                  $variant={tipoEfetivo === t.chave ? "primary" : "outline"}
+                  aria-pressed={tipoEfetivo === t.chave}
+                  onClick={() => setTipo(t.chave)}
+                >
+                  {t.rotulo}
+                </PageButtonSm>
+              );
+            })}
           </TipoBotoes>
         </PageCardHeader>
         <PageCardContent>
@@ -342,17 +370,47 @@ export function GraficosAba() {
           ) : !dados ? (
             <EmptyText>Carregando...</EmptyText>
           ) : dados.dados.length === 0 ? (
-            <EmptyText>Nenhum dado para esse recorte.</EmptyText>
+            /* "Recorte" é jargão de quem construiu a tela. Quem monta um
+               gráfico e não vê nada precisa saber que a combinação escolhida
+               é que não tem registro — e que a saída é trocar o agrupamento
+               ou o período, não desistir. */
+            <EstadoVazio
+              causa="filtro"
+              titulo="Nenhum registro nessa combinação"
+              motivo="A tabela tem dados, mas nenhum se encaixa no agrupamento e no período escolhidos. Tente outro agrupamento, ou amplie o período."
+            />
           ) : (
             <>
+              {/* ⭐ O aviso vem ANTES do gráfico. Quem lê "Projetos por frente"
+                  soma as barras — é a primeira coisa que se faz — e a soma dá
+                  um número que não existe. Avisado só no rodapé, ele chega
+                  depois de a conta errada já ter sido feita e anotada. */}
+              {dados.sobrepoe && dados.nota && (
+                <AvisoSobreposicao>
+                  <Info size={13} aria-hidden="true" />
+                  {dados.nota}
+                </AvisoSobreposicao>
+              )}
               <CaixaGrafico $altura="22rem">
                 <ResponsiveContainer width="100%" height="100%">
                   {conteudo ?? <div />}
                 </ResponsiveContainer>
               </CaixaGrafico>
+              {/* ⚠ O rodapé dizia "total {soma das fatias}". Agrupado por
+                  frente isso anunciava 68 projetos onde existem 63: os 5
+                  sinérgicos entram em duas fatias, e somá-las conta cada um
+                  duas vezes. Agora o total vem da tabela base, e quando as
+                  fatias se sobrepõem a diferença é dita em vez de escondida —
+                  senão quem soma as barras na mão acha que a tela errou. */}
+              {/* ⚠ O rodapé dizia "total {soma das fatias}". Agrupado por
+                  frente isso anunciava 66 projetos onde existem 61: os 5
+                  sinérgicos entram em duas fatias, e somá-las conta cada um
+                  duas vezes. Agora os dois números aparecem lado a lado e
+                  nomeados, para a diferença ser lida em vez de descoberta. */}
               <ResumoLinha>
-                {dados.dados.length} {dados.dados.length === 1 ? "fatia" : "fatias"} · total{" "}
-                {Number.isInteger(dados.total) ? dados.total : dados.total.toFixed(1)}
+                {dados.dados.length} {dados.dados.length === 1 ? "fatia" : "fatias"} ·{" "}
+                {formatarValor(dados.total)} no total
+                {dados.sobrepoe && <> · barras somam {formatarValor(somaDasFatias)}</>}
               </ResumoLinha>
             </>
           )}

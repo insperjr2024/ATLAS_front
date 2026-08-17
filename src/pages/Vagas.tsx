@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { ChevronDown, ChevronRight, Inbox, Users } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
+import { ArrowLeft, ChevronDown, ChevronRight, Inbox, TriangleAlert, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS, formatarDataHora } from "@/lib/projetos";
 import type { StatusProjeto } from "@/types/projeto";
@@ -20,6 +20,8 @@ import {
 } from "@/lib/vagas";
 import { VagaProjetoModal } from "./VagaProjetoModal";
 import { VagasAlocarPainel } from "./VagasAlocarPainel";
+import { FormDecisao } from "./monitoramento/AprovacaoLinha";
+import { FotoCircular } from "@/components/Avatar";
 import {
   PageStack,
   PageHeader,
@@ -46,6 +48,14 @@ import {
   FieldLabel,
   FieldSelect,
 } from "./Bancas.styled";
+import {
+  VoltarLink,
+  FrenteFilterWrap,
+  FrenteFilterButton,
+  FrenteFilterPanel,
+  FrenteFilterSecao,
+  CheckboxLabel,
+} from "./projetos/Projetos.styled";
 // A mesma pílula da aba de Alocação: é onde a situação de carga já é lida
 // hoje, e duas formas diferentes para o mesmo rótulo fariam a pessoa achar
 // que são coisas distintas.
@@ -60,6 +70,8 @@ import {
 import {
   VagasGrid,
   ProjetoCard,
+  ProjetoCardEstatico,
+  PedidoStatusLinha,
   CardTopo,
   CardNome,
   CardCliente,
@@ -97,7 +109,8 @@ import {
   HistTopo,
   HistDesfecho,
   HistTexto,
-  CandidatoSituacao,
+  CargaBadge,
+  CargaRecado,
   CoordLista,
   CoordCard,
   CoordCabecalhoTitulo,
@@ -229,6 +242,29 @@ export function Vagas() {
   // Grade da gestão: o filtro de frente e o projeto aberto no painel lateral.
   const [frenteDaGrade, setFrenteDaGrade] = useState(TODOS);
   const [alocarEm, setAlocarEm] = useState<ProjetoComVaga | null>(null);
+  const [filtroGestaoAberto, setFiltroGestaoAberto] = useState(false);
+  const filtroGestaoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!filtroGestaoAberto) return;
+    function aoClicarFora(e: MouseEvent) {
+      if (filtroGestaoRef.current && !filtroGestaoRef.current.contains(e.target as Node)) {
+        setFiltroGestaoAberto(false);
+      }
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, [filtroGestaoAberto]);
+
+  /** Quem navegou pra cá manda `state.voltarPara` (o selo de vagas em
+   *  Projetos, o link de quem não tem projeto, o banner "Responder" na
+   *  página do projeto) — mesmo padrão de `ProjetoPage`. Sem essa origem
+   *  (sidebar, notificação, URL direta), não existe "voltar para" nenhum:
+   *  a pessoa não veio de dentro de Projetos, então o link não aparece. */
+  const location = useLocation();
+  const voltarState = location.state as { voltarPara?: string; voltarRotulo?: string } | null;
+  const voltarPara = voltarState?.voltarPara;
+  const voltarRotulo = voltarState?.voltarRotulo ?? "Voltar para Projetos";
 
   useEffect(() => {
     if (!token) return;
@@ -289,14 +325,15 @@ export function Vagas() {
     }
   }
 
-  async function responder(id: number, aprovar: boolean) {
+  async function responder(id: number, aprovar: boolean, resposta?: string) {
     if (!token) return;
     setRespondendo(id);
     try {
-      await responderSolicitacao(id, aprovar, token);
+      await responderSolicitacao(id, aprovar, token, resposta);
       recarregar();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao responder");
+      throw e;
     } finally {
       setRespondendo(null);
     }
@@ -369,6 +406,13 @@ export function Vagas() {
 
   return (
     <PageStack>
+      {voltarPara && (
+        <VoltarLink to={voltarPara}>
+          <ArrowLeft size={14} />
+          {voltarRotulo}
+        </VoltarLink>
+      )}
+
       <PageHeader>
         <PageHeaderText>
           <PageTitle>Vagas em projetos</PageTitle>
@@ -465,15 +509,37 @@ export function Vagas() {
                 <PageCardTitle>Projetos abertos</PageCardTitle>
               </PageCardHeader>
               <PageCardContent>
-                {dados.projetos.length === 0 ? (
-                  <EmptyText>Nenhum projeto aberto no momento.</EmptyText>
-                ) : (
-                  <VagasGrid>
-                    {dados.projetos.map((p) => (
-                      <CartaoProjeto key={p.id} projeto={p} modo="solicitar" onAbrir={setAberto} />
-                    ))}
-                  </VagasGrid>
-                )}
+                {/* Time completo sai da lista: "abertos" quer dizer que dá
+                    pra pedir, e um projeto sem vaga nenhuma não é isso. Só
+                    fica quem tem vaga de verdade, ou cujo próprio pedido do
+                    consultor segue pendente ali (mesmo que a vaga tenha
+                    fechado por outra via nesse meio-tempo) — sem isso, o
+                    pedido em análise sumiria da tela sem explicação. */}
+                {(() => {
+                  const projetosVisiveis = dados.projetos.filter(
+                    (p) =>
+                      p.vagas > 0 ||
+                      meus.some((s) => s.projeto_id === p.id && s.status === "pendente"),
+                  );
+                  return projetosVisiveis.length === 0 ? (
+                    <EmptyText>Nenhum projeto aberto no momento.</EmptyText>
+                  ) : (
+                    <VagasGrid>
+                      {projetosVisiveis.map((p) => (
+                        <CartaoProjeto
+                          key={p.id}
+                          projeto={p}
+                          modo="solicitar"
+                          onAbrir={setAberto}
+                          pedidoPendente={meus.find(
+                            (s) => s.projeto_id === p.id && s.status === "pendente",
+                          )}
+                          onCancelar={desistir}
+                        />
+                      ))}
+                    </VagasGrid>
+                  );
+                })()}
               </PageCardContent>
             </PageCard>
           )}
@@ -482,32 +548,56 @@ export function Vagas() {
             <PageCard>
               <PageCardHeader>
                 <PageCardTitle>Projetos</PageCardTitle>
-              </PageCardHeader>
-              <PageCardContent>
                 {/* Filtro e agrupamento só para quem compara frentes. O
                     gerente de uma frente só já recebe a lista recortada
                     nela: o seletor teria uma opção e o agrupamento, um
                     grupo. Quem decide é o back, pelo recorte. */}
                 {dados.filtraPorFrente && (
-                  <LinhaDeCampos>
-                    <FieldGroup>
-                      <FieldLabel htmlFor="grade-frente">Frente</FieldLabel>
-                      <FieldSelect
-                        id="grade-frente"
-                        value={frenteDaGrade}
-                        onChange={(e) => setFrenteDaGrade(e.target.value)}
-                      >
-                        <option value={TODOS}>Todas as frentes</option>
+                  <FrenteFilterWrap ref={filtroGestaoRef}>
+                    <FrenteFilterButton
+                      type="button"
+                      aria-haspopup="listbox"
+                      aria-expanded={filtroGestaoAberto}
+                      onClick={() => setFiltroGestaoAberto((aberto) => !aberto)}
+                    >
+                      {frenteDaGrade === TODOS ? "Todas as frentes" : frenteDaGrade}
+                      <ChevronDown size={14} />
+                    </FrenteFilterButton>
+                    {filtroGestaoAberto && (
+                      <FrenteFilterPanel role="listbox" aria-label="Filtrar por frente">
+                        <FrenteFilterSecao>Frente</FrenteFilterSecao>
+                        <CheckboxLabel>
+                          <input
+                            type="radio"
+                            name="frente-da-grade"
+                            checked={frenteDaGrade === TODOS}
+                            onChange={() => {
+                              setFrenteDaGrade(TODOS);
+                              setFiltroGestaoAberto(false);
+                            }}
+                          />
+                          Todas as frentes
+                        </CheckboxLabel>
                         {[...new Set(dados.projetos.flatMap((p) => p.frentes))].sort().map((f) => (
-                          <option key={f} value={f}>
+                          <CheckboxLabel key={f}>
+                            <input
+                              type="radio"
+                              name="frente-da-grade"
+                              checked={frenteDaGrade === f}
+                              onChange={() => {
+                                setFrenteDaGrade(f);
+                                setFiltroGestaoAberto(false);
+                              }}
+                            />
                             {f}
-                          </option>
+                          </CheckboxLabel>
                         ))}
-                      </FieldSelect>
-                    </FieldGroup>
-                  </LinhaDeCampos>
+                      </FrenteFilterPanel>
+                    )}
+                  </FrenteFilterWrap>
                 )}
-
+              </PageCardHeader>
+              <PageCardContent>
                 <GradeDaGestao
                   projetos={dados.projetos}
                   frente={dados.filtraPorFrente ? frenteDaGrade : TODOS}
@@ -704,20 +794,21 @@ function CartaoProjeto({
   projeto: p,
   modo,
   onAbrir,
+  pedidoPendente,
+  onCancelar,
 }: {
   projeto: ProjetoComVaga;
   modo: "solicitar" | "gestao";
   onAbrir: (p: ProjetoComVaga) => void;
+  /** Só existe em `modo="solicitar"` — é o pedido do próprio consultor
+   *  aberto NESTE projeto, quando há um. */
+  pedidoPendente?: MinhaSolicitacao;
+  onCancelar?: (id: number) => void;
 }) {
   const bloqueado = modo === "solicitar" && !!p.impedimento;
 
-  return (
-    <ProjetoCard
-      type="button"
-      $indisponivel={bloqueado}
-      disabled={bloqueado}
-      onClick={() => onAbrir(p)}
-    >
+  const conteudo = (
+    <>
       <CardTopo>
         <div>
           <CardNome>{p.nome}</CardNome>
@@ -749,6 +840,38 @@ function CartaoProjeto({
       </VagasDots>
 
       <CardLinha>Coordenador: {p.coordenador_nome ?? "—"}</CardLinha>
+    </>
+  );
+
+  // Já pedi pra entrar NESTE projeto: o cartão não é mais um botão (não há o
+  // que reabrir clicando, o pedido já existe) — mostra o status de verdade e
+  // deixa cancelar direto aqui, em vez do texto genérico de impedimento.
+  if (pedidoPendente) {
+    return (
+      <ProjetoCardEstatico>
+        {conteudo}
+        <PedidoStatusLinha>
+          <PageBadge $tone="warning">Pedido pendente</PageBadge>
+          <PageButtonSm
+            type="button"
+            $variant="outline"
+            onClick={() => onCancelar?.(pedidoPendente.id)}
+          >
+            Cancelar pedido
+          </PageButtonSm>
+        </PedidoStatusLinha>
+      </ProjetoCardEstatico>
+    );
+  }
+
+  return (
+    <ProjetoCard
+      type="button"
+      $indisponivel={bloqueado}
+      disabled={bloqueado}
+      onClick={() => onAbrir(p)}
+    >
+      {conteudo}
       {modo === "solicitar" && p.impedimento && <Impedimento>{p.impedimento}</Impedimento>}
     </ProjetoCard>
   );
@@ -943,7 +1066,7 @@ function ProjetoCoordenadoCard({
           {coordenador.map((m) => (
             <CoordPessoa key={m.usuario_id}>
               <CoordAvatar $destaque aria-hidden="true">
-                {iniciais(m.nome)}
+                {m.foto ? <FotoCircular src={m.foto} /> : iniciais(m.nome)}
               </CoordAvatar>
               <CoordPessoaNome>{m.nome}</CoordPessoaNome>
               <CoordPapel>coordenação</CoordPapel>
@@ -952,7 +1075,9 @@ function ProjetoCoordenadoCard({
 
           {consultores.map((m) => (
             <CoordPessoa key={m.usuario_id}>
-              <CoordAvatar aria-hidden="true">{iniciais(m.nome)}</CoordAvatar>
+              <CoordAvatar aria-hidden="true">
+                {m.foto ? <FotoCircular src={m.foto} /> : iniciais(m.nome)}
+              </CoordAvatar>
               <CoordPessoaNome>{m.nome}</CoordPessoaNome>
               <CoordPapel>consultoria</CoordPapel>
             </CoordPessoa>
@@ -1016,21 +1141,41 @@ function porProjeto(pedidos: SolicitacaoRecebida[]) {
   return [...mapa.entries()];
 }
 
-/** "3 projetos · Carga alta", a mesma leitura do painel de alocação. */
+/**
+ * ⭐ Em quantos projetos o solicitante já está — a informação que decide o
+ * pedido, com o peso visual de quem decide.
+ *
+ * Era uma linha de meta cinza, do mesmo tamanho da data, e passava batido:
+ * quem aprova lia a justificativa (por que a pessoa QUER entrar) e não via a
+ * carga (se ela CABE em mais um). Virou badge, e fica vermelho quando a
+ * escala classifica a carga como alerta.
+ *
+ * ⚠ **O gatilho é o `tom` da escala, nunca um número aqui.** O limiar de
+ * "Demanda alta" — hoje 3 projetos — é editável pela diretoria em
+ * `situacao_carga`. Cravar `>= 3` no front recriaria a régua paralela que o
+ * núcleo acabou de tirar do backend, e as duas divergiriam no dia em que
+ * alguém mexesse na configuração.
+ *
+ * ⚠ Não é bloqueio, e o texto evita soar como um: a carga alta é aviso, e
+ * quem decide é quem está lendo. Dizer "não pode" seria mentira — a
+ * plataforma aceita.
+ */
 function CargaDoSolicitante({ pedido }: { pedido: SolicitacaoRecebida }) {
+  const situacao = pedido.situacao_do_solicitante;
+  const alerta = situacao?.tom === "alerta";
+  const carga = pedido.carga_do_solicitante;
+
   return (
-    <>
-      {pedido.carga_do_solicitante}{" "}
-      {pedido.carga_do_solicitante === 1 ? "projeto" : "projetos"}
-      {pedido.situacao_do_solicitante && (
-        <>
-          {" · "}
-          <CandidatoSituacao $tom={pedido.situacao_do_solicitante.tom}>
-            {pedido.situacao_do_solicitante.nome}
-          </CandidatoSituacao>
-        </>
-      )}
-    </>
+    <CargaBadge $alerta={alerta}>
+      {alerta && <TriangleAlert size={13} aria-hidden />}
+      <span>
+        Já está em {carga} {carga === 1 ? "projeto" : "projetos"}
+        {situacao && ` · ${situacao.nome}`}
+        {alerta && (
+          <CargaRecado> — entrar em mais um pode sobrecarregar</CargaRecado>
+        )}
+      </span>
+    </CargaBadge>
   );
 }
 
@@ -1115,9 +1260,13 @@ function FilaDePedidos({
 }: {
   pedidos: SolicitacaoRecebida[];
   respondendo: number | null;
-  onResponder: (id: number, aprovar: boolean) => void;
+  onResponder: (id: number, aprovar: boolean, resposta?: string) => Promise<void>;
 }) {
   const grupos = porProjeto(pedidos);
+  // Mesmo par botões/formulário de `EntradasEmProjetoCard` (Monitoramento →
+  // Aprovações): aceitar não pede texto, recusar pede — quem foi recusado
+  // merece saber por quê, e é a única coisa que sobra do pedido.
+  const [decidindo, setDecidindo] = useState<{ id: number; aceitar: boolean } | null>(null);
 
   return (
     <>
@@ -1136,27 +1285,37 @@ function FilaDePedidos({
                   <SolNome>{s.usuario_nome}</SolNome>
                   <SolQuando dateTime={s.criado_em}>{formatarDataHora(s.criado_em)}</SolQuando>
                 </SolTopo>
-                <SolMeta>
-                  <CargaDoSolicitante pedido={s} />
-                </SolMeta>
+                <CargaDoSolicitante pedido={s} />
                 <SolTexto>{s.justificativa}</SolTexto>
-                <SolAcoes>
-                  <PageButtonSm
-                    $variant="outline"
-                    type="button"
-                    disabled={respondendo === s.id}
-                    onClick={() => onResponder(s.id, false)}
-                  >
-                    Recusar
-                  </PageButtonSm>
-                  <PageButtonSm
-                    type="button"
-                    disabled={respondendo === s.id}
-                    onClick={() => onResponder(s.id, true)}
-                  >
-                    {respondendo === s.id ? "Salvando…" : "Aceitar no time"}
-                  </PageButtonSm>
-                </SolAcoes>
+                {decidindo?.id === s.id ? (
+                  <FormDecisao
+                    rotuloConfirmar={decidindo.aceitar ? "Confirmar entrada" : "Confirmar recusa"}
+                    exigeTexto={!decidindo.aceitar}
+                    onCancelar={() => setDecidindo(null)}
+                    onConfirmar={async (texto) => {
+                      await onResponder(s.id, decidindo.aceitar, texto || undefined);
+                      setDecidindo(null);
+                    }}
+                  />
+                ) : (
+                  <SolAcoes>
+                    <PageButtonSm
+                      $variant="outline"
+                      type="button"
+                      disabled={respondendo === s.id}
+                      onClick={() => setDecidindo({ id: s.id, aceitar: false })}
+                    >
+                      Recusar
+                    </PageButtonSm>
+                    <PageButtonSm
+                      type="button"
+                      disabled={respondendo === s.id}
+                      onClick={() => setDecidindo({ id: s.id, aceitar: true })}
+                    >
+                      Aceitar no time
+                    </PageButtonSm>
+                  </SolAcoes>
+                )}
               </SolCard>
             ))
           }

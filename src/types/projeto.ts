@@ -33,6 +33,9 @@ export interface ProjetoResumo {
   sinergico: boolean;
   coordenador_id: number | null;
   consultor_ids: number[];
+  /** Teto de consultores da equipe, escolhido na criação do projeto. O
+   *  backend já mandava; faltava declarar aqui. */
+  max_consultores: number | null;
   data_kickoff: string | null;
   kickoff_pendente: boolean;
   /** Arquivar não é excluir, só some das listagens normais. */
@@ -171,7 +174,19 @@ export interface EscopoVendido {
   banca: BancaDoEscopo | null;
   /** só true quando a banca do escopo saiu aprovada. */
   entrega_liberada: boolean;
-  /** O pedido de dias aguardando a diretoria, um por vez. */
+  /**
+   * ⭐ Quando alguém **confirmou** que a entrega foi ao cliente — o ato que
+   * move o status para "entregue".
+   *
+   * ⚠ Não confundir com `data_entrega_real`, que é o DIA da entrega marcado no
+   * cronograma. A data é registro (editável, corrigível); a confirmação é
+   * declaração, e só ela muda o status. `null` = a data está marcada mas
+   * ninguém afirmou a entrega ainda.
+   */
+  entrega_confirmada_em: string | null;
+  /** O nome de quem confirmou — já resolvido pelo backend. */
+  entrega_confirmada_por: string | null;
+  /** O pedido de dias aguardando a diretoria — um por vez. */
   reajuste_pendente: PedidoDeDias | null;
 }
 

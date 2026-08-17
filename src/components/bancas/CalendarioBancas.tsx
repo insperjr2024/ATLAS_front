@@ -1,24 +1,35 @@
 import { useMemo, useState } from "react";
-import { addMonths, format, isSameMonth, isToday, startOfMonth } from "date-fns";
+import { addDays, addMonths, format, isSameDay, isSameMonth, isToday, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, CalendarClock, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { paraDataUtc } from "@/lib/projetos";
-import { DayEvents, DayNumber, WeekdayCell, WeekdayRow } from "@/components/calendario/CalendarGrid.styled";
+import { DayCell, DayEvents, DayNumber, WeekdayCell, WeekdayRow, WeekRow } from "@/components/calendario/CalendarGrid.styled";
 import { chaveData, rotulosDiaSemana, semanasDoMes } from "@/components/calendario/semanas";
-import { EmptyText, PageButtonSm } from "@/styles/page.styled";
+import { TimelineDia, type ItemTimeline } from "@/components/calendario/TimelineDia";
+import { EmptyText, PageButton, PageButtonSm } from "@/styles/page.styled";
+import { ViewToggleRow, ViewToggleBtn } from "@/pages/projetos/Projetos.styled";
 import { theme } from "@/styles/theme";
 import type { Banca, StatusBanca } from "@/types/banca";
 import {
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  ModalTitle,
+  ModalClose,
+} from "@/styles/modal.styled";
+import {
   AvisoChoque,
+  AvisoMaisBancas,
   Cabecalho,
   CalendarioWrap,
-  CelulaDia,
   Grade,
   GradeWrap,
   Legenda,
   LegendaCor,
   LegendaItem,
-  LinhaSemana,
+  LinhaDiaNumero,
   MesAtual,
   NavegacaoMes,
   PilulaBanca,
@@ -28,8 +39,18 @@ import {
   ResumoMes,
 } from "./CalendarioBancas.styled";
 
+/** Duas pílulas cabem sem esticar a célula — o resto vira "+N mais",
+ *  clicável, do mesmo jeito que o Calendário geral. */
+const MAX_PILULAS_MES = 2;
+/** Nenhuma banca guarda duração no banco (só `data_hora`) — a visão Dia
+ *  precisa de uma altura de bloco pra desenhar, então usa esta como
+ *  estimativa visual, não como dado real de agenda. */
+const DURACAO_PADRAO_MIN = 60;
+
 const INICIO_SEMANA = 0;
 const ROTULOS = rotulosDiaSemana(INICIO_SEMANA);
+
+type Visao = "mes" | "dia";
 
 /** Mesma leitura de `tomDoStatusBanca`, traduzida para cor direta — a pílula
  *  não é um `PageBadge` e precisa da cor, não do tom. */
@@ -53,6 +74,12 @@ function horaDe(iso: string): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/** Minutos desde 00:00, para posicionar a banca na timeline da visão Dia. */
+function minutosDe(iso: string): number {
+  const d = paraDataUtc(iso);
+  return d.getHours() * 60 + d.getMinutes();
+}
+
 /**
  * ⭐ O calendário só de bancas (§8) — a tela que responde "esse horário está
  * livre?" antes de alguém marcar.
@@ -60,7 +87,10 @@ function horaDe(iso: string): string {
  * ⚠ **Não é o Calendário geral com um filtro.** Lá as bancas dividem espaço
  * com kickoffs, reuniões e entregas, e o que importa numa banca — hora exata,
  * quantas vagas ainda faltam, e se duas caem no mesmo horário — não cabe numa
- * pílula que precisa servir a quatro tipos de evento.
+ * pílula que precisa servir a quatro tipos de evento. Mesmo formato de grade
+ * do geral (tamanho de célula, "+N mais", toggle Mês/Dia), mas com a pílula
+ * própria da banca — cor e estilo não mudam pra virar um ponto colorido
+ * genérico.
  *
  * Alimentado pela lista que a página já carregou: nenhuma requisição nova, e
  * o que aparece aqui é exatamente o que aparece nas outras abas — inclusive o
@@ -73,7 +103,9 @@ export function CalendarioBancas({
   bancas: Banca[];
   onAbrirBanca: (banca: Banca) => void;
 }) {
-  const [mes, setMes] = useState(() => startOfMonth(new Date()));
+  const [visao, setVisao] = useState<Visao>("mes");
+  const [data, setData] = useState(() => new Date());
+  const [diaAberto, setDiaAberto] = useState<Date | null>(null);
 
   const porDia = useMemo(() => {
     const mapa = new Map<string, Banca[]>();
@@ -91,9 +123,14 @@ export function CalendarioBancas({
     return mapa;
   }, [bancas]);
 
-  const doMes = useMemo(
-    () => bancas.filter((b) => isSameMonth(paraDataUtc(b.data_hora), mes)),
-    [bancas, mes],
+  const doPeriodo = useMemo(
+    () =>
+      bancas.filter((b) =>
+        visao === "dia"
+          ? isSameDay(paraDataUtc(b.data_hora), data)
+          : isSameMonth(paraDataUtc(b.data_hora), data),
+      ),
+    [bancas, data, visao],
   );
 
   /**
@@ -117,74 +154,129 @@ export function CalendarioBancas({
     return conjunto;
   }, [porDia]);
 
+  function irAnterior() {
+    setData((d) => (visao === "dia" ? addDays(d, -1) : addMonths(d, -1)));
+  }
+
+  function irProximo() {
+    setData((d) => (visao === "dia" ? addDays(d, 1) : addMonths(d, 1)));
+  }
+
+  const rotuloPeriodo =
+    visao === "dia"
+      ? format(data, "EEEE, d 'de' MMMM", { locale: ptBR })
+      : format(data, "MMMM 'de' yyyy", { locale: ptBR });
+
+  const itensTimelineDoDia: ItemTimeline[] = useMemo(() => {
+    if (visao !== "dia") return [];
+    const chave = chaveData(data);
+    const doDia = porDia.get(chave) ?? [];
+    return doDia.map((b) => ({
+      chave: String(b.id),
+      inicioMin: minutosDe(b.data_hora),
+      duracaoMin: DURACAO_PADRAO_MIN,
+      conteudo: (
+        <PilulaDaBanca
+          banca={b}
+          chocada={chocados.has(`${chave}T${horaDe(b.data_hora)}`)}
+          onAbrirBanca={onAbrirBanca}
+        />
+      ),
+    }));
+  }, [visao, data, porDia, chocados, onAbrirBanca]);
+
   return (
     <CalendarioWrap>
       <Cabecalho>
         <NavegacaoMes>
-          <PageButtonSm type="button" $variant="ghost" onClick={() => setMes((m) => addMonths(m, -1))}>
+          <PageButtonSm type="button" $variant="ghost" onClick={irAnterior}>
             <ChevronLeft size={14} />
           </PageButtonSm>
-          <MesAtual>{format(mes, "MMMM 'de' yyyy", { locale: ptBR })}</MesAtual>
-          <PageButtonSm type="button" $variant="ghost" onClick={() => setMes((m) => addMonths(m, 1))}>
+          <MesAtual>{rotuloPeriodo}</MesAtual>
+          <PageButtonSm type="button" $variant="ghost" onClick={irProximo}>
             <ChevronRight size={14} />
           </PageButtonSm>
-          <PageButtonSm type="button" $variant="outline" onClick={() => setMes(startOfMonth(new Date()))}>
+          <PageButtonSm type="button" $variant="outline" onClick={() => setData(new Date())}>
             Hoje
           </PageButtonSm>
         </NavegacaoMes>
+
+        <ViewToggleRow role="tablist" aria-label="Visão do calendário de bancas">
+          <ViewToggleBtn
+            type="button"
+            role="tab"
+            aria-selected={visao === "mes"}
+            $ativo={visao === "mes"}
+            onClick={() => setVisao("mes")}
+          >
+            <Calendar size={14} />
+            Mês
+          </ViewToggleBtn>
+          <ViewToggleBtn
+            type="button"
+            role="tab"
+            aria-selected={visao === "dia"}
+            $ativo={visao === "dia"}
+            onClick={() => setVisao("dia")}
+          >
+            <CalendarClock size={14} />
+            Dia
+          </ViewToggleBtn>
+        </ViewToggleRow>
+
         <ResumoMes>
-          {doMes.length === 0
-            ? "Nenhuma banca neste mês"
-            : `${doMes.length} ${doMes.length === 1 ? "banca" : "bancas"} neste mês`}
+          {doPeriodo.length === 0
+            ? `Nenhuma banca ${visao === "dia" ? "neste dia" : "neste mês"}`
+            : `${doPeriodo.length} ${doPeriodo.length === 1 ? "banca" : "bancas"} ${visao === "dia" ? "neste dia" : "neste mês"}`}
         </ResumoMes>
       </Cabecalho>
 
-      <GradeWrap>
-        <Grade>
-          <WeekdayRow>
-            {ROTULOS.map((r) => (
-              <WeekdayCell key={r}>{r}</WeekdayCell>
-            ))}
-          </WeekdayRow>
-          {semanasDoMes(mes, INICIO_SEMANA).map((semana) => (
-            <LinhaSemana key={chaveData(semana[0])}>
-              {semana.map((dia) => {
-                const chave = chaveData(dia);
-                const doDia = porDia.get(chave) ?? [];
-                return (
-                  <CelulaDia key={chave} $outside={!isSameMonth(dia, mes)}>
-                    <DayNumber $today={isToday(dia)}>{format(dia, "d")}</DayNumber>
-                    <DayEvents>
-                      {doDia.map((b) => {
-                        const hora = horaDe(b.data_hora);
-                        const lotada = b.alocados >= b.vagas;
-                        return (
-                          <PilulaBanca
+      {visao === "dia" ? (
+        <GradeWrap>
+          <TimelineDia itens={itensTimelineDoDia} ehHoje={isToday(data)} />
+        </GradeWrap>
+      ) : (
+        <GradeWrap>
+          <Grade>
+            <WeekdayRow>
+              {ROTULOS.map((r) => (
+                <WeekdayCell key={r}>{r}</WeekdayCell>
+              ))}
+            </WeekdayRow>
+            {semanasDoMes(data, INICIO_SEMANA).map((semana) => (
+              <WeekRow key={chaveData(semana[0])}>
+                {semana.map((dia) => {
+                  const chave = chaveData(dia);
+                  const doDia = porDia.get(chave) ?? [];
+                  const excedentes = doDia.length - MAX_PILULAS_MES;
+                  return (
+                    <DayCell key={chave} $outside={!isSameMonth(dia, data)}>
+                      <LinhaDiaNumero>
+                        <DayNumber $today={isToday(dia)}>{format(dia, "d")}</DayNumber>
+                        {excedentes > 0 && (
+                          <AvisoMaisBancas type="button" onClick={() => setDiaAberto(dia)}>
+                            +{excedentes}
+                          </AvisoMaisBancas>
+                        )}
+                      </LinhaDiaNumero>
+                      <DayEvents>
+                        {doDia.slice(0, MAX_PILULAS_MES).map((b) => (
+                          <PilulaDaBanca
                             key={b.id}
-                            type="button"
-                            $cor={COR_STATUS[b.status]}
-                            title={`${hora} · ${b.nome_projeto} · ${ROTULO_CURTO[b.status]} · ${b.alocados}/${b.vagas} avaliadores`}
-                            onClick={() => onAbrirBanca(b)}
-                          >
-                            {chocados.has(`${chave}T${hora}`) && (
-                              <AvisoChoque>⚠ mesmo horário</AvisoChoque>
-                            )}
-                            <PilulaHora>{hora}</PilulaHora>
-                            <PilulaProjeto>{b.nome_projeto}</PilulaProjeto>
-                            <PilulaVagas $lotada={lotada}>
-                              {b.alocados}/{b.vagas}
-                            </PilulaVagas>
-                          </PilulaBanca>
-                        );
-                      })}
-                    </DayEvents>
-                  </CelulaDia>
-                );
-              })}
-            </LinhaSemana>
-          ))}
-        </Grade>
-      </GradeWrap>
+                            banca={b}
+                            chocada={chocados.has(`${chave}T${horaDe(b.data_hora)}`)}
+                            onAbrirBanca={onAbrirBanca}
+                          />
+                        ))}
+                      </DayEvents>
+                    </DayCell>
+                  );
+                })}
+              </WeekRow>
+            ))}
+          </Grade>
+        </GradeWrap>
+      )}
 
       <Legenda>
         {(Object.keys(COR_STATUS) as StatusBanca[]).map((status) => (
@@ -200,6 +292,94 @@ export function CalendarioBancas({
       </Legenda>
 
       {bancas.length === 0 && <EmptyText>Nenhuma banca marcada.</EmptyText>}
+
+      {diaAberto && (
+        <DiaModal
+          dia={diaAberto}
+          bancas={porDia.get(chaveData(diaAberto)) ?? []}
+          chocados={chocados}
+          onAbrirBanca={(b) => {
+            onAbrirBanca(b);
+            setDiaAberto(null);
+          }}
+          onClose={() => setDiaAberto(null)}
+        />
+      )}
     </CalendarioWrap>
+  );
+}
+
+function PilulaDaBanca({
+  banca,
+  chocada,
+  onAbrirBanca,
+}: {
+  banca: Banca;
+  chocada: boolean;
+  onAbrirBanca: (banca: Banca) => void;
+}) {
+  const hora = horaDe(banca.data_hora);
+  const lotada = banca.alocados >= banca.vagas;
+  return (
+    <PilulaBanca
+      type="button"
+      $cor={COR_STATUS[banca.status]}
+      title={`${hora} · ${banca.nome_projeto} · ${ROTULO_CURTO[banca.status]} · ${banca.alocados}/${banca.vagas} avaliadores`}
+      onClick={() => onAbrirBanca(banca)}
+    >
+      {chocada && <AvisoChoque>⚠ mesmo horário</AvisoChoque>}
+      <PilulaHora>{hora}</PilulaHora>
+      <PilulaProjeto>{banca.nome_projeto}</PilulaProjeto>
+      <PilulaVagas $lotada={lotada}>
+        {banca.alocados}/{banca.vagas}
+      </PilulaVagas>
+    </PilulaBanca>
+  );
+}
+
+/** A lista inteira de um dia, sem o "+N mais" — aberta pelo badge quando o
+ *  mês esconde bancas atrás dele. */
+function DiaModal({
+  dia,
+  bancas,
+  chocados,
+  onAbrirBanca,
+  onClose,
+}: {
+  dia: Date;
+  bancas: Banca[];
+  chocados: Set<string>;
+  onAbrirBanca: (banca: Banca) => void;
+  onClose: () => void;
+}) {
+  const chave = chaveData(dia);
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <ModalContent onClick={(e) => e.stopPropagation()} role="dialog">
+        <ModalHeader>
+          <ModalTitle style={{ textTransform: "capitalize" }}>
+            {format(dia, "EEEE, d 'de' MMMM", { locale: ptBR })}
+          </ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody style={{ display: "flex", flexDirection: "column", gap: theme.spacing.xs }}>
+          {bancas.map((b) => (
+            <PilulaDaBanca
+              key={b.id}
+              banca={b}
+              chocada={chocados.has(`${chave}T${horaDe(b.data_hora)}`)}
+              onAbrirBanca={onAbrirBanca}
+            />
+          ))}
+        </ModalBody>
+        <ModalFooter>
+          <PageButton $variant="outline" type="button" onClick={onClose}>
+            Fechar
+          </PageButton>
+        </ModalFooter>
+      </ModalContent>
+    </ModalOverlay>
   );
 }

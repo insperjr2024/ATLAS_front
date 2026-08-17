@@ -73,6 +73,9 @@ export interface Usuario {
    * para `/definir-senha`, e o backend recusa qualquer outra rota com 403.
    */
   senha_provisoria: boolean;
+  /** Data URI já redimensionada, ou `null` para cair nas iniciais — ver
+   *  `src/components/Avatar.tsx`. */
+  foto: string | null;
 }
 
 export interface UsuarioFrente {
@@ -98,4 +101,5 @@ export interface UsuarioResumo {
    * sem contar os finalizados nem os arquivados.
    */
   projetos_alocados: number;
+  foto: string | null;
 }

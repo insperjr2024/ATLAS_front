@@ -29,6 +29,23 @@ export function updateUsuario(usuarioId: number, dados: UpdateUsuarioPayload, to
   });
 }
 
+/** `foto` é a data URI já redimensionada no cliente — ver `Avatar.tsx`.
+ *  Sempre a PRÓPRIA foto, a rota não aceita `usuario_id`. */
+export function atualizarMinhaFoto(foto: string, token: string) {
+  return apiFetch<UsuarioResumo>("/usuarios/me/foto", {
+    method: "PUT",
+    token,
+    body: JSON.stringify({ foto }),
+  });
+}
+
+export function removerMinhaFoto(token: string) {
+  return apiFetch<UsuarioResumo>("/usuarios/me/foto", {
+    method: "DELETE",
+    token,
+  });
+}
+
 /** Sem volta, o backend só aceita se o usuário já estiver desligado. */
 export function deletarUsuarioPermanente(usuarioId: number, token: string) {
   return apiFetch<{ nome: string }>(`/usuarios/${usuarioId}/permanente`, {

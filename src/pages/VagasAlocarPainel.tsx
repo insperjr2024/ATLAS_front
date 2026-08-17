@@ -7,6 +7,7 @@ import {
   type ProjetoComVaga,
 } from "@/lib/vagas";
 import { PageButtonSm, EmptyText, ErrorText } from "@/styles/page.styled";
+import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import { FieldGroup, FieldLabel, FieldSelect } from "./Bancas.styled";
 import {
   PainelOverlay,
@@ -70,12 +71,20 @@ function agruparPorFrente(
  */
 function Pessoa({
   candidato: c,
-  bloqueado,
+  motivoBloqueio,
   alocando,
   onAlocar,
 }: {
   candidato: CandidatoAlocacao;
-  bloqueado: boolean;
+  /**
+   * ⭐ O MOTIVO no lugar de um booleano — e a troca é de propósito.
+   *
+   * Com `bloqueado: boolean` dava para desabilitar o botão sem explicar nada,
+   * que era o estado anterior desta tela. Com o motivo, o único jeito de
+   * travar é escrevendo por quê: quem for adicionar uma trava nova esbarra no
+   * tipo antes de esbarrar numa pessoa confusa.
+   */
+  motivoBloqueio: string | null;
   alocando: boolean;
   onAlocar: (usuarioId: number) => void;
 }) {
@@ -114,13 +123,15 @@ function Pessoa({
             {c.posicao !== "consultor" && ` · ${c.posicao}`}
           </CandidatoMeta>
         </CandidatoInfo>
-        <PageButtonSm
-          type="button"
-          disabled={bloqueado || alocando}
-          onClick={() => onAlocar(c.usuario_id)}
-        >
-          {alocando ? "Alocando…" : "Alocar"}
-        </PageButtonSm>
+        <MotivoDesabilitado motivo={motivoBloqueio}>
+          <PageButtonSm
+            type="button"
+            disabled={!!motivoBloqueio || alocando}
+            onClick={() => onAlocar(c.usuario_id)}
+          >
+            {alocando ? "Alocando…" : "Alocar"}
+          </PageButtonSm>
+        </MotivoDesabilitado>
       </CandidatoTopo>
 
       {aberto && c.carga > 0 && (
@@ -235,14 +246,27 @@ export function VagasAlocarPainel({ projeto, token, onFechar, onAlocou }: Props)
   const gruposPediram = useMemo(() => agruparPorFrente(pediram, frente), [pediram, frente]);
   const gruposDemais = useMemo(() => agruparPorFrente(demais, frente), [demais, frente]);
 
-  const semVaga = projeto.vagas === 0;
+  /**
+   * Por que não dá para alocar mais ninguém neste projeto.
+   *
+   * A contagem entra na frase porque é ela que diz o que fazer: saber que o
+   * teto é 3 e que há 3 pessoas transforma "não posso" em "preciso tirar
+   * alguém, ou aumentar o teto na edição do projeto".
+   */
+  const motivoBloqueio =
+    projeto.vagas === 0
+      ? `O time deste projeto já está completo — ${projeto.alocados} de ${projeto.max_consultores} consultores. ` +
+        "Tire alguém da equipe, ou aumente o número de consultores na edição do projeto."
+      : null;
+
+  const semVaga = !!motivoBloqueio;
 
   function linhaDe(c: CandidatoAlocacao) {
     return (
       <Pessoa
         key={c.usuario_id}
         candidato={c}
-        bloqueado={semVaga}
+        motivoBloqueio={motivoBloqueio}
         alocando={alocando === c.usuario_id}
         onAlocar={alocar}
       />

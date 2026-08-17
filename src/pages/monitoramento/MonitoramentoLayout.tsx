@@ -56,6 +56,8 @@ export function MonitoramentoLayout() {
   // responder é só ansiedade.
   const podeAprovar = usuario?.posicao === "diretor";
   const podeVerCronogramasGerais = pode(usuario, "ver_cronogramas_gerais");
+  // Histórico de projetos: diretoria e gerência (o backend usa require_gestao).
+  const podeVerHistorico = pode(usuario, "ver_historico_projetos");
 
   useEffect(() => {
     if (!token || !usuario) return;
@@ -91,6 +93,9 @@ export function MonitoramentoLayout() {
         <TabLink to="/monitoramento/alocacao">Alocação</TabLink>
         <TabLink to="/monitoramento/atrasos">Atrasos</TabLink>
         <TabLink to="/monitoramento/graficos">Gráficos</TabLink>
+        {podeVerHistorico && (
+          <TabLink to="/monitoramento/historico">Histórico de projetos</TabLink>
+        )}
         {podeVerTarefasGerais && <TabLink to="/monitoramento/tarefas">Tarefas</TabLink>}
         {podeVerCronogramasGerais && (
           <TabLink to="/monitoramento/cronogramas">Cronogramas</TabLink>
