@@ -462,24 +462,46 @@ export const KpiGrid = styled.div`
   gap: ${theme.spacing.md};
 `;
 
-export const KpiCard = styled.div<{ $destaque?: "alerta" | "ok" }>`
+export const KpiCard = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
+  gap: ${theme.spacing.sm};
   padding: ${theme.spacing.md};
-  border-radius: ${theme.borderRadius.xl};
-  border: 1px solid
-    ${({ $destaque }) =>
-      $destaque === "alerta"
-        ? `color-mix(in srgb, ${theme.colors.destructive} 35%, transparent)`
-        : theme.colors.border};
-  /* O card em alerta recebe um véu da própria cor. Só a borda vermelha some
-     no meio de cinco cards iguais; o fundo é o que faz o olho parar nele. */
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.sm};
+`;
+
+/** O tom vive no ícone, não mais pintando o card inteiro — um card neutro
+ *  ao lado de um card em alerta precisa continuar parecendo do mesmo
+ *  produto, só o ícone é que muda de cor. */
+export const KpiIcone = styled.span<{ $destaque?: "alerta" | "ok" }>`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: ${theme.borderRadius.md};
   background: ${({ $destaque }) =>
     $destaque === "alerta"
-      ? `color-mix(in srgb, ${theme.colors.destructive} 4%, ${theme.colors.card})`
-      : theme.colors.card};
-  box-shadow: ${theme.shadows.sm};
+      ? `color-mix(in srgb, ${theme.colors.destructive} 14%, transparent)`
+      : $destaque === "ok"
+        ? `color-mix(in srgb, ${theme.colors.success} 16%, transparent)`
+        : `color-mix(in srgb, ${theme.colors.foreground} 6%, transparent)`};
+  color: ${({ $destaque }) =>
+    $destaque === "alerta"
+      ? theme.colors.destructive
+      : $destaque === "ok"
+        ? theme.colors.success
+        : theme.colors.mutedForeground};
+`;
+
+export const KpiTexto = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
 `;
 
 export const KpiValor = styled.strong<{ $destaque?: "alerta" | "ok" }>`
@@ -487,7 +509,7 @@ export const KpiValor = styled.strong<{ $destaque?: "alerta" | "ok" }>`
   font-weight: ${theme.fontWeight.bold};
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.15;
   color: ${({ $destaque }) =>
     $destaque === "alerta"
       ? theme.colors.destructive
@@ -497,10 +519,9 @@ export const KpiValor = styled.strong<{ $destaque?: "alerta" | "ok" }>`
 `;
 
 export const KpiRotulo = styled.span`
-  font-size: ${theme.fontSize.xs};
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: ${theme.colors.mutedForeground};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
 `;
 
 /**

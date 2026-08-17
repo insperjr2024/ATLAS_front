@@ -9,7 +9,14 @@ import {
   LegendItem,
   LegendSwatch,
   Tooltip,
+  TooltipLista,
+  TooltipTitulo,
 } from "./DesempenhoChart.styled";
+
+/** Quantos nomes cabem no balão antes de virar parede de texto — mesmo
+ *  limite de `PizzaEtapas` (Monitoramento), pro comportamento de "e mais N"
+ *  ser consistente entre os dois donuts do app. */
+const MAX_NO_BALAO = 8;
 
 // Donut "part-to-whole": fatias somam ao total de bancas atendidas no
 // semestre, uma fatia por frente.
@@ -35,6 +42,11 @@ const ORDEM_FRENTES = Object.keys(CORES_POR_FRENTE);
 export interface FatiaDonut {
   nome: string;
   valor: number;
+  /** Quem compõe a fatia, pro balão de hover responder "quais são esses N"
+   *  em vez de só repetir o número que a legenda já mostra. Opcional: nem
+   *  todo lugar que monta um `FatiaDonut` tem a lista à mão (ex.: um
+   *  agregado que só soma valores sem guardar as bancas de origem). */
+  itens?: string[];
 }
 
 export function DesempenhoChart({
@@ -52,10 +64,12 @@ export function DesempenhoChart({
   const conhecidas = comValor
     .filter((f) => CORES_POR_FRENTE[f.nome])
     .sort((a, b) => ORDEM_FRENTES.indexOf(a.nome) - ORDEM_FRENTES.indexOf(b.nome));
-  const outros = comValor
-    .filter((f) => !CORES_POR_FRENTE[f.nome])
-    .reduce((soma, f) => soma + f.valor, 0);
-  const fatiasFinais = outros > 0 ? [...conhecidas, { nome: "Outros", valor: outros }] : conhecidas;
+  const desconhecidas = comValor.filter((f) => !CORES_POR_FRENTE[f.nome]);
+  const outros = desconhecidas.reduce((soma, f) => soma + f.valor, 0);
+  const fatiasFinais =
+    outros > 0
+      ? [...conhecidas, { nome: "Outros", valor: outros, itens: desconhecidas.flatMap((f) => f.itens ?? []) }]
+      : conhecidas;
 
   const total = fatiasFinais.reduce((soma, f) => soma + f.valor, 0);
   const raio = 15.5;
@@ -122,7 +136,23 @@ export function DesempenhoChart({
 
         {hover && pos && (
           <Tooltip style={{ left: pos.x, top: pos.y }}>
-            {hover.nome}: {hover.valor} ({Math.round(hover.fracao * 100)}%)
+            <TooltipTitulo>
+              <LegendSwatch $cor={hover.cor} aria-hidden />
+              {hover.nome}
+              <b>
+                {hover.valor} ({Math.round(hover.fracao * 100)}%)
+              </b>
+            </TooltipTitulo>
+            {hover.itens && hover.itens.length > 0 && (
+              <TooltipLista>
+                {hover.itens.slice(0, MAX_NO_BALAO).map((nome, i) => (
+                  <li key={i}>{nome}</li>
+                ))}
+                {hover.itens.length > MAX_NO_BALAO && (
+                  <li data-resto="true">e mais {hover.itens.length - MAX_NO_BALAO}</li>
+                )}
+              </TooltipLista>
+            )}
           </Tooltip>
         )}
       </DonutBox>

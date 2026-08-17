@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
+import { Activity, AlertTriangle, ChevronRight, Flag, FolderKanban, Target } from "lucide-react";
 import { ConteudoPaginado, POR_PAGINA, Paginacao, usePaginacao } from "./Paginacao";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -49,8 +49,10 @@ import {
   ItemTexto,
   KpiCard,
   KpiGrid,
+  KpiIcone,
   KpiNota,
   KpiRotulo,
+  KpiTexto,
   KpiValor,
   LinhaItem,
   LinkProjeto,
@@ -258,49 +260,74 @@ function ConteudoVisaoGeral({ dados, seletor }: { dados: VisaoGeral; seletor: Re
           diferentes sem dizer que 26 é o denominador de tudo. */}
       <KpiGrid>
         <KpiCard>
-          <KpiValor>{dados.kpis.total}</KpiValor>
-          <KpiRotulo>Projetos</KpiRotulo>
-          <KpiNota>
-            {dados.placar_gestao.total_ativos} em curso
-            {dados.kpis.pausados > 0 && ` · ${dados.kpis.pausados} pausado${dados.kpis.pausados > 1 ? "s" : ""}`}
-            {dados.kpis.finalizados > 0 && ` · ${dados.kpis.finalizados} finalizado${dados.kpis.finalizados > 1 ? "s" : ""}`}
-          </KpiNota>
+          <KpiIcone aria-hidden>
+            <FolderKanban size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiValor>{dados.kpis.total}</KpiValor>
+            <KpiRotulo>Projetos</KpiRotulo>
+            <KpiNota>
+              {dados.placar_gestao.total_ativos} em curso
+              {dados.kpis.pausados > 0 && ` · ${dados.kpis.pausados} pausado${dados.kpis.pausados > 1 ? "s" : ""}`}
+              {dados.kpis.finalizados > 0 && ` · ${dados.kpis.finalizados} finalizado${dados.kpis.finalizados > 1 ? "s" : ""}`}
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
         <KpiCard>
-          <KpiValor>{dados.kpis.em_execucao}</KpiValor>
-          <KpiRotulo>Em execução</KpiRotulo>
-          <KpiNota>ambientação, andamento e bancas</KpiNota>
+          <KpiIcone aria-hidden>
+            <Activity size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiValor>{dados.kpis.em_execucao}</KpiValor>
+            <KpiRotulo>Em execução</KpiRotulo>
+            <KpiNota>ambientação, andamento e bancas</KpiNota>
+          </KpiTexto>
         </KpiCard>
         <KpiCard>
-          <KpiValor>{dados.kpis.perto_de_finalizar}</KpiValor>
-          <KpiRotulo>Perto de finalizar</KpiRotulo>
-          <KpiNota>TEP e período de ajustes</KpiNota>
+          <KpiIcone aria-hidden>
+            <Flag size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiValor>{dados.kpis.perto_de_finalizar}</KpiValor>
+            <KpiRotulo>Perto de finalizar</KpiRotulo>
+            <KpiNota>TEP e período de ajustes</KpiNota>
+          </KpiTexto>
         </KpiCard>
-        <KpiCard $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined}>
+        <KpiCard>
+          <KpiIcone $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined} aria-hidden>
+            <AlertTriangle size={18} />
+          </KpiIcone>
           {/* Percentual como valor grande, contagem na nota, mesmo formato do
               placar ao lado. Os dois medem a MESMA população (`em_curso`), mas
               coisas diferentes: o placar só olha banca, este olha qualquer
               motivo. `100 - placar` não dá este número, e é por isso que os
               rótulos precisam ser explícitos. */}
-          <KpiValor $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined}>
-            {dados.atrasados_gestao.percentual}%
-          </KpiValor>
-          <KpiRotulo>Atrasados</KpiRotulo>
-          <KpiNota>
-            {dados.atrasados_gestao.atrasados}/{dados.atrasados_gestao.total_ativos} com algum
-            atraso
-          </KpiNota>
+          <KpiTexto>
+            <KpiValor $destaque={dados.kpis.atrasados > 0 ? "alerta" : undefined}>
+              {dados.atrasados_gestao.percentual}%
+            </KpiValor>
+            <KpiRotulo>Atrasados</KpiRotulo>
+            <KpiNota>
+              {dados.atrasados_gestao.atrasados}/{dados.atrasados_gestao.total_ativos} com algum
+              atraso
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
         <KpiCard>
           {/* O placar da gestão: só as bancas contam, a entrega ao cliente
               depende da agenda dele e é acompanhada à parte. */}
-          <KpiValor $destaque={dados.placar_gestao.percentual >= 80 ? "ok" : "alerta"}>
-            {dados.placar_gestao.percentual}%
-          </KpiValor>
-          <KpiRotulo>Placar da gestão</KpiRotulo>
-          <KpiNota>
-            {dados.placar_gestao.no_prazo}/{dados.placar_gestao.total_ativos} sem banca vencida
-          </KpiNota>
+          <KpiIcone $destaque={dados.placar_gestao.percentual >= 80 ? "ok" : "alerta"} aria-hidden>
+            <Target size={18} />
+          </KpiIcone>
+          <KpiTexto>
+            <KpiValor $destaque={dados.placar_gestao.percentual >= 80 ? "ok" : "alerta"}>
+              {dados.placar_gestao.percentual}%
+            </KpiValor>
+            <KpiRotulo>Placar da gestão</KpiRotulo>
+            <KpiNota>
+              {dados.placar_gestao.no_prazo}/{dados.placar_gestao.total_ativos} sem banca vencida
+            </KpiNota>
+          </KpiTexto>
         </KpiCard>
       </KpiGrid>
 

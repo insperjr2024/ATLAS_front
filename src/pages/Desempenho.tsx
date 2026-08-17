@@ -160,18 +160,22 @@ export function Desempenho({ embutido = false }: { embutido?: boolean } = {}) {
 
   const avaliacoesDoSemestre = avaliacoesSubmetidas.filter((item) => item.banca.semestre_id === dados.semestre_id);
 
-  const pontosPorFrente = new Map<string, number>();
+  const pontosPorFrente = new Map<string, { valor: number; itens: string[] }>();
   for (const { banca } of avaliacoesDoSemestre) {
     const frentesDaBanca = bancasFrentes.filter((bf) => bf.banca_id === banca.id);
     const peso = frentesDaBanca.length > 0 ? 1 / frentesDaBanca.length : 0;
     for (const bf of frentesDaBanca) {
       const nome = frentes.find((f) => f.id === bf.frente_id)?.nome ?? "—";
-      pontosPorFrente.set(nome, (pontosPorFrente.get(nome) ?? 0) + peso);
+      const atual = pontosPorFrente.get(nome) ?? { valor: 0, itens: [] };
+      atual.valor += peso;
+      atual.itens.push(banca.nome_projeto);
+      pontosPorFrente.set(nome, atual);
     }
   }
-  const fatias: FatiaDonut[] = Array.from(pontosPorFrente.entries()).map(([nome, valor]) => ({
+  const fatias: FatiaDonut[] = Array.from(pontosPorFrente.entries()).map(([nome, { valor, itens }]) => ({
     nome,
     valor: Math.round(valor * 10) / 10,
+    itens,
   }));
 
   const primeiroNome = usuario?.nome.split(" ")[0];
