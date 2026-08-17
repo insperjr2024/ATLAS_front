@@ -366,6 +366,19 @@ export const ShellHeader = styled.header`
   align-items: flex-start;
   justify-content: space-between;
   gap: ${theme.spacing.md};
+
+  /* O bloco de nome/descrição/equipe (PageHeaderText) cede espaço primeiro —
+     sem isto, um projeto com dois nomes compridos na equipe empurrava o
+     status/Arquivar/Apagar pra uma linha embaixo, e ficava inconsistente
+     com o projeto vizinho, cuja equipe tem nomes mais curtos. */
+  & > *:first-child {
+    flex: 1 1 320px;
+    min-width: 0;
+  }
+
+  & > *:last-child {
+    flex-shrink: 0;
+  }
 `;
 
 export const VoltarLink = styled(NavLink)`
