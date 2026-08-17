@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { renomearProjeto, updateDescricao, updateEquipe } from "@/lib/projetos";
+import { renomearProjeto, updateDescricao, updateEquipe, updateMaxConsultores } from "@/lib/projetos";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import {
   MemberPicker,
@@ -71,6 +71,7 @@ export function EditarProjetoModal({
     coordenadorId: projeto.coordenador_id,
     consultorIds: projeto.consultor_ids,
   });
+  const [maxConsultores, setMaxConsultores] = useState(String(projeto.max_consultores));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [usuariosFrentes, setUsuariosFrentes] = useState<UsuarioFrente[]>([]);
@@ -99,6 +100,11 @@ export function EditarProjetoModal({
       setErro(problema);
       return;
     }
+    const numeroTeto = Number(maxConsultores);
+    if (!Number.isInteger(numeroTeto) || numeroTeto < 0 || numeroTeto > 20) {
+      setErro("O teto de consultores precisa ser um número de 0 a 20.");
+      return;
+    }
 
     setSalvando(true);
     setErro("");
@@ -108,6 +114,12 @@ export function EditarProjetoModal({
       }
       if (descricao !== (projeto.descricao ?? "")) {
         await updateDescricao(projeto.id, descricao, token);
+      }
+      // Antes da equipe: se o teto estiver baixando, o backend recusa a
+      // equipe grande demais primeiro, e a pessoa corrige a ordem errada
+      // sem entender por quê. Aqui o teto sempre vai primeiro.
+      if (numeroTeto !== projeto.max_consultores) {
+        await updateMaxConsultores(projeto.id, numeroTeto, token);
       }
       if (equipeMudou) {
         await updateEquipe(projeto.id, montarEquipePayload(equipe), token);
@@ -155,6 +167,19 @@ export function EditarProjetoModal({
                 rows={4}
                 disabled={salvando}
                 placeholder="Do que se trata este projeto?"
+              />
+            </FieldGroup>
+
+            <FieldGroup>
+              <FieldLabel htmlFor="editar-max-consultores">Teto de consultores</FieldLabel>
+              <FieldInput
+                id="editar-max-consultores"
+                type="number"
+                min={0}
+                max={20}
+                value={maxConsultores}
+                onChange={(e) => setMaxConsultores(e.target.value)}
+                disabled={salvando}
               />
             </FieldGroup>
 

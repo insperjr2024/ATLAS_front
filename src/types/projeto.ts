@@ -230,6 +230,10 @@ export interface ProjetoCompleto extends ProjetoResumo {
   equipe: MembroProjeto[];
   /** Teto de consultores, decide quando o projeto sai da lista de vagas. */
   max_consultores: number;
+  /** `true` para quem abriu como visitante: avaliador escalado numa banca
+   *  deste projeto, sem enxergá-lo pelo §3. O shell usa a flag para mostrar
+   *  só a aba Banca — as outras devolveriam 404 no clique. */
+  apenas_banca: boolean;
 }
 
 /**
