@@ -19,6 +19,7 @@ import {
   updateDiaReuniaoPadrao,
   updateDiasAmbientacao,
   updateEquipe,
+  updateMaxConsultores,
 } from "@/lib/projetos";
 import {
   MemberPicker,
@@ -212,6 +213,7 @@ export function ProjetoVisaoGeral() {
             )}
           </PageCardHeader>
           <PageCardContent>
+            <DataEditavelMaxConsultores projeto={projeto} token={token} recarregar={recarregar} />
             {projeto.equipe.length === 0 ? (
               <EmptyText>Nenhum membro alocado.</EmptyText>
             ) : (
@@ -966,6 +968,96 @@ function DataEditavelEntregaPrevista({
             {podeEditar && (
               <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
                 {projeto.data_entrega_prevista_cliente ? "Alterar" : "Definir"}
+              </PageButtonSm>
+            )}
+          </>
+        )}
+      </DataItemValor>
+      {erro && <FormErrorText>{erro}</FormErrorText>}
+    </DataItem>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/** O teto de consultores, editável fora da criação do projeto. O backend
+ *  recusa (422) baixar o número abaixo da equipe atual, com a mensagem
+ *  dizendo quantos sobram — o front só repassa esse erro. */
+function DataEditavelMaxConsultores({
+  projeto,
+  token,
+  recarregar,
+}: {
+  projeto: ProjetoCompleto;
+  token: string | null;
+  recarregar: () => Promise<void>;
+}) {
+  const { usuario } = useAuth();
+  const podeEditar = !!usuario?.permissoes.pode_editar_equipe;
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(String(projeto.max_consultores));
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  const consultoresAtuais = projeto.equipe.filter((m) => m.papel === "consultor").length;
+
+  async function salvar() {
+    if (!token) return;
+    const numero = Number(valor);
+    if (!Number.isInteger(numero) || numero < 0 || numero > 20) {
+      setErro("Informe um número de 0 a 20.");
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    try {
+      await updateMaxConsultores(projeto.id, numero, token);
+      setEditando(false);
+      await recarregar();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao salvar o teto de consultores");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <DataItem>
+      <DataItemLabel>Teto de consultores</DataItemLabel>
+      <DataItemValor>
+        {editando ? (
+          <>
+            <FieldInput
+              type="number"
+              min={0}
+              max={20}
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              aria-label="Teto de consultores"
+            />
+            <PageButtonSm type="button" disabled={salvando} onClick={salvar}>
+              {salvando ? "Salvando…" : "Salvar"}
+            </PageButtonSm>
+            <PageButtonSm
+              type="button"
+              $variant="ghost"
+              onClick={() => {
+                setEditando(false);
+                setValor(String(projeto.max_consultores));
+                setErro("");
+              }}
+            >
+              Cancelar
+            </PageButtonSm>
+          </>
+        ) : (
+          <>
+            <span>
+              {consultoresAtuais} de {projeto.max_consultores}
+            </span>
+            {podeEditar && (
+              <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
+                Alterar
               </PageButtonSm>
             )}
           </>

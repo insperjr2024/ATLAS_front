@@ -202,6 +202,15 @@ export function updateDiaReuniaoPadrao(projetoId: number, diaReuniaoPadrao: numb
   );
 }
 
+/** O backend recusa (422) se o novo teto ficar abaixo da quantidade de
+ *  consultores já alocados agora. */
+export function updateMaxConsultores(projetoId: number, maxConsultores: number, token: string) {
+  return apiFetch<{ id: number; max_consultores: number }>(
+    `/projetos/${projetoId}/max-consultores`,
+    { method: "PATCH", token, body: JSON.stringify({ max_consultores: maxConsultores }) },
+  );
+}
+
 export function getHistoricoProjeto(projetoId: number, token: string) {
   return apiFetch<HistoricoEntrada[]>(`/projetos/${projetoId}/historico`, { token });
 }

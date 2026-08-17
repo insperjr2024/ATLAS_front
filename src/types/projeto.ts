@@ -213,6 +213,8 @@ export interface ProjetoCompleto extends ProjetoResumo {
   dia_reuniao_padrao: number | null;
   criado_por: number | null;
   equipe: MembroProjeto[];
+  /** Teto de consultores, decide quando o projeto sai da lista de vagas. */
+  max_consultores: number;
 }
 
 /**

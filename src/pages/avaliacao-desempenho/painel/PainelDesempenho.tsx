@@ -13,9 +13,9 @@ export function PainelDesempenho() {
       </PageHeader>
 
       <TabBar>
+        <TabLink to="/avaliacao-desempenho/painel/relatorio">Relatórios</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/avaliadores">Avaliadores</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/avaliados">Avaliados</TabLink>
-        <TabLink to="/avaliacao-desempenho/painel/relatorio">Relatórios</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/lotes">Formulários</TabLink>
         <TabLink to="/avaliacao-desempenho/painel/mentoria">PDI</TabLink>
       </TabBar>
