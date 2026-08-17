@@ -62,6 +62,7 @@ import {
   SecaoCabecalho,
   SecaoTitulo,
   SecaoDescricao,
+  GrupoFrenteTitulo,
 } from "./Config.styled";
 import { LIST_MAX_VISIVEIS, TableScrollWrap } from "@/styles/shared.styled";
 
@@ -464,36 +465,46 @@ function TabelaEscopos({
   onEditar: (item: Escopo) => void;
   onExcluir: (item: Escopo) => void;
 }) {
-  const nomeFrente = (frenteId: number | null) =>
-    frenteId ? (frentes.find((f) => f.id === frenteId)?.nome ?? "—") : "—";
+  // Um grupo por frente, na ordem em que elas aparecem em Frentes (acima
+  // desta lista), e "Sem frente" por último — é a exceção, não a regra.
+  const grupos: { nome: string; itens: Escopo[] }[] = [
+    ...frentes.map((f) => ({
+      nome: f.nome,
+      itens: itens.filter((e) => e.frente_id === f.id),
+    })),
+    { nome: "Sem frente", itens: itens.filter((e) => e.frente_id === null) },
+  ].filter((g) => g.itens.length > 0);
 
   return (
     <TableScrollWrap $scrollable={itens.length > LIST_MAX_VISIVEIS}>
-      <DataTable>
-        <TableHead>
-          <TableRow>
-            <TableHeadCell>Nome</TableHeadCell>
-            <TableHeadCell>Frente</TableHeadCell>
-            <TableHeadCell />
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {itens.map((item) => (
-            <TableRow key={item.id}>
-              <NameCell>{item.nome}</NameCell>
-              <TableCell>{nomeFrente(item.frente_id)}</TableCell>
-              <ActionsCell>
-                <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(item)}>
-                  Editar
-                </PageButtonSm>
-                <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(item)}>
-                  Excluir
-                </PageButtonSm>
-              </ActionsCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </DataTable>
+      {grupos.map((grupo) => (
+        <div key={grupo.nome}>
+          <GrupoFrenteTitulo>{grupo.nome}</GrupoFrenteTitulo>
+          <DataTable>
+            <TableHead>
+              <TableRow>
+                <TableHeadCell>Nome</TableHeadCell>
+                <TableHeadCell />
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {grupo.itens.map((item) => (
+                <TableRow key={item.id}>
+                  <NameCell>{item.nome}</NameCell>
+                  <ActionsCell>
+                    <PageButtonSm $variant="outline" type="button" onClick={() => onEditar(item)}>
+                      Editar
+                    </PageButtonSm>
+                    <PageButtonSm $variant="outline" type="button" onClick={() => onExcluir(item)}>
+                      Excluir
+                    </PageButtonSm>
+                  </ActionsCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </DataTable>
+        </div>
+      ))}
     </TableScrollWrap>
   );
 }

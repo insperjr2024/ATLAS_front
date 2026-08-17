@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getFaixasDisponiveis, getMinhaGrade, salvarGrade } from "@/lib/grade-horaria";
 import { getFrentes } from "@/lib/bancas";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
-import { atualizarMinhaFoto, removerMinhaFoto } from "@/lib/usuarios";
+import { atualizarMinhaFoto, atualizarMinhasNotificacoesEmail, removerMinhaFoto } from "@/lib/usuarios";
 import { redimensionarParaDataUri } from "@/lib/imagem";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
 import { FotoCircular } from "@/components/Avatar";
@@ -40,6 +40,22 @@ import {
   PerfilNome,
   PerfilSubtitulo,
 } from "./MeuPerfil.styled";
+import { PermissoesGrid, PermissaoItem, PermissaoTexto, PermissaoTitulo, PermissaoDesc } from "./Config.styled";
+
+/** Os únicos tipos que dá pra desligar do e-mail — espelha
+ *  TIPOS_NOTIFICACAO_OPCIONAIS do backend. Os de fora desta lista saem
+ *  sempre, e por isso nem aparecem aqui: não teria o que desligar. */
+const NOTIFICACOES_OPCIONAIS: { tipo: string; titulo: string; descricao: string }[] = [
+  { tipo: "alocado_em_projeto", titulo: "Alocado em projeto", descricao: "Você entrou numa equipe nova." },
+  { tipo: "entrega_registrada", titulo: "Entrega registrada", descricao: "Um escopo do seu projeto foi entregue." },
+  { tipo: "escalacao_banca", titulo: "Escalação em banca", descricao: "Você foi escalado para avaliar uma banca." },
+  { tipo: "troca_banca", titulo: "Troca de banca", descricao: "Uma troca de banca que envolve você foi decidida." },
+  { tipo: "banca_aviso", titulo: "Aviso de banca", descricao: "Avisos gerais sobre bancas em que você participa." },
+  { tipo: "entrega_alterada", titulo: "Entrega alterada", descricao: "A data de entrega de um escopo mudou." },
+  { tipo: "kickoff_pendente", titulo: "Kickoff pendente", descricao: "Um projeto seu está sem data de kickoff." },
+  { tipo: "banca_nao_marcada", titulo: "Banca não marcada", descricao: "Um escopo seu está sem banca marcada." },
+  { tipo: "projeto_sem_reuniao", titulo: "Projeto sem reunião", descricao: "Seu projeto está sem reunião nesta semana." },
+];
 
 /** "Heloisa Nogueira" → "HN". Só entra em jogo quando a pessoa não tem foto
  *  (`FotoCircular`), é o que identifica ela de relance no topo do card. */
@@ -70,6 +86,8 @@ export function MeuPerfil() {
   const [tentativa, setTentativa] = useState(0);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [erroFoto, setErroFoto] = useState("");
+  const [salvandoNotificacoes, setSalvandoNotificacoes] = useState(false);
+  const [erroNotificacoes, setErroNotificacoes] = useState("");
 
   const usuarioId = usuario?.id;
 
@@ -169,6 +187,23 @@ export function MeuPerfil() {
     }
   }
 
+  async function alternarNotificacao(tipo: string, ligada: boolean) {
+    if (!token) return;
+    const atual = usuario!.notificacoes_email_desativadas;
+    // Desmarcado = entra na lista de desativados; marcado = sai dela.
+    const novaLista = ligada ? atual.filter((t) => t !== tipo) : [...atual, tipo];
+    setErroNotificacoes("");
+    setSalvandoNotificacoes(true);
+    try {
+      await atualizarMinhasNotificacoesEmail(novaLista, token);
+      await recarregarUsuario();
+    } catch (e) {
+      setErroNotificacoes(e instanceof Error ? e.message : "Não foi possível salvar a preferência");
+    } finally {
+      setSalvandoNotificacoes(false);
+    }
+  }
+
   return (
     <PageStack>
       <PageHeader>
@@ -221,6 +256,36 @@ export function MeuPerfil() {
               <DadoValor>{nomesFrentes.length > 0 ? nomesFrentes.join(" · ") : "—"}</DadoValor>
             </DadoItem>
           </DadosGrid>
+        </PageCardContent>
+      </PageCard>
+
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Notificações por e-mail</PageCardTitle>
+        </PageCardHeader>
+        <PageCardContent>
+          <Explicacao>
+            Estas continuam chegando no sino independente da escolha aqui — é só o e-mail que
+            liga ou desliga. Algumas notificações (prazo com bloqueio, pedido direto de alguém,
+            compromisso de agenda) não têm essa opção, saem sempre por e-mail.
+          </Explicacao>
+          <PermissoesGrid>
+            {NOTIFICACOES_OPCIONAIS.map((n) => (
+              <PermissaoItem key={n.tipo}>
+                <input
+                  type="checkbox"
+                  checked={!usuario.notificacoes_email_desativadas.includes(n.tipo)}
+                  disabled={salvandoNotificacoes}
+                  onChange={(e) => void alternarNotificacao(n.tipo, e.target.checked)}
+                />
+                <PermissaoTexto>
+                  <PermissaoTitulo>{n.titulo}</PermissaoTitulo>
+                  <PermissaoDesc>{n.descricao}</PermissaoDesc>
+                </PermissaoTexto>
+              </PermissaoItem>
+            ))}
+          </PermissoesGrid>
+          {erroNotificacoes && <FormErrorText>{erroNotificacoes}</FormErrorText>}
         </PageCardContent>
       </PageCard>
 
