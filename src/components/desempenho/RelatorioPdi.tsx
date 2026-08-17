@@ -23,12 +23,6 @@ interface RelatorioPdiProps {
   podeEnviarEncontro: boolean;
 }
 
-const Descricao = styled.p`
-  margin: 0 0 ${theme.spacing.md};
-  font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.mutedForeground};
-`;
-
 /** Uma pasta com só 1 item vira UMA linha (nome + prazo + status + ações),
  *  em vez do card-dentro-de-card de `LoteCard`/`SubLista`: esse aninhamento
  *  faz sentido quando há vários itens pra distinguir, mas pra 1 item só é
@@ -78,14 +72,6 @@ const PastaBloco = styled.div`
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.border};
-`;
-
-/** Explica a ausência do botão Enviar em vez de deixar o espaço em branco
- *  — sem isso, "PDI inicial" parece quebrado (Pendente, sem jeito de agir). */
-const AvisoSemAcao = styled.span`
-  font-size: ${theme.fontSize.xs};
-  color: ${theme.colors.mutedForeground};
-  font-style: italic;
 `;
 
 const LotesStack = styled.div`
@@ -205,9 +191,7 @@ export function RelatorioPdi({ usuarioId, podeEnviarInicial, podeEnviarEncontro 
             <Upload size={14} />
             {ocupadoAqui ? "Enviando…" : item.envio ? "Reenviar" : "Enviar"}
           </PageButtonSm>
-        ) : (
-          !item.envio && <AvisoSemAcao>Só a diretoria envia</AvisoSemAcao>
-        )}
+        ) : null}
         {podeAgir && item.envio && (
           <PageButtonSm type="button" $variant="ghost" disabled={ocupadoAqui} onClick={() => remover(item.item_id)}>
             <Trash2 size={14} />
@@ -234,10 +218,6 @@ export function RelatorioPdi({ usuarioId, podeEnviarInicial, podeEnviarEncontro 
         <EmptyText>Nenhuma pasta de PDI cadastrada ainda.</EmptyText>
       ) : (
         <>
-          <Descricao>
-            Vem das pastas de PDI que a diretoria cadastra em Avaliação de Desempenho → PDI: um "PDI
-            inicial" e um "Encontro" por marco de mentoria, cada um com prazo e o documento esperado.
-          </Descricao>
           <LotesStack>
             {pastas.map((pasta) => {
               const podeAgir = podeEnviarNestaPasta(pasta);
