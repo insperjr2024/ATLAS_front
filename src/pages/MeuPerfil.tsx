@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Camera } from "lucide-react";
+import { Camera, ChevronDown, ChevronUp } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFaixasDisponiveis, getMinhaGrade, salvarGrade } from "@/lib/grade-horaria";
 import { getFrentes } from "@/lib/bancas";
@@ -25,6 +25,7 @@ import {
   ErrorBlock,
   ErrorText,
   PageButton,
+  PageButtonSm,
 } from "@/styles/page.styled";
 import { FormErrorText } from "./Bancas.styled";
 import {
@@ -57,6 +58,25 @@ const NOTIFICACOES_OPCIONAIS: { tipo: string; titulo: string; descricao: string 
   { tipo: "projeto_sem_reuniao", titulo: "Projeto sem reunião", descricao: "Seu projeto está sem reunião nesta semana." },
 ];
 
+/** Os fixos aparecem na lista pra dar o quadro completo (você vê TUDO que
+ *  existe, não só o que dá pra mexer), mas o checkbox vem travado ligado —
+ *  espelha o que `enviar_email_notificacao.py` já faz: estes tipos ignoram
+ *  a preferência e saem sempre. */
+const NOTIFICACOES_FIXAS: { tipo: string; titulo: string; descricao: string }[] = [
+  { tipo: "justificativa_pedida", titulo: "Justificativa de atraso pedida", descricao: "A diretoria perguntou por que um escopo seu atrasou." },
+  { tipo: "banca_remarcada", titulo: "Banca remarcada", descricao: "A data de uma banca sua mudou." },
+  { tipo: "avaliacao_pendente", titulo: "Avaliação pendente", descricao: "Uma banca foi realizada e você precisa avaliar." },
+  { tipo: "descricao_coordenador_pendente", titulo: "Descrição de banca pendente", descricao: "Uma banca sua foi realizada e falta a sua descrição do resultado." },
+  { tipo: "solicitacao_projeto", titulo: "Pedido de entrada em projeto", descricao: "Alguém pediu para entrar no seu projeto, ou seu pedido foi respondido." },
+  { tipo: "reajuste_solicitado", titulo: "Pedido de dias", descricao: "Um pedido de dias de ajuste está esperando sua decisão." },
+  { tipo: "reajuste_respondido", titulo: "Pedido de dias respondido", descricao: "Seu pedido de dias de ajuste foi decidido." },
+  { tipo: "tarefa_vencida", titulo: "Tarefa vencida", descricao: "Uma tarefa sua passou do prazo." },
+  { tipo: "banca_hoje", titulo: "Banca hoje", descricao: "Você tem banca hoje." },
+  { tipo: "lote_desempenho_aberto", titulo: "Avaliação de Desempenho", descricao: "Uma rodada de avaliação abriu com algo para você responder." },
+  { tipo: "pdi_prazo_proximo", titulo: "Prazo de PDI próximo", descricao: "Um item de PDI vence amanhã." },
+  { tipo: "pdi_prazo_vencido", titulo: "Prazo de PDI vencido", descricao: "Um item de PDI passou do prazo sem envio." },
+];
+
 /** "Heloisa Nogueira" → "HN". Só entra em jogo quando a pessoa não tem foto
  *  (`FotoCircular`), é o que identifica ela de relance no topo do card. */
 function iniciais(nome: string): string {
@@ -86,6 +106,14 @@ export function MeuPerfil() {
   const [tentativa, setTentativa] = useState(0);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const [erroFoto, setErroFoto] = useState("");
+  const [notificacoesExpandidas, setNotificacoesExpandidas] = useState(false);
+  // Preguiçoso, e não um efeito: `PrivateRoute` só monta esta tela depois do
+  // usuário carregado, então o valor real já está disponível de cara — um
+  // efeito para "sincronizar" algo que nunca muda por fora desta tela seria
+  // render em cascata à toa.
+  const [notificacoesPendentes, setNotificacoesPendentes] = useState<string[]>(
+    () => usuario?.notificacoes_email_desativadas ?? [],
+  );
   const [salvandoNotificacoes, setSalvandoNotificacoes] = useState(false);
   const [erroNotificacoes, setErroNotificacoes] = useState("");
 
@@ -187,15 +215,23 @@ export function MeuPerfil() {
     }
   }
 
-  async function alternarNotificacao(tipo: string, ligada: boolean) {
+  /** Só mexe no estado local — nada é salvo até clicar em "Salvar". */
+  function alternarNotificacao(tipo: string, ligada: boolean) {
+    setNotificacoesPendentes((atual) =>
+      ligada ? atual.filter((t) => t !== tipo) : [...atual, tipo],
+    );
+  }
+
+  const notificacoesMudaram =
+    notificacoesPendentes.length !== usuario.notificacoes_email_desativadas.length ||
+    notificacoesPendentes.some((t) => !usuario.notificacoes_email_desativadas.includes(t));
+
+  async function salvarNotificacoes() {
     if (!token) return;
-    const atual = usuario!.notificacoes_email_desativadas;
-    // Desmarcado = entra na lista de desativados; marcado = sai dela.
-    const novaLista = ligada ? atual.filter((t) => t !== tipo) : [...atual, tipo];
     setErroNotificacoes("");
     setSalvandoNotificacoes(true);
     try {
-      await atualizarMinhasNotificacoesEmail(novaLista, token);
+      await atualizarMinhasNotificacoesEmail(notificacoesPendentes, token);
       await recarregarUsuario();
     } catch (e) {
       setErroNotificacoes(e instanceof Error ? e.message : "Não foi possível salvar a preferência");
@@ -261,36 +297,6 @@ export function MeuPerfil() {
 
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Notificações por e-mail</PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          <Explicacao>
-            Estas continuam chegando no sino independente da escolha aqui — é só o e-mail que
-            liga ou desliga. Algumas notificações (prazo com bloqueio, pedido direto de alguém,
-            compromisso de agenda) não têm essa opção, saem sempre por e-mail.
-          </Explicacao>
-          <PermissoesGrid>
-            {NOTIFICACOES_OPCIONAIS.map((n) => (
-              <PermissaoItem key={n.tipo}>
-                <input
-                  type="checkbox"
-                  checked={!usuario.notificacoes_email_desativadas.includes(n.tipo)}
-                  disabled={salvandoNotificacoes}
-                  onChange={(e) => void alternarNotificacao(n.tipo, e.target.checked)}
-                />
-                <PermissaoTexto>
-                  <PermissaoTitulo>{n.titulo}</PermissaoTitulo>
-                  <PermissaoDesc>{n.descricao}</PermissaoDesc>
-                </PermissaoTexto>
-              </PermissaoItem>
-            ))}
-          </PermissoesGrid>
-          {erroNotificacoes && <FormErrorText>{erroNotificacoes}</FormErrorText>}
-        </PageCardContent>
-      </PageCard>
-
-      <PageCard>
-        <PageCardHeader>
           <PageCardTitle>Minha grade de aulas</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
@@ -304,6 +310,71 @@ export function MeuPerfil() {
             onSalvar={aoSalvar}
           />
         </PageCardContent>
+      </PageCard>
+
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Notificações por e-mail</PageCardTitle>
+          <PageButtonSm
+            type="button"
+            $variant="outline"
+            onClick={() => setNotificacoesExpandidas((v) => !v)}
+          >
+            {notificacoesExpandidas ? (
+              <>
+                <ChevronUp size={14} />
+                Recolher
+              </>
+            ) : (
+              <>
+                <ChevronDown size={14} />
+                Expandir
+              </>
+            )}
+          </PageButtonSm>
+        </PageCardHeader>
+        {notificacoesExpandidas && (
+          <PageCardContent>
+            <Explicacao>
+              Estas continuam chegando no sino independente da escolha aqui — é só o e-mail que
+              liga ou desliga. As marcadas com cadeado não têm essa opção (prazo com bloqueio,
+              pedido direto de alguém, compromisso de agenda) e saem sempre por e-mail.
+            </Explicacao>
+            <PermissoesGrid>
+              {NOTIFICACOES_OPCIONAIS.map((n) => (
+                <PermissaoItem key={n.tipo}>
+                  <input
+                    type="checkbox"
+                    checked={!notificacoesPendentes.includes(n.tipo)}
+                    disabled={salvandoNotificacoes}
+                    onChange={(e) => alternarNotificacao(n.tipo, e.target.checked)}
+                  />
+                  <PermissaoTexto>
+                    <PermissaoTitulo>{n.titulo}</PermissaoTitulo>
+                    <PermissaoDesc>{n.descricao}</PermissaoDesc>
+                  </PermissaoTexto>
+                </PermissaoItem>
+              ))}
+              {NOTIFICACOES_FIXAS.map((n) => (
+                <PermissaoItem key={n.tipo}>
+                  <input type="checkbox" checked disabled />
+                  <PermissaoTexto>
+                    <PermissaoTitulo>{n.titulo}</PermissaoTitulo>
+                    <PermissaoDesc>{n.descricao} · Sempre ligado</PermissaoDesc>
+                  </PermissaoTexto>
+                </PermissaoItem>
+              ))}
+            </PermissoesGrid>
+            {erroNotificacoes && <FormErrorText>{erroNotificacoes}</FormErrorText>}
+            <PageButton
+              type="button"
+              disabled={salvandoNotificacoes || !notificacoesMudaram}
+              onClick={() => void salvarNotificacoes()}
+            >
+              {salvandoNotificacoes ? "Salvando…" : "Salvar"}
+            </PageButton>
+          </PageCardContent>
+        )}
       </PageCard>
     </PageStack>
   );
