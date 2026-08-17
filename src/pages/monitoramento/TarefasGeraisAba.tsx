@@ -282,6 +282,7 @@ export function TarefasGeraisAba() {
                           </CardTopo>
                           <CardMeta>
                             <span>{tarefa.responsavel_nome}</span>
+                            {" · "}
                             <span>{formatarData(tarefa.prazo)}</span>
                           </CardMeta>
                         </Card>
