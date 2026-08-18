@@ -61,51 +61,16 @@ export const DataTable = styled(DataTableBase)`
 `;
 
 /**
- * As tabelas largas (Execução tem 7 colunas) rolam na horizontal em vez de
- * espremer as colunas até o texto quebrar em cada célula. O `min-width` é o
- * ponto em que a tabela ainda é legível; abaixo dele, rolar é melhor do que
- * encolher.
+ * `TabelaRolagem` nasceu aqui e MUDOU para `@/styles/shared.styled`, porque
+ * deixou de ser um padrão do monitoramento: as tabelas de Membros, Config,
+ * Calendários base e Dashboard de Bancas passaram a usar a mesma primitiva no
+ * trabalho de responsividade mobile.
  *
- * **As duas rolagens moram no MESMO elemento, de propósito.**
- *
- * A tentação é aninhar: um container para a horizontal, outro por fora para a
- * vertical. Não funciona. `overflow-x: auto` faz o `overflow-y` computar para
- * `auto` também (o CSS não deixa um eixo recortar e o outro transbordar), então
- * o container de dentro já é um contexto de rolagem vertical. O `position:
- * sticky` do cabeçalho se ancora nele, que nunca rola, porque não tem altura
- * limitada, e o cabeçalho simplesmente não gruda em nada.
- *
- * Com `$max`, a tabela ganha rolagem vertical e o cabeçalho gruda no topo. Sem
- * ele, o comportamento é o de antes: só horizontal, altura livre.
- *
- * Rolagem aqui, e páginas nos cards de alerta (ver `usePaginacao`): nestas
- * tabelas a pessoa procura ALGUÉM ESPECÍFICO, e mandá-la adivinhar em qual
- * página está o colega seria pior do que rolar.
+ * O re-export mantém os 19 usos das abas sem trocar uma linha de import — é o
+ * mesmo movimento que `styles/modal.styled.ts` fez com `Calendario.styled.ts`.
+ * Código NOVO deve importar de `@/styles/shared.styled`.
  */
-export const TabelaRolagem = styled.div<{ $min?: string; $max?: string }>`
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-
-  ${({ $max }) =>
-    $max &&
-    css`
-      max-height: ${$max};
-      overflow-y: auto;
-
-      /* Sem isto, três telas de rolagem adentro ninguém lembra qual coluna é
-         qual. O fundo é obrigatório: sticky não recorta o que passa por baixo. */
-      thead th {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-        background: ${theme.colors.card};
-      }
-    `}
-
-  table {
-    min-width: ${({ $min = "38rem" }) => $min};
-  }
-`;
+export { TabelaRolagem } from "@/styles/shared.styled";
 
 /* ─── Linha de card com destaque à esquerda ──────────────────────────────── */
 
@@ -303,6 +268,14 @@ export const FiltroSelect = styled(FieldSelect)`
   flex: 0 1 13rem;
   width: auto;
   min-width: 9rem;
+
+  /* No celular o teto vira o contrário do que se quer: com o min-width de 9rem,
+     dois filtros tentam dividir 375px e sobram ~140px para cada rótulo de
+     frente. Um por linha, largura cheia. */
+  @media (max-width: ${theme.breakpoints.sm - 1}px) {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
 `;
 
 /** O rodapé de navegação entre páginas de um card. Discreto e centrado: é
@@ -1431,6 +1404,24 @@ export const MotivoItem = styled.li`
   font-size: ${theme.fontSize.sm};
   color: ${theme.colors.mutedForeground};
 
+  /* As cinco colunas somam ~29rem cravados, contra os 23,4rem de um iPhone SE:
+     esta linha era a que fazia a página inteira arrastar para o lado.
+     A régua alinhada — o motivo de as larguras serem fixas — não cabe num
+     celular de jeito nenhum; em vez de fingir que cabe, os campos fluem e
+     quebram, e a ação vai para o fim da última linha. */
+  @media (max-width: ${theme.breakpoints.md - 1}px) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.6rem;
+
+    /* O bloco de ações perde o justify-self da grade (flex o ignora); o
+       margin-left é o que o substitui. */
+    > *:last-child {
+      margin-left: auto;
+    }
+  }
+
   & + & {
     border-top: 1px dashed ${theme.colors.border};
   }
@@ -1846,6 +1837,18 @@ export const SwimGrid = styled.div<{ $colunas: number }>`
   padding-bottom: ${theme.spacing.sm};
   align-items: start;
 
+  /* Mesma decisão do Board do kanban, e pelo mesmo motivo: no celular o quadro
+     para sempre no meio de duas colunas. Proximity, e não mandatory, porque o
+     cabeçalho é sincronizado por JS no onScroll (ver TarefasGeraisAba) —
+     encaixe forçado durante a rolagem faria os dois brigarem. */
+  @media (max-width: ${theme.breakpoints.md - 1}px) {
+    scroll-snap-type: x proximity;
+
+    > * {
+      scroll-snap-align: start;
+    }
+  }
+
   scrollbar-width: thin;
   scrollbar-color: ${theme.colors.border} transparent;
 
@@ -2032,6 +2035,14 @@ export const CaixaGrafico = styled.div<{ $altura?: string }>`
   width: 100%;
   height: ${({ $altura }) => $altura ?? "16rem"};
 
+  /* ⚠ NÃO ponha teto de altura aqui (já foi tentado um max-height de 80vh em
+     mobile, para o donut de 22rem não passar da tela com o celular deitado).
+     A altura que o BarrasCarga passa NÃO é decorativa: são ~1,75rem por barra,
+     que é o espaço de que cada nome do eixo Y precisa. Qualquer teto espreme as
+     barras, cada rótulo fica com menos que a altura da fonte, e os nomes se
+     escrevem uns por cima dos outros. Se um gráfico específico for alto demais
+     em alguma tela, ajuste a altura DELE, na chamada. */
+
   /* O recharts injeta um <svg> com foco próprio; sem isto o anel de foco fica
      cortado pela borda do card ao navegar por teclado. */
   svg:focus-visible {
@@ -2139,8 +2150,21 @@ export const ControlesGrafico = styled.div`
   margin-bottom: ${theme.spacing.md};
 `;
 
+/**
+ * O par de alternativas (Consultores | Coordenadores).
+ *
+ * ⚠ O `flex-shrink: 0` não é enfeite. O `overflow: hidden` daqui — que existe
+ * para o fundo do botão ativo respeitar o arredondamento do grupo — faz o
+ * `min-width: auto` deste elemento, quando ele é item de um flex, resolver para
+ * ZERO. Ou seja: ele passa a poder encolher abaixo do próprio conteúdo, e o
+ * `hidden` corta o segundo botão em vez de o grupo empurrar o vizinho. Era o
+ * que acontecia dentro do `PageCardHeader` no celular: "Coordenadores" aparecia
+ * cortado ao meio. Com o shrink travado, ele desce inteiro para a linha de
+ * baixo (o header quebra linha).
+ */
 export const GrupoBotoes = styled.div`
   display: inline-flex;
+  flex-shrink: 0;
   border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.md};
   overflow: hidden;

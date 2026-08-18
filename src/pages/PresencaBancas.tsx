@@ -16,6 +16,7 @@ import {
   TableRow,
   TableCell,
 } from "./Config.styled";
+import { TabelaRolagem } from "@/styles/shared.styled";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import {
   ConteudoPaginado,
@@ -115,48 +116,52 @@ export function PresencaBancas({ usuarios, candidaturas, bancas }: Props) {
           <EmptyText>Ninguém se inscreveu em bancas ainda.</EmptyText>
         ) : (
           <ConteudoPaginado estado={pagina}>
-            <DataTable>
-              <TableHead>
-                <TableRow>
-                  <Th coluna="membro" ordem={ordem} onOrdenar={ordenarPor}>
-                    Membro
-                  </Th>
-                  <Th coluna="presente" ordem={ordem} onOrdenar={ordenarPor}>
-                    Compareceu
-                  </Th>
-                  <Th coluna="faltas" ordem={ordem} onOrdenar={ordenarPor}>
-                    Faltou
-                  </Th>
-                  <Th coluna="percentual" ordem={ordem} onOrdenar={ordenarPor}>
-                    Presença
-                  </Th>
-                  <Th coluna="futuras" ordem={ordem} onOrdenar={ordenarPor}>
-                    Ainda vai ter
-                  </Th>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {pagina.visiveis.map((l) => (
-                  <TableRow key={l.usuario.id}>
-                    <TableCell>{l.usuario.nome}</TableCell>
-                    <TableCell>
-                      {l.presente} de {l.inscrito}
-                    </TableCell>
-                    <TableCell>
-                      {l.faltas > 0 ? (
-                        <PageBadge $tone="danger">{l.faltas}</PageBadge>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {l.percentual === null ? "—" : `${l.percentual}%`}
-                    </TableCell>
-                    <TableCell>{l.futuras > 0 ? l.futuras : "—"}</TableCell>
+            {/* 5 colunas de números curtos, mas "Ainda vai ter" e "Compareceu"
+                não cabem em 375px sem quebrar cada rótulo em três linhas. */}
+            <TabelaRolagem $min="44rem">
+              <DataTable>
+                <TableHead>
+                  <TableRow>
+                    <Th coluna="membro" ordem={ordem} onOrdenar={ordenarPor}>
+                      Membro
+                    </Th>
+                    <Th coluna="presente" ordem={ordem} onOrdenar={ordenarPor}>
+                      Compareceu
+                    </Th>
+                    <Th coluna="faltas" ordem={ordem} onOrdenar={ordenarPor}>
+                      Faltou
+                    </Th>
+                    <Th coluna="percentual" ordem={ordem} onOrdenar={ordenarPor}>
+                      Presença
+                    </Th>
+                    <Th coluna="futuras" ordem={ordem} onOrdenar={ordenarPor}>
+                      Ainda vai ter
+                    </Th>
                   </TableRow>
-                ))}
-              </TableBody>
-            </DataTable>
+                </TableHead>
+                <TableBody>
+                  {pagina.visiveis.map((l) => (
+                    <TableRow key={l.usuario.id}>
+                      <TableCell>{l.usuario.nome}</TableCell>
+                      <TableCell>
+                        {l.presente} de {l.inscrito}
+                      </TableCell>
+                      <TableCell>
+                        {l.faltas > 0 ? (
+                          <PageBadge $tone="danger">{l.faltas}</PageBadge>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {l.percentual === null ? "—" : `${l.percentual}%`}
+                      </TableCell>
+                      <TableCell>{l.futuras > 0 ? l.futuras : "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </DataTable>
+            </TabelaRolagem>
           </ConteudoPaginado>
         )}
         {!semNenhuma && <Paginacao estado={pagina} />}

@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import { Paginacao, usePaginacao } from "./Paginacao";
+import { useTelaEstreita } from "@/utils/useTelaEstreita";
 import { ROTULO_STATUS } from "@/lib/projetos";
 import type { LinhaCarga } from "@/lib/monitoramento";
 
@@ -35,6 +36,31 @@ function etapasPresentes(linhas: LinhaCarga[]): StatusProjeto[] {
   const vistas = new Set<StatusProjeto>();
   for (const l of linhas) for (const p of l.projetos) vistas.add(p.status);
   return (Object.keys(ROTULO_STATUS) as StatusProjeto[]).filter((s) => vistas.has(s));
+}
+
+/** O teto de caracteres do rótulo abreviado, casado com a largura do eixo em
+ *  mobile. Medido na fonte real (Inter Variable, os 12px do eixo): o pior caso
+ *  com 12 caracteres dá ~77px, e sobram ~13px dos 100px do eixo para o tick e a
+ *  folga dele. Subir este número reaproxima o rótulo do limite, e passar dele é
+ *  o que fazia o nome quebrar em duas linhas e colidir com o de baixo. */
+const MAX_CARACTERES_ROTULO = 12;
+
+/**
+ * "Ana Carolina Souza" → "Ana S.", a mesma forma curta que o app já usa (ver o
+ * painel do login).
+ *
+ * ⚠ É só o RÓTULO do eixo, via `tickFormatter`. O dado continua com o nome
+ * inteiro, e é ele que o tooltip mostra ao tocar na barra — a abreviação não
+ * pode ser a única forma de saber de quem é a barra.
+ *
+ * O corte no fim é a rede de segurança: existe primeiro nome comprido o
+ * bastante para estourar sozinho ("Maria Fernanda" vira "Maria F." e cabe, mas
+ * "Christopherson A." não caberia).
+ */
+function nomeCurto(nome: string): string {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  const base = partes.length > 1 ? `${partes[0]} ${partes[partes.length - 1][0]}.` : (partes[0] ?? nome);
+  return base.length > MAX_CARACTERES_ROTULO ? `${base.slice(0, MAX_CARACTERES_ROTULO - 1)}…` : base;
 }
 
 /**
@@ -99,6 +125,9 @@ export function BarrasCarga({ papel, linhas }: { papel: Papel; linhas: LinhaCarg
   const barrasNaAltura = grafico.totalPaginas > 1 ? BARRAS_POR_PAGINA : dados.length;
   const altura = `${Math.max(8, barrasNaAltura * 1.75 + 2)}rem`;
 
+  // A largura do eixo é prop do recharts, não CSS — ver `useTelaEstreita`.
+  const telaEstreita = useTelaEstreita();
+
   return (
     <div>
       {/* O toggle de papel saiu daqui: agora é um só, no topo da aba, e vale
@@ -154,7 +183,17 @@ export function BarrasCarga({ papel, linhas }: { papel: Papel; linhas: LinhaCarg
               <YAxis
                 type="category"
                 dataKey="nome"
-                width={140}
+                // 140px são 37% de uma tela de 375px só para os nomes, e sobra
+                // menos de metade da largura para as barras — que são o gráfico.
+                //
+                // ⚠ Estreitar o eixo SEM encurtar o texto não funciona: o tick
+                // do recharts é um <Text>, que QUEBRA EM VÁRIAS LINHAS quando o
+                // nome não cabe na largura. Como cada categoria tem só ~1,75rem
+                // de altura, a segunda linha invadia o nome de baixo e os
+                // rótulos se escreviam uns por cima dos outros. Os dois andam
+                // juntos: largura menor + `tickFormatter` que garante uma linha.
+                width={telaEstreita ? 100 : 140}
+                tickFormatter={telaEstreita ? nomeCurto : undefined}
                 stroke={theme.colors.mutedForeground}
                 fontSize={12}
               />

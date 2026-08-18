@@ -29,6 +29,7 @@ import {
   TableCell,
   FieldSelect,
 } from "../Membros.styled";
+import { TabelaRolagem } from "@/styles/shared.styled";
 
 const FaixaTexto = styled.p`
   margin: 0.25rem 0 0;
@@ -146,62 +147,66 @@ function TabelaPapel({
           Quem tem menos de {comecaEm} {comecaEm === 1 ? "projeto" : "projetos"} fica sem situação.
         </EmptyText>
       )}
-      <DataTable>
-        <TableHead>
-          <TableRow>
-            <TableHeadCell>A partir de quantos projetos</TableHeadCell>
-            <TableHeadCell>Situação</TableHeadCell>
-            <TableHeadCell>Cor</TableHeadCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {ordenadas.map((s, i) => (
-            <TableRow key={s.id}>
-              <TableCell>
-                <Input
-                  type="number"
-                  min={0}
-                  defaultValue={s.min_projetos}
-                  onBlur={(e) => {
-                    const valor = Number(e.target.value);
-                    if (e.target.value !== "" && valor !== s.min_projetos) {
-                      onEditar(s.id, { min_projetos: valor });
-                    }
-                  }}
-                />
-                {/* Texto de apoio, não editável, só traduz o número acima
-                    em "vale até onde": um "3" sozinho não diz se é "só 3" ou
-                    "3 pra cima". Antes isso era uma coluna própria ("Faixa"),
-                    que duplicava a mesma informação lado a lado com o campo
-                    editável e confundia mais do que ajudava. */}
-                <FaixaTexto>vale de {descreverFaixa(s, ordenadas[i + 1])} projeto(s)</FaixaTexto>
-              </TableCell>
-              <TableCell>
-                <Input
-                  defaultValue={s.nome}
-                  onBlur={(e) =>
-                    e.target.value.trim() &&
-                    e.target.value !== s.nome &&
-                    onEditar(s.id, { nome: e.target.value.trim() })
-                  }
-                />
-              </TableCell>
-              <TableCell>
-                <FieldSelect
-                  value={s.tom}
-                  onChange={(e) => onEditar(s.id, { tom: e.target.value as TomSituacao })}
-                >
-                  {Object.entries(ROTULO_TOM).map(([valor, rotulo]) => (
-                    <option key={valor} value={valor}>
-                      {rotulo}
-                    </option>
-                  ))}
-                </FieldSelect>
-              </TableCell>
+      {/* 3 colunas, mas duas delas são campos editáveis e um select — o
+          conteúdo pesa mais que o número de colunas sugere. */}
+      <TabelaRolagem $min="34rem">
+        <DataTable>
+          <TableHead>
+            <TableRow>
+              <TableHeadCell>A partir de quantos projetos</TableHeadCell>
+              <TableHeadCell>Situação</TableHeadCell>
+              <TableHeadCell>Cor</TableHeadCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </DataTable>
+          </TableHead>
+          <TableBody>
+            {ordenadas.map((s, i) => (
+              <TableRow key={s.id}>
+                <TableCell>
+                  <Input
+                    type="number"
+                    min={0}
+                    defaultValue={s.min_projetos}
+                    onBlur={(e) => {
+                      const valor = Number(e.target.value);
+                      if (e.target.value !== "" && valor !== s.min_projetos) {
+                        onEditar(s.id, { min_projetos: valor });
+                      }
+                    }}
+                  />
+                  {/* Texto de apoio, não editável, só traduz o número acima
+                      em "vale até onde": um "3" sozinho não diz se é "só 3" ou
+                      "3 pra cima". Antes isso era uma coluna própria ("Faixa"),
+                      que duplicava a mesma informação lado a lado com o campo
+                      editável e confundia mais do que ajudava. */}
+                  <FaixaTexto>vale de {descreverFaixa(s, ordenadas[i + 1])} projeto(s)</FaixaTexto>
+                </TableCell>
+                <TableCell>
+                  <Input
+                    defaultValue={s.nome}
+                    onBlur={(e) =>
+                      e.target.value.trim() &&
+                      e.target.value !== s.nome &&
+                      onEditar(s.id, { nome: e.target.value.trim() })
+                    }
+                  />
+                </TableCell>
+                <TableCell>
+                  <FieldSelect
+                    value={s.tom}
+                    onChange={(e) => onEditar(s.id, { tom: e.target.value as TomSituacao })}
+                  >
+                    {Object.entries(ROTULO_TOM).map(([valor, rotulo]) => (
+                      <option key={valor} value={valor}>
+                        {rotulo}
+                      </option>
+                    ))}
+                  </FieldSelect>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </DataTable>
+      </TabelaRolagem>
     </>
   );
 }

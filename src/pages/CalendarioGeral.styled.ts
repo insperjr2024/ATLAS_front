@@ -277,6 +277,34 @@ export const Pilula = styled.button<{ $cor: string }>`
   cursor: pointer;
   line-height: 1.3;
 
+  /* ⭐ No celular a pílula vira um PONTO.
+     A grade é 7 colunas de 1fr sem rolagem horizontal: em 375px cada célula
+     tem ~50px, onde não cabe nem "Rec" de "Recrutamento". Mostrar quantos
+     eventos há e de que tipo (a cor) é o que resta de útil nesse tamanho — e
+     nada se perde, porque tocar na célula já abre o dia inteiro (ver o
+     onClick de DayCellPreenche em CalendarioGeral.tsx).
+
+     Os dois spans filhos são o texto e a hora; some com eles em vez de
+     referenciar PilulaTexto/PilulaHora, que só são declarados abaixo. */
+  @media (max-width: ${theme.breakpoints.md - 1}px) {
+    width: 0.5rem;
+    height: 0.5rem;
+    padding: 0;
+    gap: 0;
+    background: ${({ $cor }) => $cor};
+
+    & > span {
+      display: none;
+    }
+
+    /* O hover abaixo repinta o gradiente, e num ponto de 8px o corte em 3px
+       viraria meia bolinha de outra cor. Num aparelho híbrido (tablet com
+       mouse) isso apareceria de verdade. */
+    &:hover {
+      background: ${({ $cor }) => $cor};
+    }
+  }
+
   &:hover {
     background: linear-gradient(
       to right,
@@ -307,6 +335,16 @@ export const PilulasWrap = styled.div`
   flex: 1;
   min-height: 0;
   overflow: hidden;
+
+  /* Empilhadas viram uma coluna de pontos; em linha, quatro pontos ocupam
+     menos de uma linha de texto e a célula do dia fica com a altura de sempre.
+     Ver o comentário da Pilula. */
+  @media (max-width: ${theme.breakpoints.md - 1}px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 0.15rem;
+  }
 `;
 
 /**

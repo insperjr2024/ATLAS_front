@@ -1,9 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/insperjr.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      `maximum-scale=1` + `user-scalable=no`: dar zoom out no celular desmonta a
+      organização das telas (a sidebar, as tabelas e os boards são pensados para
+      caber na largura da viewport, não para serem vistos de longe). O Safari do
+      iOS ignora `user-scalable=no` desde o iOS 10, então a trava de verdade lá é
+      a de `utils/travarZoom.ts` — esta meta cobre Android e desktop.
+
+      A contrapartida é séria e foi aceita conscientemente: travar zoom fere a
+      WCAG 1.4.4. O que compensa é o resto não depender de zoom para ser lido —
+      nenhuma tela pode estourar a viewport, e todo campo tem 16px em mobile
+      (`index.css`), senão o iOS amplia sozinho e a pessoa fica presa ampliada.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#ffffff" />
     <title>ATLAS</title>
   </head>
   <body>

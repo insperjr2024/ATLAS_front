@@ -89,6 +89,13 @@ export const PageCardHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+
+  /* O cabeçalho costuma ser "título à esquerda, controle à direita" (o seletor
+     de papel da Alocação, por exemplo). Numa tela estreita os dois não cabem na
+     mesma linha, e sem o wrap o controle era espremido até cortar o rótulo em
+     vez de descer. Quebrando, ele vira uma segunda linha inteira.
+     No desktop nada muda: só quebra o que não cabe. */
+  flex-wrap: wrap;
   gap: ${theme.spacing.md};
   padding: ${theme.spacing.md} ${theme.spacing.lg};
   border-bottom: 1px solid ${theme.colors.border};
@@ -139,6 +146,14 @@ export const PageButton = styled.button<{ $variant?: "primary" | "outline" | "gh
   padding: 0 0.75rem;
   border: 1px solid transparent;
 
+  /* Alvo de toque: 2rem (32px) é metade do mínimo confortável para o polegar.
+     Só a altura e o respiro lateral crescem — a fonte fica igual, senão os
+     rótulos longos ("Registrar justificativa") começam a quebrar linha. */
+  @media (max-width: ${theme.breakpoints.md}px) {
+    height: 2.75rem;
+    padding: 0 1rem;
+  }
+
   ${({ $variant = "primary" }) =>
     $variant === "primary"
       ? css`
@@ -170,6 +185,15 @@ export const PageButtonSm = styled(PageButton)`
   height: 1.75rem;
   padding: 0 0.625rem;
   font-size: ${theme.fontSize.xs};
+
+  /* Precisa vir depois do media query herdado do PageButton, senão a altura de
+     2.75rem de lá venceria e o botão "pequeno" ficaria do tamanho do normal no
+     celular. 2.25rem é o meio-termo: dá para acertar com o dedo e as barras de
+     ação com 3 ou 4 destes ainda cabem numa linha. */
+  @media (max-width: ${theme.breakpoints.md}px) {
+    height: 2.25rem;
+    padding: 0 0.875rem;
+  }
 `;
 
 /* ------------------------------------------------------------------ */

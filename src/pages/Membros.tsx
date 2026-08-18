@@ -275,6 +275,9 @@ export function Membros() {
             <TableScrollWrap
               $scrollable={membrosFiltrados.length > MEMBROS_MAX_VISIVEIS}
               $maxVisiveis={MEMBROS_MAX_VISIVEIS}
+              // 7 colunas: abaixo de 56rem a tabela rola na horizontal em vez de
+              // espremer "E-mail" e "Posição" até quebrarem letra a letra.
+              $min="56rem"
             >
             <DataTable>
               <TableHead>

@@ -49,6 +49,14 @@ export const WeekRow = styled.div`
 export const DayCell = styled.div<{ $outside?: boolean; $today?: boolean; $compacto?: boolean }>`
   min-height: ${({ $compacto }) => ($compacto ? "2.75rem" : "7.5rem")};
   padding: 0.375rem;
+
+  /* No celular, 7,5rem de piso × 6 semanas dá um mês de 45rem de altura, quase
+     tudo em branco. É PISO, não altura: o dia que tem eventos continua crescendo
+     para caber, só o dia vazio encolhe. */
+  @media (max-width: ${theme.breakpoints.md - 1}px) {
+    min-height: ${({ $compacto }) => ($compacto ? "2.25rem" : "4rem")};
+    padding: 0.25rem;
+  }
   border-right: 1px solid ${theme.colors.border};
   border-bottom: 1px solid ${theme.colors.border};
   background: ${({ $outside }) => ($outside ? theme.colors.muted : theme.colors.background)};
