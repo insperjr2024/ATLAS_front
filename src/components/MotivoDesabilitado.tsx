@@ -50,7 +50,7 @@ export function MotivoDesabilitado({ motivo, children }: Props) {
    * `overflow: hidden` dos cards), o CSS não sabe mais sozinho onde ele fica.
    * Estas coordenadas saem da medição do gatilho, feita na hora de abrir.
    */
-  const [posicao, setPosicao] = useState({ esquerda: 0, baixo: 0 });
+  const [posicao, setPosicao] = useState({ esquerda: 0, baixo: 0, alturaMaxima: 400 });
 
   /**
    * ⚠ Medido no evento, não num efeito — a regra `set-state-in-effect` do lint
@@ -83,7 +83,13 @@ export function MotivoDesabilitado({ motivo, children }: Props) {
       // crescer para CIMA conforme o texto, sem cobrir o gatilho.
       const baixo = window.innerHeight - gatilho.top + MARGEM;
 
-      setPosicao({ esquerda, baixo });
+      // Texto comprido (ex.: "Escopos vendidos") crescia pra cima sem limite
+      // e estourava por cima da janela, cortando o começo da explicação. O
+      // teto é o espaço que sobra até o topo; passou disso, rola dentro do
+      // balão em vez de sumir da tela.
+      const alturaMaxima = Math.max(gatilho.top - MARGEM * 2, 120);
+
+      setPosicao({ esquerda, baixo, alturaMaxima });
     }
     setAberto(true);
   }
@@ -108,6 +114,7 @@ export function MotivoDesabilitado({ motivo, children }: Props) {
         $aberto={aberto}
         $esquerda={posicao.esquerda}
         $baixo={posicao.baixo}
+        $alturaMaxima={posicao.alturaMaxima}
       >
         {motivo}
       </Balao>

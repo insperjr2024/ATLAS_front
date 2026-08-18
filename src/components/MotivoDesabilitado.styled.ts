@@ -44,6 +44,7 @@ export const Balao = styled.span<{
   $aberto: boolean;
   $esquerda: number;
   $baixo: number;
+  $alturaMaxima: number;
 }>`
   position: fixed;
   left: ${({ $esquerda }) => $esquerda}px;
@@ -52,6 +53,10 @@ export const Balao = styled.span<{
 
   width: max-content;
   max-width: min(17rem, calc(100vw - 2rem));
+  /* Texto longo rola dentro do balão em vez de crescer pra fora da janela —
+     ver o cálculo de alturaMaxima em MotivoDesabilitado.tsx. */
+  max-height: ${({ $alturaMaxima }) => $alturaMaxima}px;
+  overflow-y: auto;
 
   padding: ${theme.spacing.sm};
   border-radius: ${theme.borderRadius.md};
@@ -65,6 +70,13 @@ export const Balao = styled.span<{
   line-height: 1.45;
   text-align: left;
   white-space: normal;
+  /* position: fixed tira o balão do lugar visual, mas ele continua
+     descendente no DOM de quem o abriga — um gatilho dentro de um rótulo
+     em CAIXA ALTA (ex.: DataItemLabel) herdava o text-transform e a
+     explicação inteira saía maiúscula, enquanto outro gatilho, num rótulo
+     sem essa regra, saía normal. Trava aqui pra nunca depender de onde o
+     ícone foi colocado. */
+  text-transform: none;
 
   opacity: ${({ $aberto }) => ($aberto ? 1 : 0)};
   /* Escondido por visibility, nunca por display: o balão precisa continuar
