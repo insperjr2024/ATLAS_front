@@ -18,9 +18,15 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
   border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
+  /* sticky (e não fixed) no desktop: fica parada na viewport SEM sair do
+     fluxo, então o Main continua com o offset de 16rem. fixed cobriria o
+     conteúdo. No drawer (abaixo) vira fixed, porque aí a página fica atrás. */
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
+  /* Fallback: em altura extrema o menu ainda rola. No uso normal o Nav
+     cabe e esta barra não aparece — o scroll da lista, se precisar, é
+     só no <nav>, com o rodapé sempre visível. */
   overflow-y: auto;
 
   @media (max-width: ${DRAWER_ATE - 1}px) {
@@ -31,6 +37,7 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
     top: 0;
     left: 0;
     z-index: 60;
+    height: 100dvh;
     transform: translateX(${({ $aberta }) => ($aberta ? "0" : "-100%")});
 
     /* visibility junto com o transform: fora da tela o painel continuaria
@@ -48,47 +55,85 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
 `;
 
 export const LogoContainer = styled.div`
-  height: 80px;
+  flex-shrink: 0;
+  height: 3.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid var(--sidebar-border);
+
+  @media (max-height: 800px) {
+    height: 3.25rem;
+  }
 `;
 
 export const LogoImg = styled.img`
-  max-height: 40px;
+  max-height: 2.25rem;
   width: auto;
   object-fit: contain;
+
+  @media (max-height: 800px) {
+    max-height: 2rem;
+  }
 `;
 
 export const Nav = styled.nav`
-  flex: 1;
-  padding: 0.5rem 0 1.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.5rem 0 0.25rem;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+
+  @media (max-height: 800px) {
+    padding: 0.35rem 0 0.15rem;
+  }
 `;
 
 export const NavItem = styled(Link)<{ $isActive: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
+  min-height: 38px;
+  padding: 7px 1.25rem;
+  font-size: 15px;
+  line-height: 1.3;
   text-decoration: none;
   color: ${({ $isActive }) => ($isActive ? "var(--destructive)" : "var(--sidebar-foreground)")};
   font-weight: ${({ $isActive }) => ($isActive ? 500 : 400)};
   transition: color 150ms ease;
 
+  & svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
   &:hover {
     color: var(--destructive);
+  }
+
+  @media (max-height: 800px) {
+    min-height: 34px;
+    padding: 6px 1.25rem;
+    font-size: 14px;
+
+    & svg {
+      width: 18px;
+      height: 18px;
+    }
   }
 `;
 
 export const SectionLabel = styled.div`
-  margin-top: 0.75rem;
-  padding: 0.5rem 1.25rem 0.25rem;
+  /* margin-top: auto reparte o espaço sobrando ENTRE as seções, em vez de
+     deixar um buraco único acima do rodapé. padding-top é o mínimo de
+     hierarquia quando não há folga (telas baixas). */
+  margin-top: auto;
+  padding: 14px 1.25rem 5px;
   font-size: 0.7rem;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -97,13 +142,29 @@ export const SectionLabel = styled.div`
      existe para afastar um grupo do grupo ANTERIOR. Aqui não há anterior. */
   &:first-child {
     margin-top: 0;
+    padding-top: 8px;
+  }
+
+  @media (max-height: 800px) {
+    padding: 10px 1.25rem 4px;
+
+    &:first-child {
+      padding-top: 4px;
+    }
   }
 `;
 
 export const Footer = styled.div`
+  flex-shrink: 0;
   margin-top: auto;
-  padding-top: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.5rem;
   border-top: 1px solid var(--sidebar-border);
+
+  @media (max-height: 800px) {
+    padding-top: 0.5rem;
+    padding-bottom: 0.35rem;
+  }
 `;
 
 /** A identidade no rodapé É o link para o perfil.
@@ -122,6 +183,10 @@ export const UserRow = styled(Link)<{ $isActive: boolean }>`
 
   &:hover {
     color: var(--destructive);
+  }
+
+  @media (max-height: 800px) {
+    padding: 0.3rem 1.25rem 0.375rem;
   }
 `;
 
@@ -164,6 +229,10 @@ export const NotificacoesWrap = styled.div`
   @media (max-width: ${DRAWER_ATE - 1}px) {
     display: none;
   }
+
+  @media (max-height: 800px) {
+    padding: 0 1.25rem 0.35rem;
+  }
 `;
 
 export const SinoButton = styled.button`
@@ -183,6 +252,10 @@ export const SinoButton = styled.button`
   &:hover {
     color: var(--destructive);
     border-color: var(--destructive);
+  }
+
+  @media (max-height: 800px) {
+    padding: 0.3rem 0.55rem;
   }
 `;
 
@@ -269,15 +342,33 @@ export const LogoutButton = styled.button`
   align-items: center;
   gap: 0.625rem;
   width: 100%;
-  padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
+  min-height: 38px;
+  padding: 7px 1.25rem;
+  font-size: 15px;
   color: var(--sidebar-foreground);
   background: none;
   border: none;
   cursor: pointer;
   transition: color 150ms ease;
 
+  & svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
   &:hover {
     color: var(--destructive);
+  }
+
+  @media (max-height: 800px) {
+    min-height: 34px;
+    padding: 6px 1.25rem;
+    font-size: 14px;
+
+    & svg {
+      width: 18px;
+      height: 18px;
+    }
   }
 `;

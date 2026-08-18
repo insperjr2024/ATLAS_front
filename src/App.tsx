@@ -161,7 +161,9 @@ export default function App() {
                       bruto" (essa é Avaliações, a auditoria). */}
                   <Route index element={<Navigate to="relatorio" replace />} />
                   <Route path="relatorio" element={<PainelRelatorio />} />
-                  <Route path="avaliacoes" element={<PainelAvaliacoes />} />
+                  <Route path="avaliadores" element={<PainelAvaliacoes />} />
+                  <Route path="avaliados" element={<PainelAvaliacoes />} />
+                  <Route path="avaliacoes" element={<Navigate to="avaliadores" replace />} />
                   <Route path="lotes" element={<PainelLotes />} />
                   <Route path="pdi" element={<PainelPdi />} />
                 </Route>

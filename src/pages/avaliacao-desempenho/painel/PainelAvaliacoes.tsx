@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { deleteAvaliacao, getAvaliacaoDetalhe, getAvaliacoes } from "@/lib/desempenho-avaliacoes";
 import { getLotes } from "@/lib/desempenho-lotes";
@@ -85,7 +86,9 @@ function formatarData(iso?: string): string {
  */
 export function PainelAvaliacoes() {
   const { token } = useAuth();
-  const [modo, setModo] = useState<Modo>("avaliador");
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const modo: Modo = pathname.endsWith("/avaliados") ? "avaliado" : "avaliador";
   const [avaliacoes, setAvaliacoes] = useState<DesempenhoAvaliacao[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [lotes, setLotes] = useState<DesempenhoLote[]>([]);
@@ -134,9 +137,13 @@ export function PainelAvaliacoes() {
   }, [token]);
 
   function trocarModo(novoModo: Modo) {
-    setModo(novoModo);
     setExpandido(null);
     setAvaliacaoExpandidaId(null);
+    navigate(
+      novoModo === "avaliado"
+        ? "/avaliacao-desempenho/painel/avaliados"
+        : "/avaliacao-desempenho/painel/avaliadores",
+    );
   }
 
   const nomes = useMemo(() => new Map(usuarios.map((u) => [u.id, u.nome])), [usuarios]);
@@ -214,7 +221,7 @@ export function PainelAvaliacoes() {
         return true;
       })
       .sort(([, a], [, b]) => b.length - a.length);
-  }, [avaliacoesFiltradas, filtroFrente, frenteIdsPorUsuario]);
+  }, [avaliacoesFiltradas, filtroFrente, frenteIdsPorUsuario, modo]);
 
   async function toggleDetalhe(avaliacaoId: number) {
     if (!token) return;
