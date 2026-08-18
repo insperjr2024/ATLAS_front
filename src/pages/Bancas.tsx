@@ -148,6 +148,7 @@ import {
   BancaData,
   BancaDataDiaSemana,
   BancaDataDia,
+  BancaDataMes,
   BancaInfo,
   BancaNomeLinha,
   BancaNome,
@@ -870,6 +871,7 @@ function SecaoBancas({
             {bancas.map((banca) => {
               const dataHora = paraDataUtc(banca.data_hora);
               const diaSemana = dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+              const mes = dataHora.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
               const hora = dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
               const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
               const podeGerenciar =
@@ -944,6 +946,7 @@ function SecaoBancas({
                   <BancaData>
                     <BancaDataDiaSemana>{diaSemana}</BancaDataDiaSemana>
                     <BancaDataDia>{dataHora.getDate()}</BancaDataDia>
+                    <BancaDataMes>{mes}</BancaDataMes>
                   </BancaData>
 
                   <BancaInfo>
