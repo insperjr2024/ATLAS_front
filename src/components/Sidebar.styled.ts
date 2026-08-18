@@ -78,7 +78,15 @@ export const LogoImg = styled.img`
 `;
 
 export const Nav = styled.nav`
-  flex: 1 1 auto;
+  /* Não mais "flex: 1 1 auto": aquilo esticava o <nav> pra preencher todo o
+     espaço sobrando do menu, e como as seções agora têm margem FIXA (ver
+     SectionLabel), o esticão inteiro sobrava como vão em branco depois do
+     último item, logo acima do rodapé — o mesmo problema de antes, só
+     movido de lugar. Sem crescer, o <nav> para na altura do próprio
+     conteúdo, e o Footer (que também não cresce mais) vem colado embaixo
+     dele; a sobra, se houver, fica DEPOIS do rodapé, fora da área com
+     borda — que é onde uma sobra não chama atenção. */
+  flex: 0 1 auto;
   min-height: 0;
   padding: 0.5rem 0 0.25rem;
   display: flex;
@@ -159,7 +167,6 @@ export const SectionLabel = styled.div`
 
 export const Footer = styled.div`
   flex-shrink: 0;
-  margin-top: auto;
   padding-top: 0.75rem;
   padding-bottom: 0.5rem;
   border-top: 1px solid var(--sidebar-border);
