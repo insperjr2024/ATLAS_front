@@ -23,8 +23,8 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
      conteúdo. No drawer (abaixo) vira fixed, porque aí a página fica atrás. */
   position: sticky;
   top: 0;
-  /* `align-self: flex-start` tira o menu do "stretch" padrão do flex do
-     `LayoutWrapper` — sem isso, ele sempre esticava até a altura do `Main`
+  /* align-self: flex-start tira o menu do "stretch" padrão do flex do
+     LayoutWrapper — sem isso, ele sempre esticava até a altura do Main
      (que pode ser bem mais alto que a tela, numa lista de projetos longa),
      e essa esticada sobrava como vão em branco depois do rodapé (ou antes
      dele, ou entre as seções — três lugares já tentados, mesmo problema:
