@@ -23,10 +23,18 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
      conteúdo. No drawer (abaixo) vira fixed, porque aí a página fica atrás. */
   position: sticky;
   top: 0;
-  height: 100dvh;
-  /* Fallback: em altura extrema o menu ainda rola. No uso normal o Nav
-     cabe e esta barra não aparece — o scroll da lista, se precisar, é
-     só no <nav>, com o rodapé sempre visível. */
+  /* `align-self: flex-start` tira o menu do "stretch" padrão do flex do
+     `LayoutWrapper` — sem isso, ele sempre esticava até a altura do `Main`
+     (que pode ser bem mais alto que a tela, numa lista de projetos longa),
+     e essa esticada sobrava como vão em branco depois do rodapé (ou antes
+     dele, ou entre as seções — três lugares já tentados, mesmo problema:
+     forçar a coluna a uma altura que o conteúdo não pede). Sem "stretch",
+     a altura vem do próprio conteúdo, e o menu só ocupa o espaço que usa. */
+  align-self: flex-start;
+  /* Teto pela viewport, não altura fixa: numa tela baixa com todos os itens
+     visíveis (diretor com todas as permissões), o conteúdo pode passar de
+     uma tela — aí sim precisa de limite e rolagem própria. */
+  max-height: 100dvh;
   overflow-y: auto;
 
   @media (max-width: ${DRAWER_ATE - 1}px) {
