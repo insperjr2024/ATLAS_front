@@ -23,18 +23,10 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
      conteúdo. No drawer (abaixo) vira fixed, porque aí a página fica atrás. */
   position: sticky;
   top: 0;
-  /* align-self: flex-start tira o menu do "stretch" padrão do flex do
-     LayoutWrapper — sem isso, ele sempre esticava até a altura do Main
-     (que pode ser bem mais alto que a tela, numa lista de projetos longa),
-     e essa esticada sobrava como vão em branco depois do rodapé (ou antes
-     dele, ou entre as seções — três lugares já tentados, mesmo problema:
-     forçar a coluna a uma altura que o conteúdo não pede). Sem "stretch",
-     a altura vem do próprio conteúdo, e o menu só ocupa o espaço que usa. */
-  align-self: flex-start;
-  /* Teto pela viewport, não altura fixa: numa tela baixa com todos os itens
-     visíveis (diretor com todas as permissões), o conteúdo pode passar de
-     uma tela — aí sim precisa de limite e rolagem própria. */
-  max-height: 100dvh;
+  height: 100dvh;
+  /* Fallback: em altura extrema o menu ainda rola. No uso normal o Nav
+     cabe e esta barra não aparece — o scroll da lista, se precisar, é
+     só no <nav>, com o rodapé sempre visível. */
   overflow-y: auto;
 
   @media (max-width: ${DRAWER_ATE - 1}px) {
@@ -86,15 +78,7 @@ export const LogoImg = styled.img`
 `;
 
 export const Nav = styled.nav`
-  /* Não mais "flex: 1 1 auto": aquilo esticava o <nav> pra preencher todo o
-     espaço sobrando do menu, e como as seções agora têm margem FIXA (ver
-     SectionLabel), o esticão inteiro sobrava como vão em branco depois do
-     último item, logo acima do rodapé — o mesmo problema de antes, só
-     movido de lugar. Sem crescer, o <nav> para na altura do próprio
-     conteúdo, e o Footer (que também não cresce mais) vem colado embaixo
-     dele; a sobra, se houver, fica DEPOIS do rodapé, fora da área com
-     borda — que é onde uma sobra não chama atenção. */
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-height: 0;
   padding: 0.5rem 0 0.25rem;
   display: flex;
@@ -142,13 +126,11 @@ export const NavItem = styled(Link)<{ $isActive: boolean }>`
 `;
 
 export const SectionLabel = styled.div`
-  /* Separação FIXA entre seções, não mais "margin-top: auto" — aquilo
-     repartia todo o espaço sobrando entre os grupos, e num usuário com
-     poucos itens visíveis (ex.: só "Meus Mentorados" em Desempenho) o vão
-     em branco entre categorias ficava enorme. Fixo é mais apertado, mas
-     previsível, e ainda deixa tudo caber numa tela sem rolagem. */
-  margin-top: 1.25rem;
-  padding: 0 1.25rem 5px;
+  /* margin-top: auto reparte o espaço sobrando ENTRE as seções, em vez de
+     deixar um buraco único acima do rodapé. padding-top é o mínimo de
+     hierarquia quando não há folga (telas baixas). */
+  margin-top: auto;
+  padding: 14px 1.25rem 5px;
   font-size: 0.7rem;
   font-weight: 600;
   line-height: 1.2;
@@ -164,8 +146,7 @@ export const SectionLabel = styled.div`
   }
 
   @media (max-height: 800px) {
-    margin-top: 0.75rem;
-    padding: 0 1.25rem 4px;
+    padding: 10px 1.25rem 4px;
 
     &:first-child {
       padding-top: 4px;
@@ -175,6 +156,7 @@ export const SectionLabel = styled.div`
 
 export const Footer = styled.div`
   flex-shrink: 0;
+  margin-top: auto;
   padding-top: 0.75rem;
   padding-bottom: 0.5rem;
   border-top: 1px solid var(--sidebar-border);
