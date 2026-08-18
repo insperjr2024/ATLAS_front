@@ -327,6 +327,17 @@ export const BancaDataDia = styled.span`
   color: ${theme.colors.foreground};
 `;
 
+/* Espelha o dia da semana, embaixo do número: o azulejo lê "TER / 26 / AGO".
+   Sem o mês, banca de setembro e de outubro no dia 26 ficavam idênticas nas
+   listas, que misturam meses. */
+export const BancaDataMes = styled.span`
+  font-size: 0.625rem;
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.mutedForeground};
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+`;
+
 export const BancaInfo = styled.div`
   display: flex;
   flex-direction: column;
