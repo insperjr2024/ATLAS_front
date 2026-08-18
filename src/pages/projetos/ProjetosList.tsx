@@ -448,12 +448,17 @@ export function ProjetosList() {
               </FrenteFilterPanel>
             )}
           </FrenteFilterWrap>
-          {podeArquivar && modo !== "kanban" && (
+          {podeArquivar && (
             <PageButton
               type="button"
               $variant="outline"
               onClick={() => {
-                setSelecaoAtiva((atual) => !atual);
+                // Seleção só existe em Lista/Arquivados (ver comentário nos
+                // states lá em cima) — vindo do Kanban, que é o modo padrão,
+                // o clique já troca de visão em vez de fazer a pessoa
+                // procurar o botão "Lista" primeiro pra só então achar este.
+                if (modo === "kanban") setModo("lista");
+                setSelecaoAtiva((atual) => (modo === "kanban" ? true : !atual));
                 setSelecionados(new Set());
                 setErroMassa("");
               }}

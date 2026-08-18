@@ -1560,39 +1560,6 @@ export function ProjetoCronograma() {
           </BotaoAjuda>
         </NavPeriodo>
 
-        <EscopoFiltroLista role="group" aria-label="Escopo">
-          {/* "Todos os escopos" e não "Geral": para quem chega agora, Geral
-              não diz se é um escopo chamado assim ou a soma de todos. O valor
-              continua sendo `geral`, mudou só o rótulo. Só aparece quando há
-              mais de um escopo — com um só, ele já vem pré-selecionado, e o
-              botão "Todos" seria idêntico ao único escopo. */}
-          {dados.escopos.length > 1 && (
-            <EscopoFiltroBotao
-              type="button"
-              $ativo={modoGeral}
-              onClick={() => {
-                setEscopoSelecionado("geral");
-                setGrupoAtivo(null);
-              }}
-            >
-              Todos os escopos
-            </EscopoFiltroBotao>
-          )}
-          {dados.escopos.map((e) => (
-            <EscopoFiltroBotao
-              key={e.id}
-              type="button"
-              $ativo={!modoGeral && escopoSelecionado === e.id}
-              onClick={() => {
-                setEscopoSelecionado(e.id);
-                setGrupoAtivo(null);
-              }}
-            >
-              {e.nome}
-            </EscopoFiltroBotao>
-          ))}
-        </EscopoFiltroLista>
-
         {/* Marcar clicando no dia: reunião inicial, reunião geral, banca e
             entrega. Antes cada uma vivia numa tela diferente, a aba Reuniões,
             a Visão geral e um botão no topo desta barra.
@@ -1659,6 +1626,39 @@ export function ProjetoCronograma() {
             />
           </FieldEntrega>
         )}
+
+        <EscopoFiltroLista role="group" aria-label="Escopo">
+          {/* "Todos os escopos" e não "Geral": para quem chega agora, Geral
+              não diz se é um escopo chamado assim ou a soma de todos. O valor
+              continua sendo `geral`, mudou só o rótulo. Só aparece quando há
+              mais de um escopo — com um só, ele já vem pré-selecionado, e o
+              botão "Todos" seria idêntico ao único escopo. */}
+          {dados.escopos.length > 1 && (
+            <EscopoFiltroBotao
+              type="button"
+              $ativo={modoGeral}
+              onClick={() => {
+                setEscopoSelecionado("geral");
+                setGrupoAtivo(null);
+              }}
+            >
+              Todos os escopos
+            </EscopoFiltroBotao>
+          )}
+          {dados.escopos.map((e) => (
+            <EscopoFiltroBotao
+              key={e.id}
+              type="button"
+              $ativo={!modoGeral && escopoSelecionado === e.id}
+              onClick={() => {
+                setEscopoSelecionado(e.id);
+                setGrupoAtivo(null);
+              }}
+            >
+              {e.nome}
+            </EscopoFiltroBotao>
+          ))}
+        </EscopoFiltroLista>
 
         {podeEditar && (
           <BotaoBarra type="button" $variant="outline" onClick={() => setCriandoEtapa(true)}>
