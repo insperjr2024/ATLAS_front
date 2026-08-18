@@ -138,7 +138,7 @@ export interface DesempenhoPdiPasta {
   semestre: string | null;
 }
 
-export type DesempenhoPdiItemTipoArquivo = "documento" | "foto" | "qualquer";
+export type DesempenhoPdiItemTipoArquivo = "documento" | "foto" | "planilha" | "qualquer";
 
 /** Um documento exigido dentro de uma pasta, a pasta é uma checklist de
  *  itens (ex: "Encontro 1" pode exigir Foto + Relatório, cada um com seu

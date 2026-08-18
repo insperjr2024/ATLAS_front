@@ -100,7 +100,7 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
-import { AvisoBanner, FieldSelect } from "./Projetos.styled";
+import { AvisoBanner, EscopoFiltroBotao, EscopoFiltroLista } from "./Projetos.styled";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   planejarEscrita,
@@ -356,6 +356,14 @@ export function ProjetoCronograma() {
         atual ??
         ancorar(new Date(), resposta.janela.inicio.slice(0, 10), resposta.janela.fim.slice(0, 10)),
       );
+      // Projeto de escopo único: já abre nele. Só troca quando o filtro
+      // ainda está em "geral" — se a pessoa já tiver escolhido algo (ou
+      // voltado pra "Todos" antes de este ser o único escopo), um reload
+      // não deveria puxar a escolha de volta.
+      if (resposta.escopos.length === 1) {
+        const unico = resposta.escopos[0].id;
+        setEscopoSelecionado((atual) => (atual === "geral" ? unico : atual));
+      }
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar o cronograma");
     } finally {
@@ -1552,24 +1560,38 @@ export function ProjetoCronograma() {
           </BotaoAjuda>
         </NavPeriodo>
 
-        <FieldSelect
-          value={String(escopoSelecionado)}
-          onChange={(e) => {
-            setEscopoSelecionado(e.target.value === "geral" ? "geral" : Number(e.target.value));
-            setGrupoAtivo(null);
-          }}
-          aria-label="Escopo"
-        >
+        <EscopoFiltroLista role="group" aria-label="Escopo">
           {/* "Todos os escopos" e não "Geral": para quem chega agora, Geral
               não diz se é um escopo chamado assim ou a soma de todos. O valor
-              continua sendo `geral`, mudou só o rótulo. */}
-          <option value="geral">Todos os escopos</option>
+              continua sendo `geral`, mudou só o rótulo. Só aparece quando há
+              mais de um escopo — com um só, ele já vem pré-selecionado, e o
+              botão "Todos" seria idêntico ao único escopo. */}
+          {dados.escopos.length > 1 && (
+            <EscopoFiltroBotao
+              type="button"
+              $ativo={modoGeral}
+              onClick={() => {
+                setEscopoSelecionado("geral");
+                setGrupoAtivo(null);
+              }}
+            >
+              Todos os escopos
+            </EscopoFiltroBotao>
+          )}
           {dados.escopos.map((e) => (
-            <option key={e.id} value={e.id}>
+            <EscopoFiltroBotao
+              key={e.id}
+              type="button"
+              $ativo={!modoGeral && escopoSelecionado === e.id}
+              onClick={() => {
+                setEscopoSelecionado(e.id);
+                setGrupoAtivo(null);
+              }}
+            >
               {e.nome}
-            </option>
+            </EscopoFiltroBotao>
           ))}
-        </FieldSelect>
+        </EscopoFiltroLista>
 
         {/* Marcar clicando no dia: reunião inicial, reunião geral, banca e
             entrega. Antes cada uma vivia numa tela diferente, a aba Reuniões,

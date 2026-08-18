@@ -125,6 +125,45 @@ export const ProjetoCard = styled(NavLink)`
   }
 `;
 
+/** O checkbox de seleção em massa, canto oposto ao `PendenteDot` (que fica
+ *  no topo-direito) pra nunca disputar o mesmo canto do card. Só existe
+ *  no modo seleção — fora dele o card volta a ser um link puro. */
+export const SelecaoCheckboxWrap = styled.span`
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 1;
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+
+  input {
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+  }
+`;
+
+/** A barra de ações em massa, some enquanto nada está selecionado — não
+ *  ocupa espaço reservado o tempo todo por uma ação que é exceção, não
+ *  rotina. */
+export const SelecaoBarra = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.secondary};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+`;
+
+export const SelecaoContagem = styled.span`
+  margin-right: auto;
+  color: ${theme.colors.mutedForeground};
+`;
+
 /** Mesmo sinal do Kanban (`Kanban.styled.ts`, `PendenteDot`) — pedido de
  *  entrada pendente pra este projeto, sem precisar abrir pra descobrir. */
 export const PendenteDot = styled.span`
@@ -990,6 +1029,46 @@ export const HistoricoFiltroPill = styled.button<{ $ativo: boolean; $cor: string
   &:hover {
     border-color: ${({ $cor }) => $cor};
   }
+`;
+
+/* O filtro de escopo do Cronograma: mesma pastilha de `FrenteToggle`
+   (ProjetoNovo.styled), só que single-select — poucos escopos por projeto,
+   cabem lado a lado, e o dropdown escondia a opção "Todos os escopos" atrás
+   de um clique a mais para algo que é trocado o tempo todo. */
+export const EscopoFiltroLista = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
+export const EscopoFiltroBotao = styled.button<{ $ativo: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: ${theme.borderRadius.full};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+  transition: background ${theme.transitions.fast}, border-color ${theme.transitions.fast},
+    color ${theme.transitions.fast};
+
+  ${({ $ativo }) =>
+    $ativo
+      ? css`
+          border: 1px solid ${theme.colors.primary};
+          background: color-mix(in srgb, ${theme.colors.primary} 10%, white);
+          color: ${theme.colors.primary};
+        `
+      : css`
+          border: 1px solid ${theme.colors.border};
+          background: ${theme.colors.background};
+          color: ${theme.colors.foreground};
+
+          &:hover {
+            background: ${theme.colors.muted};
+          }
+        `}
 `;
 
 export const HistoricoLimparFiltros = styled.button`

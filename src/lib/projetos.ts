@@ -186,6 +186,31 @@ export function renomearProjeto(projetoId: number, nome: string, token: string) 
   );
 }
 
+/** Mesma rota de `updateDescricao`/`renomearProjeto`, só o campo `cliente`. */
+export function updateCliente(projetoId: number, cliente: string, token: string) {
+  return apiFetch<{ id: number; cliente: string | null }>(
+    `/projetos/${projetoId}/descricao`,
+    { method: "PATCH", token, body: JSON.stringify({ cliente }) },
+  );
+}
+
+/** Mesma rota de `updateDescricao`/`renomearProjeto`, só o campo `link_proposta`. */
+export function updateLinkProposta(projetoId: number, linkProposta: string, token: string) {
+  return apiFetch<{ id: number; link_proposta: string | null }>(
+    `/projetos/${projetoId}/descricao`,
+    { method: "PATCH", token, body: JSON.stringify({ link_proposta: linkProposta }) },
+  );
+}
+
+/** O backend recusa (422) se alguma frente removida ainda tiver escopo
+ *  vendido nela. */
+export function updateFrentes(projetoId: number, frenteIds: number[], token: string) {
+  return apiFetch<{ id: number; frente_ids: number[]; sinergico: boolean }>(
+    `/projetos/${projetoId}/frentes`,
+    { method: "PATCH", token, body: JSON.stringify({ frente_ids: frenteIds }) },
+  );
+}
+
 /** A resposta traz o `status`: encurtar a ambientação pode encerrá-la agora
  *  e virar o projeto para Em andamento. */
 export function updateDiasAmbientacao(projetoId: number, diasAmbientacao: number, token: string) {

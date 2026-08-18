@@ -225,7 +225,7 @@ export function RelatorioPdi({ usuarioId, podeEnviarInicial, podeEnviarEncontro 
       <input
         ref={inputArquivo}
         type="file"
-        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
         hidden
         onChange={aoEscolherArquivo}
       />

@@ -156,10 +156,10 @@ export default function App() {
 
               <Route element={<AdminRoute permissao="pode_administrar_desempenho" />}>
                 <Route path="/avaliacao-desempenho/painel" element={<PainelDesempenho />}>
-                  {/* Relatórios é a entrada padrão: "me fale sobre esta
-                      pessoa" é a pergunta mais comum, não "me dê o log
-                      bruto" (essa é Avaliações, a auditoria). */}
-                  <Route index element={<Navigate to="relatorio" replace />} />
+                  {/* Avaliações é a primeira aba da barra — a entrada padrão
+                      segue a mesma ordem, senão o painel abre numa aba que
+                      não é a primeira visualmente. */}
+                  <Route index element={<Navigate to="avaliadores" replace />} />
                   <Route path="relatorio" element={<PainelRelatorio />} />
                   <Route path="avaliadores" element={<PainelAvaliacoes />} />
                   <Route path="avaliados" element={<PainelAvaliacoes />} />

@@ -126,11 +126,13 @@ export const NavItem = styled(Link)<{ $isActive: boolean }>`
 `;
 
 export const SectionLabel = styled.div`
-  /* margin-top: auto reparte o espaço sobrando ENTRE as seções, em vez de
-     deixar um buraco único acima do rodapé. padding-top é o mínimo de
-     hierarquia quando não há folga (telas baixas). */
-  margin-top: auto;
-  padding: 14px 1.25rem 5px;
+  /* Separação FIXA entre seções, não mais "margin-top: auto" — aquilo
+     repartia todo o espaço sobrando entre os grupos, e num usuário com
+     poucos itens visíveis (ex.: só "Meus Mentorados" em Desempenho) o vão
+     em branco entre categorias ficava enorme. Fixo é mais apertado, mas
+     previsível, e ainda deixa tudo caber numa tela sem rolagem. */
+  margin-top: 1.25rem;
+  padding: 0 1.25rem 5px;
   font-size: 0.7rem;
   font-weight: 600;
   line-height: 1.2;
@@ -146,7 +148,8 @@ export const SectionLabel = styled.div`
   }
 
   @media (max-height: 800px) {
-    padding: 10px 1.25rem 4px;
+    margin-top: 0.75rem;
+    padding: 0 1.25rem 4px;
 
     &:first-child {
       padding-top: 4px;

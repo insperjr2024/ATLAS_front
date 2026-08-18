@@ -6,6 +6,7 @@ import {
   ArrowDownNarrowWide,
   ArrowUpNarrowWide,
   ArrowRight,
+  CheckSquare,
   ChevronDown,
   LayoutGrid,
   KanbanSquare,
@@ -14,7 +15,9 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import {
+  arquivarProjeto,
   CORES_STATUS,
+  deletarProjetoPermanente,
   formatarDataHoraBanca,
   getProjetos,
   mudarStatus,
@@ -25,6 +28,7 @@ import { getUsuarios } from "@/lib/usuarios";
 import { getProjetosComVaga, getSolicitacoesRecebidas } from "@/lib/vagas";
 import { ProjetoKanbanBoard } from "@/components/kanban/ProjetoKanbanBoard";
 import { Ponto } from "@/components/kanban/Kanban.styled";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { tonsDaColuna } from "@/lib/colunas-tarefa";
 import type { UsuarioResumo } from "@/types/auth";
 import type { Frente } from "@/types/banca";
@@ -66,6 +70,9 @@ import {
   VagasSelo,
   PendenteDot,
   FormErrorText,
+  SelecaoBarra,
+  SelecaoCheckboxWrap,
+  SelecaoContagem,
 } from "./Projetos.styled";
 
 type ModoVisualizacao = "lista" | "kanban" | "arquivados";
@@ -101,12 +108,63 @@ export function ProjetosList() {
   function setModo(novoModo: ModoVisualizacao) {
     setModoState(novoModo);
     setSearchParams(novoModo === "kanban" ? {} : { modo: novoModo }, { replace: true });
+    setSelecaoAtiva(false);
+    setSelecionados(new Set());
+  }
+
+  function alternarSelecao(id: number) {
+    setSelecionados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  }
+
+  async function arquivarSelecionados() {
+    if (!token || selecionados.size === 0) return;
+    setProcessandoMassa(true);
+    setErroMassa("");
+    try {
+      await Promise.all([...selecionados].map((id) => arquivarProjeto(id, token)));
+      setSelecionados(new Set());
+      setSelecaoAtiva(false);
+      await carregar();
+    } catch (err) {
+      setErroMassa(err instanceof Error ? err.message : "Erro ao arquivar os projetos selecionados");
+    } finally {
+      setProcessandoMassa(false);
+    }
+  }
+
+  async function excluirSelecionados() {
+    if (!token || selecionados.size === 0) return;
+    setProcessandoMassa(true);
+    try {
+      await Promise.all([...selecionados].map((id) => deletarProjetoPermanente(id, token)));
+      setSelecionados(new Set());
+      setSelecaoAtiva(false);
+      setConfirmandoExclusaoMassa(false);
+      await carregar();
+    } catch (err) {
+      setProcessandoMassa(false);
+      throw err;
+    }
   }
   const [avisoKanban, setAvisoKanban] = useState("");
   const [ordemAsc, setOrdemAsc] = useState(true);
   const [vagasAbertas, setVagasAbertas] = useState<number | null>(null);
   const [projetosComPendencia, setProjetosComPendencia] = useState<Set<number>>(new Set());
   const filtroRef = useRef<HTMLDivElement>(null);
+
+  // Seleção em massa: só existe em Lista (pra arquivar vários) e em
+  // Arquivados (pra apagar vários) — no Kanban o card já é a superfície de
+  // arrasto, e emprestar o clique dele pra seleção ambiguaria os dois gestos.
+  const [selecaoAtiva, setSelecaoAtiva] = useState(false);
+  const [selecionados, setSelecionados] = useState<Set<number>>(new Set());
+  const [processandoMassa, setProcessandoMassa] = useState(false);
+  const [erroMassa, setErroMassa] = useState("");
+  const [confirmandoExclusaoMassa, setConfirmandoExclusaoMassa] = useState(false);
 
   const podeFiltrar = pode(usuario, "filtrar_por_frente");
   const podeCriar = !!usuario?.permissoes.pode_criar_projeto;
@@ -390,6 +448,20 @@ export function ProjetosList() {
               </FrenteFilterPanel>
             )}
           </FrenteFilterWrap>
+          {podeArquivar && modo !== "kanban" && (
+            <PageButton
+              type="button"
+              $variant="outline"
+              onClick={() => {
+                setSelecaoAtiva((atual) => !atual);
+                setSelecionados(new Set());
+                setErroMassa("");
+              }}
+            >
+              <CheckSquare size={16} />
+              {selecaoAtiva ? "Cancelar seleção" : "Selecionar"}
+            </PageButton>
+          )}
           {podeCriar && (
             <PageButton type="button" onClick={() => navigate("/projetos/novo")}>
               <Plus size={16} />
@@ -398,6 +470,29 @@ export function ProjetosList() {
           )}
         </FiltersRow>
       </PageHeaderRow>
+
+      {selecaoAtiva && selecionados.size > 0 && (
+        <SelecaoBarra>
+          <SelecaoContagem>
+            {selecionados.size} {selecionados.size === 1 ? "selecionado" : "selecionados"}
+          </SelecaoContagem>
+          {modo === "arquivados" ? (
+            <PageButton
+              type="button"
+              $variant="outline"
+              disabled={processandoMassa}
+              onClick={() => setConfirmandoExclusaoMassa(true)}
+            >
+              Apagar para sempre
+            </PageButton>
+          ) : (
+            <PageButton type="button" disabled={processandoMassa} onClick={arquivarSelecionados}>
+              {processandoMassa ? "Arquivando…" : "Arquivar selecionados"}
+            </PageButton>
+          )}
+        </SelecaoBarra>
+      )}
+      {erroMassa && <FormErrorText>{erroMassa}</FormErrorText>}
 
       {projetosFiltrados.length === 0 ? (
         modo !== "arquivados" && frentesSelecionadas.length === 0 && !podeCriar ? (
@@ -447,7 +542,26 @@ export function ProjetosList() {
                 // pra onde "Voltar" cai sem state nenhum), aqui é sempre
                 // preciso dizer explicitamente o modo de onde se veio.
                 state={{ voltarPara: `/projetos?modo=${modo}`, voltarRotulo: "Voltar para projetos" }}
+                // Em modo de seleção o clique no card marca/desmarca em vez
+                // de navegar — replicar o gesto de "abrir o projeto" enquanto
+                // se está escolhendo vários seria surpreendente.
+                onClick={(e) => {
+                  if (!selecaoAtiva) return;
+                  e.preventDefault();
+                  alternarSelecao(projeto.id);
+                }}
               >
+                {selecaoAtiva && (
+                  <SelecaoCheckboxWrap>
+                    <input
+                      type="checkbox"
+                      checked={selecionados.has(projeto.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => alternarSelecao(projeto.id)}
+                      aria-label={`Selecionar ${projeto.nome}`}
+                    />
+                  </SelecaoCheckboxWrap>
+                )}
                 {projetosComPendencia.has(projeto.id) && (
                   <PendenteDot title="Pedido de entrada pendente" />
                 )}
@@ -504,6 +618,35 @@ export function ProjetosList() {
             );
           })}
         </CardGrid>
+      )}
+
+      {confirmandoExclusaoMassa && (
+        <ConfirmarModal
+          titulo="Apagar projetos para sempre"
+          mensagem={
+            <>
+              <p>
+                {selecionados.size} {selecionados.size === 1 ? "projeto" : "projetos"} arquivado
+                {selecionados.size === 1 ? "" : "s"} vão ser apagados, com tarefas, bancas,
+                avaliações, cronograma, comentários e histórico de cada um.{" "}
+                <strong>Não há como desfazer.</strong>
+              </p>
+              <ul>
+                {[...selecionados].map((id) => (
+                  <li key={id}>{projetos.find((p) => p.id === id)?.nome ?? `Projeto ${id}`}</li>
+                ))}
+              </ul>
+            </>
+          }
+          // Digitar o nome de cada projeto não escala pra um lote — a trava
+          // aqui é digitar a palavra, o que ainda obriga a ler a lista acima
+          // antes de confirmar em massa.
+          confirmacaoTexto="APAGAR"
+          rotuloConfirmar="Apagar para sempre"
+          rotuloProcessando="Apagando…"
+          onCancelar={() => setConfirmandoExclusaoMassa(false)}
+          onConfirmar={excluirSelecionados}
+        />
       )}
     </PageStack>
   );

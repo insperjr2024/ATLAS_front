@@ -94,6 +94,7 @@ const ROTULO_TIPO_CURTO: Record<DesempenhoPdiPastaTipo, string> = {
 const ROTULO_TIPO_ARQUIVO: Record<DesempenhoPdiItemTipoArquivo, string> = {
   documento: "Documento (PDF/Word)",
   foto: "Foto (JPG/PNG)",
+  planilha: "Planilha (Excel)",
   qualquer: "Qualquer arquivo",
 };
 
@@ -732,6 +733,7 @@ function PastasPdiCard() {
                                 <option value="qualquer">{ROTULO_TIPO_ARQUIVO.qualquer}</option>
                                 <option value="documento">{ROTULO_TIPO_ARQUIVO.documento}</option>
                                 <option value="foto">{ROTULO_TIPO_ARQUIVO.foto}</option>
+                                <option value="planilha">{ROTULO_TIPO_ARQUIVO.planilha}</option>
                               </FieldSelect>
                             </FieldGroup>
                             {editItemErro && <ErrorText>{editItemErro}</ErrorText>}
@@ -819,6 +821,7 @@ function PastasPdiCard() {
                           <option value="qualquer">{ROTULO_TIPO_ARQUIVO.qualquer}</option>
                           <option value="documento">{ROTULO_TIPO_ARQUIVO.documento}</option>
                           <option value="foto">{ROTULO_TIPO_ARQUIVO.foto}</option>
+                          <option value="planilha">{ROTULO_TIPO_ARQUIVO.planilha}</option>
                         </FieldSelect>
                       </FieldGroup>
                       {itemErroForm && <ErrorText>{itemErroForm}</ErrorText>}
@@ -921,6 +924,7 @@ function PastasPdiCard() {
                       <option value="qualquer">{ROTULO_TIPO_ARQUIVO.qualquer}</option>
                       <option value="documento">{ROTULO_TIPO_ARQUIVO.documento}</option>
                       <option value="foto">{ROTULO_TIPO_ARQUIVO.foto}</option>
+                      <option value="planilha">{ROTULO_TIPO_ARQUIVO.planilha}</option>
                     </FieldSelect>
                     <PageButtonSm type="button" $variant="outline" onClick={adicionarItemAoBuilder}>
                       <Plus size={14} />

@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { renomearProjeto, updateDescricao, updateEquipe, updateMaxConsultores } from "@/lib/projetos";
+import {
+  renomearProjeto,
+  updateCliente,
+  updateDescricao,
+  updateEquipe,
+  updateFrentes,
+  updateLinkProposta,
+  updateMaxConsultores,
+} from "@/lib/projetos";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import {
   MemberPicker,
@@ -13,6 +21,7 @@ import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { ProjetoCompleto } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
 import { PageButton } from "@/styles/page.styled";
+import { FrenteLista, FrenteToggle } from "./ProjetoNovo.styled";
 import {
   FieldGroup,
   FieldInput,
@@ -66,7 +75,10 @@ export function EditarProjetoModal({
   onSalvo,
 }: Props) {
   const [nome, setNome] = useState(projeto.nome);
+  const [cliente, setCliente] = useState(projeto.cliente ?? "");
   const [descricao, setDescricao] = useState(projeto.descricao ?? "");
+  const [linkProposta, setLinkProposta] = useState(projeto.link_proposta ?? "");
+  const [frenteIds, setFrenteIds] = useState(projeto.frente_ids);
   const [equipe, setEquipe] = useState<EquipeSelecionada>({
     coordenadorId: projeto.coordenador_id,
     consultorIds: projeto.consultor_ids,
@@ -75,6 +87,16 @@ export function EditarProjetoModal({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [usuariosFrentes, setUsuariosFrentes] = useState<UsuarioFrente[]>([]);
+
+  function toggleFrente(id: number) {
+    setFrenteIds((atual) =>
+      atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
+    );
+  }
+
+  const frenteIdsMudaram =
+    frenteIds.length !== projeto.frente_ids.length ||
+    frenteIds.some((id) => !projeto.frente_ids.includes(id));
 
   useEffect(() => {
     getUsuariosFrentes(token).then(setUsuariosFrentes);
@@ -95,6 +117,10 @@ export function EditarProjetoModal({
       setErro("O nome do projeto não pode ficar vazio.");
       return;
     }
+    if (frenteIds.length === 0) {
+      setErro("Escolha pelo menos uma frente.");
+      return;
+    }
     const problema = equipeMudou ? validarEquipe(equipe) : null;
     if (problema) {
       setErro(problema);
@@ -112,8 +138,20 @@ export function EditarProjetoModal({
       if (nome.trim() !== projeto.nome) {
         await renomearProjeto(projeto.id, nome.trim(), token);
       }
+      if (cliente.trim() !== (projeto.cliente ?? "")) {
+        await updateCliente(projeto.id, cliente.trim(), token);
+      }
       if (descricao !== (projeto.descricao ?? "")) {
         await updateDescricao(projeto.id, descricao, token);
+      }
+      if (linkProposta.trim() !== (projeto.link_proposta ?? "")) {
+        await updateLinkProposta(projeto.id, linkProposta.trim(), token);
+      }
+      // Antes da equipe: se uma frente saiu, quem ela habilitava no
+      // MemberPicker precisa já ter sumido da lista antes de a equipe ser
+      // validada do lado do servidor.
+      if (frenteIdsMudaram) {
+        await updateFrentes(projeto.id, frenteIds, token);
       }
       // Antes da equipe: se o teto estiver baixando, o backend recusa a
       // equipe grande demais primeiro, e a pessoa corrige a ordem errada
@@ -159,6 +197,17 @@ export function EditarProjetoModal({
             </FieldGroup>
 
             <FieldGroup>
+              <FieldLabel htmlFor="editar-cliente">Cliente</FieldLabel>
+              <FieldInput
+                id="editar-cliente"
+                value={cliente}
+                onChange={(e) => setCliente(e.target.value)}
+                disabled={salvando}
+                placeholder="Padaria do Zé"
+              />
+            </FieldGroup>
+
+            <FieldGroup>
               <FieldLabel htmlFor="editar-descricao">Descrição</FieldLabel>
               <FieldTextarea
                 id="editar-descricao"
@@ -168,6 +217,37 @@ export function EditarProjetoModal({
                 disabled={salvando}
                 placeholder="Do que se trata este projeto?"
               />
+            </FieldGroup>
+
+            <FieldGroup>
+              <FieldLabel htmlFor="editar-link-proposta">Link da proposta</FieldLabel>
+              <FieldInput
+                id="editar-link-proposta"
+                value={linkProposta}
+                onChange={(e) => setLinkProposta(e.target.value)}
+                disabled={salvando}
+                placeholder="https://…"
+              />
+            </FieldGroup>
+
+            <FieldGroup>
+              <FieldLabel as="span">Frente(s)</FieldLabel>
+              <FrenteLista>
+                {frentes.map((frente) => {
+                  const marcada = frenteIds.includes(frente.id);
+                  return (
+                    <FrenteToggle key={frente.id} $marcada={marcada}>
+                      <input
+                        type="checkbox"
+                        checked={marcada}
+                        disabled={salvando}
+                        onChange={() => toggleFrente(frente.id)}
+                      />
+                      {frente.nome}
+                    </FrenteToggle>
+                  );
+                })}
+              </FrenteLista>
             </FieldGroup>
 
             <FieldGroup>
@@ -190,7 +270,7 @@ export function EditarProjetoModal({
               desabilitado={salvando}
               usuariosFrentes={usuariosFrentes}
               frentes={frentes}
-              frenteIdsProjeto={projeto.frente_ids}
+              frenteIdsProjeto={frenteIds}
             />
 
             {/* Mesma leitura de quando o projeto nasceu: trocar alguém pode
