@@ -38,6 +38,9 @@ export interface ProjetoResumo {
   max_consultores: number | null;
   data_kickoff: string | null;
   kickoff_pendente: boolean;
+  /** `null` = ambientação começa no próprio kickoff, o padrão. Só não-nulo
+   *  quando o coordenador do projeto corrigiu que ela começou antes dele. */
+  data_inicio_ambientacao: string | null;
   /** Arquivar não é excluir, só some das listagens normais. */
   arquivado_em: string | null;
   /** A banca ainda não realizada mais próxima, de qualquer escopo deste
