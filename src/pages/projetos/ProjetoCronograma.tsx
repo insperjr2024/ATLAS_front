@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Download,
   HelpCircle,
-  Info,
   Lock,
   Plus,
   Trash2,
@@ -59,7 +58,6 @@ import {
   BotaoNav,
   BotaoVisao,
   ContadorDias,
-  DicaEscopo,
   BotaoAjuda,
   BarraDesfazer,
   BotaoDesfazer,
@@ -1589,30 +1587,6 @@ export function ProjetoCronograma() {
               </BotaoVisao>
             ))}
           </GrupoVisao>
-        )}
-
-        {/* Só quando realmente não há escopo escolhido: com um selecionado os
-            botões voltam e a caixa não teria o que explicar. */}
-        {podeEditar && !escopo && (
-          <DicaEscopo>
-            <Info size={15} aria-hidden />
-            <span>
-              <strong>Escolha um escopo acima para continuar.</strong> Reunião inicial, banca e
-              entrega pertencem a um escopo específico — cada um tem a própria janela de dias
-              vendidos. Os botões deles aparecem assim que você escolher um. Kickoff e reunião
-              geral são do projeto inteiro e já estão disponíveis aqui.
-            </span>
-          </DicaEscopo>
-        )}
-
-        {modoMarcacao && (
-          <ContadorDias>
-            {/* Nomeia O QUE está sendo marcado: com 4 modos parecidos, "clique
-                num dia" sozinho deixa a pessoa sem saber qual ela ligou. */}
-            Clique num dia para marcar{" "}
-            <strong>{MODOS.find((m) => m.valor === modoMarcacao)?.rotulo.toLowerCase()}</strong>
-            {escopo ? ` em ${escopo.nome}` : ""}. Esc para sair.
-          </ContadorDias>
         )}
 
         {podeEditar && escopo && (
