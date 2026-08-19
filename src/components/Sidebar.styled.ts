@@ -24,9 +24,12 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
   position: sticky;
   top: 0;
   height: 100dvh;
-  /* Fallback: em altura extrema o menu ainda rola. No uso normal o Nav
-     cabe e esta barra não aparece — o scroll da lista, se precisar, é
-     só no <nav>, com o rodapé sempre visível. */
+  /* O rodapé (perfil/notificações/sair) fica grudado embaixo da TELA, não
+     embaixo do último item da navegação — por isso a coluna preenche a
+     altura inteira (height: 100dvh), e é o Footer (margin-top: auto,
+     abaixo) quem puxa a si mesmo pro final. Cargo com pouca navegação
+     (consultor, por exemplo) sobra vão ACIMA do rodapé, e é isso mesmo: o
+     rodapé continua alcançável sem rolar, que é o requisito. */
   overflow-y: auto;
 
   @media (max-width: ${DRAWER_ATE - 1}px) {
@@ -78,7 +81,10 @@ export const LogoImg = styled.img`
 `;
 
 export const Nav = styled.nav`
-  flex: 1 1 auto;
+  /* Não "flex: 1 1 auto": com a sidebar do tamanho do próprio conteúdo (ver
+     SidebarContainer), o <nav> não precisa mais brigar por espaço extra —
+     ele só ocupa o que os itens pedem. */
+  flex: 0 1 auto;
   min-height: 0;
   padding: 0.5rem 0 0.25rem;
   display: flex;
@@ -126,10 +132,11 @@ export const NavItem = styled(Link)<{ $isActive: boolean }>`
 `;
 
 export const SectionLabel = styled.div`
-  /* margin-top: auto reparte o espaço sobrando ENTRE as seções, em vez de
-     deixar um buraco único acima do rodapé. padding-top é o mínimo de
-     hierarquia quando não há folga (telas baixas). */
-  margin-top: auto;
+  /* Margem FIXA entre seções — não mais "margin-top: auto". Com a sidebar
+     do tamanho do conteúdo (ver SidebarContainer), não existe mais espaço
+     sobrando pra repartir; um valor fixo é só a respiração normal entre
+     grupos. */
+  margin-top: 1.25rem;
   padding: 14px 1.25rem 5px;
   font-size: 0.7rem;
   font-weight: 600;
@@ -146,6 +153,7 @@ export const SectionLabel = styled.div`
   }
 
   @media (max-height: 800px) {
+    margin-top: 0.75rem;
     padding: 10px 1.25rem 4px;
 
     &:first-child {
@@ -156,6 +164,10 @@ export const SectionLabel = styled.div`
 
 export const Footer = styled.div`
   flex-shrink: 0;
+  /* Puxa a si mesmo pro fim da coluna — ver o comentário no SidebarContainer.
+     Como o <nav> não cresce mais (flex: 0 1 auto) nem as seções distribuem
+     espaço entre si (SectionLabel tem margem fixa), este é o ÚNICO lugar da
+     sidebar que reclama a sobra: um vão só, sempre no mesmo lugar. */
   margin-top: auto;
   padding-top: 0.75rem;
   padding-bottom: 0.5rem;
