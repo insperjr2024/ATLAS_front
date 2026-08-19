@@ -263,6 +263,103 @@ export const DetalheCelula = styled.div<{ $texto?: string }>`
 /* Barra de ferramentas e legenda                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A barra de ferramentas do cronograma, agora em ZONAS.
+ *
+ * ⭐ **Era uma linha só.** Navegação de período, troca de visão, os cinco
+ * modos de marcação, o filtro de escopo, criar etapa, pedir dias, oficializar,
+ * exportar e mais quatro frases de instrução dividiam a mesma linha, que
+ * quebrava em três ou quatro no notebook. Tudo com o mesmo peso visual,
+ * nenhuma pista de o que é olhar e o que é fazer.
+ *
+ * 📐 As zonas respondem a perguntas diferentes: a primeira é **onde estou**
+ * (escopo, período, visão), a segunda é **o que faço** (marcar, criar,
+ * oficializar), a terceira é **o que está armado agora**. Quem só veio ver o
+ * cronograma nunca precisa passar da primeira.
+ */
+export const BarraZonas = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding-bottom: ${theme.spacing.md};
+`;
+
+export const BarraLinha = styled.div<{ $secundaria?: boolean }>`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+
+  /* A zona de edição vem recuada por uma borda, não por um card: ela é
+     subordinada à primeira, e uma caixa em volta a promoveria a bloco
+     independente. */
+  ${({ $secundaria }) =>
+    $secundaria &&
+    css`
+      padding-top: ${theme.spacing.sm};
+      border-top: 1px solid ${theme.colors.border};
+    `}
+`;
+
+/** Empurra o que vem depois para a direita. */
+export const BarraEspaco = styled.div`
+  flex: 1 1 auto;
+  min-width: 0;
+`;
+
+/** O rótulo de um grupo de controles dentro da zona de edição. */
+export const BarraRotuloZona = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: ${theme.fontSize.xs};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/**
+ * A faixa de estado: UMA frase sobre o gesto que está armado agora.
+ *
+ * ⚠ **Substitui cinco textos que ficavam fixos na barra** — a caixa "Escolha
+ * um escopo acima", o "Clique num dia para marcar…", o "Arraste a partir de um
+ * dia já pintado para desmarcar", o "Arraste além do fim da janela para pedir
+ * dias" e o "Clique numa etapa da legenda para começar a pintar". Todos
+ * verdadeiros, todos na tela ao mesmo tempo, e nenhum deles sobre o que a
+ * pessoa estava fazendo naquele instante.
+ *
+ * As instruções que sobraram sem lugar não sumiram: as de gesto foram para o
+ * modal "Como funciona", e a explicação de por que um modo depende de escopo
+ * virou a dica do próprio grupo "Marcar".
+ */
+export const FaixaEstado = styled.div<{ $cor?: string }>`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid
+    ${({ $cor }) => ($cor ? `color-mix(in srgb, ${$cor} 45%, white)` : theme.colors.border)};
+  background: ${({ $cor }) =>
+    $cor ? `color-mix(in srgb, ${$cor} 10%, white)` : theme.colors.muted};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+
+  strong {
+    font-weight: ${theme.fontWeight.semibold};
+  }
+`;
+
+/** A amostra de cor da etapa que o pincel está usando. */
+export const FaixaEstadoAmostra = styled.span<{ $cor: string }>`
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  border-radius: ${theme.borderRadius.sm};
+  background: ${({ $cor }) => $cor};
+`;
+
 export const Barra = styled.div`
   display: flex;
   flex-wrap: wrap;

@@ -526,12 +526,25 @@ export const InfoGrid = styled.div`
   }
 `;
 
+/**
+ * A descrição do projeto, inteira, no card "Sobre o projeto" da Visão geral.
+ *
+ * ⭐ Ela morava no cabeçalho, cortada em duas linhas com um "Ver mais", e
+ * repetida no topo das cinco abas. Num card cabe sem truncar — truncar texto
+ * que alguém escreveu para ser lido nunca foi o objetivo, era falta de espaço
+ * num lugar que não era o dela.
+ *
+ * `pre-wrap` porque quem escreve a descrição usa quebra de linha para separar
+ * assunto, e colapsá-las transformava uma lista em parágrafo.
+ */
 export const DescricaoTexto = styled.p`
   margin: 0;
   font-size: ${theme.fontSize.sm};
   line-height: 1.6;
   color: ${theme.colors.foreground};
   white-space: pre-wrap;
+  /* 65-75 caracteres por linha: acima disso o olho perde a linha na volta. */
+  max-width: 70ch;
 `;
 
 export const LinkExterno = styled.a`
@@ -597,71 +610,298 @@ export const DataItemLabel = styled.span`
 `;
 
 /**
- * Troca de etapa como lista, não como botõezinhos de avançar/voltar. A cor
- * mora só na `StatusPilula` (a MESMA pílula do card de Projetos, do kanban e
- * da timeline), o botão e as linhas do menu em volta dela são neutros. Pintar
- * o CONTROLE inteiro da cor da etapa (fundo colorido de ponta a ponta) era o
- * que destoava do resto do site, onde a cor sempre fica presa numa pílula
- * pequena sobre uma superfície neutra, nunca vaza pro contêiner inteiro.
+ * O ciclo de vida do projeto como uma TRILHA, não como uma lista de botões.
+ *
+ * ⭐ **Duas tentativas antes desta.** Era um dropdown: dois cliques, e os
+ * destinos escondidos até o segundo. Virou uma fileira de botões, e aí ficou
+ * pior — `destinosValidos` libera o trânsito livre entre TODAS as etapas
+ * ativas, então a fileira era de sete botões mais "Pausar" mais "Arquivar":
+ * uma parede de nove no cabeçalho de todas as abas.
+ *
+ * 📐 **O erro das duas era tratar isto como "escolher um valor".** Não é: as
+ * sete etapas são um funil ordenado, e a pergunta de quem abre um projeto não
+ * é "para onde mover" — é **em que ponto ele está**. A trilha responde isso
+ * sem clique nenhum, e mover vira consequência: clicar numa etapa à frente
+ * avança, numa atrás volta.
+ *
+ * ⚠ Só as etapas de `destinosValidos` respondem ao clique. As demais são
+ * marcadores, e vêm como `span`, não como botão desabilitado — botão morto
+ * promete um controle que não existe.
  */
-export const EtapaSeletorWrap = styled.div`
-  position: relative;
+export const PipelineTrilha = styled.div<{ $esmaecida?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  /* Sete etapas não cabem em tela estreita, e rolar é melhor do que espremer
+     o rótulo até virar reticências. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.125rem;
+  scrollbar-width: thin;
+
+  /* Pausado: o funil continua legível, mas nada nele está correndo. */
+  opacity: ${({ $esmaecida }) => ($esmaecida ? 0.45 : 1)};
+  pointer-events: ${({ $esmaecida }) => ($esmaecida ? "none" : "auto")};
 `;
 
-export const EtapaBotaoAtual = styled.button`
+/**
+ * Uma etapa da trilha. Vem como botão quando dá para ir até ela, e como
+ * `span` quando não dá (quem usa passa `as="span"`).
+ *
+ * Três estados: `feito` (já passou), `atual` (onde está) e `futuro` (ainda
+ * não). A cor forte fica só no atual — sete cores lado a lado viram um
+ * arco-íris, e aí nenhuma delas informa.
+ */
+export const PipelineEtapa = styled.button<{
+  $estado: "feito" | "atual" | "futuro";
+  $cor: string;
+  $clicavel: boolean;
+}>`
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0;
+  flex-shrink: 0;
+  padding: 0.3rem 0.5rem;
   border: none;
   border-radius: ${theme.borderRadius.full};
-  background: transparent;
-  color: ${theme.colors.mutedForeground};
-  font-size: ${theme.fontSize.sm};
-  cursor: pointer;
+  background: ${({ $estado, $cor }) =>
+    $estado === "atual" ? `color-mix(in srgb, ${$cor} 14%, white)` : "transparent"};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${({ $estado }) =>
+    $estado === "atual" ? theme.fontWeight.semibold : theme.fontWeight.medium};
+  color: ${({ $estado }) =>
+    $estado === "atual" ? theme.colors.foreground : theme.colors.mutedForeground};
+  white-space: nowrap;
+  cursor: ${({ $clicavel }) => ($clicavel ? "pointer" : "default")};
+  transition: background-color ${theme.transitions.fast}, color ${theme.transitions.fast};
 
-  &:disabled {
-    cursor: default;
-    opacity: 0.7;
-  }
+  ${({ $clicavel, $cor }) =>
+    $clicavel &&
+    css`
+      &:hover:not(:disabled) {
+        background: color-mix(in srgb, ${$cor} 10%, white);
+        color: ${theme.colors.foreground};
+      }
+    `}
 
   &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 25%, transparent);
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 `;
 
-export const EtapaMenu = styled.div`
+/**
+ * O ponto de cada etapa: cheio no que já passou e no atual, vazado no que
+ * ainda vem.
+ *
+ * ⚠ É ele que tira a trilha da dependência de cor: "passou" e "não passou" se
+ * distinguem pelo preenchimento, que sobrevive a daltonismo e a impressão em
+ * preto e branco.
+ */
+export const PipelinePonto = styled.span<{ $estado: "feito" | "atual" | "futuro"; $cor: string }>`
+  width: ${({ $estado }) => ($estado === "atual" ? "0.6rem" : "0.5rem")};
+  height: ${({ $estado }) => ($estado === "atual" ? "0.6rem" : "0.5rem")};
+  flex-shrink: 0;
+  border-radius: ${theme.borderRadius.full};
+  border: 1.5px solid ${({ $estado, $cor }) => ($estado === "futuro" ? theme.colors.border : $cor)};
+  background: ${({ $estado, $cor }) => ($estado === "futuro" ? "transparent" : $cor)};
+`;
+
+/** O fio entre duas etapas. Decoração pura: quem usa marca `aria-hidden`. */
+export const PipelineConector = styled.span<{ $percorrido: boolean }>`
+  width: 0.75rem;
+  height: 1.5px;
+  flex-shrink: 0;
+  background: ${({ $percorrido }) =>
+    $percorrido ? theme.colors.mutedForeground : theme.colors.border};
+`;
+
+/** "Pausado": o estado à parte, que não é ponto nenhum do funil. */
+export const PausadoAviso = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: 0.3rem 0.625rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px solid color-mix(in srgb, ${theme.colors.warning} 45%, white);
+  background: color-mix(in srgb, ${theme.colors.warning} 12%, white);
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.warningForeground};
+`;
+
+/* ------------------------------------------------------------------ */
+/* Menu de ações do projeto                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * ⭐ **Editar, Arquivar e Apagar saíram do cabeçalho** e vieram para um menu.
+ *
+ * Eram três botões permanentes ao lado do nome, competindo com a trilha de
+ * etapas, que é o controle de fato usado. "Apagar para sempre" principalmente:
+ * uma ação irreversível não merece ser o terceiro elemento mais visível da
+ * página só porque existe.
+ *
+ * 📐 Frequência decide proeminência. O que se faz toda semana fica na tela; o
+ * que se faz uma vez na vida do projeto fica a um clique.
+ */
+export const AcoesWrap = styled.div`
+  position: relative;
+  flex-shrink: 0;
+`;
+
+export const AcoesBotao = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.input};
+  background: ${theme.colors.background};
+  color: ${theme.colors.mutedForeground};
+  cursor: pointer;
+  transition: background-color ${theme.transitions.fast}, color ${theme.transitions.fast};
+
+  &:hover {
+    background: ${theme.colors.muted};
+    color: ${theme.colors.foreground};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 2px;
+  }
+
+  @media (max-width: ${theme.breakpoints.md}px) {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+`;
+
+export const AcoesMenu = styled.div`
   position: absolute;
   top: calc(100% + 0.25rem);
   right: 0;
-  z-index: 20;
+  z-index: ${theme.zIndex.popover};
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  min-width: 13rem;
   padding: ${theme.spacing.xs};
-  min-width: 15rem;
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.border};
   background: ${theme.colors.background};
   box-shadow: ${theme.shadows.lg};
 `;
 
-export const EtapaOpcaoBotao = styled.button`
+export const AcoesItem = styled.button<{ $perigo?: boolean }>`
   display: flex;
   align-items: center;
+  gap: 0.5rem;
   padding: 0.5rem 0.625rem;
   border: none;
   border-radius: ${theme.borderRadius.md};
   background: transparent;
-  color: ${theme.colors.foreground};
   font-size: ${theme.fontSize.sm};
   text-align: left;
   cursor: pointer;
+  color: ${({ $perigo }) => ($perigo ? theme.colors.destructive : theme.colors.foreground)};
 
-  &:hover {
-    background: ${theme.colors.muted};
+  &:hover:not(:disabled) {
+    background: ${({ $perigo }) =>
+      $perigo ? `color-mix(in srgb, ${theme.colors.destructive} 8%, white)` : theme.colors.muted};
   }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+/** Separa as ações destrutivas do resto do menu. */
+export const AcoesDivisor = styled.div`
+  height: 1px;
+  margin: ${theme.spacing.xs} 0;
+  background: ${theme.colors.border};
+`;
+
+/* ------------------------------------------------------------------ */
+/* Cabeçalho compacto                                                  */
+/* ------------------------------------------------------------------ */
+
+/** A linha da identidade: nome, tags e, na ponta, o menu de ações. */
+export const IdentidadeLinha = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
+/**
+ * A linha de contexto: cliente, equipe e proposta, em texto pequeno.
+ *
+ * ⭐ **Eram três blocos empilhados** — o subtítulo do cliente, um parágrafo de
+ * descrição e um bloco de equipe com dois grupos rotulados e um avatar por
+ * pessoa com o nome ao lado —, repetidos no topo de TODAS as abas. Aqui vira
+ * uma linha só, com os itens separados por ponto médio.
+ */
+export const MetaLinha = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem ${theme.spacing.sm};
+  min-width: 0;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const MetaSeparador = styled.span`
+  color: ${theme.colors.border};
+`;
+
+/**
+ * A equipe como pilha de avatares sobrepostos.
+ *
+ * Os nomes por extenso ocupavam três linhas num projeto de cinco pessoas, e
+ * "quem está no projeto" é pergunta de reconhecimento, não de leitura: o rosto
+ * responde antes do nome. Os nomes continuam no `title` e na aba Visão geral,
+ * onde há espaço para a equipe inteira.
+ */
+export const EquipePilha = styled.div`
+  display: inline-flex;
+  align-items: center;
+  padding-left: 0.25rem;
+`;
+
+export const EquipeAvatarPequeno = styled.span<{ $cor: string }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-left: -0.25rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 2px solid ${theme.colors.background};
+  background: ${({ $cor }) => $cor};
+  font-size: 0.6rem;
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.background};
+  overflow: hidden;
+`;
+
+/** "+3", quando a equipe não cabe inteira na pilha. */
+export const EquipeMais = styled(EquipeAvatarPequeno)`
+  background: ${theme.colors.secondary};
+  color: ${theme.colors.mutedForeground};
 `;
 
 export const EdicaoBotoes = styled.div`
@@ -920,15 +1160,138 @@ export const EmBrevePanel = styled.div`
 /* Aba Histórico                                                       */
 /* ------------------------------------------------------------------ */
 
-export const HistoricoGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: ${theme.spacing.lg};
+/**
+ * "Tempo por etapa" como UMA barra empilhada, não como uma lista de barrinhas.
+ *
+ * ⭐ **Era um card lateral** de 260–320px com uma barra vertical por status,
+ * dentro de um grid de duas colunas que espremia a timeline — o conteúdo real
+ * da aba — em pouco mais da metade da largura. A informação é parte-do-todo
+ * ("quanto do projeto foi gasto em cada etapa"), e parte-do-todo se lê melhor
+ * numa faixa só, comparando larguras lado a lado, do que em barras separadas
+ * cada uma com a própria escala.
+ *
+ * ⚠ **Nada aqui pode depender só da cor.** A legenda abaixo carrega nome e
+ * duração de cada faixa; a faixa em si é o resumo visual, não a fonte do dado.
+ */
+export const HistoricoResumoFaixa = styled.div`
+  display: flex;
+  height: 0.75rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.secondary};
+  overflow: hidden;
+`;
 
-  @media (min-width: ${theme.breakpoints.lg}px) {
-    grid-template-columns: minmax(260px, 320px) 1fr;
-    align-items: start;
+export const HistoricoResumoSegmento = styled.div<{ $percent: number; $cor: string }>`
+  width: ${({ $percent }) => $percent}%;
+  background: ${({ $cor }) => $cor};
+  transition: width ${theme.transitions.normal};
+
+  /* Uma etapa de 1% vira um fio invisível: o mínimo garante que ela ainda
+     exista na faixa, mesmo desproporcional. */
+  min-width: 2px;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
+`;
+
+export const HistoricoResumoLegenda = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm} ${theme.spacing.md};
+  margin-top: ${theme.spacing.sm};
+`;
+
+export const HistoricoResumoLegendaItem = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+
+  strong {
+    font-weight: ${theme.fontWeight.medium};
+    color: ${theme.colors.foreground};
+  }
+`;
+
+/**
+ * A barra de filtros do Histórico: uma linha, acima da timeline.
+ *
+ * ⭐ **Era um card "Filtros"** sempre aberto, com cinco grupos em duas linhas,
+ * ocupando meia tela antes de a primeira mudança do histórico aparecer. Filtro
+ * é ferramenta, não conteúdo: fica rente, compacto, e o que ele filtra é que
+ * ganha o espaço.
+ */
+export const HistoricoBarraFiltros = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm} ${theme.spacing.md};
+  padding: ${theme.spacing.sm} 0;
+  border-bottom: 1px solid ${theme.colors.border};
+`;
+
+/** Um par rótulo + controle, deitado. O rótulo é pequeno e em caixa alta para
+ *  não competir com as pastilhas que vêm depois dele. */
+export const HistoricoFiltroCampo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  min-width: 0;
+`;
+
+export const HistoricoFiltroTitulo = styled.span`
+  flex-shrink: 0;
+  font-size: ${theme.fontSize.xs};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** O botão "Datas" e o popover que ele abre. `relative` para o popover se
+ *  ancorar nele. */
+export const HistoricoDatasWrap = styled.div`
+  position: relative;
+`;
+
+export const HistoricoDatasPopover = styled.div`
+  position: absolute;
+  top: calc(100% + 0.375rem);
+  left: 0;
+  z-index: ${theme.zIndex.popover};
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  min-width: 15rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.background};
+  box-shadow: ${theme.shadows.lg};
+
+  /* Perto da borda direita da tela o popover ancorado à esquerda estouraria
+     a viewport. */
+  @media (max-width: ${theme.breakpoints.sm}px) {
+    left: auto;
+    right: 0;
+  }
+`;
+
+/**
+ * O rodapé da timeline, onde mora "Limpar histórico".
+ *
+ * ⚠ **Ação destrutiva não mora em card de filtro.** Ela estava no cabeçalho do
+ * card "Filtros", ao lado de controles que só mudam o que se vê — vizinhança
+ * que sugere que ela também só muda a exibição. Aqui embaixo, depois de tudo
+ * que ela afeta, e sem competir com nada.
+ */
+export const HistoricoRodape = styled.div`
+  display: flex;
+  justify-content: center;
+  padding-top: ${theme.spacing.lg};
+  margin-top: ${theme.spacing.md};
+  border-top: 1px solid ${theme.colors.border};
 `;
 
 export const HistoricoResumoLista = styled.div`
@@ -1630,4 +1993,114 @@ export const PropostaLink = styled.a`
 
 export const PropostaBotao = styled.button`
   ${propostaBase}
+`;
+
+/**
+ * Os avisos do Cronograma, num bloco só.
+ *
+ * ⭐ **Eram três `AvisoBanner` soltos** em dois pontos da página — janela do
+ * escopo e carimbo de oficialização antes da barra, conflito de calendário
+ * depois dela. Cada um com a própria caixa, a própria borda e o próprio
+ * espaçamento: três blocos de peso igual empilhados antes de o calendário
+ * aparecer, e o terceiro separado dos outros dois sem que nada explicasse por
+ * quê.
+ *
+ * 📐 Aqui é uma caixa com uma linha por aviso. Continuam sendo assuntos
+ * distintos — só param de custar três caixas.
+ */
+export const BlocoAvisos = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.muted};
+`;
+
+export const LinhaAviso = styled.div<{ $tom?: "atencao" }>`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: ${theme.fontSize.sm};
+  line-height: 1.5;
+  color: ${({ $tom }) =>
+    $tom === "atencao" ? theme.colors.warningForeground : theme.colors.foreground};
+
+  /* O ícone alinha com a primeira linha do texto, não com o centro do
+     parágrafo — num aviso de três linhas, centralizado ele fica solto no
+     meio do nada. */
+  svg {
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+    color: ${({ $tom }) =>
+      $tom === "atencao" ? theme.colors.warning : theme.colors.mutedForeground};
+  }
+`;
+
+/* ------------------------------------------------------------------ */
+/* Card de Equipe (aba Visão geral)                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A equipe por extenso, na Visão geral.
+ *
+ * ⭐ Este card nasceu quando o cabeçalho encolheu: lá a equipe virou pilha de
+ * rostos (reconhecer é instantâneo, e era isso que o bloco de nomes fazia
+ * ocupando três linhas no topo de TODAS as abas), e os nomes precisavam de um
+ * lugar legível. Aqui há espaço, e é onde já se vem conferir o cadastro.
+ */
+export const EquipeSecao = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+
+  & + & {
+    margin-top: ${theme.spacing.md};
+    padding-top: ${theme.spacing.md};
+    border-top: 1px solid ${theme.colors.border};
+  }
+`;
+
+export const EquipeSecaoTitulo = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSize.xs};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** "3 de 4". Fica vermelho quando o time enche — é o que responde
+ *  "ainda cabe gente?", a pergunta que traz alguém a esta lista. */
+export const EquipeContagem = styled.span<{ $cheio: boolean }>`
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: ${theme.fontWeight.medium};
+  color: ${({ $cheio }) => ($cheio ? theme.colors.primary : theme.colors.mutedForeground)};
+`;
+
+export const EquipeLinhaPessoa = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+`;
+
+export const EquipeAvatarLista = styled.span<{ $cor: string }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $cor }) => $cor};
+  font-size: 0.65rem;
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.background};
+  overflow: hidden;
 `;

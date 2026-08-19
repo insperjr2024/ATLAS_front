@@ -229,3 +229,106 @@ export const RowMeta = styled.span`
   font-size: ${theme.fontSize.sm};
   color: ${theme.colors.mutedForeground};
 `;
+
+/* ------------------------------------------------------------------ */
+/* Segmented control                                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Um grupo de opções mutuamente exclusivas, todas visíveis.
+ *
+ * ⭐ **Por que existe.** Escolher entre 3 e 7 opções curtas num dropdown custa
+ * dois cliques e esconde as alternativas até o segundo. Com as opções na tela,
+ * custa um clique e a pessoa vê o que existe sem abrir nada — e some a espera
+ * de abrir o menu, que era a queixa que originou esta repaginação.
+ *
+ * 📐 **Quando NÃO usar.** Acima de ~8 opções, ou com rótulos longos, isto vira
+ * uma parede de botões que estoura a linha: aí o `SelectCustom` (com
+ * `pesquisavel`) continua sendo a escolha certa. O corte não é estético, é de
+ * largura.
+ *
+ * ⚠ Quem usa precisa pôr `role="group"` e `aria-label` aqui, e `aria-pressed`
+ * em cada `SegmentedButton` — sem isso o leitor de tela anuncia uma fileira de
+ * botões soltos, sem dizer qual está valendo.
+ *
+ * Veio de `GrupoVisao`/`BotaoVisao` (`cronograma-pintado/PaintedCalendar.styled.ts`),
+ * que já era este controle, mas só o Cronograma alcançava.
+ */
+export const SegmentedGroup = styled.div<{ $bloco?: boolean }>`
+  display: ${({ $bloco }) => ($bloco ? "flex" : "inline-flex")};
+  flex-wrap: wrap;
+  align-items: stretch;
+  min-height: 2.25rem;
+  border: 1px solid ${theme.colors.input};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.background};
+  overflow: hidden;
+
+  /* Alvo de toque de 44px no celular. No desktop 2.25rem casa com a métrica
+     dos campos e botões da mesma linha; no toque, 36px erra demais. */
+  @media (max-width: ${theme.breakpoints.md}px) {
+    min-height: 2.75rem;
+  }
+`;
+
+export const SegmentedButton = styled.button<{ $ativo?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0 0.75rem;
+  border: none;
+  border-right: 1px solid ${theme.colors.border};
+  background: ${({ $ativo }) => ($ativo ? theme.colors.secondary : "transparent")};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${({ $ativo }) =>
+    $ativo ? theme.fontWeight.semibold : theme.fontWeight.medium};
+  color: ${({ $ativo }) => ($ativo ? theme.colors.foreground : theme.colors.mutedForeground)};
+  cursor: pointer;
+  white-space: nowrap;
+
+  /* Só cor: animar transform aqui deslocaria os vizinhos no hover, porque os
+     botões dividem a mesma caixa. */
+  transition:
+    background-color ${theme.transitions.fast},
+    color ${theme.transitions.fast};
+
+  &:last-child {
+    border-right: none;
+  }
+
+  &:hover:not(:disabled) {
+    background: ${({ $ativo }) => ($ativo ? theme.colors.secondary : theme.colors.muted)};
+    color: ${theme.colors.foreground};
+  }
+
+  /* Dentro do grupo o outline seria recortado pelo overflow: hidden, então o
+     foco vem por dentro, com offset negativo. */
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: -2px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/**
+ * A variante solta: pills independentes, sem a caixa em volta.
+ *
+ * Para filtro de seleção MÚLTIPLA (as etapas do Histórico) ou quando as opções
+ * nascem dos dados e podem ser muitas — a caixa fechada do `SegmentedGroup`
+ * pressupõe "escolha uma", e com várias marcadas ela mente.
+ */
+export const PillGroup = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  /* ≥8px entre alvos de toque: colados, o dedo erra o vizinho. */
+  gap: 0.5rem;
+`;

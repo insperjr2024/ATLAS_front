@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  CalendarPlus,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  HelpCircle,
-  Info,
-  Lock,
-  Plus,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -53,20 +45,11 @@ import {
   AmostraHachurada,
   AvisoEscopo,
   AreaExportOculta,
-  Barra,
-  BotaoBarra,
   BotaoExcluir,
-  BotaoNav,
-  BotaoVisao,
-  ContadorDias,
-  DicaEscopo,
-  BotaoAjuda,
   BarraDesfazer,
   BotaoDesfazer,
   ContagemDesfazer,
   CronogramaLayout,
-  FieldEntrega,
-  GrupoVisao,
   MolduraExport,
   LegendaBox,
   LegendaGrupo,
@@ -74,9 +57,6 @@ import {
   LegendaLinha,
   LegendaTexto,
   LegendaTitulo,
-  NavPeriodo,
-  PincelAtivo,
-  RotuloPeriodo,
   TagCorrecao,
 } from "@/components/cronograma-pintado/PaintedCalendar.styled";
 import {
@@ -87,7 +67,6 @@ import {
   intervaloDaVisao,
   mesesDaJanela,
   normalizar,
-  VISOES,
   type Visao,
 } from "@/components/cronograma-pintado/visao";
 import type { CronogramaResposta } from "@/types/cronograma";
@@ -100,7 +79,7 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
-import { AvisoBanner, EscopoFiltroBotao, EscopoFiltroLista } from "./Projetos.styled";
+import { AvisoBanner } from "./Projetos.styled";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   planejarEscrita,
@@ -116,6 +95,7 @@ import { AvisoRegra } from "@/components/AvisoRegra";
 import { MarcarReuniaoModal } from "./MarcarReuniaoModal";
 import { BancaDetalhesModal } from "./BancaDetalhesModal";
 import { PedirDiasModal } from "./PedirDiasModal";
+import { CronogramaBarra } from "./CronogramaBarra";
 import { useProjeto } from "./ProjetoPage";
 
 
@@ -1521,230 +1501,51 @@ export function ProjetoCronograma() {
         </AvisoBanner>
       )}
 
-      <Barra>
-        <GrupoVisao role="group" aria-label="Visão do cronograma">
-          {VISOES.map((opcao) => (
-            <BotaoVisao
-              key={opcao.valor}
-              type="button"
-              $ativo={visao === opcao.valor}
-              aria-pressed={visao === opcao.valor}
-              onClick={() => trocarVisao(opcao.valor)}
-            >
-              {opcao.rotulo}
-            </BotaoVisao>
-          ))}
-        </GrupoVisao>
-
-        <NavPeriodo>
-          <BotaoNav
-            type="button"
-            aria-label="Período anterior"
-            disabled={limites.recuar}
-            onClick={() => navegar(-1)}
-          >
-            <ChevronLeft size={14} />
-          </BotaoNav>
-          <BotaoNav
-            type="button"
-            aria-label="Próximo período"
-            disabled={limites.avancar}
-            onClick={() => navegar(1)}
-          >
-            <ChevronRight size={14} />
-          </BotaoNav>
-          <RotuloPeriodo>{blocos[0]?.titulo}</RotuloPeriodo>
-          <BotaoAjuda type="button" onClick={() => setAjudaAberta(true)}>
-            <HelpCircle size={13} aria-hidden />
-            Como funciona
-          </BotaoAjuda>
-        </NavPeriodo>
-
-        {/* Marcar clicando no dia: reunião inicial, reunião geral, banca e
-            entrega. Antes cada uma vivia numa tela diferente, a aba Reuniões,
-            a Visão geral e um botão no topo desta barra.
-
-            Os modos que dependem de escopo SOMEM na visão Geral, em vez de
-            ficarem desabilitados. Botão morto com tooltip não ensina nada a
-            quem não conhece a tela, a explicação só aparece no hover, e no
-            celular nunca aparece. No lugar deles entra uma frase que diz o que
-            fazer para eles voltarem. */}
-        {podeEditar && (
-          <GrupoVisao role="group" aria-label="Marcar no calendário">
-            {MODOS.filter((modo) => !modo.escopo || escopo).map((modo) => (
-              <BotaoVisao
-                key={modo.valor}
-                type="button"
-                $ativo={modoMarcacao === modo.valor}
-                aria-pressed={modoMarcacao === modo.valor}
-                title={`Clique num dia para marcar: ${modo.rotulo.toLowerCase()}`}
-                onClick={() => {
-                  // Ligar um modo desliga o pincel: os dois disputam o mesmo
-                  // clique, e mantê-los juntos tornaria o gesto ambíguo.
-                  setGrupoAtivo(null);
-                  setModoMarcacao((atual) => (atual === modo.valor ? null : modo.valor));
-                }}
-              >
-                {modo.rotulo}
-              </BotaoVisao>
-            ))}
-          </GrupoVisao>
+      <CronogramaBarra
+        escopos={dados.escopos}
+        escopoSelecionado={escopoSelecionado}
+        onEscopo={(id) => {
+          setEscopoSelecionado(id);
+          setGrupoAtivo(null);
+        }}
+        visao={visao}
+        onVisao={trocarVisao}
+        tituloPeriodo={blocos[0]?.titulo ?? ""}
+        limites={limites}
+        onNavegar={navegar}
+        onAjuda={() => setAjudaAberta(true)}
+        onExportar={() => setExportandoPdf(true)}
+        podeEditar={podeEditar}
+        modos={MODOS}
+        modoMarcacao={modoMarcacao}
+        onModo={(valor) => {
+          // Ligar um modo desliga o pincel: os dois disputam o mesmo clique, e
+          // mantê-los juntos tornaria o gesto ambíguo.
+          setGrupoAtivo(null);
+          setModoMarcacao((atual) => (atual === valor ? null : (valor as ModoMarcacao)));
+        }}
+        escopoAtual={escopo}
+        onEntregaPlanejada={salvarEntrega}
+        onNovaEtapa={() => setCriandoEtapa(true)}
+        podePedirDias={
+          !!escopo?.pedido_ajuste_aberto && souCoordenador && !escopo.reajuste_pendente
+        }
+        rotuloPrazoPedido={escopo ? formatarData(escopo.prazo_pedido_ajuste) : null}
+        diasUteisRestantesDoPedido={diasUteisEntre(
+          hojeIso(),
+          escopo?.prazo_pedido_ajuste?.slice(0, 10) ?? "",
         )}
-
-        {/* Só quando realmente não há escopo escolhido: com um selecionado os
-            botões voltam e a caixa não teria o que explicar. */}
-        {podeEditar && !escopo && (
-          <DicaEscopo>
-            <Info size={15} aria-hidden />
-            <span>
-              <strong>Escolha um escopo acima para continuar.</strong> Reunião inicial, banca e
-              entrega pertencem a um escopo específico — cada um tem a própria janela de dias
-              vendidos. Os botões deles aparecem assim que você escolher um. Kickoff e reunião
-              geral são do projeto inteiro e já estão disponíveis aqui.
-            </span>
-          </DicaEscopo>
-        )}
-
-        {modoMarcacao && (
-          <ContadorDias>
-            {/* Nomeia O QUE está sendo marcado: com 4 modos parecidos, "clique
-                num dia" sozinho deixa a pessoa sem saber qual ela ligou. */}
-            Clique num dia para marcar{" "}
-            <strong>{MODOS.find((m) => m.valor === modoMarcacao)?.rotulo.toLowerCase()}</strong>
-            {escopo ? ` em ${escopo.nome}` : ""}. Esc para sair.
-          </ContadorDias>
-        )}
-
-        {podeEditar && escopo && (
-          <FieldEntrega>
-            <span>Entrega prevista</span>
-            <input
-              type="date"
-              value={escopo.data_entrega_planejada?.slice(0, 10) ?? ""}
-              title={`Entrega planejada de ${escopo.nome}`}
-              onChange={(e) => salvarEntrega(e.target.value)}
-            />
-          </FieldEntrega>
-        )}
-
-        <EscopoFiltroLista role="group" aria-label="Escopo">
-          {/* "Todos os escopos" e não "Geral": para quem chega agora, Geral
-              não diz se é um escopo chamado assim ou a soma de todos. O valor
-              continua sendo `geral`, mudou só o rótulo. Só aparece quando há
-              mais de um escopo — com um só, ele já vem pré-selecionado, e o
-              botão "Todos" seria idêntico ao único escopo. */}
-          {dados.escopos.length > 1 && (
-            <EscopoFiltroBotao
-              type="button"
-              $ativo={modoGeral}
-              onClick={() => {
-                setEscopoSelecionado("geral");
-                setGrupoAtivo(null);
-              }}
-            >
-              Todos os escopos
-            </EscopoFiltroBotao>
-          )}
-          {dados.escopos.map((e) => (
-            <EscopoFiltroBotao
-              key={e.id}
-              type="button"
-              $ativo={!modoGeral && escopoSelecionado === e.id}
-              onClick={() => {
-                setEscopoSelecionado(e.id);
-                setGrupoAtivo(null);
-              }}
-            >
-              {e.nome}
-            </EscopoFiltroBotao>
-          ))}
-        </EscopoFiltroLista>
-
-        {podeEditar && (
-          <BotaoBarra type="button" $variant="outline" onClick={() => setCriandoEtapa(true)}>
-            <Plus size={14} />
-            Nova etapa
-          </BotaoBarra>
-        )}
-
-        {/* **A porta de aumentar a JANELA do escopo**, e nada além disso.
-            Aparece só para o coordenador, com um escopo escolhido, e só
-            durante os 3 dias úteis depois da largada: é a janela em que dá
-            para perceber que o escopo foi vendido apertado. Fora dela o botão
-            some, porque a porta não existe mais.
-
-            Não confundir com as CORREÇÕES pós-banca: aquilo é tempo gasto
-            arrumando o que a banca apontou, não se pede a ninguém e não
-            aumenta janela. Os dois já dividiram a palavra "ajuste" e a tela
-            ficava dizendo que eram a mesma coisa. */}
-        {escopo?.pedido_ajuste_aberto && souCoordenador && !escopo.reajuste_pendente && (
-          <BotaoBarra
-            type="button"
-            $variant="outline"
-            title={`O prazo vai até ${formatarData(escopo.prazo_pedido_ajuste)}`}
-            onClick={() => setPedindoDias({ escopoId: escopo.id, dias: 5, ateDia: null })}
-          >
-            <CalendarPlus size={14} />
-            Pedir mais dias
-            {diasUteisEntre(hojeIso(), escopo.prazo_pedido_ajuste?.slice(0, 10) ?? "") > 0 && (
-              <ContadorDias>
-                · {diasUteisEntre(hojeIso(), escopo.prazo_pedido_ajuste?.slice(0, 10) ?? "")} dias
-                úteis restantes
-              </ContadorDias>
-            )}
-          </BotaoBarra>
-        )}
-
-        {grupoDoPincel ? (
-          <>
-            <PincelAtivo $cor={grupoDoPincel.cor}>
-              Pintando: {grupoDoPincel.nome}
-              {diasPreview !== null && <ContadorDias>· {diasPreview} dias úteis</ContadorDias>}
-            </PincelAtivo>
-            {/* Sem botão de borracha, o gesto precisa estar escrito em algum
-                lugar, senão ninguém descobre que dá para desmarcar. */}
-            <ContadorDias>Arraste a partir de um dia já pintado para desmarcar.</ContadorDias>
-            {/* o mesmo motivo do aviso acima. O arrasto além da janela é o
-                jeito de PEDIR os dias, e ninguém tenta um gesto que a tela
-                mostra como parede se não estiver escrito que ele leva a algum
-                lugar. Só aparece quando o pedido é possível, `diasNegociaveis`
-                já é vazio fora do prazo, para quem não é coordenador e com um
-                pedido pendente. */}
-            {diasNegociaveis.size > 0 && (
-              <ContadorDias>
-                Arraste além do fim da janela para pedir esses dias à diretoria.
-              </ContadorDias>
-            )}
-          </>
-        ) : (
-          podeEditar &&
-          etapas.length > 0 && (
-            <ContadorDias>Clique numa etapa da legenda para começar a pintar.</ContadorDias>
-          )
-        )}
-
-        {/* O carimbo, depois da banca marcada: "este é o cronograma
-            combinado". Some depois de carimbado porque carimbar de novo não
-            diz nada de novo, e é o ÚNICO efeito que oficializar tem hoje:
-            pintar, criar e excluir etapa continuam liberados depois dele. */}
-        {podeEditar && escopo && !oficializado && etapas.length > 0 && escopo.banca && (
-          <BotaoBarra
-            type="button"
-            $variant="outline"
-            onClick={() => setConfirmandoOficializacao(true)}
-          >
-            <Lock size={14} />
-            Oficializar
-          </BotaoBarra>
-        )}
-
-        {/* Exportar é a única ação da matriz liberada ao consultor, o
-            botão não fica atrás de `pode()`. */}
-        <BotaoBarra type="button" $variant="ghost" onClick={() => setExportandoPdf(true)}>
-          <Download size={14} />
-          Exportar
-        </BotaoBarra>
-      </Barra>
+        onPedirDias={() =>
+          escopo && setPedindoDias({ escopoId: escopo.id, dias: 5, ateDia: null })
+        }
+        mostrarOficializar={
+          podeEditar && !!escopo && !oficializado && etapas.length > 0 && !!escopo.banca
+        }
+        onOficializar={() => setConfirmandoOficializacao(true)}
+        pincel={grupoDoPincel ? { nome: grupoDoPincel.nome, cor: grupoDoPincel.cor } : null}
+        diasPreview={diasPreview}
+        temEtapas={etapas.length > 0}
+      />
 
       <AvisoRegra mensagem={aviso} onFechar={() => setAviso("")} />
 

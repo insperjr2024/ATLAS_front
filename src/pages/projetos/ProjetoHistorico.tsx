@@ -17,6 +17,7 @@ import {
 } from "@/lib/projetos";
 import { tonsDaColuna } from "@/lib/colunas-tarefa";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import type {
   HistoricoEntrada,
   JustificativaAtrasoHistorico,
@@ -34,25 +35,19 @@ import {
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
-  EmptyText,
 } from "@/styles/page.styled";
 import { Ponto } from "@/components/kanban/Kanban.styled";
-import { FieldSelect } from "@/pages/Bancas.styled";
 import {
   AvisoBanner,
-  FieldInput,
-  FrenteFilterDivisor,
   StatusPilula,
   HistoricoAutorChip,
   HistoricoCarregarMais,
   HistoricoExcluirBtn,
-  HistoricoFiltroGrupo,
-  HistoricoFiltroLabel,
-  HistoricoFiltroLinha,
-  HistoricoFiltroPill,
-  HistoricoFiltroPills,
-  HistoricoGrid,
-  HistoricoLimparFiltros,
+  HistoricoResumoFaixa,
+  HistoricoResumoLegenda,
+  HistoricoResumoLegendaItem,
+  HistoricoResumoSegmento,
+  HistoricoRodape,
   HistoricoNotaCabecalho,
   HistoricoNotaLinha,
   HistoricoNotaMotivo,
@@ -60,13 +55,6 @@ import {
   HistoricoTipoTag,
   HistoricoAguardando,
   HistoricoNotaTexto,
-  HistoricoPeriodoPills,
-  HistoricoResumoBarraFill,
-  HistoricoResumoBarraTrilha,
-  HistoricoResumoCabecalho,
-  HistoricoResumoLinha,
-  HistoricoResumoLista,
-  HistoricoResumoNome,
   HistoricoTimeline,
   HistoricoTimelineConteudo,
   HistoricoTimelineDiaTitulo,
@@ -76,6 +64,7 @@ import {
   HistoricoTimelineTransicao,
   HistoricoTimelineTrilho,
 } from "./Projetos.styled";
+import { HistoricoFiltros } from "./HistoricoFiltros";
 import { useProjeto } from "./ProjetoPage";
 
 /**
@@ -404,18 +393,22 @@ export function ProjetoHistorico() {
             </PageButton>
           </AvisoBanner>
         )}
-        <PageCard>
-          <PageCardHeader>
-            <PageCardTitle>Mudanças de status</PageCardTitle>
-          </PageCardHeader>
-          <PageCardContent>
-            <EmptyText>
-              {projeto.historico_oculto_ate
-                ? "Está tudo oculto no momento. Use \"Mostrar tudo\" acima pra ver de novo."
-                : "Nenhuma mudança registrada."}
-            </EmptyText>
-          </PageCardContent>
-        </PageCard>
+        {/* Oculto e vazio são causas diferentes, e pedem reações diferentes:
+            uma se desfaz num clique ali em cima, a outra é só esperar o
+            projeto andar. */}
+        {projeto.historico_oculto_ate ? (
+          <EstadoVazio
+            causa="filtro"
+            titulo="Nada à vista no histórico"
+            motivo={'O corte de exibição escondeu tudo. Use "Mostrar tudo" acima para trazer de volta.'}
+          />
+        ) : (
+          <EstadoVazio
+            causa="vazio"
+            titulo="Nenhuma mudança registrada"
+            motivo="As mudanças de etapa, notas de atraso, bancas e reuniões deste projeto aparecem aqui conforme acontecem."
+          />
+        )}
       </PageStack>
     );
   }
@@ -431,135 +424,74 @@ export function ProjetoHistorico() {
         </AvisoBanner>
       )}
 
-      <HistoricoGrid>
+      {/* ⭐ O resumo virou UMA faixa empilhada, horizontal, no topo. Era um
+          card lateral de 320px num grid de duas colunas, e a timeline — o
+          conteúdo real da aba — ficava espremida na coluna que sobrava.
+          A pergunta que este bloco responde ("onde o tempo foi") é de
+          proporção, e proporção se lê melhor numa faixa só. */}
+      {resumoPorStatus.length > 0 && (
         <PageCard>
           <PageCardHeader>
             <PageCardTitle>Tempo por etapa</PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
-            <HistoricoResumoLista>
-              {resumoPorStatus.map(({ status, ms, percent }) => {
-                const tons = tonsDaColuna(CORES_STATUS[status]);
-                return (
-                  <HistoricoResumoLinha key={status}>
-                    <HistoricoResumoCabecalho>
-                      <HistoricoResumoNome>
-                        <Ponto $cor={tons.ponto} />
-                        {ROTULO_STATUS[status]}
-                      </HistoricoResumoNome>
-                      <span>{formatarDuracao(ms)}</span>
-                    </HistoricoResumoCabecalho>
-                    <HistoricoResumoBarraTrilha>
-                      <HistoricoResumoBarraFill $percent={percent} $cor={tons.ponto} />
-                    </HistoricoResumoBarraTrilha>
-                  </HistoricoResumoLinha>
-                );
-              })}
-            </HistoricoResumoLista>
+            <HistoricoResumoFaixa
+              role="img"
+              aria-label={`Tempo por etapa: ${resumoPorStatus
+                .map((r) => `${ROTULO_STATUS[r.status]}, ${formatarDuracao(r.ms)}`)
+                .join("; ")}`}
+            >
+              {resumoPorStatus.map(({ status, percent }) => (
+                <HistoricoResumoSegmento
+                  key={status}
+                  $percent={percent}
+                  $cor={tonsDaColuna(CORES_STATUS[status]).ponto}
+                  title={`${ROTULO_STATUS[status]} · ${Math.round(percent)}%`}
+                />
+              ))}
+            </HistoricoResumoFaixa>
+            {/* ⚠ A legenda não é enfeite: é ela que carrega nome e duração.
+                A faixa sozinha diria tudo por cor, e cor não pode ser o
+                único indicador. */}
+            <HistoricoResumoLegenda>
+              {resumoPorStatus.map(({ status, ms }) => (
+                <HistoricoResumoLegendaItem key={status}>
+                  <Ponto $cor={tonsDaColuna(CORES_STATUS[status]).ponto} />
+                  <strong>{ROTULO_STATUS[status]}</strong>
+                  {formatarDuracao(ms)}
+                </HistoricoResumoLegendaItem>
+              ))}
+            </HistoricoResumoLegenda>
           </PageCardContent>
         </PageCard>
+      )}
 
-        <PageStack>
-          <PageCard>
-            <PageCardHeader>
-              <PageCardTitle>Filtros</PageCardTitle>
-              <PageButton type="button" $variant="outline" onClick={() => setConfirmandoLimpar(true)}>
-                Limpar histórico
-              </PageButton>
-            </PageCardHeader>
-            <PageCardContent>
-              <HistoricoFiltroLinha>
-                <HistoricoFiltroGrupo style={{ flex: 1 }}>
-                  <HistoricoFiltroLabel>Etapa</HistoricoFiltroLabel>
-                  <HistoricoFiltroPills>
-                    {statusPresentes.map((status) => {
-                      const tons = tonsDaColuna(CORES_STATUS[status]);
-                      return (
-                        <HistoricoFiltroPill
-                          key={status}
-                          type="button"
-                          $ativo={statusFiltro.has(status)}
-                          $cor={tons.ponto}
-                          onClick={() => alternarStatusFiltro(status)}
-                        >
-                          <Ponto $cor={tons.ponto} />
-                          {ROTULO_STATUS[status]}
-                        </HistoricoFiltroPill>
-                      );
-                    })}
-                  </HistoricoFiltroPills>
-                </HistoricoFiltroGrupo>
-              </HistoricoFiltroLinha>
+      <div>
+        <HistoricoFiltros
+          statusPresentes={statusPresentes}
+          statusFiltro={statusFiltro}
+          onAlternarStatus={alternarStatusFiltro}
+          autoresPresentes={autoresPresentes}
+          nomeUsuario={nomeUsuario}
+          temAutomatico={temAutomatico}
+          autorFiltro={autorFiltro}
+          onAutorFiltro={setAutorFiltro}
+          periodoRapido={periodoRapido}
+          onPeriodoRapido={aplicarPeriodoRapido}
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          onDataManual={editarDataManual}
+          filtroAtivo={filtroAtivo}
+          onLimpar={limparFiltros}
+        />
 
-              <FrenteFilterDivisor />
-
-              <HistoricoFiltroLinha>
-                <HistoricoFiltroGrupo>
-                  <HistoricoFiltroLabel htmlFor="historico-autor">Quem alterou</HistoricoFiltroLabel>
-                  <FieldSelect id="historico-autor" value={autorFiltro} onChange={(e) => setAutorFiltro(e.target.value)}>
-                    <option value="">Todo mundo</option>
-                    {autoresPresentes.map((id) => (
-                      <option key={id} value={id}>
-                        {nomeUsuario(id)}
-                      </option>
-                    ))}
-                    {temAutomatico && <option value="automatico">Automático</option>}
-                  </FieldSelect>
-                </HistoricoFiltroGrupo>
-
-                <HistoricoFiltroGrupo>
-                  <HistoricoFiltroLabel>Período</HistoricoFiltroLabel>
-                  <HistoricoPeriodoPills>
-                    {[7, 30, 90].map((dias) => (
-                      <HistoricoFiltroPill
-                        key={dias}
-                        type="button"
-                        $ativo={periodoRapido === dias}
-                        $cor={theme.colors.primary}
-                        onClick={() => aplicarPeriodoRapido(dias)}
-                      >
-                        {dias} dias
-                      </HistoricoFiltroPill>
-                    ))}
-                  </HistoricoPeriodoPills>
-                </HistoricoFiltroGrupo>
-
-                <HistoricoFiltroGrupo>
-                  <HistoricoFiltroLabel htmlFor="historico-data-inicio">De</HistoricoFiltroLabel>
-                  <FieldInput
-                    id="historico-data-inicio"
-                    type="date"
-                    value={dataInicio}
-                    onChange={(e) => editarDataManual("inicio", e.target.value)}
-                  />
-                </HistoricoFiltroGrupo>
-
-                <HistoricoFiltroGrupo>
-                  <HistoricoFiltroLabel htmlFor="historico-data-fim">Até</HistoricoFiltroLabel>
-                  <FieldInput
-                    id="historico-data-fim"
-                    type="date"
-                    value={dataFim}
-                    onChange={(e) => editarDataManual("fim", e.target.value)}
-                  />
-                </HistoricoFiltroGrupo>
-
-                {filtroAtivo && (
-                  <HistoricoLimparFiltros type="button" onClick={limparFiltros}>
-                    Limpar filtros
-                  </HistoricoLimparFiltros>
-                )}
-              </HistoricoFiltroLinha>
-            </PageCardContent>
-          </PageCard>
-
-          {historicoFiltrado.length === 0 ? (
-            <PageCard>
-              <PageCardContent>
-                <EmptyText>Nenhuma mudança bate com esses filtros.</EmptyText>
-              </PageCardContent>
-            </PageCard>
-          ) : (
+        {historicoFiltrado.length === 0 ? (
+          <EstadoVazio
+            causa="filtro"
+            titulo="Nenhuma mudança bate com esses filtros"
+            motivo={'O histórico tem registros, o recorte atual é que não alcança nenhum. Use "Limpar filtros" acima para ver tudo de novo.'}
+          />
+        ) : (
             <HistoricoTimeline>
               {gruposVisiveis.map(([dia, linhas], indiceGrupo) => (
                 <div key={dia}>
@@ -762,16 +694,27 @@ export function ProjetoHistorico() {
               ))}
             </HistoricoTimeline>
           )}
-          {temMaisDias && (
-            <HistoricoCarregarMais
-              type="button"
-              onClick={() => setDiasVisiveis((atual) => atual + DIAS_POR_PAGINA)}
-            >
-              Carregar mais dias
-            </HistoricoCarregarMais>
-          )}
-        </PageStack>
-      </HistoricoGrid>
+        {temMaisDias && (
+          <HistoricoCarregarMais
+            type="button"
+            onClick={() => setDiasVisiveis((atual) => atual + DIAS_POR_PAGINA)}
+          >
+            Carregar mais dias
+          </HistoricoCarregarMais>
+        )}
+
+        {/* ⚠ "Limpar histórico" vivia no cabeçalho do card de Filtros, ao lado
+            de controles que só mudam o que se VÊ — vizinhança que sugeria que
+            ela também fosse só de exibição. Aqui embaixo, depois de tudo que
+            ela afeta, e só para quem pode. */}
+        {podeExcluir && (
+          <HistoricoRodape>
+            <PageButton type="button" $variant="ghost" onClick={() => setConfirmandoLimpar(true)}>
+              Limpar histórico
+            </PageButton>
+          </HistoricoRodape>
+        )}
+      </div>
 
       {excluindo && (
         <ConfirmarModal
