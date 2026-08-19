@@ -107,9 +107,20 @@ export function CalendarioBancas({
   const [data, setData] = useState(() => new Date());
   const [diaAberto, setDiaAberto] = useState<Date | null>(null);
 
+  /** O tipo `Banca.data_hora` promete `string` sempre, mas a promessa vale
+   *  pra quem já filtrou por "tem banca de verdade" — esta tela recebe a
+   *  lista crua da página, que inclui banca "não marcada" (a linha nasce
+   *  junto do escopo, sem data, status `nao_marcada`; ver `get_projeto.py`).
+   *  Um calendário não tem onde desenhar um evento sem data, então essas
+   *  ficam de fora aqui — não é perda: "não marcada" não pertence a dia
+   *  nenhum mesmo. Sem este filtro, `paraDataUtc(null)` vira Invalid Date e
+   *  `format()` explode a página inteira (era o bug real por trás do "a aba
+   *  Calendário não funciona"). */
+  const marcadas = useMemo(() => bancas.filter((b) => b.data_hora), [bancas]);
+
   const porDia = useMemo(() => {
     const mapa = new Map<string, Banca[]>();
-    for (const b of bancas) {
+    for (const b of marcadas) {
       const chave = chaveData(paraDataUtc(b.data_hora));
       const lista = mapa.get(chave) ?? [];
       lista.push(b);
@@ -121,16 +132,16 @@ export function CalendarioBancas({
       lista.sort((a, b) => horaDe(a.data_hora).localeCompare(horaDe(b.data_hora)));
     }
     return mapa;
-  }, [bancas]);
+  }, [marcadas]);
 
   const doPeriodo = useMemo(
     () =>
-      bancas.filter((b) =>
+      marcadas.filter((b) =>
         visao === "dia"
           ? isSameDay(paraDataUtc(b.data_hora), data)
           : isSameMonth(paraDataUtc(b.data_hora), data),
       ),
-    [bancas, data, visao],
+    [marcadas, data, visao],
   );
 
   /**
@@ -291,7 +302,7 @@ export function CalendarioBancas({
         </LegendaItem>
       </Legenda>
 
-      {bancas.length === 0 && <EmptyText>Nenhuma banca marcada.</EmptyText>}
+      {marcadas.length === 0 && <EmptyText>Nenhuma banca marcada.</EmptyText>}
 
       {diaAberto && (
         <DiaModal
