@@ -24,8 +24,18 @@ import {
 } from "./Projetos.styled";
 
 interface Props {
-  /** A cor pré-selecionada, a próxima da rampa, pela ordem da etapa. */
+  /** A cor pré-selecionada: a próxima da rampa ao criar, a atual ao editar. */
   corInicial: string;
+  /**
+   * O nome atual, quando o modal está EDITANDO uma etapa que já existe.
+   *
+   * ⭐ O mesmo formulário serve aos dois casos: criar e editar pedem
+   * exatamente os mesmos dois campos (nome e cor), e um segundo modal só para
+   * trocar o verbo do botão seria a mesma tela mantida em dois lugares.
+   */
+  nomeInicial?: string;
+  /** "Nova etapa" por padrão; "Editar etapa" quando `nomeInicial` vem. */
+  edicao?: boolean;
   /**
    * Os escopos em que a etapa pode nascer, todos eles: o cadeado de
    * oficialização acabou, e pintar além da janela avisa em vez de impedir
@@ -52,12 +62,20 @@ interface Props {
  */
 export function NovaEtapaModal({
   corInicial,
+  nomeInicial,
+  edicao,
   escopos,
   escopoFixo,
   onCancelar,
   onCriar,
 }: Props) {
-  const [nome, setNome] = useState("");
+  /** O nome do escopo em que a etapa vai nascer, para o título dizer.
+   *  Com o botão morando dentro do grupo do escopo na legenda, o campo de
+   *  escopo some do formulário — e sem ele o modal não confirmava em qual
+   *  escopo a etapa ia cair, num projeto com três. */
+  const nomeDoEscopo = escopos.find((e) => e.id === escopoFixo)?.nome ?? null;
+
+  const [nome, setNome] = useState(nomeInicial ?? "");
   const [cor, setCor] = useState(corInicial);
   const [escopoId, setEscopoId] = useState<number | null>(escopoFixo ?? escopos[0]?.id ?? null);
   const [salvando, setSalvando] = useState(false);
@@ -89,7 +107,13 @@ export function NovaEtapaModal({
     try {
       await onCriar(limpo, cor, escopoId);
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao criar a etapa");
+      setErro(
+        err instanceof Error
+          ? err.message
+          : edicao
+            ? "Erro ao salvar a etapa"
+            : "Erro ao criar a etapa",
+      );
       setSalvando(false);
     }
     // Sem `setSalvando(false)` no sucesso: quem criou desmonta este modal, e
@@ -102,7 +126,13 @@ export function NovaEtapaModal({
       <ModalContent onMouseDown={(e) => e.stopPropagation()}>
         <form onSubmit={enviar}>
           <ModalHeader>
-            <ModalTitle>Nova etapa</ModalTitle>
+            <ModalTitle>
+              {edicao
+                ? "Editar etapa"
+                : nomeDoEscopo
+                  ? `Nova etapa em ${nomeDoEscopo}`
+                  : "Nova etapa"}
+            </ModalTitle>
             <ModalClose type="button" aria-label="Fechar" onClick={onCancelar}>
               <X size={16} />
             </ModalClose>
@@ -163,7 +193,13 @@ export function NovaEtapaModal({
               Cancelar
             </PageButton>
             <PageButton type="submit" disabled={salvando}>
-              {salvando ? "Criando…" : "Criar etapa"}
+              {salvando
+                ? edicao
+                  ? "Salvando…"
+                  : "Criando…"
+                : edicao
+                  ? "Salvar"
+                  : "Criar etapa"}
             </PageButton>
           </ModalFooter>
         </form>

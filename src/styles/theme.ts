@@ -125,6 +125,27 @@ export const theme = {
     normal: '200ms ease-in-out',
     slow: '300ms ease-in-out',
   },
+
+  /**
+   * A escala de empilhamento, quatro degraus e nada entre eles.
+   *
+   * O app tem portal (`SelectCustom`), cabeçalho de tabela `sticky`, barra de
+   * filtros e modal convivendo na mesma tela. Sem uma escala, cada um chuta um
+   * número, o chute vira `9999`, e o próximo elemento precisa de `10000` —
+   * até alguém descobrir que `z-index` não atravessa contexto de empilhamento
+   * e o número grande nunca foi o problema.
+   *
+   * `base` é o piso de quem só precisa passar por cima do irmão (cabeçalho de
+   * tabela sobre as linhas). `sticky` é a barra que acompanha a rolagem.
+   * `popover` é o que abre por cima do conteúdo sem bloqueá-lo (listbox do
+   * select, popover de datas). `modal` é o que bloqueia a tela.
+   */
+  zIndex: {
+    base: 10,
+    sticky: 20,
+    popover: 30,
+    modal: 50,
+  },
 };
 
 export type Theme = typeof theme;

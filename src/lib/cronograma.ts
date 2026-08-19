@@ -1,6 +1,66 @@
 import { apiFetch } from "@/lib/api";
 import type { CronogramaResposta, EtapaCronograma, MarcoCronograma } from "@/types/cronograma";
 
+/** Uma etapa que existe com nome e cor, mas ainda sem nenhum dia pintado. */
+export interface RascunhoEtapa {
+  escopoId: number;
+  nome: string;
+  cor: string;
+}
+
+const CHAVE_RASCUNHOS = "atlas:cronograma:rascunhos";
+
+/**
+ * ⭐ **As etapas sem nenhum dia pintado, guardadas POR NAVEGADOR.**
+ *
+ * ⚠ `cronograma_etapa` é uma linha COM datas — `data_inicio` e `data_fim` são
+ * obrigatórios. Uma etapa sem trecho nenhum simplesmente NÃO TEM como existir
+ * no banco: apagar o último dia apaga a linha, e com ela o nome e a cor que
+ * alguém escolheu. Quem só queria limpar os dias perdia a etapa inteira e
+ * tinha de recriá-la.
+ *
+ * Guardar aqui é o que dá para fazer sem tocar no backend: a etapa vazia
+ * sobrevive ao F5 e à navegação entre abas, volta para a legenda com nome e
+ * cor, e some sozinha assim que ganha o primeiro trecho (aí ela existe no
+ * banco de verdade) ou quando alguém a exclui de propósito.
+ *
+ * ⚠ **É por navegador, não por conta**: a etapa vazia não aparece para o
+ * resto da equipe nem em outro computador. Para ela ser de verdade, o backend
+ * precisa aceitar etapa sem data — enquanto não aceitar, esta é a diferença
+ * entre perder o trabalho e não perder.
+ */
+export function getRascunhos(projetoId: number): RascunhoEtapa[] {
+  try {
+    const bruto = window.localStorage.getItem(`${CHAVE_RASCUNHOS}:${projetoId}`);
+    const lido: unknown = bruto ? JSON.parse(bruto) : [];
+    if (!Array.isArray(lido)) return [];
+    // O que veio do disco pode ser de uma versão antiga do formato: só passa
+    // o que tem os três campos com o tipo certo.
+    return lido.filter(
+      (r): r is RascunhoEtapa =>
+        !!r &&
+        typeof r === "object" &&
+        typeof (r as RascunhoEtapa).escopoId === "number" &&
+        typeof (r as RascunhoEtapa).nome === "string" &&
+        typeof (r as RascunhoEtapa).cor === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function salvarRascunhos(projetoId: number, rascunhos: RascunhoEtapa[]): void {
+  try {
+    window.localStorage.setItem(
+      `${CHAVE_RASCUNHOS}:${projetoId}`,
+      JSON.stringify(rascunhos),
+    );
+  } catch {
+    // Modo privado ou quota cheia: a etapa vazia ainda vale para esta sessão
+    // (já está no state do React), só não sobrevive a um F5.
+  }
+}
+
 /** A aba inteira numa ida só, inclusive os dias cinzas da janela. */
 export function getCronograma(projetoId: number, token: string) {
   return apiFetch<CronogramaResposta>(`/projetos/${projetoId}/cronograma`, { token });

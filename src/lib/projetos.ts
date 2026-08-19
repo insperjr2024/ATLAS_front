@@ -528,7 +528,16 @@ const STATUS_PAUSAVEIS: StatusProjeto[] = [
 ];
 
 /** A fila do ciclo de vida, na ordem. `pausado` fica fora, é estado à parte. */
-const STATUS_ORDEM: StatusProjeto[] = [
+/**
+ * O funil, em ordem. Era privado porque só `destinosValidos` o consultava;
+ * a trilha de etapas da página do projeto desenha o funil INTEIRO (inclusive
+ * as etapas para onde não dá para ir agora), e reconstruir essa ordem lá seria
+ * uma segunda fonte de verdade — divergiria na primeira etapa nova.
+ *
+ * ⚠ `pausado` não está aqui de propósito: é um estado à parte, não um ponto
+ * do funil.
+ */
+export const STATUS_ORDEM: StatusProjeto[] = [
   "vendido",
   "ambientacao",
   "em_andamento",
@@ -596,6 +605,30 @@ export function ordemStatus(status: StatusProjeto): number {
 /* ------------------------------------------------------------------ */
 
 const DIAS_DA_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
+/**
+ * O teto de consultores COMO A TELA DEVE MOSTRAR: o maior entre o cadastrado
+ * e o número de gente de fato alocada.
+ *
+ * ⚠ **Isto mascara uma divergência do backend, de propósito e com o aval de
+ * quem usa.** `max_consultores` é escolhido na criação e não sobe sozinho
+ * quando alguém é alocado por fora (pela tela de Vagas), então um projeto com
+ * cinco consultores e teto 3 exibia **"5/3"** — uma fração impossível, que faz
+ * quem lê duvidar do número, não do cadastro.
+ *
+ * 📐 A correção de verdade é no backend: alocar além do teto deveria subir o
+ * teto (ou recusar a alocação). Enquanto isso não existe, a tela mostra 5/5 em
+ * vez de 5/3 — assumindo que a realidade da equipe é mais confiável que um
+ * campo que ninguém reabre depois da criação.
+ *
+ * Projeto dentro do teto não muda nada: 2 de 5 continua 2 de 5.
+ */
+export function tetoDeConsultores(
+  maxConsultores: number | null | undefined,
+  alocados: number,
+): number {
+  return Math.max(maxConsultores ?? 0, alocados);
+}
 
 export function rotuloDiaSemana(dia: number | null | undefined): string {
   if (!dia || dia < 1 || dia > 7) return "—";

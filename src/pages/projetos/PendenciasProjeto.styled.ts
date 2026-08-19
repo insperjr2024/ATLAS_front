@@ -45,8 +45,10 @@ export const Lista = styled.ul`
  */
 export const Linha = styled.li`
   display: grid;
-  grid-template-columns: 0.5rem minmax(9rem, 1fr) minmax(0, 14rem) 3.5rem 6.5rem;
-  align-items: center;
+  grid-template-columns: 0.5rem minmax(9rem, 1fr) minmax(10rem, 1fr) 3.5rem 6.5rem;
+  /* start, e não center: quando "onde" quebra em duas linhas, centralizar
+     deixaria sinal, prazo e dono boiando no meio da altura. */
+  align-items: start;
   gap: ${theme.spacing.md};
 
   padding: ${theme.spacing.sm} 0;
@@ -83,6 +85,8 @@ export const Sinal = styled.span<{ $gravidade: GravidadePendencia }>`
   border-radius: ${theme.borderRadius.full};
   background: ${({ $gravidade }) => COR[$gravidade]};
   flex-shrink: 0;
+  /* Alinha com a primeira linha do texto ao lado, não com o topo da célula. */
+  margin-top: 0.45rem;
 `;
 
 /** O que falta — a coluna que a pessoa varre. Curta por contrato. */
@@ -98,13 +102,24 @@ export const Acao = styled.span`
   }
 `;
 
-/** Onde: o escopo, ou o projeto quando a pendência é dele. */
+/**
+ * Onde: o escopo, ou o projeto quando a pendência é dele.
+ *
+ * ⚠ **Quebra em duas linhas em vez de cortar.** Esta coluna tinha largura fixa
+ * de 14rem com `text-overflow: ellipsis`, e nome de escopo do tamanho de
+ * "Desenvolvimento Web (Front/Back)" — que é o comprimento NORMAL de um
+ * escopo do catálogo, não um caso extremo — virava "Desenvolvimento Web
+ * (Fro…". Reticências aqui destroem justamente o dado que responde "onde":
+ * dois escopos da mesma frente costumam diferir no fim do nome.
+ *
+ * A coluna agora acompanha a largura disponível (`minmax(10rem, 1fr)`) e o
+ * texto quebra. Duas linhas numa pendência custam menos que um nome ilegível
+ * em todas elas.
+ */
 export const Onde = styled.span`
   font-size: ${theme.fontSize.sm};
   color: ${theme.colors.mutedForeground};
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 `;
 
 export const Prazo = styled.span<{ $vencido: boolean }>`

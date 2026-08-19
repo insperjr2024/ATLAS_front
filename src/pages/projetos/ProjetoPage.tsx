@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import {
   Archive,
   ArchiveRestore,
   ArrowLeft,
-  ChevronDown,
   Download,
   ExternalLink,
+  MoreHorizontal,
+  Pause as PauseIcon,
   Pencil,
   Trash2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
 import { getSolicitacoesRecebidas } from "@/lib/vagas";
-import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
 import {
   baixarAnexoProposta,
   arquivarProjeto,
@@ -26,7 +26,8 @@ import {
   mudarStatus,
   podePausar,
   ROTULO_STATUS,
-  tomDoStatus,
+  STATUS_ORDEM,
+  tetoDeConsultores,
 } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import type { UsuarioResumo } from "@/types/auth";
@@ -34,12 +35,11 @@ import type { Frente } from "@/types/banca";
 import type { ProjetoCompleto, StatusProjeto } from "@/types/projeto";
 import { Ponto } from "@/components/kanban/Kanban.styled";
 import { FotoCircular } from "@/components/Avatar";
+import { corDaPessoa, iniciais } from "@/lib/avatar";
 import { pode } from "@/utils/permissoes";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
-import { CORES_SUGERIDAS } from "@/lib/colunas-tarefa";
 import { EditarProjetoModal } from "./EditarProjetoModal";
 import {
-  PageBadge,
   PageButtonSm,
   PageLoadingBlock,
   ErrorBlock,
@@ -49,36 +49,34 @@ import {
 import {
   PageHeaderText,
   PageHeading,
-  PageSubheading,
   FormErrorText,
   ProjetoShell,
   ShellHeader,
   VoltarLink,
   StatusRow,
-  TagRow,
   FrenteTag,
   AvisoBanner,
   AvisoLink,
   TabBar,
   TabLink,
-  EtapaSeletorWrap,
-  EtapaBotaoAtual,
-  EtapaMenu,
-  EtapaOpcaoBotao,
-  NomeEditavel,
-  NomeBotaoEditar,
+  PipelineTrilha,
+  PipelineEtapa,
+  PipelinePonto,
+  PipelineConector,
+  PausadoAviso,
+  AcoesWrap,
+  AcoesBotao,
+  AcoesMenu,
+  AcoesItem,
+  AcoesDivisor,
+  IdentidadeLinha,
+  MetaLinha,
+  MetaSeparador,
+  EquipePilha,
+  EquipeAvatarPequeno,
+  EquipeMais,
   PropostaLink,
   PropostaBotao,
-  DescricaoCabecalho,
-  DescricaoVerMais,
-  EquipeCabecalho,
-  EquipeGrupo,
-  EquipeRotulo,
-  EquipeOcupacao,
-  EquipePessoa,
-  EquipeAvatar,
-  EquipeVazia,
-  StatusPilula,
 } from "./Projetos.styled";
 
 /** O que o shell entrega para as abas. */
@@ -87,6 +85,15 @@ export interface ProjetoContexto {
   usuarios: UsuarioResumo[];
   frentes: Frente[];
   recarregar: () => Promise<void>;
+  /**
+   * Abre o modal de edição do cadastro — o MESMO que o menu de ações do
+   * cabeçalho abre.
+   *
+   * ⚠ Existe para a aba não montar um segundo modal de equipe. Uma tela com
+   * duas portas para editar a mesma coisa acaba com as duas divergindo: foi o
+   * que já aconteceu quando nome, descrição e equipe tinham um botão cada.
+   */
+  abrirEdicao: () => void;
 }
 
 export function useProjeto() {
@@ -123,22 +130,6 @@ function voltarDoLocation(state: unknown): { to: string; rotulo: string } {
   return { to: "/projetos", rotulo: "Voltar para projetos" };
 }
 
-/** Quantos caracteres cabem em duas linhas do cabeçalho, aproximadamente. */
-const CORTE_DESCRICAO = 150;
-
-/** "Ana Souza" → "AS". Duas letras: três não se leem em 1.5rem. */
-function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/);
-  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
-  return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
-}
-
-/** Cor estável por pessoa: o id não muda, então o avatar não troca de cor
- *  entre telas. Mesma paleta das colunas de tarefa, para não inventar uma
- *  segunda linguagem de cor na plataforma. */
-function corDaPessoa(usuarioId: number): string {
-  return CORES_SUGERIDAS[usuarioId % CORES_SUGERIDAS.length];
-}
 
 export function ProjetoPage() {
   const { id } = useParams();
@@ -170,7 +161,6 @@ export function ProjetoPage() {
   const [excluindo, setExcluindo] = useState(false);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [editandoProjeto, setEditandoProjeto] = useState(false);
-  const [descricaoInteira, setDescricaoInteira] = useState(false);
   const [baixandoAnexo, setBaixandoAnexo] = useState(false);
   const [pedidosPendentes, setPedidosPendentes] = useState(0);
 
@@ -312,13 +302,7 @@ export function ProjetoPage() {
   const fotoUsuario = (id: number) => usuarios.find((u) => u.id === id)?.foto ?? null;
   const coordenadores = projeto.equipe.filter((m) => m.papel === "coordenador");
   const consultores = projeto.equipe.filter((m) => m.papel !== "coordenador");
-  const teto = projeto.max_consultores ?? 0;
-  const equipeCheia = teto > 0 && consultores.length >= teto;
-
-  const descricao = projeto.descricao?.trim();
-  /* Acima disso o "ver mais" aparece; abaixo, ele seria um botão que não faz
-     nada, porque as duas linhas já cabem o texto inteiro. */
-  const descricaoCortavel = !!descricao && descricao.length > CORTE_DESCRICAO;
+  const teto = tetoDeConsultores(projeto.max_consultores, consultores.length);
 
   const podeMudarStatus = pode(usuario, "mudar_status_projeto");
   const podeArquivar = pode(usuario, "arquivar_projeto");
@@ -328,178 +312,141 @@ export function ProjetoPage() {
   const podeRenomear = !!usuario?.permissoes.pode_editar_equipe;
   const temKickoff = !!projeto.data_kickoff;
 
-  // Livre entre as etapas ativas, nos dois sentidos, não só a vizinha.
-  // Pausado é um estado à parte: só o retomar aparece. Vendido só oferece
-  // Ambientação, e só quando já existe uma data de kickoff marcada.
-  const opcoesEtapa: EtapaOpcao[] =
-    projeto.status === "pausado"
-      ? [{ chave: "retomar", rotulo: "Retomar", cor: null }]
-      : [
-          ...destinosValidos(projeto.status, temKickoff).map((status) => ({
-            chave: status,
-            rotulo: ROTULO_STATUS[status],
-            cor: CORES_STATUS[status],
-          })),
-          ...(podePausar(projeto.status)
-            ? [{ chave: "pausado", rotulo: "Pausar", cor: CORES_STATUS.pausado }]
-            : []),
-        ];
+  /**
+   * As etapas para onde ESTE projeto pode ir agora — livre entre as ativas,
+   * nos dois sentidos, não só a vizinha.
+   *
+   * A trilha usa isto para saber quais pontos respondem ao clique; os demais
+   * ela desenha como marcador. Vendido só libera Ambientação, e só com uma
+   * data de kickoff marcada. Pausado não tem destino aqui: sai pelo Retomar.
+   */
+  const destinosDaEtapa = new Set(destinosValidos(projeto.status, temKickoff));
 
-  const contexto: ProjetoContexto = { projeto, usuarios, frentes, recarregar: carregar };
+  /**
+   * A equipe na pilha de rostos: coordenação primeiro, consultores depois.
+   *
+   * O limite existe para a pilha não empurrar a proposta para a linha de
+   * baixo num projeto grande — o excedente vira "+N", e o `title` continua
+   * carregando todo mundo.
+   */
+  const MAX_AVATARES = 5;
+  const equipeOrdenada = [...coordenadores, ...consultores];
+  const equipeVisivel = equipeOrdenada.slice(0, MAX_AVATARES);
+  const equipeExcedente = equipeOrdenada.length - equipeVisivel.length;
+  const equipeTitulo = [
+    coordenadores.length > 0
+      ? `Coordenação: ${coordenadores.map((m) => nomeUsuario(m.usuario_id)).join(", ")}`
+      : "Sem coordenador",
+    consultores.length > 0
+      ? `Consultores: ${consultores.map((m) => nomeUsuario(m.usuario_id)).join(", ")}`
+      : "Ninguém alocado",
+  ].join(" · ");
+
+  const contexto: ProjetoContexto = {
+    projeto,
+    usuarios,
+    frentes,
+    recarregar: carregar,
+    abrirEdicao: () => setEditandoProjeto(true),
+  };
 
   return (
     <ProjetoShell>
+      {/* ⭐ **O cabeçalho era sete blocos empilhados** — nome com lápis, dois
+          links de proposta, cliente, tags, parágrafo de descrição, equipe com
+          um avatar e um nome por pessoa, e uma fileira de botões de etapa —
+          repetidos no topo das CINCO abas. Passava da metade da tela antes de
+          o conteúdo da aba começar.
+
+          Agora são três linhas com papéis distintos: **quem é** (nome, tags,
+          ações), **contexto** (cliente, equipe, proposta) e **onde está** (a
+          trilha de etapas). A descrição, que era o item mais longo do topo e o
+          menos consultado, desceu inteira para um card na Visão geral. */}
       <ShellHeader>
         <PageHeaderText>
           <VoltarLink to={voltar.to}>
             <ArrowLeft size={14} />
             {voltar.rotulo}
           </VoltarLink>
-          {/* ⭐ Um lápis só, ao lado do nome, para TODO o cadastro do projeto
-              (14/08/2026). Antes eram três botões em dois lugares — nome aqui,
-              descrição e equipe em cards da Visão geral —, e o cabeçalho ficava
-              coberto de afordâncias para a mesma ideia. */}
-          <NomeEditavel>
+
+          <IdentidadeLinha>
             <PageHeading>{projeto.nome}</PageHeading>
-            {podeRenomear && (
-              <NomeBotaoEditar
-                type="button"
-                aria-label="Editar projeto"
-                title="Editar nome, descrição e equipe"
-                onClick={() => setEditandoProjeto(true)}
-              >
-                <Pencil size={14} />
-              </NomeBotaoEditar>
-            )}
-            {/* ⭐ A proposta ao lado do nome: é documento do projeto, e mora
-                junto da identidade dele. Antes era uma linha solta no meio da
-                Visão geral, sem nada dizendo de onde vinha.
-                ⚠ O rótulo é VERBO + "proposta", não "Proposta" sozinho — um
-                substantivo ao lado de um botão não diz o que o clique faz.
-                Mesmo par ícone/texto que a plataforma já usava antes de o
-                botão morar aqui: seta pra fora = abre outra aba; download =
-                baixa um arquivo. */}
-            {projeto.link_proposta && (
-              <PropostaLink href={projeto.link_proposta} target="_blank" rel="noreferrer">
-                <ExternalLink size={13} />
-                Abrir proposta
-              </PropostaLink>
-            )}
-            {projeto.anexo_proposta_nome && (
-              <PropostaBotao type="button" onClick={baixarProposta} disabled={baixandoAnexo}>
-                <Download size={13} />
-                {baixandoAnexo ? "Baixando…" : "Baixar proposta"}
-              </PropostaBotao>
-            )}
-          </NomeEditavel>
-          <PageSubheading>{projeto.cliente}</PageSubheading>
-          <TagRow>
             {projeto.frente_ids.map((frenteId) => (
               <FrenteTag key={frenteId}>{nomeFrente(frenteId)}</FrenteTag>
             ))}
             {projeto.sinergico && <FrenteTag>sinérgico</FrenteTag>}
-          </TagRow>
+            {projeto.arquivado_em && <FrenteTag>arquivado</FrenteTag>}
 
-          {/* Descrição e equipe subiram da Visão geral: são contexto do
-              projeto, e quem precisa deles precisa em qualquer aba. */}
-          {descricao && (
-            <>
-              <DescricaoCabecalho $inteira={descricaoInteira || !descricaoCortavel}>
-                {descricao}
-              </DescricaoCabecalho>
-              {descricaoCortavel && (
-                <DescricaoVerMais type="button" onClick={() => setDescricaoInteira((v) => !v)}>
-                  {descricaoInteira ? "Ver menos" : "Ver mais"}
-                </DescricaoVerMais>
-              )}
-            </>
-          )}
-
-          <EquipeCabecalho>
-            <EquipeGrupo>
-              <EquipeRotulo>Coordenação</EquipeRotulo>
-              {coordenadores.length === 0 ? (
-                <EquipeVazia>sem coordenador</EquipeVazia>
-              ) : (
-                coordenadores.map((m) => (
-                  <EquipePessoa key={m.usuario_id}>
-                    <EquipeAvatar $cor={corDaPessoa(m.usuario_id)}>
-                      {fotoUsuario(m.usuario_id) ? (
-                        <FotoCircular src={fotoUsuario(m.usuario_id)!} />
-                      ) : (
-                        iniciais(nomeUsuario(m.usuario_id))
-                      )}
-                    </EquipeAvatar>
-                    {nomeUsuario(m.usuario_id)}
-                  </EquipePessoa>
-                ))
-              )}
-            </EquipeGrupo>
-
-            <EquipeGrupo>
-              <EquipeRotulo>
-                Consultores
-                {teto > 0 && (
-                  <EquipeOcupacao $cheio={equipeCheia}>
-                    {consultores.length} de {teto}
-                  </EquipeOcupacao>
-                )}
-              </EquipeRotulo>
-              {consultores.length === 0 ? (
-                <EquipeVazia>ninguém alocado</EquipeVazia>
-              ) : (
-                consultores.map((m) => (
-                  <EquipePessoa key={`${m.usuario_id}-${m.entrou_em}`}>
-                    <EquipeAvatar $cor={corDaPessoa(m.usuario_id)}>
-                      {fotoUsuario(m.usuario_id) ? (
-                        <FotoCircular src={fotoUsuario(m.usuario_id)!} />
-                      ) : (
-                        iniciais(nomeUsuario(m.usuario_id))
-                      )}
-                    </EquipeAvatar>
-                    {nomeUsuario(m.usuario_id)}
-                  </EquipePessoa>
-                ))
-              )}
-            </EquipeGrupo>
-          </EquipeCabecalho>
-        </PageHeaderText>
-
-        <StatusRow>
-          {podeMudarStatus ? (
-            <EtapaSeletor
-              statusAtual={projeto.status}
-              rotuloAtual={ROTULO_STATUS[projeto.status]}
-              opcoes={opcoesEtapa}
-              ocupado={mudandoStatus}
-              onSelecionar={aplicarStatus}
+            <MenuAcoesProjeto
+              podeEditar={podeRenomear}
+              podeArquivar={podeArquivar}
+              podeExcluir={podeExcluir}
+              arquivado={!!projeto.arquivado_em}
+              ocupado={arquivando || excluindo}
+              onEditar={() => setEditandoProjeto(true)}
+              onArquivar={() => setConfirmandoArquivamento(true)}
+              onExcluir={() => setConfirmandoExclusao(true)}
             />
-          ) : (
-            <PageBadge $tone={tomDoStatus(projeto.status)}>{ROTULO_STATUS[projeto.status]}</PageBadge>
-          )}
-          {podeArquivar && (
-            <PageButtonSm
-              type="button"
-              $variant="outline"
-              disabled={arquivando}
-              onClick={() => setConfirmandoArquivamento(true)}
-            >
-              {projeto.arquivado_em ? <ArchiveRestore size={14} /> : <Archive size={14} />}
-              {projeto.arquivado_em ? "Desarquivar" : "Arquivar"}
-            </PageButtonSm>
-          )}
-          {podeExcluir && projeto.arquivado_em && (
-            <PageButtonSm
-              type="button"
-              $variant="outline"
-              disabled={excluindo}
-              onClick={() => setConfirmandoExclusao(true)}
-            >
-              <Trash2 size={14} />
-              Apagar para sempre
-            </PageButtonSm>
-          )}
-        </StatusRow>
+          </IdentidadeLinha>
+
+          <MetaLinha>
+            {projeto.cliente && <span>{projeto.cliente}</span>}
+
+            {/* A equipe inteira numa pilha de rostos. Quem precisa dos nomes
+                tem o `title` aqui e a lista completa na Visão geral. */}
+            {equipeVisivel.length > 0 && (
+              <>
+                {projeto.cliente && <MetaSeparador>·</MetaSeparador>}
+                <EquipePilha title={equipeTitulo}>
+                  {equipeVisivel.map((m) => (
+                    <EquipeAvatarPequeno key={m.usuario_id} $cor={corDaPessoa(m.usuario_id)}>
+                      {fotoUsuario(m.usuario_id) ? (
+                        <FotoCircular src={fotoUsuario(m.usuario_id)!} />
+                      ) : (
+                        iniciais(nomeUsuario(m.usuario_id))
+                      )}
+                    </EquipeAvatarPequeno>
+                  ))}
+                  {equipeExcedente > 0 && <EquipeMais $cor="">+{equipeExcedente}</EquipeMais>}
+                </EquipePilha>
+                {teto > 0 && (
+                  <span title={`${consultores.length} de ${teto} consultores`}>
+                    {consultores.length}/{teto}
+                  </span>
+                )}
+              </>
+            )}
+
+            {/* ⚠ O rótulo é VERBO + "proposta", não "Proposta" sozinho: um
+                substantivo ao lado de um botão não diz o que o clique faz. */}
+            {projeto.link_proposta && (
+              <>
+                <MetaSeparador>·</MetaSeparador>
+                <PropostaLink href={projeto.link_proposta} target="_blank" rel="noreferrer">
+                  <ExternalLink size={13} />
+                  Abrir proposta
+                </PropostaLink>
+              </>
+            )}
+            {projeto.anexo_proposta_nome && (
+              <>
+                <MetaSeparador>·</MetaSeparador>
+                <PropostaBotao type="button" onClick={baixarProposta} disabled={baixandoAnexo}>
+                  <Download size={13} />
+                  {baixandoAnexo ? "Baixando…" : "Baixar proposta"}
+                </PropostaBotao>
+              </>
+            )}
+          </MetaLinha>
+
+          <PipelineEtapas
+            statusAtual={projeto.status}
+            destinos={destinosDaEtapa}
+            podePausar={podePausar(projeto.status) && podeMudarStatus}
+            ocupado={mudandoStatus}
+            onSelecionar={aplicarStatus}
+          />
+        </PageHeaderText>
       </ShellHeader>
 
       {erroStatus && <FormErrorText>{erroStatus}</FormErrorText>}
@@ -515,10 +462,6 @@ export function ProjetoPage() {
             Responder
           </AvisoLink>
         </AvisoBanner>
-      )}
-
-      {projeto.arquivado_em && (
-        <AvisoBanner>Projeto arquivado, não aparece nas listagens normais.</AvisoBanner>
       )}
 
       {projeto.kickoff_pendente && (
@@ -619,88 +562,222 @@ export function ProjetoPage() {
 
 /* ------------------------------------------------------------------ */
 
-interface EtapaOpcao {
-  /** O valor que `aplicarStatus` espera: a etapa de destino, `"pausado"` ou `"retomar"`. */
-  chave: string;
-  rotulo: string;
-  /** `null` pro Retomar, não dá pra saber a cor de destino sem reconsultar o histórico. */
-  cor: string | null;
-}
-
 /**
- * Escolher a etapa como lista, não como botõezinhos de avançar/voltar/pausar
- * espalhados, a pílula usa a MESMA cor do kanban de projetos (`CORES_STATUS`),
- * pra não parecer um controle diferente do kanban.
+ * O funil do projeto como uma trilha percorrida.
+ *
+ * ⭐ **A terceira forma deste controle.** Foi dropdown (dois cliques, destinos
+ * escondidos) e foi fileira de botões — e a fileira ficou pior, porque
+ * `destinosValidos` libera o trânsito entre todas as etapas ativas: eram sete
+ * botões mais Pausar mais Arquivar no topo de todas as abas.
+ *
+ * 📐 **A pergunta certa não era "para onde mover".** Quem abre um projeto quer
+ * saber **em que ponto ele está**, e isso um funil desenhado responde de
+ * relance. Mover deixa de ser um formulário e vira o gesto óbvio: clicar
+ * adiante avança, clicar atrás volta.
+ *
+ * ⚠ **Etapa inalcançável não é botão desabilitado, é `span`.** Um botão morto
+ * com tooltip promete um controle que não existe, e no celular a tooltip nem
+ * aparece. Aqui ela simplesmente não é clicável, e o ponto vazado já diz que
+ * ainda não chegou lá.
  */
-function EtapaSeletor({
+function PipelineEtapas({
   statusAtual,
-  rotuloAtual,
-  opcoes,
+  destinos,
+  podePausar: mostrarPausar,
   ocupado,
   onSelecionar,
 }: {
   statusAtual: StatusProjeto;
-  rotuloAtual: string;
-  opcoes: EtapaOpcao[];
+  /** As etapas que aceitam clique agora (vem de `destinosValidos`). */
+  destinos: Set<StatusProjeto>;
+  mostrarPausar?: boolean;
+  podePausar: boolean;
   ocupado: boolean;
   onSelecionar: (chave: string) => void;
+}) {
+  const pausado = statusAtual === "pausado";
+  // Pausado não é ponto do funil: a trilha continua mostrando onde o projeto
+  // parou, esmaecida, e o estado real vem na faixa ao lado.
+  const indiceAtual = STATUS_ORDEM.indexOf(statusAtual);
+
+  return (
+    <StatusRow>
+      <PipelineTrilha role="group" aria-label="Etapa do projeto" $esmaecida={pausado}>
+        {STATUS_ORDEM.map((status, i) => {
+          const estado = i < indiceAtual ? "feito" : i === indiceAtual ? "atual" : "futuro";
+          const clicavel = destinos.has(status);
+          const cor = CORES_STATUS[status];
+          return (
+            <Fragment key={status}>
+              {i > 0 && <PipelineConector aria-hidden $percorrido={i <= indiceAtual} />}
+              <PipelineEtapa
+                as={clicavel ? "button" : "span"}
+                type={clicavel ? "button" : undefined}
+                $estado={estado}
+                $cor={cor}
+                $clicavel={clicavel}
+                disabled={clicavel ? ocupado : undefined}
+                aria-current={estado === "atual" ? "step" : undefined}
+                title={clicavel ? `Mover para ${ROTULO_STATUS[status]}` : ROTULO_STATUS[status]}
+                onClick={clicavel ? () => onSelecionar(status) : undefined}
+              >
+                <PipelinePonto $estado={estado} $cor={cor} />
+                {ROTULO_STATUS[status]}
+              </PipelineEtapa>
+            </Fragment>
+          );
+        })}
+      </PipelineTrilha>
+
+      {pausado ? (
+        <PausadoAviso>
+          <Ponto $cor={CORES_STATUS.pausado} />
+          Pausado
+          <PageButtonSm
+            type="button"
+            $variant="outline"
+            disabled={ocupado}
+            onClick={() => onSelecionar("retomar")}
+          >
+            Retomar
+          </PageButtonSm>
+        </PausadoAviso>
+      ) : (
+        mostrarPausar && (
+          <PageButtonSm
+            type="button"
+            $variant="ghost"
+            disabled={ocupado}
+            title="Pausar o projeto — a contagem de dias para"
+            onClick={() => onSelecionar("pausado")}
+          >
+            <PauseIcon size={13} />
+            Pausar
+          </PageButtonSm>
+        )
+      )}
+    </StatusRow>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Editar, arquivar e apagar — as três ações de ciclo de vida do CADASTRO.
+ *
+ * ⭐ **Eram três botões fixos no cabeçalho.** Editar já era um lápis solto ao
+ * lado do nome; arquivar e apagar ficavam à direita, do mesmo tamanho da troca
+ * de etapa. Nenhuma das três se faz com frequência — apagar, no limite, uma
+ * vez na vida do projeto — e as três juntas pesavam mais que o controle que se
+ * usa toda semana.
+ *
+ * ⚠ Apagar fica depois de um divisor e em vermelho, e continua atrás do
+ * `ConfirmarModal` que exige digitar o nome do projeto.
+ */
+function MenuAcoesProjeto({
+  podeEditar,
+  podeArquivar,
+  podeExcluir,
+  arquivado,
+  ocupado,
+  onEditar,
+  onArquivar,
+  onExcluir,
+}: {
+  podeEditar: boolean;
+  podeArquivar: boolean;
+  podeExcluir: boolean;
+  arquivado: boolean;
+  ocupado: boolean;
+  onEditar: () => void;
+  onArquivar: () => void;
+  onExcluir: () => void;
 }) {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!aberto) return;
     function aoClicarFora(evento: MouseEvent) {
       if (ref.current && !ref.current.contains(evento.target as Node)) setAberto(false);
     }
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") setAberto(false);
+    }
     document.addEventListener("mousedown", aoClicarFora);
-    return () => document.removeEventListener("mousedown", aoClicarFora);
-  }, []);
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("mousedown", aoClicarFora);
+      document.removeEventListener("keydown", aoTeclar);
+    };
+  }, [aberto]);
 
-  const tonsAtual = tonsDaColuna(CORES_STATUS[statusAtual]);
-  const semOpcoes = opcoes.length === 0;
+  // Apagar só existe para projeto arquivado — arquivar é o passo anterior
+  // obrigatório, e um menu com um item morto não ajuda ninguém.
+  const mostrarExcluir = podeExcluir && arquivado;
+  if (!podeEditar && !podeArquivar && !mostrarExcluir) return null;
 
   return (
-    <EtapaSeletorWrap ref={ref}>
-      <EtapaBotaoAtual
+    <AcoesWrap ref={ref}>
+      <AcoesBotao
         type="button"
-        disabled={ocupado || semOpcoes}
+        aria-label="Ações do projeto"
         aria-expanded={aberto}
         aria-haspopup="menu"
         onClick={() => setAberto((v) => !v)}
       >
-        <StatusPilula $cor={tonsAtual}>
-          <Ponto $cor={tonsAtual.ponto} />
-          {rotuloAtual}
-        </StatusPilula>
-        {!semOpcoes && <ChevronDown size={14} />}
-      </EtapaBotaoAtual>
-      {aberto && !semOpcoes && (
-        <EtapaMenu role="menu">
-          {opcoes.map((opcao) => {
-            const tons: TonsColuna | null = opcao.cor ? tonsDaColuna(opcao.cor) : null;
-            return (
-              <EtapaOpcaoBotao
-                key={opcao.chave}
+        <MoreHorizontal size={16} />
+      </AcoesBotao>
+
+      {aberto && (
+        <AcoesMenu role="menu">
+          {podeEditar && (
+            <AcoesItem
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setAberto(false);
+                onEditar();
+              }}
+            >
+              <Pencil size={14} />
+              Editar projeto
+            </AcoesItem>
+          )}
+          {podeArquivar && (
+            <AcoesItem
+              type="button"
+              role="menuitem"
+              disabled={ocupado}
+              onClick={() => {
+                setAberto(false);
+                onArquivar();
+              }}
+            >
+              {arquivado ? <ArchiveRestore size={14} /> : <Archive size={14} />}
+              {arquivado ? "Desarquivar" : "Arquivar"}
+            </AcoesItem>
+          )}
+          {mostrarExcluir && (
+            <>
+              <AcoesDivisor />
+              <AcoesItem
                 type="button"
                 role="menuitem"
+                $perigo
+                disabled={ocupado}
                 onClick={() => {
                   setAberto(false);
-                  onSelecionar(opcao.chave);
+                  onExcluir();
                 }}
               >
-                {tons ? (
-                  <StatusPilula $cor={tons}>
-                    <Ponto $cor={tons.ponto} />
-                    {opcao.rotulo}
-                  </StatusPilula>
-                ) : (
-                  opcao.rotulo
-                )}
-              </EtapaOpcaoBotao>
-            );
-          })}
-        </EtapaMenu>
+                <Trash2 size={14} />
+                Apagar para sempre
+              </AcoesItem>
+            </>
+          )}
+        </AcoesMenu>
       )}
-    </EtapaSeletorWrap>
+    </AcoesWrap>
   );
 }

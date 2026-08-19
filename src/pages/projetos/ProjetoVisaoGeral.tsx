@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Lock, X } from "lucide-react";
+import { Lock, UserPen, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
@@ -10,6 +10,7 @@ import {
   DIAS_REUNIAO,
   formatarData,
   formatarDataHora,
+  tetoDeConsultores,
   formatarDataHoraBanca,
   marcarInicioAmbientacao,
   marcarKickoff,
@@ -27,6 +28,7 @@ import {
   PageCardHeader,
   PageCardTitle,
   PageCardContent,
+  PageGrid,
   PageBadge,
   PageButton,
   PageButtonSm,
@@ -36,7 +38,6 @@ import {
   FieldGroup,
   FieldInput,
   FieldLabel,
-  FieldSelect,
   FieldTextarea,
   FormErrorText,
   ModalOverlay,
@@ -48,6 +49,7 @@ import {
   WideModalContent,
   DatasGrid,
   DataItem,
+  DataItemLargo,
   DataItemLabel,
   DataItemValor,
   DataItemMeta,
@@ -72,8 +74,15 @@ import {
   BancaLinha,
   BancaEscopo,
   BancaData,
+  EquipeSecao,
+  EquipeSecaoTitulo,
+  EquipeContagem,
+  EquipeLinhaPessoa,
+  EquipeAvatarLista,
 } from "./Projetos.styled";
-import { TabelaRolagem } from "@/styles/shared.styled";
+import { TabelaRolagem, SegmentedGroup, SegmentedButton } from "@/styles/shared.styled";
+import { FotoCircular } from "@/components/Avatar";
+import { corDaPessoa, iniciais } from "@/lib/avatar";
 import { PendenciasProjeto } from "./PendenciasProjeto";
 import { useProjeto } from "./ProjetoPage";
 
@@ -84,83 +93,211 @@ export function ProjetoVisaoGeral() {
   const { token } = useAuth();
 
   return (
+    /* ⭐ **A página tinha quatro cards de mesmo peso, na ordem em que foram
+       escritos.** Agora tem três zonas, na ordem em que se pergunta:
+
+       1. **O que precisa de mim** — Pendências, e só quando há alguma.
+       2. **O trabalho vendido** — os escopos e as bancas deles. É o assunto
+          da aba, e ocupa a largura toda.
+       3. **Referência** — datas e equipe, lado a lado no fim. São dados de
+          consulta, não de acompanhamento: quem abre a Visão geral não veio
+          conferir em que dia o projeto foi criado. */
     <PageStack>
       <PendenciasProjeto projeto={projeto} />
 
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>Datas</PageCardTitle>
-        </PageCardHeader>
-        <PageCardContent>
-          {/* ⭐ Ordem por NARRATIVA, não por ordem de cadastro no banco.
-              Largada (quando começa) → promessa e entrega (quando termina) →
-              operação semanal → metadado de auditoria por último, porque é a
-              única data que ninguém vem aqui procurar.
-              As explicações permanentes viraram ícone "i": eram parágrafo
-              fixo pra todo mundo, mesmo pra quem já sabe como a tela
-              funciona — agora só aparecem pra quem pergunta. */}
-          <DatasGrid>
-            {/* Datas são AGENDADAS no Cronograma, e só LIDAS aqui — a mesma
-                data com duas portas de escrita foi o que se quis acabar.
-                O KICKOFF é a exceção deliberada: é a única das seis datas
-                sem regra de janela (não cai dentro nem fora de nada, não pede
-                justificativa e não depende de banca), então nada se ganha em
-                obrigar a ir ao calendário só para digitá-la. Ele aceita os dois
-                caminhos. */}
-            <DataEditavelKickoff projeto={projeto} token={token} recarregar={recarregar} />
-            {/* Exceção do §5.3: por padrão a ambientação começa no próprio
-                kickoff (linha acima), sem exceção — este item só existe pra
-                quando, na prática, ela começou antes. Só o coordenador DESTE
-                projeto ou a diretoria corrigem, nunca mais que os dias de
-                ambientação abaixo, contados pra trás a partir do kickoff. */}
-            <DataEditavelInicioAmbientacao projeto={projeto} token={token} recarregar={recarregar} />
-            <DataEditavelDiasAmbientacao projeto={projeto} token={token} recarregar={recarregar} />
-
-            {/* ⭐ A PROMESSA, ao lado do FATO. Duas datas de propósito: uma é
-                o que foi combinado na venda, a outra é o que de fato
-                aconteceu (derivada do último escopo entregue). É a diferença
-                entre elas que responde "entregamos no prazo?" — pergunta que
-                até aqui só existia escopo por escopo, na tabela abaixo. */}
-            <DataEditavelEntregaPrevista
-              projeto={projeto}
-              token={token}
-              recarregar={recarregar}
-            />
-            <DataItem>
-              <DataItemLabel>
-                Entrega ao cliente
-                <InfoDica rotulo="Sobre a entrega ao cliente">
-                  É a entrega do último escopo — cada escopo tem a sua, registrada em{" "}
-                  <strong>Entrega</strong> no calendário do Cronograma.
-                </InfoDica>
-              </DataItemLabel>
-              <DataItemValor>
-                <span>{formatarData(projeto.data_entrega_cliente)}</span>
-              </DataItemValor>
-            </DataItem>
-
-            <DataEditavelDiaReuniao projeto={projeto} token={token} recarregar={recarregar} />
-
-            {/* Metadado de auditoria, não conteúdo do dia a dia: menor e por
-                último, sem competir com as datas que alguém veio ler. */}
-            <DataItemMeta>
-              <DataItemLabel>Criado em</DataItemLabel>
-              <DataItemValor>{formatarDataHora(projeto.criado_em)}</DataItemValor>
-            </DataItemMeta>
-          </DatasGrid>
-        </PageCardContent>
-      </PageCard>
-
       <TabelaEscopos />
 
-      {/* uma banca por escopo, e o escopo é de uma frente, daí o
-          recorte por frente, que é como a coordenação se organiza. */}
+      {/* Uma banca por escopo, e o escopo é de uma frente — daí o recorte por
+          frente, que é como a coordenação se organiza. Fica colado nos
+          escopos porque é a mesma pergunta vista por outro corte. */}
       <BancasPorFrente />
 
-      {/* Pausa para pensar: a contagem é do backend (`utils/contagem_dias.py`).
-          O front nunca recalcula dia útil, só desenha o que recebe. */}
+      <PageGrid $columns={2}>
+        <EquipeCard />
+        <DatasCard projeto={projeto} token={token} recarregar={recarregar} />
+      </PageGrid>
 
     </PageStack>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * As seis datas do projeto.
+ *
+ * 📐 **Ordem por NARRATIVA, não por ordem de cadastro no banco.** Largada
+ * (quando começa) → promessa e entrega (quando termina) → operação semanal →
+ * metadado de auditoria por último, porque "Criado em" é a única data que
+ * ninguém vem aqui procurar.
+ *
+ * As explicações permanentes viraram ícone "i": eram parágrafo fixo para todo
+ * mundo, mesmo para quem já sabe como a tela funciona.
+ */
+function DatasCard({
+  projeto,
+  token,
+  recarregar,
+}: {
+  projeto: ProjetoCompleto;
+  token: string | null;
+  recarregar: () => Promise<void>;
+}) {
+  return (
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>Datas</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
+        <DatasGrid>
+          {/* Datas são AGENDADAS no Cronograma e só LIDAS aqui — a mesma data
+              com duas portas de escrita foi o que se quis acabar. O KICKOFF é
+              a exceção deliberada: é a única das seis sem regra de janela (não
+              cai dentro nem fora de nada, não pede justificativa e não depende
+              de banca), então nada se ganha em obrigar a ir ao calendário só
+              para digitá-la. */}
+          <DataEditavelKickoff projeto={projeto} token={token} recarregar={recarregar} />
+          {/* Exceção do §5.3: por padrão a ambientação começa no próprio
+              kickoff (linha acima), sem exceção — este item só existe pra
+              quando, na prática, ela começou antes. Só o coordenador DESTE
+              projeto ou a diretoria corrigem, nunca mais que os dias de
+              ambientação abaixo, contados pra trás a partir do kickoff. */}
+          <DataEditavelInicioAmbientacao projeto={projeto} token={token} recarregar={recarregar} />
+          <DataEditavelDiasAmbientacao projeto={projeto} token={token} recarregar={recarregar} />
+
+          {/* ⭐ A PROMESSA, ao lado do FATO. Duas datas de propósito: uma é o
+              que foi combinado na venda, a outra o que de fato aconteceu
+              (derivada do último escopo entregue). É a diferença entre elas
+              que responde "entregamos no prazo?". */}
+          <DataEditavelEntregaPrevista projeto={projeto} token={token} recarregar={recarregar} />
+          <DataItem>
+            {/* ⭐ **"Prometida" e "Entregue", não "prevista" e "ao cliente".**
+                São dois campos distintos de propósito: um é o que foi
+                COMBINADO na venda, o outro é o que ACONTECEU (derivado da
+                entrega do último escopo). Com os nomes antigos a diferença
+                dependia de ler o balão, e a dupla parecia repetição. Já foram
+                um campo só, e a promessa era sobrescrita pela realidade na
+                primeira entrega — aí some a medida de "entregamos no prazo?". */}
+            <DataItemLabel>
+              Entregue ao cliente
+              <InfoDica rotulo="Sobre a entrega ao cliente">
+                É a entrega do último escopo. Cada escopo tem a sua, registrada em{" "}
+                <strong>Entrega</strong> no calendário do Cronograma.
+              </InfoDica>
+            </DataItemLabel>
+            <DataItemValor>
+              <span>{formatarData(projeto.data_entrega_cliente)}</span>
+            </DataItemValor>
+          </DataItem>
+
+          <DataEditavelDiaReuniao projeto={projeto} token={token} recarregar={recarregar} />
+
+          {/* Metadado de auditoria, não conteúdo do dia a dia: menor e por
+              último, sem competir com as datas que alguém veio ler. */}
+          <DataItemMeta>
+            <DataItemLabel>Criado em</DataItemLabel>
+            <DataItemValor>{formatarDataHora(projeto.criado_em)}</DataItemValor>
+          </DataItemMeta>
+        </DatasGrid>
+      </PageCardContent>
+    </PageCard>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/** Uma pessoa da equipe: avatar + nome.
+ *
+ *  ⚠ Fora do `EquipeCard` de propósito. Declarado dentro dele, seria um tipo
+ *  de componente NOVO a cada render do card, e o React desmontaria e remontaria
+ *  a linha inteira em vez de atualizá-la. */
+function PessoaDaEquipe({ id, nome, foto }: { id: number; nome: string; foto: string | null }) {
+  return (
+    <EquipeLinhaPessoa>
+      <EquipeAvatarLista $cor={corDaPessoa(id)}>
+        {foto ? <FotoCircular src={foto} /> : iniciais(nome)}
+      </EquipeAvatarLista>
+      {nome}
+    </EquipeLinhaPessoa>
+  );
+}
+
+/**
+ * A equipe do projeto, por extenso.
+ *
+ * ⭐ **Nasceu quando o cabeçalho encolheu.** Lá em cima a equipe virou uma
+ * pilha de rostos — reconhecer quem está no projeto é instantâneo, e era isso
+ * que o bloco de nomes fazia ocupando três linhas no topo de todas as abas.
+ * Mas os nomes precisam existir em algum lugar legível, e o lugar é aqui: uma
+ * aba só, com espaço, e onde já se vem conferir o cadastro.
+ *
+ * O teto de consultores aparece junto porque é o que responde "ainda cabe
+ * gente?" — a pergunta que traz alguém a esta lista.
+ */
+function EquipeCard() {
+  const { projeto, usuarios, abrirEdicao } = useProjeto();
+  const { usuario } = useAuth();
+  // Mesma trava do lápis do cabeçalho: é o mesmo modal, e o front não pode
+  // oferecer aqui uma porta que lá está fechada.
+  const podeEditarEquipe = !!usuario?.permissoes.pode_editar_equipe;
+
+  const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
+  const fotoUsuario = (id: number) => usuarios.find((u) => u.id === id)?.foto ?? null;
+  const coordenadores = projeto.equipe.filter((m) => m.papel === "coordenador");
+  const consultores = projeto.equipe.filter((m) => m.papel !== "coordenador");
+  const teto = tetoDeConsultores(projeto.max_consultores, consultores.length);
+
+  return (
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>Equipe</PageCardTitle>
+        {/* ⭐ Editar a equipe a partir de onde ela É LIDA. Antes, para trocar
+            um consultor, era preciso saber que o caminho passava por um menu
+            no cabeçalho chamado "Editar projeto" — nada nesta lista dizia que
+            ela era editável. */}
+        {podeEditarEquipe && (
+          <PageButtonSm type="button" $variant="outline" onClick={abrirEdicao}>
+            <UserPen size={14} />
+            Editar equipe
+          </PageButtonSm>
+        )}
+      </PageCardHeader>
+      <PageCardContent>
+        <EquipeSecao>
+          <EquipeSecaoTitulo>Coordenação</EquipeSecaoTitulo>
+          {coordenadores.length === 0 ? (
+            <EmptyText>Sem coordenador</EmptyText>
+          ) : (
+            coordenadores.map((m) => (
+              <PessoaDaEquipe key={m.usuario_id} nome={nomeUsuario(m.usuario_id)} foto={fotoUsuario(m.usuario_id)} id={m.usuario_id} />
+            ))
+          )}
+        </EquipeSecao>
+
+        <EquipeSecao>
+          <EquipeSecaoTitulo>
+            Consultores
+            {teto > 0 && (
+              <EquipeContagem $cheio={consultores.length >= teto}>
+                {consultores.length} de {teto}
+              </EquipeContagem>
+            )}
+          </EquipeSecaoTitulo>
+          {consultores.length === 0 ? (
+            <EmptyText>Ninguém alocado</EmptyText>
+          ) : (
+            consultores.map((m) => (
+              <PessoaDaEquipe
+                key={`${m.usuario_id}-${m.entrou_em}`}
+                nome={nomeUsuario(m.usuario_id)}
+                foto={fotoUsuario(m.usuario_id)}
+                id={m.usuario_id}
+              />
+            ))
+          )}
+        </EquipeSecao>
+      </PageCardContent>
+    </PageCard>
   );
 }
 
@@ -1059,7 +1196,7 @@ function DataEditavelEntregaPrevista({
 
   return (
     <DataItem>
-      <DataItemLabel>Entrega prevista ao cliente</DataItemLabel>
+      <DataItemLabel>Prometida ao cliente</DataItemLabel>
       <DataItemValor>
         {editando ? (
           <>
@@ -1067,7 +1204,7 @@ function DataEditavelEntregaPrevista({
               type="date"
               value={data}
               onChange={(e) => setData(e.target.value)}
-              aria-label="Entrega prevista ao cliente"
+              aria-label="Data prometida ao cliente"
             />
             <PageButtonSm type="button" disabled={salvando} onClick={salvar}>
               {salvando ? "Salvando…" : "Salvar"}
@@ -1204,6 +1341,19 @@ function DataEditavelDiasAmbientacao({
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * O dia da reunião semanal, como botões que salvam no clique.
+ *
+ * ⭐ **Eram quatro cliques**: "Alterar" → abrir o dropdown → escolher o dia →
+ * "Salvar". Para um campo com CINCO valores possíveis e nenhuma consequência
+ * pesada (é o dia em que o time combina de se ver, não uma data de entrega),
+ * o formulário custava mais do que o dado vale. Agora é um clique.
+ *
+ * 📐 **Reclicar o dia ativo limpa o campo.** É o que substitui a opção "Sem dia
+ * definido" do dropdown: um sexto botão "Sem dia" ao lado dos cinco daria a
+ * mesma largura para "não sei" e para cada dia da semana, e "não sei" não é
+ * uma escolha do mesmo peso. O `title` de cada botão avisa do gesto.
+ */
 function DataEditavelDiaReuniao({
   projeto,
   token,
@@ -1215,74 +1365,56 @@ function DataEditavelDiaReuniao({
 }) {
   const { usuario } = useAuth();
   const podeEditar = !!usuario?.permissoes.pode_editar_equipe;
-  const [editando, setEditando] = useState(false);
-  const [valor, setValor] = useState(
-    projeto.dia_reuniao_padrao ? String(projeto.dia_reuniao_padrao) : "",
-  );
-  const [salvando, setSalvando] = useState(false);
+  /** O dia que está sendo gravado agora — desabilita a linha inteira e marca
+   *  qual botão está esperando resposta. */
+  const [salvando, setSalvando] = useState<number | null>(null);
   const [erro, setErro] = useState("");
 
-  async function salvar() {
-    if (!token) return;
-    setSalvando(true);
+  async function escolher(dia: number) {
+    if (!token || salvando !== null) return;
+    // Reclicar o dia que já vale limpa: é o "sem dia definido".
+    const destino = projeto.dia_reuniao_padrao === dia ? null : dia;
+    setSalvando(dia);
     setErro("");
     try {
-      await updateDiaReuniaoPadrao(projeto.id, valor ? Number(valor) : null, token);
-      setEditando(false);
+      await updateDiaReuniaoPadrao(projeto.id, destino, token);
       await recarregar();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao salvar o dia da reunião");
     } finally {
-      setSalvando(false);
+      setSalvando(null);
     }
   }
 
   return (
-    <DataItem>
+    <DataItemLargo>
       <DataItemLabel>Reunião semanal</DataItemLabel>
       <DataItemValor>
-        {editando ? (
-          <>
-            <FieldSelect
-              value={valor}
-              onChange={(e) => setValor(e.target.value)}
-              aria-label="Dia padrão da reunião semanal"
-            >
-              <option value="">Sem dia definido</option>
-              {DIAS_REUNIAO.map((dia) => (
-                <option key={dia.valor} value={dia.valor}>
-                  {dia.rotulo}
-                </option>
-              ))}
-            </FieldSelect>
-            <PageButtonSm type="button" disabled={salvando} onClick={salvar}>
-              {salvando ? "Salvando…" : "Salvar"}
-            </PageButtonSm>
-            <PageButtonSm
-              type="button"
-              $variant="ghost"
-              onClick={() => {
-                setEditando(false);
-                setValor(projeto.dia_reuniao_padrao ? String(projeto.dia_reuniao_padrao) : "");
-                setErro("");
-              }}
-            >
-              Cancelar
-            </PageButtonSm>
-          </>
+        {podeEditar ? (
+          <SegmentedGroup role="group" aria-label="Dia padrão da reunião semanal" $semQuebra>
+            {DIAS_REUNIAO.map((dia) => {
+              const ativo = projeto.dia_reuniao_padrao === dia.valor;
+              return (
+                <SegmentedButton
+                  key={dia.valor}
+                  type="button"
+                  $ativo={ativo}
+                  aria-pressed={ativo}
+                  disabled={salvando !== null}
+                  title={ativo ? `${dia.rotulo} — clique para limpar` : dia.rotulo}
+                  onClick={() => escolher(dia.valor)}
+                >
+                  {salvando === dia.valor ? "…" : dia.rotulo.slice(0, 3)}
+                </SegmentedButton>
+              );
+            })}
+          </SegmentedGroup>
         ) : (
-          <>
-            <span>{rotuloDiaSemana(projeto.dia_reuniao_padrao)}</span>
-            {podeEditar && (
-              <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
-                {projeto.dia_reuniao_padrao ? "Alterar" : "Definir"}
-              </PageButtonSm>
-            )}
-          </>
+          <span>{rotuloDiaSemana(projeto.dia_reuniao_padrao)}</span>
         )}
       </DataItemValor>
       {erro && <FormErrorText>{erro}</FormErrorText>}
-    </DataItem>
+    </DataItemLargo>
   );
 }
 

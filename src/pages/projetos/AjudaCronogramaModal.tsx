@@ -69,7 +69,7 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
           <PassoTexto>
             O calendário do projeto. Aqui você marca as <strong>datas</strong> que importam
             (kickoff, reuniões, banca e entrega) e <strong>pinta</strong> os dias em que cada
-            etapa do trabalho acontece. O que você pinta vira a contagem de dias do escopo —
+            etapa do trabalho acontece. O que você pinta vira a contagem de dias do escopo:
             é dela que saem o "dias usados" e o atraso na aba Visão geral.
           </PassoTexto>
 
@@ -119,7 +119,7 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
               <PassoTitulo>Crie a etapa e arraste pelos dias</PassoTitulo>
               <PassoTexto>
                 Clique em <strong>Nova etapa</strong>, dê um nome e escolha a cor. Ela vira o
-                "pincel" — a barra mostra <em>Pintando: nome da etapa</em>. Aí é{" "}
+                "pincel", e a barra mostra <em>Pintando: nome da etapa</em>. Aí é{" "}
                 <strong>arrastar pelos dias</strong> do calendário, não clicar um a um.
               </PassoTexto>
             </PassoItem>
@@ -147,20 +147,20 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
             {/* Cada escopo recebe uma cor do ciclo; a primeira ilustra a ideia. */}
             <Amostra $cor={CORES_PERIODO_ESCOPO[0]} />
             A faixa clara no calendário é a <strong>janela</strong>: os dias úteis que foram
-            vendidos ao cliente. Ela abre na <strong>reunião inicial</strong> daquele escopo —
-            enquanto essa reunião não for marcada, o escopo não conta dia nenhum e a legenda
+            vendidos ao cliente. Ela abre na <strong>reunião inicial</strong> daquele escopo. Enquanto
+            essa reunião não for marcada, o escopo não conta dia nenhum e a legenda
             avisa que a janela não começou.
           </PassoTexto>
           <Regra>
             A <strong>banca precisa caber dentro da janela</strong>. Marcá-la depois do fim só
-            passa com autorização da diretoria e uma justificativa — é o único bloqueio duro
+            passa com autorização da diretoria e uma justificativa: é o único bloqueio duro
             do cronograma.
           </Regra>
 
           <SecaoTitulo>Precisa de mais dias?</SecaoTitulo>
           <PassoTexto>
-            Se o escopo foi vendido apertado, o coordenador pode pedir dias extras à diretoria
-            — e eles <strong>aumentam a janela</strong>. Há dois caminhos: o botão{" "}
+            Se o escopo foi vendido apertado, o coordenador pode pedir dias extras à
+            diretoria, e eles <strong>aumentam a janela</strong>. Há dois caminhos: o botão{" "}
             <strong>Pedir mais dias</strong> na barra, ou simplesmente arrastar a etapa além
             do fim da janela, que abre o mesmo pedido já com os dias contados.
           </PassoTexto>
@@ -174,15 +174,15 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
           <PassoTexto>
             Quando a banca acontece, a contagem do escopo <strong>congela</strong>. O que você
             pintar dali em diante continua aparecendo no calendário, mas não consome dias
-            vendidos nem vira atraso — a legenda marca esses trechos:
+            vendidos nem vira atraso, e a legenda marca esses trechos:
           </PassoTexto>
           <PassoTexto>
-            <strong>correção</strong> quando a banca <em>não</em> foi aprovada — é o
-            retrabalho que ela apontou. <strong>ajustes</strong> quando foi aprovada — são os
+            <strong>correção</strong> quando a banca <em>não</em> foi aprovada: é o
+            retrabalho que ela apontou. <strong>ajustes</strong> quando foi aprovada: são os
             acertos finos antes de entregar.
           </PassoTexto>
           <PassoTexto>
-            Marcar a entrega aqui grava o <strong>dia</strong> em que ela aconteceu — e só
+            Marcar a entrega aqui grava o <strong>dia</strong> em que ela aconteceu, e só
             isso. O escopo passa a <strong>Entregue</strong> num segundo passo, na aba{" "}
             <strong>Visão geral</strong>, onde o coordenador do projeto ou a diretoria
             clica em <em>Confirmar entrega</em>. São coisas diferentes de propósito:
@@ -201,7 +201,7 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
             <PassoItem>
               <PassoTitulo>Clique na banca para ver a ficha</PassoTitulo>
               <PassoTexto>
-                A marcação de banca no calendário é clicável — abre quem avalia, quem é a
+                A marcação de banca no calendário é clicável: abre quem avalia, quem é a
                 equipe e o resultado, sem sair do cronograma.
               </PassoTexto>
             </PassoItem>
@@ -213,7 +213,7 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
               </PassoTitulo>
               <PassoTexto>
                 O cronograma desenha sozinho a <strong>ambientação</strong> (os primeiros dias
-                depois do kickoff) e o <strong>tempo parado entre escopos</strong> — o vão
+                depois do kickoff) e o <strong>tempo parado entre escopos</strong>, o vão
                 entre a entrega de um e a largada do próximo. Elas explicam buracos no
                 calendário que não são esquecimento.
               </PassoTexto>
@@ -232,7 +232,7 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
               <PassoTexto>
                 O campo de data na barra é a <strong>promessa</strong> feita na venda, do
                 projeto inteiro. Ela aparece como marco no calendário e convive com a entrega
-                real de cada escopo — é a diferença entre as duas que responde se entregamos
+                real de cada escopo: é a diferença entre as duas que responde se entregamos
                 no prazo.
               </PassoTexto>
             </PassoItem>
