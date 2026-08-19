@@ -41,7 +41,6 @@ import {
   AvisoBanner,
   StatusPilula,
   HistoricoAutorChip,
-  HistoricoCarregarMais,
   HistoricoExcluirBtn,
   HistoricoResumoFaixa,
   HistoricoResumoLegenda,
@@ -55,14 +54,24 @@ import {
   HistoricoTipoTag,
   HistoricoAguardando,
   HistoricoNotaTexto,
-  HistoricoTimeline,
+  HistoricoPainelDia,
+  HistoricoPainelDica,
+  HistoricoReguaCabecalho,
+  HistoricoReguaBloco,
+  HistoricoReguaEixo,
+  HistoricoReguaMes,
+  HistoricoReguaNo,
+  HistoricoReguaPista,
+  HistoricoReguaPopup,
+  HistoricoReguaPopupTexto,
+  HistoricoReguaPopupTitulo,
+  HistoricoReguaResumo,
+  HistoricoReguaViewport,
   HistoricoTimelineConteudo,
   HistoricoTimelineDiaTitulo,
   HistoricoTimelineItem,
   HistoricoTimelineMeta,
-  HistoricoTimelinePonto,
   HistoricoTimelineTransicao,
-  HistoricoTimelineTrilho,
 } from "./Projetos.styled";
 import { HistoricoFiltros } from "./HistoricoFiltros";
 import { useProjeto } from "./ProjetoPage";
@@ -103,6 +112,138 @@ function formatarDuracao(ms: number): string {
 function rotuloDia(iso: string): string {
   const data = paraDataUtc(iso);
   return data.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+}
+
+/* ────────────────────────────────  · a escala da linha do tempo horizontal */
+
+const MS_DIA = 86_400_000;
+/**
+ * O vão MÍNIMO entre dois nós, em pixels.
+ *
+ * ⚠ Não é escolha estética: é o alvo de toque de 44px. Dois dias seguidos
+ * mais juntos do que isso ficam impossíveis de acertar com o dedo, e a régua
+ * deixa de ser navegável exatamente onde o histórico é mais denso.
+ */
+const VAO_MIN = 44;
+/**
+ * O teto do vão.
+ *
+ * Sem ele, um projeto parado seis meses viraria uma régua de milhares de
+ * pixels de NADA, com os dois grupos de eventos invisíveis nas pontas. A
+ * proporção importa até o ponto em que ela ainda cabe na tela.
+ */
+const VAO_MAX = 170;
+/** Pixels por dia corrido entre um registro e o seguinte. */
+const PX_POR_DIA = 22;
+/**
+ * O passo do leque: quanto dois eventos do MESMO dia se afastam.
+ *
+ * Menor que `VAO_MIN` de propósito. Errar a marca vizinha dentro de um dia é
+ * inofensivo — as duas abrem o mesmo painel, e o evento pretendido está lá do
+ * mesmo jeito; errar o DIA vizinho abriria outra coisa, e é por isso que
+ * aquele vão continua valendo o alvo de toque inteiro.
+ */
+const PASSO_LEQUE = 26;
+/** Metade da largura do pop-up (17rem), em pixels: o quanto ele pode chegar
+ *  perto da borda do card antes de ter de ser empurrado para dentro. */
+const POPUP_MEIO = 136;
+
+/** A âncora de uma linha: a mesma que a aba Atrasos usa em
+ *  `/projetos/{id}/historico#justificativa-{id}`. */
+function ancoraDe(linha: HistoricoEntrada): string {
+  if (linha.tipo === "justificativa_atraso") return `justificativa-${idNumerico(linha.id)}`;
+  if (linha.tipo === "banca_remarcada") return `remarcacao-${idNumerico(linha.id)}`;
+  if (linha.tipo === "status") return `status-${linha.id}`;
+  return `evento-${linha.id}`;
+}
+
+/**
+ * A natureza, a cor, o título e o texto de uma linha — em UM lugar só.
+ *
+ * ⚠ Isto estava espalhado por quatro ramos do JSX. Com a régua precisando dos
+ * mesmos dados para o pop-up, manter as duas cópias em dia seria questão de
+ * tempo até uma natureza nova aparecer bonita na lista e genérica na régua.
+ */
+function descreverEvento(
+  linha: HistoricoEntrada,
+  escopos: { id: number; nome: string }[],
+): { rotulo: string; cor: string; titulo: string; detalhe: string | null } {
+  const nomeEscopo = (id: number | null | undefined) =>
+    escopos.find((e) => e.id === id)?.nome ?? null;
+
+  if (linha.tipo === "justificativa_atraso") {
+    return {
+      rotulo: "Justificativa de Atraso",
+      cor: theme.colors.destructive,
+      titulo:
+        [
+          linha.motivo_tipo
+            ? (ROTULO_MOTIVO_ATRASO[linha.motivo_tipo] ?? linha.motivo_tipo)
+            : null,
+          nomeEscopo(linha.projeto_escopo_id),
+        ]
+          .filter(Boolean)
+          .join(" · ") || "Atraso justificado",
+      detalhe: linha.detalhe ?? null,
+    };
+  }
+
+  if (linha.tipo === "banca_remarcada") {
+    return {
+      rotulo: "Remarcação de Banca",
+      cor: theme.colors.destructive,
+      titulo: [
+        nomeEscopo(linha.projeto_escopo_id),
+        `${formatarDataHora(linha.data_anterior)} → ${formatarDataHora(linha.data_nova)}`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      detalhe: linha.detalhe ?? null,
+    };
+  }
+
+  if (linha.tipo === "status") {
+    return {
+      rotulo: "Mudança de etapa",
+      cor: tonsDaColuna(CORES_STATUS[linha.status_novo]).ponto,
+      titulo: linha.status_anterior
+        ? `${ROTULO_STATUS[linha.status_anterior]} → ${ROTULO_STATUS[linha.status_novo]}`
+        : `${ROTULO_STATUS[linha.status_novo]} · projeto criado`,
+      detalhe: null,
+    };
+  }
+
+  const aparencia = APARENCIA_EVENTO[linha.tipo] ?? {
+    rotulo: "Evento",
+    cor: theme.colors.mutedForeground,
+  };
+  // A recusa de um pedido é o único caso em que o rótulo depende do dado, e
+  // não só do tipo: "aprovados" e "negados" são histórias opostas.
+  const negado = linha.tipo === "dias_de_ajuste" && linha.aprovado === false;
+  return {
+    rotulo: negado ? "Dias negados" : aparencia.rotulo,
+    cor: negado ? theme.colors.destructive : aparencia.cor,
+    titulo: linha.titulo ?? aparencia.rotulo,
+    detalhe: linha.detalhe ?? null,
+  };
+}
+
+/** A data de um nó da régua: "12 de ago", curta o bastante para caber sobre ela. */
+function rotuloCurtoDia(chave: string): string {
+  const [ano, mes, dia] = chave.split("-").map(Number);
+  return new Date(ano, mes - 1, dia).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+/** Um clique numa régua não deve disparar rolagem animada em quem pediu ao
+ *  sistema para não ver movimento. */
+function comportamentoDeRolagem(): ScrollBehavior {
+  return typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
 }
 
 function chaveDia(iso: string): string {
@@ -358,16 +499,370 @@ export function ProjetoHistorico() {
     return [...grupos.entries()];
   }, [historicoFiltrado]);
 
-  // A lista não vem toda de uma vez, só os dias mais recentes, com um botão
-  // pra pedir mais. Sem isso, um projeto de gestões passadas vira uma
-  // rolagem infinita de dias que ninguém pediu pra ver.
-  const DIAS_POR_PAGINA = 10;
-  const [diasVisiveis, setDiasVisiveis] = useState(DIAS_POR_PAGINA);
+  /* ───────────────────────────────────────  · a linha do tempo horizontal */
+
+  /**
+   * O evento em foco na régua: o que o painel abaixo mostra por inteiro.
+   *
+   * `null` enquanto ninguém clicou — aí vale o mais recente, calculado no
+   * `focoEfetivo`. A aba nunca abre vazia: uma régua com um painel em branco
+   * embaixo obrigaria a pessoa a adivinhar que é preciso clicar.
+   */
+  const [eventoEscolhido, setEventoEscolhido] = useState<string | null>(null);
+  /** O evento sob o mouse (ou sob o foco do teclado), só para a espiada. */
+  const [espiado, setEspiado] = useState<{ id: string; x: number; seta: number } | null>(
+    null,
+  );
+  const reguaBlocoRef = useRef<HTMLDivElement | null>(null);
+  const reguaViewportRef = useRef<HTMLDivElement | null>(null);
+  const nosRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+  /**
+   * ⭐ **A régua: um nó por EVENTO, posicionado pelo TEMPO e não pela ordem.**
+   *
+   * Duas decisões moram aqui, e as duas vieram de a primeira versão não ter
+   * funcionado:
+   *
+   * 1. **Por evento, e não por dia.** Um nó por dia dizia "aqui houve três
+   *    coisas" e escondia quais — a régua virava um índice de uma lista, e
+   *    quem lia tinha de olhar para outro lugar. Cada marca agora É uma coisa
+   *    que foi feita, com a cor da natureza dela.
+   * 2. **Pelo tempo.** Numa lista, dois eventos do mesmo dia e dois separados
+   *    por seis semanas ficam à mesma distância um do outro. Aqui a distância
+   *    é o vão.
+   *
+   * 📐 Os eventos de um mesmo dia abrem em leque, com passo fixo: sem isso
+   * eles cairiam exatamente no mesmo ponto e só o de cima seria clicável. O
+   * vão entre DIAS é medido a partir do último nó do leque anterior, senão um
+   * dia cheio invadiria o dia seguinte.
+   */
+  const regua = useMemo(() => {
+    if (historicoFiltrado.length === 0) return null;
+    // Do mais antigo para o mais recente: a régua corre da esquerda para a
+    // direita, como qualquer linha do tempo. `gruposPorDia` vem ao contrário.
+    const dias = [...gruposPorDia].reverse();
+    const emMs = (chave: string) => {
+      const [ano, mes, dia] = chave.split("-").map(Number);
+      return new Date(ano, mes - 1, dia).getTime();
+    };
+
+    const nos: {
+      id: string;
+      dia: string;
+      linha: HistoricoEntrada;
+      x: number;
+      largura: number;
+      cor: string;
+      rotulo: string;
+      titulo: string;
+      detalhe: string | null;
+    }[] = [];
+    let x = 0;
+
+    for (let d = 0; d < dias.length; d++) {
+      const [chave, linhasDoDia] = dias[d];
+      if (d > 0) {
+        const vaoDias = Math.round((emMs(chave) - emMs(dias[d - 1][0])) / MS_DIA);
+        x += Math.min(VAO_MAX, Math.max(VAO_MIN, vaoDias * PX_POR_DIA));
+      }
+      // Dentro do dia, do mais cedo para o mais tarde. `gruposPorDia` guarda
+      // cada dia em ordem decrescente, que é como a lista antiga lia.
+      const doDia = [...linhasDoDia].reverse();
+      for (let i = 0; i < doDia.length; i++) {
+        const linha = doDia[i];
+        if (i > 0) x += PASSO_LEQUE;
+        const aparencia = descreverEvento(linha, projeto.escopos);
+        nos.push({
+          id: ancoraDe(linha),
+          dia: chave,
+          linha,
+          x,
+          // Entre dias a área clicável vale o alvo de toque inteiro; dentro do
+          // leque ela vale o passo, para duas áreas não se sobreporem.
+          largura: doDia.length > 1 ? PASSO_LEQUE : VAO_MIN,
+          cor: aparencia.cor,
+          rotulo: aparencia.rotulo,
+          titulo: aparencia.titulo,
+          detalhe: aparencia.detalhe,
+        });
+      }
+    }
+
+    const largura = x;
+    const percentual = (px: number) => (largura === 0 ? 50 : (px / largura) * 100);
+
+    // Os meses, embaixo do fio: sem escala, a régua mostraria que houve um vão
+    // mas não de quanto. Um por mês, e só quando cabe sem colidir com o
+    // anterior — dois rótulos sobrepostos são pior que nenhum.
+    const meses: { chave: string; x: number; rotulo: string }[] = [];
+    let ultimoRotuloX = -Infinity;
+    let ultimoAno: number | null = null;
+    for (const no of nos) {
+      const [ano, mes] = no.dia.split("-").map(Number);
+      const chaveMes = `${ano}-${mes}`;
+      if (meses.some((m) => m.chave === chaveMes) || no.x - ultimoRotuloX < 56) continue;
+      const nome = new Date(ano, mes - 1, 1)
+        .toLocaleDateString("pt-BR", { month: "short" })
+        .replace(".", "");
+      meses.push({
+        chave: chaveMes,
+        x: no.x,
+        // O ano só aparece quando vira: repetir "25" em todo mês é ruído, mas
+        // um histórico que atravessa o ano-novo sem dizer isso mente.
+        rotulo: ultimoAno !== null && ultimoAno !== ano ? `${nome} ${String(ano).slice(2)}` : nome,
+      });
+      ultimoRotuloX = no.x;
+      ultimoAno = ano;
+    }
+
+    const vaoTotal = Math.round(
+      (emMs(nos[nos.length - 1].dia) - emMs(nos[0].dia)) / MS_DIA,
+    );
+
+    return { nos, largura, percentual, meses, vaoTotal };
+  }, [gruposPorDia, historicoFiltrado, projeto.escopos]);
+
+  /**
+   * Quem chega por `#justificativa-7` (o link "justificado" da aba Atrasos)
+   * tem de cair com AQUELE registro aberto.
+   *
+   * 📐 Derivado durante o render, e não gravado por um efeito: o alvo já é
+   * conhecido no primeiro render em que os dados existem, e um efeito só
+   * atrasaria a escolha em um quadro — com o painel piscando o dia errado
+   * antes de corrigir.
+   */
+  const ancoraDaUrl = location.hash.replace("#", "");
+
+  /** O nó realmente em foco: o clicado, o da URL, ou o mais recente. */
+  const focoEfetivo = useMemo(() => {
+    if (!regua) return null;
+    const porId = (id: string | null) => regua.nos.find((n) => n.id === id) ?? null;
+    return (
+      porId(eventoEscolhido) ?? porId(ancoraDaUrl) ?? regua.nos[regua.nos.length - 1] ?? null
+    );
+  }, [regua, eventoEscolhido, ancoraDaUrl]);
+
+  const indiceFoco = regua && focoEfetivo ? regua.nos.indexOf(focoEfetivo) : 0;
+
+  /** Os eventos do dia em foco, do mais recente para o mais antigo — é a ordem
+   *  em que se lê "o que aconteceu neste dia". */
+  const eventosDoDia = useMemo(() => {
+    if (!focoEfetivo) return [];
+    return gruposPorDia.find(([d]) => d === focoEfetivo.dia)?.[1] ?? [];
+  }, [gruposPorDia, focoEfetivo]);
+
+  function navegarRegua(e: React.KeyboardEvent) {
+    if (!regua) return;
+    const ultimo = regua.nos.length - 1;
+    let destino: number | null = null;
+    if (e.key === "ArrowRight") destino = Math.min(ultimo, indiceFoco + 1);
+    else if (e.key === "ArrowLeft") destino = Math.max(0, indiceFoco - 1);
+    else if (e.key === "Home") destino = 0;
+    else if (e.key === "End") destino = ultimo;
+    if (destino === null) return;
+    e.preventDefault();
+    setEventoEscolhido(regua.nos[destino].id);
+    // `preventScroll`: quem centraliza o nó na régua é o efeito abaixo, e a
+    // rolagem automática do foco brigaria com ele.
+    nosRef.current[destino]?.focus({ preventScroll: true });
+  }
+
+  /** A posição do nó em pixels DENTRO do card, que é o que o pop-up precisa —
+   *  ele mora fora da janela que rola, e portanto fora do sistema de
+   *  coordenadas dela. */
+  function espiar(indice: number, id: string) {
+    const bloco = reguaBlocoRef.current;
+    const botao = nosRef.current[indice];
+    if (!bloco || !botao) return;
+    const caixaNo = botao.getBoundingClientRect();
+    const caixaBloco = bloco.getBoundingClientRect();
+    const centro = caixaNo.left + caixaNo.width / 2 - caixaBloco.left;
+    // Preso às bordas: um pop-up de 17rem centrado no primeiro nó vazaria o
+    // card pela esquerda. `min` com a metade do bloco cobre a tela estreita
+    // demais para 17rem, em que o cartão ocupa a largura inteira.
+    const meio = Math.min(POPUP_MEIO, caixaBloco.width / 2);
+    const x = Math.min(Math.max(centro, meio), Math.max(meio, caixaBloco.width - meio));
+    setEspiado({
+      id,
+      x,
+      // O quanto o cartão foi empurrado, para a seta desandar junto e
+      // continuar apontando o nó. Presa a 14px das quinas, senão ela sai do
+      // cartão e vira um losango solto.
+      seta: Math.max(-(meio - 14), Math.min(meio - 14, centro - x)),
+    });
+  }
+
+  // O nó em foco tem de estar VISÍVEL: numa régua que rola, ele pode estar
+  // fora da janela quando se chega nele pelas setas ou por um link.
   useEffect(() => {
-    setDiasVisiveis(DIAS_POR_PAGINA);
-  }, [statusFiltro, autorFiltro, dataInicio, dataFim]);
-  const gruposVisiveis = gruposPorDia.slice(0, diasVisiveis);
-  const temMaisDias = gruposPorDia.length > diasVisiveis;
+    const viewport = reguaViewportRef.current;
+    const botao = nosRef.current[indiceFoco];
+    if (!viewport || !botao) return;
+    const caixaNo = botao.getBoundingClientRect();
+    const caixaViewport = viewport.getBoundingClientRect();
+    const desvio =
+      caixaNo.left + caixaNo.width / 2 - (caixaViewport.left + caixaViewport.width / 2);
+    if (Math.abs(desvio) < 1) return;
+    viewport.scrollBy({ left: desvio, behavior: comportamentoDeRolagem() });
+  }, [indiceFoco, regua]);
+
+  /** O nó sob o mouse, resolvido a partir do id guardado na espiada. */
+  const noEspiado = regua && espiado ? (regua.nos.find((n) => n.id === espiado.id) ?? null) : null;
+
+  /**
+   * Um evento aberto por inteiro, no painel do dia.
+   *
+   * 📐 Uma função, e não quatro ramos soltos dentro do JSX como era antes: o
+   * painel é o único lugar onde um evento aparece completo, e é daqui que sai
+   * o `id` que a aba Atrasos usa como âncora.
+   */
+  function renderEvento(linha: HistoricoEntrada) {
+    const idAncora = ancoraDe(linha);
+
+    if (linha.tipo === "justificativa_atraso") {
+      const escopo = projeto.escopos.find((e) => e.id === linha.projeto_escopo_id);
+      return (
+        <HistoricoTimelineItem key={idAncora}>
+          <HistoricoTimelineConteudo id={idAncora} $destaque $realcado={realcado === idAncora}>
+            <HistoricoNotaLinha>
+              <HistoricoNotaCabecalho>
+                <HistoricoNotaTag>Justificativa de Atraso</HistoricoNotaTag>
+                {(linha.motivo_tipo || escopo) && (
+                  <HistoricoNotaMotivo>
+                    {[
+                      linha.motivo_tipo
+                        ? (ROTULO_MOTIVO_ATRASO[linha.motivo_tipo] ?? linha.motivo_tipo)
+                        : null,
+                      escopo?.nome ?? null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </HistoricoNotaMotivo>
+                )}
+              </HistoricoNotaCabecalho>
+              {/* `detalhe`, não `texto`. O backend unificou as cinco fontes do
+                  histórico num envelope com `titulo`/`detalhe` prontos; o campo
+                  `texto` parou de ser enviado e esta linha renderizava
+                  `undefined`, a nota aparecia com autor e data, mas SEM o
+                  motivo escrito. */}
+              <HistoricoNotaTexto>{linha.detalhe}</HistoricoNotaTexto>
+            </HistoricoNotaLinha>
+            <HistoricoTimelineMeta>
+              <HistoricoAutorChip>{nomeUsuario(linha.registrado_por)}</HistoricoAutorChip>
+              <span>{formatarDataHora(linha.alterado_em)}</span>
+              {podeExcluir && (
+                <HistoricoExcluirBtn type="button" onClick={() => setExcluindo(linha)}>
+                  Excluir
+                </HistoricoExcluirBtn>
+              )}
+            </HistoricoTimelineMeta>
+          </HistoricoTimelineConteudo>
+        </HistoricoTimelineItem>
+      );
+    }
+
+    if (linha.tipo === "banca_remarcada") {
+      const escopo = projeto.escopos.find((e) => e.id === linha.projeto_escopo_id);
+      return (
+        <HistoricoTimelineItem key={idAncora}>
+          <HistoricoTimelineConteudo id={idAncora} $destaque $realcado={realcado === idAncora}>
+            <HistoricoNotaLinha>
+              <HistoricoNotaCabecalho>
+                <HistoricoNotaTag>Remarcação de Banca</HistoricoNotaTag>
+                <HistoricoNotaMotivo>
+                  {[
+                    escopo?.nome ?? null,
+                    `${formatarDataHora(linha.data_anterior)} → ${formatarDataHora(linha.data_nova)}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </HistoricoNotaMotivo>
+              </HistoricoNotaCabecalho>
+              {/* Mesmo caso da justificativa de atraso acima: o campo virou
+                  `detalhe` no envelope, e este lia o nome antigo. */}
+              <HistoricoNotaTexto>{linha.detalhe}</HistoricoNotaTexto>
+            </HistoricoNotaLinha>
+            <HistoricoTimelineMeta>
+              <HistoricoAutorChip>
+                {linha.registrado_por ? nomeUsuario(linha.registrado_por) : "Automático"}
+              </HistoricoAutorChip>
+              <span>{formatarDataHora(linha.alterado_em)}</span>
+              {podeExcluir && (
+                <HistoricoExcluirBtn type="button" onClick={() => setExcluindo(linha)}>
+                  Excluir
+                </HistoricoExcluirBtn>
+              )}
+            </HistoricoTimelineMeta>
+          </HistoricoTimelineConteudo>
+        </HistoricoTimelineItem>
+      );
+    }
+
+    if (linha.tipo === "status") {
+      const tonsNovo = tonsDaColuna(CORES_STATUS[linha.status_novo]);
+      return (
+        <HistoricoTimelineItem key={idAncora}>
+          <HistoricoTimelineConteudo id={idAncora}>
+            <HistoricoTimelineTransicao>
+              {linha.status_anterior && (
+                <>
+                  <StatusPilula $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior])}>
+                    <Ponto $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior]).ponto} />
+                    {ROTULO_STATUS[linha.status_anterior]}
+                  </StatusPilula>
+                  <span>→</span>
+                </>
+              )}
+              <StatusPilula $cor={tonsNovo}>
+                <Ponto $cor={tonsNovo.ponto} />
+                {ROTULO_STATUS[linha.status_novo]}
+              </StatusPilula>
+              {!linha.status_anterior && <span>· projeto criado</span>}
+            </HistoricoTimelineTransicao>
+            <HistoricoTimelineMeta>
+              <HistoricoAutorChip>
+                {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "Automático"}
+              </HistoricoAutorChip>
+              <span>{formatarDataHora(linha.alterado_em)}</span>
+            </HistoricoTimelineMeta>
+          </HistoricoTimelineConteudo>
+        </HistoricoTimelineItem>
+      );
+    }
+
+    // Toda linha que não é transição de status é desenhada aqui, a partir do
+    // `titulo`/`detalhe` que o backend manda pronto, o que deixa uma fonte
+    // nova aparecer sem a tela saber nada sobre ela. A ETIQUETA é o que dá
+    // leitura: sem ela, seis naturezas de evento viravam seis frases soltas e
+    // indistinguíveis.
+    const aparencia = descreverEvento(linha, projeto.escopos);
+    return (
+      <HistoricoTimelineItem key={idAncora}>
+        <HistoricoTimelineConteudo id={idAncora} $destaque $realcado={realcado === idAncora}>
+          <HistoricoNotaLinha>
+            <HistoricoNotaCabecalho>
+              {/* A cor vive só na ETIQUETA. A moldura do cartão fica neutra de
+                  propósito: com seis naturezas de evento, colorir também a
+                  borda enchia o painel de vermelho e verde e tudo passava a
+                  parecer alerta. Um acento por linha basta. */}
+              <HistoricoTipoTag $cor={aparencia.cor}>{aparencia.rotulo}</HistoricoTipoTag>
+              <HistoricoNotaMotivo>{aparencia.titulo}</HistoricoNotaMotivo>
+              {linha.tipo === "pedido_de_dias" && linha.aguardando && (
+                <HistoricoAguardando>aguardando a diretoria</HistoricoAguardando>
+              )}
+            </HistoricoNotaCabecalho>
+            {aparencia.detalhe && <HistoricoNotaTexto>{aparencia.detalhe}</HistoricoNotaTexto>}
+          </HistoricoNotaLinha>
+          <HistoricoTimelineMeta>
+            <HistoricoAutorChip>
+              {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "Automático"}
+            </HistoricoAutorChip>
+            <span>{formatarDataHora(linha.alterado_em)}</span>
+          </HistoricoTimelineMeta>
+        </HistoricoTimelineConteudo>
+      </HistoricoTimelineItem>
+    );
+  }
 
   if (erro) {
     return (
@@ -485,222 +980,120 @@ export function ProjetoHistorico() {
           onLimpar={limparFiltros}
         />
 
-        {historicoFiltrado.length === 0 ? (
+        {/* ⭐ **A linha do tempo, deitada, e agora sozinha.**
+            A lista vertical que ficava aqui embaixo saiu: eram duas linhas do
+            tempo na mesma tela, e a de cima não passava de um índice da de
+            baixo. Cada marca é um evento, à distância que os dias de verdade
+            puseram entre eles; o mouse espia, o clique abre. */}
+        {regua && focoEfetivo ? (
+          <PageCard>
+            <PageCardContent>
+              <HistoricoReguaCabecalho>
+                <PageCardTitle as="h3">Linha do tempo</PageCardTitle>
+                <HistoricoReguaResumo>
+                  {rotuloCurtoDia(regua.nos[0].dia)} →{" "}
+                  {rotuloCurtoDia(regua.nos[regua.nos.length - 1].dia)}
+                  {" · "}
+                  {regua.vaoTotal} {regua.vaoTotal === 1 ? "dia" : "dias"}
+                  {" · "}
+                  {regua.nos.length} {regua.nos.length === 1 ? "registro" : "registros"}
+                </HistoricoReguaResumo>
+              </HistoricoReguaCabecalho>
+
+              <HistoricoReguaBloco ref={reguaBlocoRef}>
+                <HistoricoReguaViewport
+                  ref={reguaViewportRef}
+                  onMouseLeave={() => setEspiado(null)}
+                >
+                  <HistoricoReguaPista $largura={regua.largura}>
+                    {/* As setas andam pela régua; o Tab passa por ela de uma
+                        vez. Uma parada de Tab por evento seria a própria
+                        definição de armadilha de teclado. */}
+                    <HistoricoReguaEixo
+                      role="group"
+                      aria-label="Linha do tempo do histórico. Use as setas para percorrer os eventos."
+                      onKeyDown={navegarRegua}
+                    >
+                      {regua.meses.map((mes) => (
+                        <HistoricoReguaMes key={mes.chave} $x={regua.percentual(mes.x)} aria-hidden>
+                          {mes.rotulo}
+                        </HistoricoReguaMes>
+                      ))}
+
+                      {regua.nos.map((no, i) => (
+                        <HistoricoReguaNo
+                          key={no.id}
+                          ref={(el) => {
+                            nosRef.current[i] = el;
+                          }}
+                          type="button"
+                          $x={regua.percentual(no.x)}
+                          $largura={no.largura}
+                          $tamanho={no.id === focoEfetivo.id ? 12 : 10}
+                          $cor={no.cor}
+                          // O dia INTEIRO se acende, não só o evento clicado:
+                          // é o dia que o painel abriu, e ver o leque aceso diz
+                          // de onde veio o que está escrito embaixo.
+                          $ativo={no.dia === focoEfetivo.dia}
+                          tabIndex={i === indiceFoco ? 0 : -1}
+                          aria-pressed={no.id === focoEfetivo.id}
+                          aria-label={`${no.rotulo}: ${no.titulo} · ${rotuloCurtoDia(no.dia)}`}
+                          onClick={() => setEventoEscolhido(no.id)}
+                          onMouseEnter={() => espiar(i, no.id)}
+                          onFocus={() => espiar(i, no.id)}
+                          onBlur={() => setEspiado(null)}
+                        />
+                      ))}
+                    </HistoricoReguaEixo>
+                  </HistoricoReguaPista>
+                </HistoricoReguaViewport>
+
+                {/* ⭐ A espiada. `role="status"` para o leitor de tela anunciar
+                    o que o foco acabou de encontrar, já que o pop-up aparece
+                    sem que ninguém tenha pedido. */}
+                {noEspiado && espiado && (
+                  <HistoricoReguaPopup
+                    $x={espiado.x}
+                    $seta={espiado.seta}
+                    $cor={noEspiado.cor}
+                    role="status"
+                  >
+                    <HistoricoNotaCabecalho>
+                      <HistoricoTipoTag $cor={noEspiado.cor}>{noEspiado.rotulo}</HistoricoTipoTag>
+                      <HistoricoNotaMotivo>
+                        {formatarDataHora(noEspiado.linha.alterado_em)}
+                      </HistoricoNotaMotivo>
+                    </HistoricoNotaCabecalho>
+                    <HistoricoReguaPopupTitulo>{noEspiado.titulo}</HistoricoReguaPopupTitulo>
+                    {noEspiado.detalhe && (
+                      <HistoricoReguaPopupTexto>{noEspiado.detalhe}</HistoricoReguaPopupTexto>
+                    )}
+                  </HistoricoReguaPopup>
+                )}
+              </HistoricoReguaBloco>
+
+              {/* O dia que o clique abriu, por inteiro: texto completo, autor,
+                  e o Excluir — coisas que não cabem, e não devem caber, num
+                  pop-up que some quando o mouse anda. */}
+              <HistoricoPainelDia>
+                <HistoricoTimelineDiaTitulo $ativo>
+                  {rotuloDia(focoEfetivo.linha.alterado_em)}
+                </HistoricoTimelineDiaTitulo>
+                {eventosDoDia.map(renderEvento)}
+                <HistoricoPainelDica>
+                  {regua.nos.length > 1
+                    ? "Passe o mouse por uma marca da linha do tempo para espiar, clique para abrir o dia."
+                    : "Este é o único registro do recorte atual."}
+                </HistoricoPainelDica>
+              </HistoricoPainelDia>
+            </PageCardContent>
+          </PageCard>
+        ) : (
           <EstadoVazio
             causa="filtro"
             titulo="Nenhuma mudança bate com esses filtros"
             motivo={'O histórico tem registros, o recorte atual é que não alcança nenhum. Use "Limpar filtros" acima para ver tudo de novo.'}
           />
-        ) : (
-            <HistoricoTimeline>
-              {gruposVisiveis.map(([dia, linhas], indiceGrupo) => (
-                <div key={dia}>
-                  <HistoricoTimelineDiaTitulo>{rotuloDia(linhas[0].alterado_em)}</HistoricoTimelineDiaTitulo>
-                  {linhas.map((linha, indiceLinha) => {
-                    const ultimo =
-                      !temMaisDias &&
-                      indiceGrupo === gruposVisiveis.length - 1 &&
-                      indiceLinha === linhas.length - 1;
-
-                    if (linha.tipo === "justificativa_atraso") {
-                      const escopo = projeto.escopos.find((e) => e.id === linha.projeto_escopo_id);
-                      const idAncora = `justificativa-${idNumerico(linha.id)}`;
-                      return (
-                        <HistoricoTimelineItem key={idAncora}>
-                          <HistoricoTimelineTrilho $ultimo={ultimo}>
-                            <HistoricoTimelinePonto $cor={theme.colors.mutedForeground} />
-                          </HistoricoTimelineTrilho>
-                          <HistoricoTimelineConteudo
-                            id={idAncora}
-                            $destaque
-                            $realcado={realcado === idAncora}
-                          >
-                            <HistoricoNotaLinha>
-                              <HistoricoNotaCabecalho>
-                                <HistoricoNotaTag>Justificativa de Atraso</HistoricoNotaTag>
-                                {(linha.motivo_tipo || escopo) && (
-                                  <HistoricoNotaMotivo>
-                                    {[
-                                      linha.motivo_tipo
-                                        ? (ROTULO_MOTIVO_ATRASO[linha.motivo_tipo] ?? linha.motivo_tipo)
-                                        : null,
-                                      escopo?.nome ?? null,
-                                    ]
-                                      .filter(Boolean)
-                                      .join(" · ")}
-                                  </HistoricoNotaMotivo>
-                                )}
-                              </HistoricoNotaCabecalho>
-                              {/* `detalhe`, não `texto`. O backend unificou as
-                                  cinco fontes do histórico num envelope com
-                                  `titulo`/`detalhe` prontos; o campo `texto`
-                                  parou de ser enviado e esta linha renderizava
-                                  `undefined`, a nota aparecia com autor e data,
-                                  mas SEM o motivo escrito. */}
-                              <HistoricoNotaTexto>{linha.detalhe}</HistoricoNotaTexto>
-                            </HistoricoNotaLinha>
-                            <HistoricoTimelineMeta>
-                              <HistoricoAutorChip>{nomeUsuario(linha.registrado_por)}</HistoricoAutorChip>
-                              <span>{formatarDataHora(linha.alterado_em)}</span>
-                              {podeExcluir && (
-                                <HistoricoExcluirBtn type="button" onClick={() => setExcluindo(linha)}>
-                                  Excluir
-                                </HistoricoExcluirBtn>
-                              )}
-                            </HistoricoTimelineMeta>
-                          </HistoricoTimelineConteudo>
-                        </HistoricoTimelineItem>
-                      );
-                    }
-
-                    if (linha.tipo === "banca_remarcada") {
-                      const escopo = projeto.escopos.find((e) => e.id === linha.projeto_escopo_id);
-                      const idAncora = `remarcacao-${idNumerico(linha.id)}`;
-                      return (
-                        <HistoricoTimelineItem key={idAncora}>
-                          <HistoricoTimelineTrilho $ultimo={ultimo}>
-                            <HistoricoTimelinePonto $cor={theme.colors.mutedForeground} />
-                          </HistoricoTimelineTrilho>
-                          <HistoricoTimelineConteudo
-                            id={idAncora}
-                            $destaque
-                            $realcado={realcado === idAncora}
-                          >
-                            <HistoricoNotaLinha>
-                              <HistoricoNotaCabecalho>
-                                <HistoricoNotaTag>Remarcação de Banca</HistoricoNotaTag>
-                                <HistoricoNotaMotivo>
-                                  {[
-                                    escopo?.nome ?? null,
-                                    `${formatarDataHora(linha.data_anterior)} → ${formatarDataHora(linha.data_nova)}`,
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" · ")}
-                                </HistoricoNotaMotivo>
-                              </HistoricoNotaCabecalho>
-                              {/* Mesmo caso da justificativa de atraso acima: o
-                                  campo virou `detalhe` no envelope, e este lia
-                                  o nome antigo. */}
-                              <HistoricoNotaTexto>{linha.detalhe}</HistoricoNotaTexto>
-                            </HistoricoNotaLinha>
-                            <HistoricoTimelineMeta>
-                              <HistoricoAutorChip>
-                                {linha.registrado_por ? nomeUsuario(linha.registrado_por) : "Automático"}
-                              </HistoricoAutorChip>
-                              <span>{formatarDataHora(linha.alterado_em)}</span>
-                              {podeExcluir && (
-                                <HistoricoExcluirBtn type="button" onClick={() => setExcluindo(linha)}>
-                                  Excluir
-                                </HistoricoExcluirBtn>
-                              )}
-                            </HistoricoTimelineMeta>
-                          </HistoricoTimelineConteudo>
-                        </HistoricoTimelineItem>
-                      );
-                    }
-
-                    // Toda linha que não é transição de status é desenhada
-                    // aqui, a partir do `titulo`/`detalhe` que o backend manda
-                    // pronto, o que deixa uma fonte nova aparecer sem a tela
-                    // saber nada sobre ela. A ETIQUETA é o que dá leitura: sem
-                    // ela, seis naturezas de evento viravam seis frases soltas
-                    // e indistinguíveis na mesma coluna.
-                    if (linha.tipo !== "status") {
-                      const aparencia = APARENCIA_EVENTO[linha.tipo] ?? {
-                        rotulo: "Evento",
-                        cor: theme.colors.mutedForeground,
-                      };
-                      // A recusa de um pedido é o único caso em que o rótulo
-                      // depende do dado, não só do tipo: "aprovados" e
-                      // "negados" são histórias opostas.
-                      const negado = linha.tipo === "dias_de_ajuste" && linha.aprovado === false;
-                      const cor = negado ? theme.colors.destructive : aparencia.cor;
-                      // A cor vive só na ETIQUETA. A bolinha e a borda do
-                      // cartão ficam neutras de propósito: com seis naturezas
-                      // de evento, colorir também a moldura enchia a coluna de
-                      // vermelho e verde e a timeline perdia a leitura calma —
-                      // tudo parecia alerta. Um acento por linha basta.
-                      const idAncora = `evento-${linha.id}`;
-                      return (
-                        <HistoricoTimelineItem key={idAncora}>
-                          <HistoricoTimelineTrilho $ultimo={ultimo}>
-                            <HistoricoTimelinePonto $cor={theme.colors.mutedForeground} />
-                          </HistoricoTimelineTrilho>
-                          <HistoricoTimelineConteudo
-                            id={idAncora}
-                            $destaque
-                            $corDestaque={theme.colors.mutedForeground}
-                            $realcado={realcado === idAncora}
-                          >
-                            <HistoricoNotaLinha>
-                              <HistoricoNotaCabecalho>
-                                <HistoricoTipoTag $cor={cor}>
-                                  {negado ? "Dias negados" : aparencia.rotulo}
-                                </HistoricoTipoTag>
-                                <HistoricoNotaMotivo>{linha.titulo}</HistoricoNotaMotivo>
-                                {linha.tipo === "pedido_de_dias" && linha.aguardando && (
-                                  <HistoricoAguardando>aguardando a diretoria</HistoricoAguardando>
-                                )}
-                              </HistoricoNotaCabecalho>
-                              {linha.detalhe && (
-                                <HistoricoNotaTexto>{linha.detalhe}</HistoricoNotaTexto>
-                              )}
-                            </HistoricoNotaLinha>
-                            <HistoricoTimelineMeta>
-                              <HistoricoAutorChip>
-                                {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "Automático"}
-                              </HistoricoAutorChip>
-                              <span>{formatarDataHora(linha.alterado_em)}</span>
-                            </HistoricoTimelineMeta>
-                          </HistoricoTimelineConteudo>
-                        </HistoricoTimelineItem>
-                      );
-                    }
-
-                    const tonsNovo = tonsDaColuna(CORES_STATUS[linha.status_novo]);
-                    return (
-                      <HistoricoTimelineItem key={`status-${linha.id}`}>
-                        <HistoricoTimelineTrilho $ultimo={ultimo}>
-                          <HistoricoTimelinePonto $cor={tonsNovo.ponto} />
-                        </HistoricoTimelineTrilho>
-                        <HistoricoTimelineConteudo>
-                          <HistoricoTimelineTransicao>
-                            {linha.status_anterior && (
-                              <>
-                                <StatusPilula $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior])}>
-                                  <Ponto $cor={tonsDaColuna(CORES_STATUS[linha.status_anterior]).ponto} />
-                                  {ROTULO_STATUS[linha.status_anterior]}
-                                </StatusPilula>
-                                <span>→</span>
-                              </>
-                            )}
-                            <StatusPilula $cor={tonsNovo}>
-                              <Ponto $cor={tonsNovo.ponto} />
-                              {ROTULO_STATUS[linha.status_novo]}
-                            </StatusPilula>
-                            {!linha.status_anterior && <span>· projeto criado</span>}
-                          </HistoricoTimelineTransicao>
-                          <HistoricoTimelineMeta>
-                            <HistoricoAutorChip>
-                              {linha.alterado_por ? nomeUsuario(linha.alterado_por) : "Automático"}
-                            </HistoricoAutorChip>
-                            <span>{formatarDataHora(linha.alterado_em)}</span>
-                          </HistoricoTimelineMeta>
-                        </HistoricoTimelineConteudo>
-                      </HistoricoTimelineItem>
-                    );
-                  })}
-                </div>
-              ))}
-            </HistoricoTimeline>
-          )}
-        {temMaisDias && (
-          <HistoricoCarregarMais
-            type="button"
-            onClick={() => setDiasVisiveis((atual) => atual + DIAS_POR_PAGINA)}
-          >
-            Carregar mais dias
-          </HistoricoCarregarMais>
         )}
 
         {/* ⚠ "Limpar histórico" vivia no cabeçalho do card de Filtros, ao lado
