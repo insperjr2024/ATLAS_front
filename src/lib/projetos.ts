@@ -120,8 +120,8 @@ export function updateEquipe(projetoId: number, equipe: MembroEquipePayload[], t
 }
 
 /**
- * Marcar o kickoff só registra a data, quem move Vendido → Ambientação é
- * uma pessoa, no seletor de etapa; o kickoff apenas habilita o destino.
+ * Marcar o kickoff move Vendido → Ambientação sozinho — a transição é do
+ * sistema, não de uma pessoa clicando no seletor de etapa.
  *
  * A resposta traz o `status` porque ele PODE ter mudado mesmo assim: um
  * projeto já em Ambientação com o kickoff corrigido para trás pode ter a
@@ -131,6 +131,26 @@ export function marcarKickoff(projetoId: number, dataKickoff: string, token: str
   return apiFetch<{ id: number; data_kickoff: string; status: StatusProjeto }>(
     `/projetos/${projetoId}/kickoff`,
     { method: "PATCH", token, body: JSON.stringify({ data_kickoff: dataKickoff }) },
+  );
+}
+
+/**
+ * A exceção do §5.3: a ambientação, na prática, começou antes do kickoff.
+ * `dataInicio` nulo limpa a correção (volta a contar do próprio kickoff, o
+ * padrão). Só o coordenador do projeto ou a diretoria — o backend recusa o
+ * resto, ver `UpdateInicioAmbientacaoUseCase`.
+ *
+ * Mesmo motivo do `status` em `marcarKickoff`: encurtar a janela pode
+ * encerrar a ambientação na hora.
+ */
+export function marcarInicioAmbientacao(
+  projetoId: number,
+  dataInicio: string | null,
+  token: string,
+) {
+  return apiFetch<{ id: number; data_inicio_ambientacao: string | null; status: StatusProjeto }>(
+    `/projetos/${projetoId}/inicio-ambientacao`,
+    { method: "PATCH", token, body: JSON.stringify({ data_inicio_ambientacao: dataInicio }) },
   );
 }
 

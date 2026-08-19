@@ -11,6 +11,7 @@ import {
   formatarData,
   formatarDataHora,
   formatarDataHoraBanca,
+  marcarInicioAmbientacao,
   marcarKickoff,
   registrarJustificativaAtraso,
   updateEntregaPrevistaCliente,
@@ -107,6 +108,12 @@ export function ProjetoVisaoGeral() {
                 obrigar a ir ao calendário só para digitá-la. Ele aceita os dois
                 caminhos. */}
             <DataEditavelKickoff projeto={projeto} token={token} recarregar={recarregar} />
+            {/* Exceção do §5.3: por padrão a ambientação começa no próprio
+                kickoff (linha acima), sem exceção — este item só existe pra
+                quando, na prática, ela começou antes. Só o coordenador DESTE
+                projeto ou a diretoria corrigem, nunca mais que os dias de
+                ambientação abaixo, contados pra trás a partir do kickoff. */}
+            <DataEditavelInicioAmbientacao projeto={projeto} token={token} recarregar={recarregar} />
             <DataEditavelDiasAmbientacao projeto={projeto} token={token} recarregar={recarregar} />
 
             {/* ⭐ A PROMESSA, ao lado do FATO. Duas datas de propósito: uma é
@@ -877,6 +884,121 @@ function DataEditavelKickoff({
             {podeEditar && (
               <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
                 {projeto.data_kickoff ? "Alterar" : "Marcar"}
+              </PageButtonSm>
+            )}
+          </>
+        )}
+      </DataItemValor>
+      {erro && <FormErrorText>{erro}</FormErrorText>}
+    </DataItem>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * A exceção do §5.3: por padrão a ambientação começa no próprio kickoff,
+ * sem exceção — este item só aparece com algo pra dizer quando o time, na
+ * prática, já estava em campo antes do kickoff formal e o coordenador
+ * corrige o registro.
+ *
+ * ⭐ Vínculo com o projeto, não cargo: mesmo idioma de `podeConfirmar`
+ * (confirmar entrega, mais abaixo) — só o coordenador DESTE projeto ou a
+ * diretoria editam. O backend recusa o resto (`UpdateInicioAmbientacaoUseCase`),
+ * o front só esconde o botão.
+ */
+function DataEditavelInicioAmbientacao({
+  projeto,
+  token,
+  recarregar,
+}: {
+  projeto: ProjetoCompleto;
+  token: string | null;
+  recarregar: () => Promise<void>;
+}) {
+  const { usuario } = useAuth();
+  const podeEditar =
+    !!usuario && (usuario.posicao === "diretor" || usuario.id === projeto.coordenador_id);
+  const [editando, setEditando] = useState(false);
+  const [data, setData] = useState(projeto.data_inicio_ambientacao?.slice(0, 10) ?? "");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  // Sem kickoff não há do que antecipar — a correção é sempre relativa a ele.
+  if (!projeto.data_kickoff) return null;
+
+  const antecipada = !!projeto.data_inicio_ambientacao;
+
+  async function salvar() {
+    if (!token) return;
+    setSalvando(true);
+    setErro("");
+    try {
+      // Campo vazio = limpar a correção, volta a contar do kickoff.
+      await marcarInicioAmbientacao(projeto.id, data || null, token);
+      setEditando(false);
+      await recarregar();
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao salvar o início da ambientação");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <DataItem>
+      <DataItemLabel>
+        Início da ambientação
+        <InfoDica rotulo="Sobre o início da ambientação">
+          Por padrão começa no próprio kickoff. Só o coordenador do projeto ou a diretoria podem
+          antecipar — quando o time já estava em campo antes do kickoff formal — e no máximo{" "}
+          {projeto.dias_ambientacao} dias úteis antes dele, pra não deixar o kickoff de fora da
+          própria janela que ele abre.
+        </InfoDica>
+      </DataItemLabel>
+      <DataItemValor>
+        {editando ? (
+          <>
+            <FieldInput
+              type="date"
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+              aria-label="Início da ambientação"
+            />
+            <PageButtonSm type="button" disabled={salvando} onClick={salvar}>
+              {salvando ? "Salvando…" : "Salvar"}
+            </PageButtonSm>
+            {antecipada && (
+              <PageButtonSm
+                type="button"
+                $variant="ghost"
+                disabled={salvando}
+                onClick={() => setData("")}
+              >
+                Usar o kickoff
+              </PageButtonSm>
+            )}
+            <PageButtonSm
+              type="button"
+              $variant="ghost"
+              onClick={() => {
+                setEditando(false);
+                setData(projeto.data_inicio_ambientacao?.slice(0, 10) ?? "");
+                setErro("");
+              }}
+            >
+              Cancelar
+            </PageButtonSm>
+          </>
+        ) : (
+          <>
+            <span>
+              {antecipada ? formatarData(projeto.data_inicio_ambientacao) : "No kickoff"}
+              {antecipada && <DataItemDetalhe> · antecipada pelo coordenador</DataItemDetalhe>}
+            </span>
+            {podeEditar && (
+              <PageButtonSm type="button" $variant="ghost" onClick={() => setEditando(true)}>
+                {antecipada ? "Alterar" : "Editar"}
               </PageButtonSm>
             )}
           </>
