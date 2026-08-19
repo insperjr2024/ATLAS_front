@@ -23,10 +23,19 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
      conteúdo. No drawer (abaixo) vira fixed, porque aí a página fica atrás. */
   position: sticky;
   top: 0;
-  height: 100dvh;
-  /* Fallback: em altura extrema o menu ainda rola. No uso normal o Nav
-     cabe e esta barra não aparece — o scroll da lista, se precisar, é
-     só no <nav>, com o rodapé sempre visível. */
+  /* align-self: flex-start tira o menu do "stretch" padrão do flex do
+     LayoutWrapper — sem isso, ele sempre esticava até a altura do Main (que
+     pode ser bem mais alto que a tela), e a esticada sobrava como vão em
+     branco. Cargo com poucos itens visíveis (consultor: só Trabalho e
+     Desempenho, Gestão e Sistema somem inteiros por permissão) é o caso mais
+     extremo — o vão ficava enorme entre os dois únicos grupos. Sem
+     "stretch", a altura vem do próprio conteúdo: não sobra vão nenhum, pra
+     nenhum cargo, em vez de só mudar ONDE o vão aparece. */
+  align-self: flex-start;
+  /* Teto pela viewport, não altura fixa: numa tela baixa com todos os itens
+     visíveis (diretor com todas as permissões), o conteúdo pode passar de
+     uma tela — aí sim precisa de limite e rolagem própria. */
+  max-height: 100dvh;
   overflow-y: auto;
 
   @media (max-width: ${DRAWER_ATE - 1}px) {
@@ -78,7 +87,10 @@ export const LogoImg = styled.img`
 `;
 
 export const Nav = styled.nav`
-  flex: 1 1 auto;
+  /* Não "flex: 1 1 auto": com a sidebar do tamanho do próprio conteúdo (ver
+     SidebarContainer), o <nav> não precisa mais brigar por espaço extra —
+     ele só ocupa o que os itens pedem. */
+  flex: 0 1 auto;
   min-height: 0;
   padding: 0.5rem 0 0.25rem;
   display: flex;
@@ -126,10 +138,11 @@ export const NavItem = styled(Link)<{ $isActive: boolean }>`
 `;
 
 export const SectionLabel = styled.div`
-  /* margin-top: auto reparte o espaço sobrando ENTRE as seções, em vez de
-     deixar um buraco único acima do rodapé. padding-top é o mínimo de
-     hierarquia quando não há folga (telas baixas). */
-  margin-top: auto;
+  /* Margem FIXA entre seções — não mais "margin-top: auto". Com a sidebar
+     do tamanho do conteúdo (ver SidebarContainer), não existe mais espaço
+     sobrando pra repartir; um valor fixo é só a respiração normal entre
+     grupos. */
+  margin-top: 1.25rem;
   padding: 14px 1.25rem 5px;
   font-size: 0.7rem;
   font-weight: 600;
@@ -146,6 +159,7 @@ export const SectionLabel = styled.div`
   }
 
   @media (max-height: 800px) {
+    margin-top: 0.75rem;
     padding: 10px 1.25rem 4px;
 
     &:first-child {
@@ -156,7 +170,6 @@ export const SectionLabel = styled.div`
 
 export const Footer = styled.div`
   flex-shrink: 0;
-  margin-top: auto;
   padding-top: 0.75rem;
   padding-bottom: 0.5rem;
   border-top: 1px solid var(--sidebar-border);
