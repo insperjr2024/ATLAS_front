@@ -48,6 +48,7 @@ import {
   WideModalContent,
   DatasGrid,
   DataItem,
+  DataItemLargo,
   DataItemLabel,
   DataItemValor,
   DataItemMeta,
@@ -77,7 +78,6 @@ import {
   EquipeContagem,
   EquipeLinhaPessoa,
   EquipeAvatarLista,
-  DescricaoTexto,
 } from "./Projetos.styled";
 import { TabelaRolagem, SegmentedGroup, SegmentedButton } from "@/styles/shared.styled";
 import { FotoCircular } from "@/components/Avatar";
@@ -116,21 +116,6 @@ export function ProjetoVisaoGeral() {
         <DatasCard projeto={projeto} token={token} recarregar={recarregar} />
       </PageGrid>
 
-      {/* ⭐ **A descrição desceu do cabeçalho** (19/08/2026). Lá ela era o
-          item mais longo do topo e o menos consultado, e aparecia em TODAS as
-          abas cortada em duas linhas com um "Ver mais". Aqui cabe inteira,
-          sem truncar nada, e por último: é o texto que se lê uma vez, quando
-          se chega ao projeto. */}
-      {projeto.descricao?.trim() && (
-        <PageCard>
-          <PageCardHeader>
-            <PageCardTitle>Sobre o projeto</PageCardTitle>
-          </PageCardHeader>
-          <PageCardContent>
-            <DescricaoTexto>{projeto.descricao.trim()}</DescricaoTexto>
-          </PageCardContent>
-        </PageCard>
-      )}
     </PageStack>
   );
 }
@@ -179,10 +164,17 @@ function DatasCard({
               que responde "entregamos no prazo?". */}
           <DataEditavelEntregaPrevista projeto={projeto} token={token} recarregar={recarregar} />
           <DataItem>
+            {/* ⭐ **"Prometida" e "Entregue", não "prevista" e "ao cliente".**
+                São dois campos distintos de propósito: um é o que foi
+                COMBINADO na venda, o outro é o que ACONTECEU (derivado da
+                entrega do último escopo). Com os nomes antigos a diferença
+                dependia de ler o balão, e a dupla parecia repetição. Já foram
+                um campo só, e a promessa era sobrescrita pela realidade na
+                primeira entrega — aí some a medida de "entregamos no prazo?". */}
             <DataItemLabel>
-              Entrega ao cliente
+              Entregue ao cliente
               <InfoDica rotulo="Sobre a entrega ao cliente">
-                É a entrega do último escopo — cada escopo tem a sua, registrada em{" "}
+                É a entrega do último escopo. Cada escopo tem a sua, registrada em{" "}
                 <strong>Entrega</strong> no calendário do Cronograma.
               </InfoDica>
             </DataItemLabel>
@@ -1082,7 +1074,7 @@ function DataEditavelEntregaPrevista({
 
   return (
     <DataItem>
-      <DataItemLabel>Entrega prevista ao cliente</DataItemLabel>
+      <DataItemLabel>Prometida ao cliente</DataItemLabel>
       <DataItemValor>
         {editando ? (
           <>
@@ -1090,7 +1082,7 @@ function DataEditavelEntregaPrevista({
               type="date"
               value={data}
               onChange={(e) => setData(e.target.value)}
-              aria-label="Entrega prevista ao cliente"
+              aria-label="Data prometida ao cliente"
             />
             <PageButtonSm type="button" disabled={salvando} onClick={salvar}>
               {salvando ? "Salvando…" : "Salvar"}
@@ -1273,11 +1265,11 @@ function DataEditavelDiaReuniao({
   }
 
   return (
-    <DataItem>
+    <DataItemLargo>
       <DataItemLabel>Reunião semanal</DataItemLabel>
       <DataItemValor>
         {podeEditar ? (
-          <SegmentedGroup role="group" aria-label="Dia padrão da reunião semanal">
+          <SegmentedGroup role="group" aria-label="Dia padrão da reunião semanal" $semQuebra>
             {DIAS_REUNIAO.map((dia) => {
               const ativo = projeto.dia_reuniao_padrao === dia.valor;
               return (
@@ -1300,7 +1292,7 @@ function DataEditavelDiaReuniao({
         )}
       </DataItemValor>
       {erro && <FormErrorText>{erro}</FormErrorText>}
-    </DataItem>
+    </DataItemLargo>
   );
 }
 

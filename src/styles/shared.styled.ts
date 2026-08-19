@@ -254,9 +254,11 @@ export const RowMeta = styled.span`
  * Veio de `GrupoVisao`/`BotaoVisao` (`cronograma-pintado/PaintedCalendar.styled.ts`),
  * que já era este controle, mas só o Cronograma alcançava.
  */
-export const SegmentedGroup = styled.div<{ $bloco?: boolean }>`
+export const SegmentedGroup = styled.div<{ $bloco?: boolean; $semQuebra?: boolean }>`
   display: ${({ $bloco }) => ($bloco ? "flex" : "inline-flex")};
-  flex-wrap: wrap;
+  /* Sem quebra para os grupos que só fazem sentido numa fileira: partir
+     cinco dias da semana em 3 + 2 lê como defeito, não como layout. */
+  flex-wrap: ${({ $semQuebra }) => ($semQuebra ? "nowrap" : "wrap")};
   align-items: stretch;
   min-height: 2.25rem;
   border: 1px solid ${theme.colors.input};
