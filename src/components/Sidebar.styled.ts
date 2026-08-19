@@ -23,19 +23,13 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
      conteúdo. No drawer (abaixo) vira fixed, porque aí a página fica atrás. */
   position: sticky;
   top: 0;
-  /* align-self: flex-start tira o menu do "stretch" padrão do flex do
-     LayoutWrapper — sem isso, ele sempre esticava até a altura do Main (que
-     pode ser bem mais alto que a tela), e a esticada sobrava como vão em
-     branco. Cargo com poucos itens visíveis (consultor: só Trabalho e
-     Desempenho, Gestão e Sistema somem inteiros por permissão) é o caso mais
-     extremo — o vão ficava enorme entre os dois únicos grupos. Sem
-     "stretch", a altura vem do próprio conteúdo: não sobra vão nenhum, pra
-     nenhum cargo, em vez de só mudar ONDE o vão aparece. */
-  align-self: flex-start;
-  /* Teto pela viewport, não altura fixa: numa tela baixa com todos os itens
-     visíveis (diretor com todas as permissões), o conteúdo pode passar de
-     uma tela — aí sim precisa de limite e rolagem própria. */
-  max-height: 100dvh;
+  height: 100dvh;
+  /* O rodapé (perfil/notificações/sair) fica grudado embaixo da TELA, não
+     embaixo do último item da navegação — por isso a coluna preenche a
+     altura inteira (height: 100dvh), e é o Footer (margin-top: auto,
+     abaixo) quem puxa a si mesmo pro final. Cargo com pouca navegação
+     (consultor, por exemplo) sobra vão ACIMA do rodapé, e é isso mesmo: o
+     rodapé continua alcançável sem rolar, que é o requisito. */
   overflow-y: auto;
 
   @media (max-width: ${DRAWER_ATE - 1}px) {
@@ -170,6 +164,11 @@ export const SectionLabel = styled.div`
 
 export const Footer = styled.div`
   flex-shrink: 0;
+  /* Puxa a si mesmo pro fim da coluna — ver o comentário no SidebarContainer.
+     Como o <nav> não cresce mais (flex: 0 1 auto) nem as seções distribuem
+     espaço entre si (SectionLabel tem margem fixa), este é o ÚNICO lugar da
+     sidebar que reclama a sobra: um vão só, sempre no mesmo lugar. */
+  margin-top: auto;
   padding-top: 0.75rem;
   padding-bottom: 0.5rem;
   border-top: 1px solid var(--sidebar-border);
