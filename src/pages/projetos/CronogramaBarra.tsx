@@ -1,4 +1,12 @@
-import { CalendarPlus, ChevronLeft, ChevronRight, Download, HelpCircle, Lock, Plus } from "lucide-react";
+import {
+  CalendarPlus,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  HelpCircle,
+  Lock,
+  Plus,
+} from "lucide-react";
 import { InfoDica } from "@/components/InfoDica";
 import { SegmentedButton, SegmentedGroup } from "@/styles/shared.styled";
 import { VISOES, type Visao } from "@/components/cronograma-pintado/visao";
@@ -48,6 +56,14 @@ interface Props {
 
   onAjuda: () => void;
   onExportar: () => void;
+  /**
+   * Cria uma etapa no escopo escolhido na barra.
+   *
+   * 📐 O botão fica encostado no fim da lista de escopos, e não solto na zona
+   * de edição: o escopo em que a etapa vai nascer é o que está selecionado ali
+   * do lado, e a vizinhança é o que diz isso sem precisar de rótulo.
+   */
+  onNovaEtapa: () => void;
 
   /* ---- zona 2: o que faço ---- */
   podeEditar: boolean;
@@ -65,8 +81,6 @@ interface Props {
       })
     | null;
   onEntregaPlanejada: (valor: string) => void;
-
-  onNovaEtapa: () => void;
 
   /** Só o coordenador deste projeto pede dias, e só dentro do prazo. */
   podePedirDias: boolean;
@@ -112,13 +126,13 @@ export function CronogramaBarra({
   onNavegar,
   onAjuda,
   onExportar,
+  onNovaEtapa,
   podeEditar,
   modos,
   modoMarcacao,
   onModo,
   escopoAtual,
   onEntregaPlanejada,
-  onNovaEtapa,
   podePedirDias,
   rotuloPrazoPedido,
   diasUteisRestantesDoPedido,
@@ -170,7 +184,31 @@ export function CronogramaBarra({
           })}
         </EscopoFiltroLista>
 
+        {podeEditar && (
+          <BotaoBarra type="button" onClick={onNovaEtapa}>
+            <Plus size={14} aria-hidden />
+            Nova etapa
+          </BotaoBarra>
+        )}
+
         <BarraEspaco />
+
+        <SegmentedGroup role="group" aria-label="Visão do cronograma">
+          {VISOES.map((opcao) => {
+            const ativo = visao === opcao.valor;
+            return (
+              <SegmentedButton
+                key={opcao.valor}
+                type="button"
+                $ativo={ativo}
+                aria-pressed={ativo}
+                onClick={() => onVisao(opcao.valor)}
+              >
+                {opcao.rotulo}
+              </SegmentedButton>
+            );
+          })}
+        </SegmentedGroup>
 
         <NavPeriodo>
           <BotaoNav
@@ -191,23 +229,6 @@ export function CronogramaBarra({
           </BotaoNav>
           <RotuloPeriodo>{tituloPeriodo}</RotuloPeriodo>
         </NavPeriodo>
-
-        <SegmentedGroup role="group" aria-label="Visão do cronograma">
-          {VISOES.map((opcao) => {
-            const ativo = visao === opcao.valor;
-            return (
-              <SegmentedButton
-                key={opcao.valor}
-                type="button"
-                $ativo={ativo}
-                aria-pressed={ativo}
-                onClick={() => onVisao(opcao.valor)}
-              >
-                {opcao.rotulo}
-              </SegmentedButton>
-            );
-          })}
-        </SegmentedGroup>
 
         <BotaoAjuda type="button" onClick={onAjuda}>
           <HelpCircle size={13} aria-hidden />
@@ -231,10 +252,10 @@ export function CronogramaBarra({
                 uma caixa de quatro linhas presa na barra. Vira dica: quem já
                 sabe não lê de novo a cada visita. */}
             <InfoDica rotulo="Sobre os modos de marcação">
-              Reunião inicial, banca e entrega pertencem a um <strong>escopo</strong> específico —
-              cada um tem a própria janela de dias vendidos. Os botões deles aparecem quando você
-              escolhe um escopo ali em cima. Kickoff e reunião geral são do projeto inteiro e
-              valem sempre.
+              Reunião inicial, banca e entrega pertencem a um <strong>escopo</strong> específico,
+              e cada um tem a própria janela de dias vendidos. Os botões deles aparecem quando
+              você escolhe um escopo ali em cima. Kickoff e reunião geral são do projeto inteiro
+              e valem sempre.
             </InfoDica>
           </BarraRotuloZona>
 
@@ -255,10 +276,7 @@ export function CronogramaBarra({
             })}
           </SegmentedGroup>
 
-          <BotaoBarra type="button" $variant="outline" onClick={onNovaEtapa}>
-            <Plus size={14} />
-            Nova etapa
-          </BotaoBarra>
+          <BarraEspaco />
 
           {escopoAtual && (
             <FieldEntrega>
@@ -271,8 +289,6 @@ export function CronogramaBarra({
               />
             </FieldEntrega>
           )}
-
-          <BarraEspaco />
 
           {/* ⚠ A porta de aumentar a JANELA do escopo, e nada além disso. Só
               para o coordenador, com escopo escolhido, e só nos 3 dias úteis

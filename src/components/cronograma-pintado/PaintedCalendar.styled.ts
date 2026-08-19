@@ -502,7 +502,16 @@ export const BotaoNav = styled.button`
 `;
 
 export const RotuloPeriodo = styled.span`
-  min-width: 12rem;
+  /* ⚠ **Isto é uma reserva, e reserva sobrando vira buraco.** Eram 12rem, e
+     na visão de mês o rótulo mais longo ("Setembro de 2026") ocupa perto de
+     9 — sobravam ~3rem de vazio entre a navegação e o "Como funciona", que
+     era o vão que incomodava.
+
+     A reserva não pode ir a zero: sem ela, andar de agosto para setembro
+     muda a largura do rótulo e empurra os botões à direita a cada clique nas
+     setas. 9rem cobre o mais longo dos meses e para por aí. Nas visões de dia
+     e semana o título é bem maior que isso e cresce sozinho. */
+  min-width: 9rem;
   font-size: ${theme.fontSize.sm};
   font-weight: ${theme.fontWeight.medium};
   color: ${theme.colors.foreground};
@@ -548,9 +557,6 @@ export const BotaoAjuda = styled.button`
   font-weight: ${theme.fontWeight.medium};
   white-space: nowrap;
   cursor: pointer;
-  /* O espacamento do NavPeriodo e de 0.25rem, pensado para as setas, sem
-     isto o botao encosta no rotulo da data. */
-  margin-left: ${theme.spacing.sm};
 
   &:hover {
     background: color-mix(in srgb, ${theme.colors.primary} 18%, white);
@@ -695,11 +701,11 @@ export const LegendaLinha = styled.div`
   align-items: center;
   gap: 0.125rem;
 
-  /* O excluir só aparece no hover ou com foco, para a legenda não virar uma
-     parede de lixeiras. O :focus-within não é opcional: sem ele o botão fica
-     invisível para quem navega por teclado. */
-  &:hover [data-excluir],
-  &:focus-within [data-excluir] {
+  /* Os botões da etapa (lápis e lixeira) ficam discretos e sobem para opacidade
+     cheia quando a linha recebe mouse ou foco. Antes eram invisíveis até o
+     hover, o que os tornava inalcançáveis no celular. */
+  &:hover [data-acao-etapa],
+  &:focus-within [data-acao-etapa] {
     opacity: 1;
   }
 `;
@@ -715,12 +721,29 @@ export const BotaoExcluir = styled.button`
   border-radius: ${theme.borderRadius.sm};
   background: transparent;
   color: ${theme.colors.mutedForeground};
-  opacity: 0;
+  /* ⚠ **Era invisível até o hover.** No celular não existe
+     hover: os botões da legenda eram inalcançáveis por lá. Agora ficam
+     sempre visíveis, discretos, e ganham contraste quando o dedo ou o mouse
+     chegam perto. */
+  opacity: 0.55;
   cursor: pointer;
+  transition: opacity ${theme.transitions.fast}, background-color ${theme.transitions.fast},
+    color ${theme.transitions.fast};
 
   &:hover {
+    opacity: 1;
     background: ${theme.colors.muted};
     color: ${theme.colors.destructive};
+  }
+
+  &:focus-visible {
+    opacity: 1;
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 1px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 `;
 
@@ -932,4 +955,67 @@ export const ContagemDesfazer = styled.span`
   font-variant-numeric: tabular-nums;
   opacity: 0.75;
   font-size: ${theme.fontSize.xs};
+`;
+
+/**
+ * "Nova etapa", no fim da lista de etapas de cada escopo.
+ *
+ * ⭐ **Estava na barra de ferramentas**, longe da lista em que a etapa
+ * aparece depois de criada. A legenda é onde as etapas moram, com suas datas,
+ * e é clicando nelas que se pega o pincel: o botão de criar pertence ao fim
+ * dessa lista, não a uma barra genérica no topo da tela.
+ *
+ * 📐 Um por escopo, e não um só para todos: assim o escopo da etapa nova já
+ * está decidido pelo lugar em que se clicou, e o modal não precisa mais
+ * perguntar (o `FieldSelect` de escopo dele some).
+ */
+export const LegendaNovaEtapa = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.375rem 0.5rem;
+  border: 1px dashed ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: transparent;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.mutedForeground};
+  cursor: pointer;
+  transition: background-color ${theme.transitions.fast}, color ${theme.transitions.fast},
+    border-color ${theme.transitions.fast};
+
+  &:hover {
+    border-color: ${theme.colors.mutedForeground};
+    background: ${theme.colors.muted};
+    color: ${theme.colors.foreground};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 1px;
+  }
+
+  /* Alvo de toque de 44px no celular. */
+  @media (max-width: ${theme.breakpoints.md}px) {
+    min-height: 2.75rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+/**
+ * O lápis ao lado da etapa na legenda: renomeia e troca a cor.
+ *
+ * Mesma caixa do `BotaoExcluir`, sem a cor de perigo — editar não é
+ * destrutivo, e pintar os dois de vermelho apagaria a diferença entre eles no
+ * instante em que ela mais importa.
+ */
+export const BotaoEditarEtapa = styled(BotaoExcluir)`
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
 `;

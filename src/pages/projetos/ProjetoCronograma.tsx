@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  Pencil,
+  Plus,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -12,7 +14,11 @@ import {
   createEtapa,
   definirEntregaPlanejada,
   deleteEtapa,
+  editarEtapa,
   getCronograma,
+  getRascunhos,
+  salvarRascunhos,
+  type RascunhoEtapa,
   moverEtapa,
   oficializarCronograma,
   pedirDiasDeAjuste,
@@ -45,6 +51,7 @@ import {
   AmostraHachurada,
   AvisoEscopo,
   AreaExportOculta,
+  BotaoEditarEtapa,
   BotaoExcluir,
   BarraDesfazer,
   BotaoDesfazer,
@@ -55,6 +62,7 @@ import {
   LegendaGrupo,
   LegendaItem,
   LegendaLinha,
+  LegendaNovaEtapa,
   LegendaTexto,
   LegendaTitulo,
   TagCorrecao,
@@ -244,7 +252,18 @@ export function ProjetoCronograma() {
   // detalhe. `referencia` é o período em foco; `null` até a janela chegar.
   const [visao, setVisao] = useState<Visao>("mes");
   const [referencia, setReferencia] = useState<Date | null>(null);
-  const [criandoEtapa, setCriandoEtapa] = useState(false);
+  /**
+   * O escopo em que a etapa nova vai nascer, ou `null` com o modal fechado.
+   *
+   * São DOIS botões de criar, e por isso o estado não é um booleano:
+   *
+   * - o da legenda mora dentro do grupo de um escopo, e o lugar do clique já
+   *   responde qual é — vai o id;
+   * - o da barra fica encostado no fim da lista de escopos e segue o que está
+   *   selecionado ali; em "Todos os escopos" não há um selecionado, e aí vai
+   *   `"perguntar"`, que é o que faz o campo de escopo reaparecer no modal.
+   */
+  const [criandoEtapa, setCriandoEtapa] = useState<number | "perguntar" | null>(null);
   const [confirmandoOficializacao, setConfirmandoOficializacao] = useState(false);
   /**
    * o pedido de dias em preenchimento, com o que o CALENDÁRIO já disse.
@@ -298,8 +317,42 @@ export function ProjetoCronograma() {
   );
   /** O kickoff sendo marcado pelo calendário, confirma antes por causa da ambientação. */
   const [kickoffAberto, setKickoffAberto] = useState<string | null>(null);
-  /** Etapas criadas na tela e ainda sem trecho, não existem no banco. */
-  const [rascunhos, setRascunhos] = useState<{ escopoId: number; nome: string; cor: string }[]>([]);
+  /**
+   * Etapas com nome e cor mas ainda sem trecho: não existem no banco, porque
+   * `cronograma_etapa` exige datas.
+   *
+   * ⚠ Elas nascem do `localStorage` e voltam para lá a cada mudança. Antes
+   * viviam só em memória, e apagar o último dia de uma etapa a fazia sumir de
+   * vez no primeiro F5 — que é o que `getRascunhos` explica por inteiro.
+   */
+  const [rascunhos, setRascunhos] = useState<RascunhoEtapa[]>(() => getRascunhos(projeto.id));
+  useEffect(() => {
+    salvarRascunhos(projeto.id, rascunhos);
+  }, [projeto.id, rascunhos]);
+  /**
+   * ⭐ **O que a pincelada acabou de desenhar, antes de o servidor confirmar.**
+   *
+   * ⚠ Pintar era uma espera visível: o gesto disparava de uma a três
+   * requisições EM SÉRIE (mover, criar, apagar os trechos que sobraram) e só
+   * então recarregava o cronograma inteiro e o projeto. Até tudo isso voltar,
+   * a célula continuava do jeito que estava — a pessoa via o próprio arrasto
+   * sumir e reaparecer segundos depois, e não tinha como saber se tinha dado
+   * certo.
+   *
+   * Aqui o resultado do gesto entra na lista de etapas na hora, como se já
+   * estivesse gravado, e sai quando a resposta de verdade chega. Se a
+   * gravação falhar, `carregar()` traz o estado real e desfaz o desenho —
+   * o aviso de erro explica o resto.
+   */
+  const [pinturaOtimista, setPinturaOtimista] = useState<{
+    chave: string;
+    escopoId: number;
+    escopoNome: string;
+    nome: string;
+    cor: string;
+    ordem: number;
+    trechos: { inicio: string; fim: string }[];
+  } | null>(null);
   const [exportandoPdf, setExportandoPdf] = useState(false);
   /** Enquanto não é `null`, a cópia fora da tela está montada com estes meses. */
   const [mesesExport, setMesesExport] = useState<Date[] | null>(null);
@@ -309,6 +362,19 @@ export function ProjetoCronograma() {
     chave: string;
     nome: string;
     trechos: number;
+  } | null>(null);
+  /**
+   * A etapa aberta no modal de edição, ou `null` com ele fechado.
+   *
+   * ⚠ Guarda a CHAVE, e não o objeto do grupo: `grupos` é recalculado a cada
+   * pincelada, e uma cópia velha do grupo mandaria o PATCH para trechos que
+   * podem já ter sido divididos ou apagados no meio do caminho.
+   */
+  const [etapaParaEditar, setEtapaParaEditar] = useState<{
+    chave: string;
+    nome: string;
+    cor: string;
+    escopoId: number;
   } | null>(null);
 
   const podeEditar = !!usuario?.permissoes.pode_definir_cronograma;
@@ -328,6 +394,19 @@ export function ProjetoCronograma() {
     try {
       const resposta = await getCronograma(projeto.id, token);
       setDados(resposta);
+      // Um rascunho que já virou etapa de verdade (alguém pintou nela de outro
+      // navegador, ou nesta mesma aba antes de um reload) não tem mais razão
+      // de existir no disco. Sem esta limpeza ele fica lá para sempre —
+      // inofensivo na tela, porque cai no mesmo grupo, mas lixo mesmo assim.
+      const gravadas = new Set(
+        resposta.escopos.flatMap((e) =>
+          (e.etapas ?? []).map((et) => `${e.id}|${et.nome}|${et.cor}`),
+        ),
+      );
+      setRascunhos((atual) => {
+        const sobrando = atual.filter((r) => !gravadas.has(`${r.escopoId}|${r.nome}|${r.cor}`));
+        return sobrando.length === atual.length ? atual : sobrando;
+      });
       // Ancora aqui, e não num efeito: o efeito seria um setState em cascata
       // logo após o render (react-hooks/set-state-in-effect). Abrimos no
       // período de hoje trazido para dentro da janela, um cronograma já
@@ -694,6 +773,43 @@ export function ProjetoCronograma() {
     [dados, modoGeral, escopoSelecionado],
   );
 
+  /**
+   * As etapas como a TELA as mostra: as gravadas, com o gesto em curso já
+   * aplicado por cima.
+   *
+   * O grupo que está sendo pintado sai inteiro e volta com os trechos que o
+   * gesto produziu — é a lista que o `unirTrechos`/`subtrairTrecho` já
+   * calculou para mandar ao servidor, então o que aparece na tela é
+   * exatamente o que vai ser gravado, não uma aproximação.
+   *
+   * ⚠ Os ids sintéticos são NEGATIVOS de propósito: eles só existem como
+   * chave de render enquanto a resposta não chega, e um id negativo estoura
+   * na cara de quem tentar mandá-lo para a API em vez de falhar em silêncio.
+   */
+  const etapasNaTela = useMemo(() => {
+    const p = pinturaOtimista;
+    if (!p) return etapas;
+    // A pessoa pode ter trocado de escopo no meio do voo: aí o gesto não
+    // pertence mais ao que está na tela.
+    if (!modoGeral && p.escopoId !== escopoSelecionado) return etapas;
+    return [
+      ...etapas.filter((e) => e.grupo !== p.chave),
+      ...p.trechos.map((t, i) => ({
+        id: -1 - i,
+        projeto_escopo_id: p.escopoId,
+        nome: p.nome,
+        cor: p.cor,
+        data_inicio: t.inicio,
+        data_fim: t.fim,
+        status: "planejada" as const,
+        ordem: p.ordem,
+        grupo: p.chave,
+        escopoId: p.escopoId,
+        escopoNome: p.escopoNome,
+      })),
+    ];
+  }, [etapas, pinturaOtimista, modoGeral, escopoSelecionado]);
+
   /** As etapas como o usuário as vê: uma entrada por grupo, com seus trechos. */
   const grupos = useMemo(() => {
     const mapa = new Map<string, { chave: string; nome: string; cor: string; escopoId: number; trechos: typeof etapas }>();
@@ -712,7 +828,7 @@ export function ProjetoCronograma() {
       });
     }
 
-    for (const etapa of etapas) {
+    for (const etapa of etapasNaTela) {
       const atual = mapa.get(etapa.grupo);
       if (atual) {
         atual.trechos.push(etapa);
@@ -730,7 +846,7 @@ export function ProjetoCronograma() {
       g.trechos.sort((a, b) => a.data_inicio.localeCompare(b.data_inicio));
     }
     return [...mapa.values()];
-  }, [etapas, rascunhos]);
+  }, [etapasNaTela, rascunhos]);
 
   /**
    * Os dias em que uma etapa pisa no calendário de uma frente que NÃO está
@@ -991,6 +1107,19 @@ export function ProjetoCronograma() {
         const desejados = unirTrechos([...existentes, { inicio, fim }]);
         const plano = planejarEscrita(existentes, desejados);
 
+        // ⭐ A tela recebe o resultado ANTES da ida ao servidor. `desejados` é
+        // literalmente o que vai ser gravado, então não é um palpite: é o
+        // mesmo desenho, só adiantado.
+        setPinturaOtimista({
+          chave: grupoChave,
+          escopoId: grupo.escopoId,
+          escopoNome: grupo.trechos[0]?.escopoNome ?? "",
+          nome: grupo.nome,
+          cor: grupo.cor,
+          ordem: grupo.trechos[0]?.ordem ?? 0,
+          trechos: desejados.map((t) => ({ inicio: t.inicio, fim: t.fim })),
+        });
+
         for (const t of plano.atualizar) await moverEtapa(t.id, t.inicio, t.fim, token);
         for (const t of plano.criar) {
           await createEtapa(
@@ -1011,6 +1140,11 @@ export function ProjetoCronograma() {
         // a janela termina e se ainda dá para pedir dias, repassar é melhor do
         // que reescrever a regra aqui.
         setAviso(err instanceof Error ? err.message : "Erro ao pintar a etapa");
+        // Deu errado: o estado real tem que voltar para a tela, senão fica o
+        // desenho de uma pintura que não existe.
+        await carregar();
+      } finally {
+        setPinturaOtimista(null);
       }
     },
     [token, carregar, recarregarProjeto, grupos],
@@ -1035,7 +1169,39 @@ export function ProjetoCronograma() {
           inicio: t.data_inicio,
           fim: t.data_fim,
         }));
-        const plano = planejarEscrita(existentes, subtrairTrecho(existentes, { inicio, fim }));
+        const desejados = subtrairTrecho(existentes, { inicio, fim });
+        const plano = planejarEscrita(existentes, desejados);
+
+        setPinturaOtimista({
+          chave: grupoChave,
+          escopoId: grupo.escopoId,
+          escopoNome: grupo.trechos[0]?.escopoNome ?? "",
+          nome: grupo.nome,
+          cor: grupo.cor,
+          ordem: grupo.trechos[0]?.ordem ?? 0,
+          trechos: desejados.map((t) => ({ inicio: t.inicio, fim: t.fim })),
+        });
+
+        // ⭐ **Apagar o último dia não apaga a ETAPA.**
+        //
+        // `cronograma_etapa` é uma linha COM datas: sem trecho nenhum ela não
+        // existe no banco, e tirar o último dia fazia a etapa sumir da legenda
+        // junto — com o nome e a cor que alguém escolheu. Quem quis apagar um
+        // dia perdia a etapa inteira e tinha que recriá-la.
+        //
+        // Ela volta a ser rascunho, que é exatamente o estado em que nasceu:
+        // existe na tela, com nome e cor, esperando a primeira pincelada.
+        //
+        // ⚠ Rascunho vive só nesta aba. Um F5 leva embora a etapa que ficou
+        // sem nenhum dia — para ela sobreviver ao reload, o backend precisaria
+        // aceitar etapa sem data.
+        if (desejados.length === 0) {
+          setRascunhos((atual) =>
+            atual.some((r) => `${r.escopoId}|${r.nome}|${r.cor}` === grupoChave)
+              ? atual
+              : [...atual, { escopoId: grupo.escopoId, nome: grupo.nome, cor: grupo.cor }],
+          );
+        }
 
         for (const t of plano.atualizar) await moverEtapa(t.id, t.inicio, t.fim, token);
         for (const t of plano.criar) {
@@ -1049,6 +1215,9 @@ export function ProjetoCronograma() {
         await carregar();
       } catch (err) {
         setAviso(err instanceof Error ? err.message : "Erro ao desmarcar");
+        await carregar();
+      } finally {
+        setPinturaOtimista(null);
       }
     },
     [token, carregar, grupos],
@@ -1066,7 +1235,7 @@ export function ProjetoCronograma() {
     setAviso("");
     setRascunhos((atual) => [...atual, { escopoId, nome, cor }]);
     setGrupoAtivo(`${escopoId}|${nome}|${cor}`);
-    setCriandoEtapa(false);
+    setCriandoEtapa(null);
   }
 
   /**
@@ -1103,6 +1272,46 @@ export function ProjetoCronograma() {
     }
     return mapa;
   }, [dados, exportGeral, escopoExport, diasNaoUteis, fimDeSemana]);
+
+  /**
+   * Renomeia a etapa e/ou troca a cor dela, em TODOS os trechos de uma vez.
+   *
+   * 📐 Nome e cor não moram na etapa: moram em cada linha de
+   * `cronograma_etapa`, e o que a legenda chama de "uma etapa" são as linhas
+   * que casam em `escopo|nome|cor`. Renomear só uma delas não renomeia nada —
+   * parte, ao contrário: a linha renomeada vira uma etapa nova e solta.
+   *
+   * ⚠ Os trechos saem de `etapas`, o que está GRAVADO, e não de `grupos`, que
+   * pode estar com a pintura otimista por cima. Ids negativos são de desenho,
+   * e o servidor não conhece nenhum deles.
+   */
+  async function salvarEdicaoEtapa(nome: string, cor: string) {
+    const alvo = etapaParaEditar;
+    if (!alvo) return;
+    setAviso("");
+
+    const trechos = etapas.filter((e) => e.grupo === alvo.chave);
+    if (token && trechos.length > 0) {
+      // O erro sobe: o modal mostra e continua aberto, com o que foi digitado.
+      for (const trecho of trechos) await editarEtapa(trecho.id, { nome, cor }, token);
+    }
+
+    // A etapa sem trecho nenhum é rascunho e não existe no banco: para ela, a
+    // edição é isto e só isto.
+    setRascunhos((atual) =>
+      atual.map((r) =>
+        `${r.escopoId}|${r.nome}|${r.cor}` === alvo.chave ? { ...r, nome, cor } : r,
+      ),
+    );
+    // A chave é feita de nome e cor, então editar MUDA a chave. O pincel
+    // aponta para a chave: sem isto, salvar desarmava o pincel de quem estava
+    // pintando com aquela etapa.
+    const novaChave = `${alvo.escopoId}|${nome}|${cor}`;
+    setGrupoAtivo((atual) => (atual === alvo.chave ? novaChave : atual));
+
+    setEtapaParaEditar(null);
+    if (trechos.length > 0) await carregar();
+  }
 
   async function excluirGrupo(chave: string) {
     if (!token) return;
@@ -1514,6 +1723,9 @@ export function ProjetoCronograma() {
         limites={limites}
         onNavegar={navegar}
         onAjuda={() => setAjudaAberta(true)}
+        onNovaEtapa={() =>
+          setCriandoEtapa(escopoSelecionado === "geral" ? "perguntar" : escopoSelecionado)
+        }
         onExportar={() => setExportandoPdf(true)}
         podeEditar={podeEditar}
         modos={MODOS}
@@ -1526,7 +1738,6 @@ export function ProjetoCronograma() {
         }}
         escopoAtual={escopo}
         onEntregaPlanejada={salvarEntrega}
-        onNovaEtapa={() => setCriandoEtapa(true)}
         podePedirDias={
           !!escopo?.pedido_ajuste_aberto && souCoordenador && !escopo.reajuste_pendente
         }
@@ -1573,7 +1784,7 @@ export function ProjetoCronograma() {
         <PaintedCalendar
           blocos={blocos}
           visao={visao}
-          etapas={etapas}
+          etapas={etapasNaTela}
           marcos={marcos}
           faixas={faixas}
           diasNaoUteis={diasNaoUteis}
@@ -1685,12 +1896,30 @@ export function ProjetoCronograma() {
                       </LegendaTexto>
                     </LegendaItem>
 
-                    {/* Excluir segue a mesma trava do pincel: o que manda é o
-                        escopo DESTA etapa, não o do seletor. */}
+                    {/* Editar e excluir seguem a mesma trava do pincel: o que
+                        manda é o escopo DESTA etapa, não o do seletor. */}
+                    {podeEditar && (
+                      <BotaoEditarEtapa
+                        type="button"
+                        data-acao-etapa
+                        aria-label={`Editar a etapa ${grupo.nome}`}
+                        title="Editar etapa"
+                        onClick={() =>
+                          setEtapaParaEditar({
+                            chave: grupo.chave,
+                            nome: grupo.nome,
+                            cor: grupo.cor,
+                            escopoId: grupo.escopoId,
+                          })
+                        }
+                      >
+                        <Pencil size={14} />
+                      </BotaoEditarEtapa>
+                    )}
                     {podeEditar && (
                       <BotaoExcluir
                         type="button"
-                        data-excluir
+                        data-acao-etapa
                         aria-label={`Excluir a etapa ${grupo.nome}`}
                         title="Excluir etapa"
                         onClick={() =>
@@ -1706,6 +1935,14 @@ export function ProjetoCronograma() {
                     )}
                   </LegendaLinha>
                 ))}
+                {/* ⭐ O criar encostado na lista em que a etapa vai aparecer.
+                    Estava na barra do topo, longe daqui. */}
+                {podeEditar && (
+                  <LegendaNovaEtapa type="button" onClick={() => setCriandoEtapa(esc.id)}>
+                    <Plus size={13} aria-hidden />
+                    Nova etapa
+                  </LegendaNovaEtapa>
+                )}
               </LegendaGrupo>
             );
           })}
@@ -1822,15 +2059,31 @@ export function ProjetoCronograma() {
         />
       )}
 
-      {criandoEtapa && (
+      {criandoEtapa !== null && (
         <NovaEtapaModal
           corInicial={corSugerida(etapas.length)}
           // Todos os escopos: o filtro `!cronograma_oficializado_em` que vivia
           // aqui saiu junto com o cadeado.
           escopos={dados.escopos.map((e) => ({ id: e.id, nome: e.nome }))}
-          escopoFixo={escopo?.id ?? null}
-          onCancelar={() => setCriandoEtapa(false)}
+          escopoFixo={criandoEtapa === "perguntar" ? null : criandoEtapa}
+          onCancelar={() => setCriandoEtapa(null)}
           onCriar={criarEtapa}
+        />
+      )}
+
+      {/* O mesmo formulário do criar: editar pede os mesmos dois campos, e o
+          `key` obriga a remontagem para os campos nascerem com a etapa certa
+          quando se abre uma e depois outra. */}
+      {etapaParaEditar && (
+        <NovaEtapaModal
+          key={etapaParaEditar.chave}
+          edicao
+          nomeInicial={etapaParaEditar.nome}
+          corInicial={etapaParaEditar.cor}
+          escopos={dados.escopos.map((e) => ({ id: e.id, nome: e.nome }))}
+          escopoFixo={etapaParaEditar.escopoId}
+          onCancelar={() => setEtapaParaEditar(null)}
+          onCriar={(nome, cor) => salvarEdicaoEtapa(nome, cor)}
         />
       )}
 
