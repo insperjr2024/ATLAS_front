@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAprovacoes, type Aprovacoes } from "@/lib/monitoramento";
 import { AtrasosSemJustificativaCard } from "./AtrasosSemJustificativaCard";
+import { BancasForaDaJanelaCard } from "./BancasForaDaJanelaCard";
 import { BancasSemResultadoCard } from "./BancasSemResultadoCard";
 import { EntradasEmProjetoCard } from "./EntradasEmProjetoCard";
 import { ExcecoesDeChoqueCard } from "./ExcecoesDeChoqueCard";
@@ -34,20 +35,21 @@ const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/aprovacoes", voltarRotulo
  * ela. O critério é ter alguém do outro lado bloqueado enquanto não houver
  * resposta.
  *
- * ⭐ **As cinco filas aparecem sempre, mesmo vazias.** Uma tela que só surge
+ * ⭐ **As seis filas aparecem sempre, mesmo vazias.** Uma tela que só surge
  * quando há problema não ensina o que ela cobre.
  *
- * ⭐ **As cinco decidem AQUI.** Três delas mandavam a pessoa para outra tela —
- * o projeto, Vagas, Bancas — com o argumento de que decidir sem contexto é
+ * ⭐ **As seis decidem AQUI.** A maioria mandava a pessoa para outra tela — o
+ * projeto, Vagas, Bancas — com o argumento de que decidir sem contexto é
  * decidir no escuro. O argumento estava certo e a conclusão errada: o
  * caminho não era exportar a decisão, era importar o contexto. Cada linha
  * agora carrega o que a pessoa iria ver do outro lado (a urna da banca, a
- * carga de quem pediu, o motivo do atraso com escopo e dias), e as cinco
+ * carga de quem pediu, o motivo do atraso com escopo e dias), e as seis
  * rotas de decisão já existiam — nenhuma foi criada para isto.
  *
  * ⚠ **A ordem dos cards é por custo de ficar parado**, não alfabética nem
- * histórica. O choque de horário vem primeiro porque é o único que APODRECE:
- * passado o horário pretendido, a decisão não destrava mais nada.
+ * histórica. Choque de horário e banca fora da janela vêm primeiro porque são
+ * os únicos que APODRECEM: passada a data pretendida, a decisão não destrava
+ * mais nada.
  */
 export function AprovacoesAba() {
   const { token } = useAuth();
@@ -88,6 +90,7 @@ export function AprovacoesAba() {
   // Na ordem em que os cards aparecem — a faixa é o índice da página.
   const filas = [
     { rotulo: "Choques de horário", n: dados.excecoes_de_choque.length, id: "fila-choque" },
+    { rotulo: "Bancas fora da janela", n: dados.bancas_fora_da_janela.length, id: "fila-fora-da-janela" },
     { rotulo: "Dias de ajuste", n: dados.dias_de_ajuste.length, id: "fila-dias" },
     { rotulo: "Bancas sem veredito", n: dados.bancas_sem_resultado.length, id: "fila-bancas" },
     { rotulo: "Pedidos de entrada", n: dados.solicitacoes_de_entrada.length, id: "fila-entradas" },
@@ -113,10 +116,11 @@ export function AprovacoesAba() {
       </FaixaResumo>
 
       {dados.total === 0 && (
-        <EmptyText>Nada esperando por você. As cinco filas estão limpas.</EmptyText>
+        <EmptyText>Nada esperando por você. As seis filas estão limpas.</EmptyText>
       )}
 
       <ExcecoesDeChoqueCard itens={dados.excecoes_de_choque} onDecidiu={carregar} />
+      <BancasForaDaJanelaCard itens={dados.bancas_fora_da_janela} onDecidiu={carregar} />
       <PedidosDeDiasCard
         itens={dados.dias_de_ajuste}
         onDecidiu={carregar}

@@ -657,6 +657,21 @@ export interface AprovacaoExcecaoChoque {
   criado_em: string;
 }
 
+/** §13: um pedido para marcar banca fora da janela do escopo. */
+export interface AprovacaoForaDaJanela {
+  id: number;
+  projeto_id: number | null;
+  projeto_nome: string;
+  projeto_escopo_id: number;
+  escopo_nome: string | null;
+  data_hora_pretendida: string;
+  /** O fim da janela hoje — quanto a data pretendida passa dela. */
+  fim_janela: string | null;
+  justificativa: string;
+  solicitado_por_nome: string | null;
+  criado_em: string;
+}
+
 /**
  * Havia uma terceira fila, `entregas_sem_classificacao` (entregas atrasadas
  * sem o rótulo interno/agenda do cliente). Removida em 2026-08-12 junto com o
@@ -670,6 +685,8 @@ export interface Aprovacoes {
   bancas_sem_resultado: AprovacaoBancaSemResultado[];
   /** §8: pedidos para marcar banca em horário já ocupado. */
   excecoes_de_choque: AprovacaoExcecaoChoque[];
+  /** §13: pedidos para marcar banca fora da janela do escopo. */
+  bancas_fora_da_janela: AprovacaoForaDaJanela[];
   /** Servido pronto pelo backend — o badge da aba precisa dele antes de
    *  qualquer render, e somar no front duplicaria a conta. */
   total: number;

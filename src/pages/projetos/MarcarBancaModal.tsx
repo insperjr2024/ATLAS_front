@@ -11,7 +11,7 @@ import {
 } from "@/styles/modal.styled";
 import { PageButton } from "@/styles/page.styled";
 import { formatarData } from "@/lib/projetos";
-import { solicitarExcecaoChoque } from "@/lib/bancas";
+import { solicitarExcecaoChoque, solicitarForaJanela } from "@/lib/bancas";
 import { useAuth } from "@/context/AuthContext";
 import {
   AvisoBanner,
@@ -68,18 +68,20 @@ interface Props {
  * linha que a tela de Bancas lê, sem espelho nem sincronização.
  *
  * **É o único bloqueio duro do cronograma.** Pintar etapa além da janela é
- * livre e só avisa; marcar banca fora dela não passa sem a diretoria, e
- * a tela barra antes de enviar, em vez de deixar o 422 explicar depois.
+ * livre e só avisa; marcar banca fora dela não passa sem autorização, e
+ * a tela barra antes de enviar quando dá pra prever (em cima da hora), em
+ * vez de deixar o 422 explicar depois.
  *
  * A justificativa é exigida em três casos, e por motivos diferentes:
  *
- * - a data cai **fora da janela** do escopo (só a diretoria, );
+ * - a data cai **fora da janela** do escopo — exige um pedido aprovado pela
+ *   diretoria (§13), em ato separado; nem ela marca sozinha;
  * - é uma **remarcação**, remarcar nunca é silencioso;
  * - a banca atual acontece nos **próximos 5 dias úteis** (os avaliadores
- *   já reservaram a agenda), e aí também só a diretoria.
+ *   já reservaram a agenda), e aí a diretoria marca direto.
  *
- * Quem decide de verdade continua sendo o backend: se ele recusar, a mensagem
- * dele aparece aqui embaixo.
+ * Quem decide de verdade continua sendo o backend: se ele recusar por fora da
+ * janela, o botão de pedir autorização aparece aqui embaixo.
  */
 export function MarcarBancaModal({
   nomeEscopo,
@@ -125,6 +127,19 @@ export function MarcarBancaModal({
   const [choque, setChoque] = useState(false);
   const [pedindo, setPedindo] = useState(false);
   const [pedido, setPedido] = useState(false);
+  /**
+   * ⭐ Ligado quando o backend recusa por estar FORA DA JANELA sem
+   * autorização (§13).
+   *
+   * ⚠ Reagir à recusa, e não bloquear de antemão: marcar fora da janela não
+   * é mais um atalho de diretor — nem ela marca sozinha, precisa de um
+   * pedido aprovado separadamente (`fora_janela`). O front não sabe se já
+   * existe uma autorização aprovada para este par (escopo, data); quem sabe
+   * é o backend, então a tentativa de marcar é que revela se falta pedir.
+   */
+  const [foraJanelaNegada, setForaJanelaNegada] = useState(false);
+  const [pedindoJanela, setPedindoJanela] = useState(false);
+  const [pedidoJanela, setPedidoJanela] = useState(false);
 
   const foraDaJanela = !!fimJanela && dia > fimJanela;
   const emCimaDaHora =
@@ -136,8 +151,10 @@ export function MarcarBancaModal({
   // "Pedir exceção à diretoria" ficava desabilitado para sempre, sem
   // nenhum jeito de escrever o motivo que ele mesmo pede para preencher.
   const exigeJustificativa = jaTemData || foraDaJanela || choque;
-  const exigeDiretoria = foraDaJanela || emCimaDaHora;
-  const bloqueado = exigeDiretoria && !ehDiretor;
+  // `foraDaJanela` não bloqueia mais de antemão: mesmo a diretoria precisa
+  // de um pedido aprovado, então a tentativa de marcar é que decide — só
+  // "em cima da hora" continua sendo um atalho direto dela.
+  const bloqueado = emCimaDaHora && !ehDiretor;
 
   const candidatos = escoposDoProjeto.filter(
     (e) => e.id === escopoId || e.status !== "cancelado",
@@ -168,6 +185,7 @@ export function MarcarBancaModal({
       // código de erro por regra. Casar pelo texto é frágil de propósito: uma
       // mudança de texto some com o botão, não abre um caminho errado.
       setChoque(mensagem.includes("Já existe uma banca marcada para este horário"));
+      setForaJanelaNegada(mensagem.includes("exige autorização da diretoria"));
     } finally {
       setEnviando(false);
     }
@@ -205,6 +223,30 @@ export function MarcarBancaModal({
     }
   }
 
+  async function pedirAutorizacaoJanela() {
+    if (!token) return;
+    setPedindoJanela(true);
+    setErro("");
+    try {
+      await solicitarForaJanela(
+        {
+          projeto_escopo_id: escopoId,
+          // Mesma conversão de `pedirExcecao`: a autorização é aprovada para
+          // um instante específico, e o backend casa pedido e marcação por
+          // `data_hora` EXATA.
+          data_hora_pretendida: new Date(`${dia}T${horario}:00`).toISOString(),
+          justificativa: justificativa.trim(),
+        },
+        token,
+      );
+      setPedidoJanela(true);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível enviar o pedido");
+    } finally {
+      setPedindoJanela(false);
+    }
+  }
+
   return (
     <ModalOverlay onClick={onCancelar}>
       <ModalContent onClick={(e) => e.stopPropagation()}>
@@ -223,10 +265,9 @@ export function MarcarBancaModal({
           {foraDaJanela && (
             <p>
               Esta data está <strong>fora da janela</strong> do escopo, que termina
-              em {formatarData(fimJanela)}.{" "}
-              {ehDiretor
-                ? "Os dias além da janela entram como atraso do projeto."
-                : "Marcar aqui é decisão da diretoria, escolha um dia dentro da janela ou peça autorização."}
+              em {formatarData(fimJanela)}. Marcar aqui exige autorização da
+              diretoria — os dias além da janela entram como atraso do
+              projeto.
             </p>
           )}
 
@@ -326,6 +367,32 @@ export function MarcarBancaModal({
             <AvisoBanner>
               Pedido enviado. A diretoria decide na aba <strong>Monitoramento → Aprovações</strong>;
               se liberar, volte aqui para marcar a banca neste horário.
+            </AvisoBanner>
+          )}
+
+          {/* A saída para fora da janela: pedir autorização sem sair do
+              modal. A justificativa é a mesma do formulário — o motivo de
+              precisar dessa data é o que a diretoria vai ler para decidir. */}
+          {foraJanelaNegada && !pedidoJanela && (
+            <FieldGroup>
+              <AvisoBanner>
+                Você pode pedir autorização à diretoria para marcar mesmo fora da janela.
+                Explique acima por que — é o que ela vai ler para decidir.
+              </AvisoBanner>
+              <PageButton
+                type="button"
+                $variant="outline"
+                disabled={pedindoJanela || !justificativa.trim()}
+                onClick={pedirAutorizacaoJanela}
+              >
+                {pedindoJanela ? "Enviando pedido..." : "Pedir autorização à diretoria"}
+              </PageButton>
+            </FieldGroup>
+          )}
+          {pedidoJanela && (
+            <AvisoBanner>
+              Pedido enviado. A diretoria decide na aba <strong>Monitoramento → Aprovações</strong>;
+              se autorizar, volte aqui para marcar a banca nesta data.
             </AvisoBanner>
           )}
         </ModalBody>
