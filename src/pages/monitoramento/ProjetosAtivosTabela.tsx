@@ -19,6 +19,7 @@ import {
   BotaoLimparBusca,
   BotaoAlternativa,
   CelulaDias,
+  ConteudoCarregando,
   DataTable,
   EstadoLimpo,
   GrupoBotoes,
@@ -256,7 +257,13 @@ export function ProjetosAtivosTabela() {
               </BarraBusca>
             </HistControles>
 
-            {carregando || !dados ? (
+            {/* `!dados` e não `carregando || !dados`: o bloco de carregamento é
+                só da primeira carga. Trocar um filtro mantém a tabela antiga na
+                tela, esmaecida — o seletor de status fica na barra acima, e
+                apagar o conteúdo a cada clique fazia a página inteira piscar
+                enquanto a pessoa ainda estava marcando as etapas. */}
+            <ConteudoCarregando $carregando={carregando}>
+            {!dados ? (
               <PageLoadingBlock />
             ) : ordenados.length === 0 ? (
               <EstadoLimpo>
@@ -338,6 +345,7 @@ export function ProjetosAtivosTabela() {
                 </DataTable>
               </TabelaRolagem>
             )}
+            </ConteudoCarregando>
           </>
         )}
       </PageCardContent>

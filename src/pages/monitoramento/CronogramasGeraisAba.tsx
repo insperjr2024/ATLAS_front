@@ -15,6 +15,7 @@ import {
   CardCliente,
   CardGrid,
   CardTitle,
+  ConteudoCarregando,
   CronogramaCardRodape,
   Pilula,
   ProjetoCard,
@@ -108,7 +109,7 @@ export function CronogramasGeraisAba() {
     );
   }
 
-  if (carregando || !dados) {
+  if (!dados) {
     return (
       <PageStack>
         {seletor}
@@ -123,6 +124,7 @@ export function CronogramasGeraisAba() {
     // clique de distância; sem nenhum, é o recorte de visão da pessoa.
     const filtrando = frenteId !== null || escopoId !== null || status.length > 0;
     return (
+      <ConteudoCarregando $carregando={carregando}>
       <PageStack>
         {seletor}
         {filtrando ? (
@@ -139,10 +141,12 @@ export function CronogramasGeraisAba() {
           />
         )}
       </PageStack>
+      </ConteudoCarregando>
     );
   }
 
   return (
+    <ConteudoCarregando $carregando={carregando}>
     <PageStack>
       {seletor}
       <AvisoSomenteLeitura>
@@ -171,5 +175,6 @@ export function CronogramasGeraisAba() {
         })}
       </CardGrid>
     </PageStack>
+    </ConteudoCarregando>
   );
 }

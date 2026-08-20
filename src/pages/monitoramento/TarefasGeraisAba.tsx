@@ -17,6 +17,7 @@ import { Card, CardMeta, CardTitulo, CardTopo, Ponto } from "@/components/kanban
 import { StatusPilula } from "@/pages/projetos/Projetos.styled";
 import {
   AvisoSomenteLeitura,
+  ConteudoCarregando,
   SwimCell,
   SwimCellVazia,
   BarraBusca,
@@ -119,7 +120,7 @@ export function TarefasGeraisAba() {
     );
   }
 
-  if (carregando || !dados) {
+  if (!dados) {
     return (
       <PageStack>
         {seletor}
@@ -134,6 +135,7 @@ export function TarefasGeraisAba() {
     // levam a ações opostas.
     const filtrando = frenteId !== null || escopoId !== null || status.length > 0;
     return (
+      <ConteudoCarregando $carregando={carregando}>
       <PageStack>
         {seletor}
         {filtrando ? (
@@ -150,6 +152,7 @@ export function TarefasGeraisAba() {
           />
         )}
       </PageStack>
+      </ConteudoCarregando>
     );
   }
 
@@ -168,6 +171,7 @@ export function TarefasGeraisAba() {
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
   return (
+    <ConteudoCarregando $carregando={carregando}>
     <PageStack>
       {seletor}
       <AvisoSomenteLeitura>
@@ -300,5 +304,6 @@ export function TarefasGeraisAba() {
         </>
       )}
     </PageStack>
+    </ConteudoCarregando>
   );
 }

@@ -26,6 +26,7 @@ import {
   BarraCargaTrilho,
   ChipProjeto,
   ChipsProjetos,
+  ConteudoCarregando,
   DataTable,
   DemandaAltaLista,
   DemandaAltaPessoa,
@@ -113,7 +114,7 @@ export function AlocacaoAba() {
     );
   }
 
-  if (carregando || !dados) {
+  if (!dados) {
     return (
       <PageStack>
         {seletor}
@@ -154,6 +155,7 @@ export function AlocacaoAba() {
   );
 
   return (
+    <ConteudoCarregando $carregando={carregando}>
     <PageStack>
       {seletor}
       {/* Quem são as pessoas, a lista completa abre a aba. */}
@@ -198,6 +200,7 @@ export function AlocacaoAba() {
         </PageCardContent>
       </PageCard>
     </PageStack>
+    </ConteudoCarregando>
   );
 }
 

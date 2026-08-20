@@ -32,6 +32,7 @@ import {
   AprovacaoMeta,
   AtrasoTitulo,
   BarraFiltros,
+  ConteudoCarregando,
   DataTable,
   Legenda,
   LegendaItem,
@@ -119,7 +120,7 @@ export function AtrasosAba() {
     );
   }
 
-  if (carregando || !dados) return <PageLoadingBlock />;
+  if (!dados) return <PageLoadingBlock />;
 
   // Uma linha por BANCA vencida, não por projeto: é a banca que venceu, e é
   // sobre ela que a nota da diretoria é escrita. O aninhamento projeto →
@@ -133,6 +134,7 @@ export function AtrasosAba() {
   const coordenadores = dados.por_coordenador.filter((c) => c.atrasados > 0);
 
   return (
+    <ConteudoCarregando $carregando={carregando}>
     <PageStack>
       <BarraFiltros>
         {seletorFrente}
@@ -168,6 +170,7 @@ export function AtrasosAba() {
         inicial ficam de fora das duas listas.
       </NotaRodape>
     </PageStack>
+    </ConteudoCarregando>
   );
 }
 

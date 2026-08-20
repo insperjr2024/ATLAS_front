@@ -42,6 +42,7 @@ import {
   BotaoAlternativa,
   CardLargura,
   CelulaDias,
+  ConteudoCarregando,
   ControlesGrafico,
   DataTable,
   GrupoBotoes,
@@ -168,7 +169,16 @@ export function VisaoGeralAba() {
     );
   }
 
-  if (carregando || !dados) {
+  // ⭐ `!dados`, e NÃO `carregando || !dados`: o bloco de carregamento é só da
+  // PRIMEIRA carga, quando ainda não há o que mostrar. Numa recarga por
+  // filtro, o conteúdo antigo fica na tela esmaecido até o novo chegar.
+  //
+  // Com `carregando` aqui, o slot trocava de `<ConteudoVisaoGeral>` para
+  // `<PageStack>` a cada clique num filtro. Tipo diferente no mesmo lugar faz
+  // o React DESMONTAR a árvore inteira — inclusive a barra de filtros —, e o
+  // seletor de status voltava fechado no meio da seleção: dava para marcar uma
+  // caixinha, nunca duas.
+  if (!dados) {
     return (
       <PageStack>
         {seletor}
@@ -177,7 +187,11 @@ export function VisaoGeralAba() {
     );
   }
 
-  return <ConteudoVisaoGeral dados={dados} seletor={seletor} />;
+  return (
+    <ConteudoCarregando $carregando={carregando}>
+      <ConteudoVisaoGeral dados={dados} seletor={seletor} />
+    </ConteudoCarregando>
+  );
 }
 
 /**
