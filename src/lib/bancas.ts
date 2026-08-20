@@ -363,6 +363,59 @@ export function decidirExcecaoChoque(
 }
 
 /**
+ * ⭐ Pedir autorização para marcar a banca fora da janela do escopo (§13).
+ *
+ * ⚠ **O caminho que faltava.** Marcar fora da janela era um atalho de um ato
+ * só: só quem tinha `posicao === "diretor"` conseguia, e marcava sozinho, na
+ * mesma chamada que gravava a data. Agora quem marca PEDE aqui, com
+ * justificativa, e a diretoria decide depois, em ato separado — mesmo
+ * desenho do pedido de exceção de choque acima.
+ */
+export function solicitarForaJanela(
+  dados: { projeto_escopo_id: number; data_hora_pretendida: string; justificativa: string },
+  token: string,
+) {
+  return apiFetch<{ id: number; status: string }>("/bancas/fora-janela", {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+/** Um pedido de autorização de banca fora da janela, esperando a diretoria. */
+export interface ForaJanelaPendente {
+  id: number;
+  projeto_id: number | null;
+  projeto_nome: string;
+  projeto_escopo_id: number;
+  escopo_nome: string | null;
+  data_hora_pretendida: string;
+  /** O fim da janela hoje — o contexto de quanto a data pretendida passa dela. */
+  fim_janela: string | null;
+  justificativa: string;
+  solicitado_por: number;
+  solicitado_por_nome: string | null;
+  criado_em: string;
+}
+
+export function getForaJanelaPendentes(token: string) {
+  return apiFetch<ForaJanelaPendente[]>("/bancas/fora-janela/pendentes", { token });
+}
+
+/** A decisão da diretoria — `resposta` é obrigatória nos dois sentidos. */
+export function decidirForaJanela(
+  pedidoId: number,
+  dados: { aprovar: boolean; resposta: string },
+  token: string,
+) {
+  return apiFetch(`/bancas/fora-janela/${pedidoId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+/**
  * ⭐ Todas as bancas de um PROJETO, cada uma com a ficha completa.
  *
  * É o que a aba "Banca" do projeto consome. Rota própria, e não N chamadas a
