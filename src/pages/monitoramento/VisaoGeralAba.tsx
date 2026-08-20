@@ -42,6 +42,7 @@ import {
   BotaoAlternativa,
   CardLargura,
   CelulaDias,
+  ConteudoCarregando,
   ControlesGrafico,
   DataTable,
   GrupoBotoes,
@@ -70,6 +71,7 @@ import {
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
+import { useFiltroStatus } from "./FiltroStatus";
 
 /** Pra "voltar" do projeto cair de novo aqui — Visão geral é a rota índice
  *  de Monitoramento, então o destino é a pasta sem sub-rota. */
@@ -123,10 +125,12 @@ export function VisaoGeralAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
+  const { status, seletor: seletorStatus } = useFiltroStatus();
   const seletor = (
     <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
+      {seletorStatus}
     </BarraFiltros>
   );
   const [dados, setDados] = useState<VisaoGeral | null>(null);
@@ -138,7 +142,7 @@ export function VisaoGeralAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getVisaoGeral(token, frenteId, escopoId));
+      setDados(await getVisaoGeral(token, frenteId, escopoId, status));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar o monitoramento");
     } finally {
@@ -149,7 +153,7 @@ export function VisaoGeralAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId, escopoId]);
+  }, [token, frenteId, escopoId, status]);
 
   if (erro) {
     return (
@@ -165,7 +169,16 @@ export function VisaoGeralAba() {
     );
   }
 
-  if (carregando || !dados) {
+  // ⭐ `!dados`, e NÃO `carregando || !dados`: o bloco de carregamento é só da
+  // PRIMEIRA carga, quando ainda não há o que mostrar. Numa recarga por
+  // filtro, o conteúdo antigo fica na tela esmaecido até o novo chegar.
+  //
+  // Com `carregando` aqui, o slot trocava de `<ConteudoVisaoGeral>` para
+  // `<PageStack>` a cada clique num filtro. Tipo diferente no mesmo lugar faz
+  // o React DESMONTAR a árvore inteira — inclusive a barra de filtros —, e o
+  // seletor de status voltava fechado no meio da seleção: dava para marcar uma
+  // caixinha, nunca duas.
+  if (!dados) {
     return (
       <PageStack>
         {seletor}
@@ -174,7 +187,11 @@ export function VisaoGeralAba() {
     );
   }
 
-  return <ConteudoVisaoGeral dados={dados} seletor={seletor} />;
+  return (
+    <ConteudoCarregando $carregando={carregando}>
+      <ConteudoVisaoGeral dados={dados} seletor={seletor} />
+    </ConteudoCarregando>
+  );
 }
 
 /**

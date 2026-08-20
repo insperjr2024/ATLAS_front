@@ -17,6 +17,7 @@ import { Card, CardMeta, CardTitulo, CardTopo, Ponto } from "@/components/kanban
 import { StatusPilula } from "@/pages/projetos/Projetos.styled";
 import {
   AvisoSomenteLeitura,
+  ConteudoCarregando,
   SwimCell,
   SwimCellVazia,
   BarraBusca,
@@ -34,6 +35,7 @@ import {
 import { useFiltroFrente } from "./FiltroFrente";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { useFiltroEscopo } from "./FiltroEscopo";
+import { useFiltroStatus } from "./FiltroStatus";
 
 /**
  * Board macro: todas as tarefas de todos os projetos visíveis, num
@@ -65,10 +67,12 @@ export function TarefasGeraisAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
+  const { status, seletor: seletorStatus } = useFiltroStatus();
   const seletor = (
     <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
+      {seletorStatus}
     </BarraFiltros>
   );
   const [busca, setBusca] = useState("");
@@ -89,7 +93,7 @@ export function TarefasGeraisAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getTarefasGerais(token, frenteId, escopoId));
+      setDados(await getTarefasGerais(token, frenteId, escopoId, status));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar as tarefas");
     } finally {
@@ -100,7 +104,7 @@ export function TarefasGeraisAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId, escopoId]);
+  }, [token, frenteId, escopoId, status]);
 
   if (erro) {
     return (
@@ -116,7 +120,7 @@ export function TarefasGeraisAba() {
     );
   }
 
-  if (carregando || !dados) {
+  if (!dados) {
     return (
       <PageStack>
         {seletor}
@@ -129,8 +133,9 @@ export function TarefasGeraisAba() {
     // Com filtro ligado a tarefa provavelmente existe e está escondida; sem
     // nenhum, ou ninguém criou tarefa ainda, ou não é da sua visão. As duas
     // levam a ações opostas.
-    const filtrando = frenteId !== null || escopoId !== null;
+    const filtrando = frenteId !== null || escopoId !== null || status.length > 0;
     return (
+      <ConteudoCarregando $carregando={carregando}>
       <PageStack>
         {seletor}
         {filtrando ? (
@@ -147,6 +152,7 @@ export function TarefasGeraisAba() {
           />
         )}
       </PageStack>
+      </ConteudoCarregando>
     );
   }
 
@@ -165,6 +171,7 @@ export function TarefasGeraisAba() {
     .sort((a, b) => a.nome.localeCompare(b.nome));
 
   return (
+    <ConteudoCarregando $carregando={carregando}>
     <PageStack>
       {seletor}
       <AvisoSomenteLeitura>
@@ -297,5 +304,6 @@ export function TarefasGeraisAba() {
         </>
       )}
     </PageStack>
+    </ConteudoCarregando>
   );
 }

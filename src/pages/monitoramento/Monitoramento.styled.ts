@@ -2,6 +2,7 @@ import styled, { css } from "styled-components";
 import { Link as RouterLink, NavLink } from "react-router-dom";
 import { theme } from "@/styles/theme";
 import { PALETA } from "@/components/cronograma-pintado/cores";
+import { MultiSelect } from "@/components/MultiSelect";
 import { DataTable as DataTableBase, FieldSelect } from "../Bancas.styled";
 import { PageButtonSm, PageCard } from "@/styles/page.styled";
 
@@ -272,6 +273,24 @@ export const FiltroSelect = styled(FieldSelect)`
   /* No celular o teto vira o contrário do que se quer: com o min-width de 9rem,
      dois filtros tentam dividir 375px e sobram ~140px para cada rótulo de
      frente. Um por linha, largura cheia. */
+  @media (max-width: ${theme.breakpoints.sm - 1}px) {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+`;
+
+/**
+ * O irmão de marcar-vários do `FiltroSelect` — hoje só o filtro de status.
+ *
+ * Mesmas medidas de propósito: os três filtros ficam na MESMA linha da
+ * `BarraFiltros`, e uma largura própria aqui faria o de status destoar dos
+ * dois ao lado, sugerindo que ele é outro tipo de controle.
+ */
+export const FiltroMulti = styled(MultiSelect)`
+  flex: 0 1 13rem;
+  width: auto;
+  min-width: 9rem;
+
   @media (max-width: ${theme.breakpoints.sm - 1}px) {
     flex: 1 1 100%;
     min-width: 0;

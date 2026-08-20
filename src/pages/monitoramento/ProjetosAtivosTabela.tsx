@@ -5,6 +5,7 @@ import { getProjetosAtivos, type ProjetoAtivo } from "@/lib/monitoramento";
 import { ROTULO_STATUS, formatarData } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import type { UsuarioResumo } from "@/types/auth";
+import type { StatusProjeto } from "@/types/projeto";
 import {
   PageCard,
   PageCardHeader,
@@ -18,6 +19,7 @@ import {
   BotaoLimparBusca,
   BotaoAlternativa,
   CelulaDias,
+  ConteudoCarregando,
   DataTable,
   EstadoLimpo,
   GrupoBotoes,
@@ -40,6 +42,7 @@ import {
   type TomPilula,
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
+import { useFiltroStatus } from "./FiltroStatus";
 import { AcoesRecentesModal } from "./AcoesRecentesModal";
 
 /**
@@ -51,6 +54,24 @@ import { AcoesRecentesModal } from "./AcoesRecentesModal";
  * busca, segmento, ordenação e o modal de ações.
  */
 type Segmento = "todos" | "execucao" | "pausados";
+
+/** As etapas oferecidas no filtro de status desta tabela — todas menos
+ *  `finalizado`, que nunca aparece aqui.
+ *
+ *  ⚠ Convive com os botões de segmento abaixo, e os dois NÃO brigam: o filtro
+ *  de status escolhe o que é CARREGADO (vai na requisição), o segmento é um
+ *  corte grosso dentro do que já veio. Como as contagens dos botões saem de
+ *  `dados`, elas acompanham o filtro sozinhas — marcar "Ambientação" deixa
+ *  "Pausados (0)", que é a verdade sobre o recorte na tela. */
+const STATUS_EM_CURSO: StatusProjeto[] = [
+  "vendido",
+  "ambientacao",
+  "em_andamento",
+  "validacao_bancas",
+  "envio_tep",
+  "periodo_ajustes",
+  "pausado",
+];
 
 const SEGMENTOS: { chave: Segmento; rotulo: string }[] = [
   { chave: "todos", rotulo: "Todos" },
@@ -99,6 +120,11 @@ function comparar(a: ProjetoAtivo, b: ProjetoAtivo, coluna: ColunaOrd): number {
 export function ProjetosAtivosTabela() {
   const { token } = useAuth();
   const { frenteId, seletor } = useFiltroFrente();
+  // Sem `finalizado`: esta tabela é, por definição, o que ainda está ABERTO —
+  // o backend recorta os finalizados de qualquer jeito, e oferecer uma opção
+  // que sempre devolve tabela vazia parece bug. Quem quer os encerrados tem a
+  // tabela irmã, o Portfólio encerrado, logo abaixo nesta mesma página.
+  const { status, seletor: seletorStatus } = useFiltroStatus(STATUS_EM_CURSO);
   const [segmento, setSegmento] = useState<Segmento>("todos");
   const [busca, setBusca] = useState("");
   const [ordem, setOrdem] = useState<{ coluna: ColunaOrd; dir: Direcao }>({
@@ -126,7 +152,7 @@ export function ProjetosAtivosTabela() {
     let vivo = true;
     setCarregando(true);
     setErro("");
-    getProjetosAtivos(token, frenteId)
+    getProjetosAtivos(token, frenteId, status)
       .then((r) => {
         if (vivo) setDados(r);
       })
@@ -139,7 +165,7 @@ export function ProjetosAtivosTabela() {
     return () => {
       vivo = false;
     };
-  }, [token, frenteId]);
+  }, [token, frenteId, status]);
 
   const contagem = useMemo(() => {
     const lista = dados ?? [];
@@ -199,6 +225,7 @@ export function ProjetosAtivosTabela() {
             <HistControles>
               <HistSegmentos>
                 {seletor}
+                {seletorStatus}
                 <GrupoBotoes role="group" aria-label="Filtrar por situação">
                   {SEGMENTOS.map((s) => (
                     <BotaoAlternativa
@@ -230,7 +257,13 @@ export function ProjetosAtivosTabela() {
               </BarraBusca>
             </HistControles>
 
-            {carregando || !dados ? (
+            {/* `!dados` e não `carregando || !dados`: o bloco de carregamento é
+                só da primeira carga. Trocar um filtro mantém a tabela antiga na
+                tela, esmaecida — o seletor de status fica na barra acima, e
+                apagar o conteúdo a cada clique fazia a página inteira piscar
+                enquanto a pessoa ainda estava marcando as etapas. */}
+            <ConteudoCarregando $carregando={carregando}>
+            {!dados ? (
               <PageLoadingBlock />
             ) : ordenados.length === 0 ? (
               <EstadoLimpo>
@@ -312,6 +345,7 @@ export function ProjetosAtivosTabela() {
                 </DataTable>
               </TabelaRolagem>
             )}
+            </ConteudoCarregando>
           </>
         )}
       </PageCardContent>

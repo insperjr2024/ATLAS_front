@@ -5,6 +5,7 @@ import { getAtrasos, type Atrasos } from "@/lib/monitoramento";
 import { formatarData, registrarJustificativaAtraso } from "@/lib/projetos";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
+import { useFiltroStatus } from "./FiltroStatus";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { ConteudoPaginado, Paginacao, usePaginacao } from "./Paginacao";
@@ -31,6 +32,7 @@ import {
   AprovacaoMeta,
   AtrasoTitulo,
   BarraFiltros,
+  ConteudoCarregando,
   DataTable,
   Legenda,
   LegendaItem,
@@ -88,18 +90,19 @@ export function AtrasosAba() {
   // seletor e cuidam do recorte de visão (o gerente não escolhe frente).
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
+  const { status, seletor: seletorStatus } = useFiltroStatus();
 
   const carregar = useCallback(async () => {
     if (!token) return;
     setErro("");
     try {
-      setDados(await getAtrasos(token, frenteId, escopoId));
+      setDados(await getAtrasos(token, frenteId, escopoId, status));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar os atrasos");
     } finally {
       setCarregando(false);
     }
-  }, [token, frenteId, escopoId]);
+  }, [token, frenteId, escopoId, status]);
 
   useEffect(() => {
     setCarregando(true);
@@ -117,7 +120,7 @@ export function AtrasosAba() {
     );
   }
 
-  if (carregando || !dados) return <PageLoadingBlock />;
+  if (!dados) return <PageLoadingBlock />;
 
   // Uma linha por BANCA vencida, não por projeto: é a banca que venceu, e é
   // sobre ela que a nota da diretoria é escrita. O aninhamento projeto →
@@ -131,10 +134,12 @@ export function AtrasosAba() {
   const coordenadores = dados.por_coordenador.filter((c) => c.atrasados > 0);
 
   return (
+    <ConteudoCarregando $carregando={carregando}>
     <PageStack>
       <BarraFiltros>
         {seletorFrente}
         {seletorEscopo}
+        {seletorStatus}
       </BarraFiltros>
 
       <CardBancasVencidas
@@ -165,6 +170,7 @@ export function AtrasosAba() {
         inicial ficam de fora das duas listas.
       </NotaRodape>
     </PageStack>
+    </ConteudoCarregando>
   );
 }
 
