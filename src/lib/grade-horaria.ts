@@ -14,6 +14,15 @@ export function getMinhaGrade(token: string) {
   return apiFetch<MinhaGrade>("/grade-horaria", { token });
 }
 
+/**
+ * A grade de um membro específico. Só quem tem `pode_gerir_membros` — a
+ * rota recusa qualquer outro token, é a única exceção a "cada um vê só a
+ * própria grade".
+ */
+export function getGradeDeUsuario(usuarioId: number, token: string) {
+  return apiFetch<MinhaGrade>(`/grade-horaria/${usuarioId}`, { token });
+}
+
 /** Substitui a grade inteira. Lista vazia limpa, é gravação válida. */
 export function salvarGrade(faixas: FaixaGrade[], token: string) {
   return apiFetch<MinhaGrade>("/grade-horaria", {

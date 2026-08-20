@@ -98,6 +98,10 @@ export const BotaoCelula = styled.button<{ $marcada: boolean }>`
     outline: 2px solid ${theme.colors.primary};
     outline-offset: -3px;
   }
+
+  &:disabled {
+    cursor: default;
+  }
 `;
 
 export const Rodape = styled.div`

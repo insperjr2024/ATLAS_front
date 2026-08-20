@@ -20,7 +20,10 @@ interface Props {
   faixasDisponiveis: FaixaDisponivel[];
   /** O que está gravado hoje, é a partir daqui que se sabe o que mudou. */
   salvas: FaixaGrade[];
-  onSalvar: (faixas: FaixaGrade[]) => Promise<void>;
+  onSalvar?: (faixas: FaixaGrade[]) => Promise<void>;
+  /** Mostra a grade sem deixar clicar nem salvar — a visão administrativa
+   *  de outra pessoa, que não é dona dos próprios dados aqui. */
+  somenteLeitura?: boolean;
 }
 
 /**
@@ -34,7 +37,7 @@ interface Props {
  * pendente. Gravar é explícito: clique errado no quadro não vira escrita no
  * banco.
  */
-export function GradeEditor({ faixasDisponiveis, salvas, onSalvar }: Props) {
+export function GradeEditor({ faixasDisponiveis, salvas, onSalvar, somenteLeitura }: Props) {
   const [marcadas, setMarcadas] = useState<Set<string>>(
     () => new Set(salvas.map((f) => chaveFaixa(f.dia_semana, f.hora_inicio))),
   );
@@ -52,6 +55,7 @@ export function GradeEditor({ faixasDisponiveis, salvas, onSalvar }: Props) {
     marcadas.size !== gravadas.size || [...marcadas].some((k) => !gravadas.has(k));
 
   function alternar(dia: number, horaInicio: string) {
+    if (somenteLeitura) return;
     const chave = chaveFaixa(dia, horaInicio);
     setMarcadas((atual) => {
       const proximo = new Set(atual);
@@ -62,6 +66,7 @@ export function GradeEditor({ faixasDisponiveis, salvas, onSalvar }: Props) {
   }
 
   async function salvar() {
+    if (!onSalvar) return;
     setErro("");
     setSalvando(true);
     try {
@@ -116,6 +121,7 @@ export function GradeEditor({ faixasDisponiveis, salvas, onSalvar }: Props) {
                       <BotaoCelula
                         type="button"
                         $marcada={marcada}
+                        disabled={somenteLeitura}
                         aria-pressed={marcada}
                         aria-label={`${dia}, ${faixa.hora_inicio} às ${faixa.hora_fim}${
                           marcada ? ", com aula" : ", livre"
@@ -134,25 +140,29 @@ export function GradeEditor({ faixasDisponiveis, salvas, onSalvar }: Props) {
       <Rodape>
         <Resumo>
           {marcadas.size === 0
-            ? "Nenhum horário marcado. Clique nos blocos em que você tem aula."
+            ? somenteLeitura
+              ? "Nenhum horário marcado."
+              : "Nenhum horário marcado. Clique nos blocos em que você tem aula."
             : `${marcadas.size} ${marcadas.size === 1 ? "horário" : "horários"} com aula.`}
           {erro && ` · ${erro}`}
         </Resumo>
-        <Acoes>
-          {marcadas.size > 0 && (
-            <PageButton
-              type="button"
-              $variant="outline"
-              disabled={salvando}
-              onClick={() => setMarcadas(new Set())}
-            >
-              Limpar
+        {!somenteLeitura && (
+          <Acoes>
+            {marcadas.size > 0 && (
+              <PageButton
+                type="button"
+                $variant="outline"
+                disabled={salvando}
+                onClick={() => setMarcadas(new Set())}
+              >
+                Limpar
+              </PageButton>
+            )}
+            <PageButton type="button" disabled={salvando || !mudou} onClick={salvar}>
+              {salvando ? "Salvando…" : mudou ? "Salvar grade" : "Grade salva"}
             </PageButton>
-          )}
-          <PageButton type="button" disabled={salvando || !mudou} onClick={salvar}>
-            {salvando ? "Salvando…" : mudou ? "Salvar grade" : "Grade salva"}
-          </PageButton>
-        </Acoes>
+          </Acoes>
+        )}
       </Rodape>
     </>
   );

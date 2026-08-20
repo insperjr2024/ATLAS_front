@@ -15,7 +15,9 @@ import {
 } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import { getLotes, getPendencias } from "@/lib/desempenho-lotes";
+import { getFaixasDisponiveis, getGradeDeUsuario } from "@/lib/grade-horaria";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
+import { GradeEditor } from "@/components/grade/GradeEditor";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 
 /** As colunas ordenáveis da lista de membros. Recebe as frentes porque
@@ -39,6 +41,7 @@ function colunasDeMembro(
   };
 }
 import type { Frente } from "@/types/banca";
+import type { FaixaDisponivel, FaixaGrade } from "@/types/grade";
 import type { Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import { pode, ROTULO_POSICAO, ROTULO_STATUS_USUARIO } from "@/utils/permissoes";
 import {
@@ -144,6 +147,7 @@ export function Membros() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [membroDetalhe, setMembroDetalhe] = useState<UsuarioResumo | null>(null);
+  const [gradeDe, setGradeDe] = useState<UsuarioResumo | null>(null);
   const [criandoMembro, setCriandoMembro] = useState(false);
   /** O membro que está tendo a senha de primeiro acesso reemitida. */
   const [reenviandoPara, setReenviandoPara] = useState<UsuarioResumo | null>(null);
@@ -403,6 +407,9 @@ export function Membros() {
                             {membro.senha_provisoria ? "Reenviar senha" : "Resetar senha"}
                           </PageButtonSm>
                         )}
+                        <PageButtonSm $variant="outline" type="button" onClick={() => setGradeDe(membro)}>
+                          Ver grade
+                        </PageButtonSm>
                         <PageButtonSm $variant="outline" type="button" onClick={() => setMembroDetalhe(membro)}>
                           Ver mais
                         </PageButtonSm>
@@ -439,6 +446,10 @@ export function Membros() {
         />
       )}
 
+      {gradeDe && token && (
+        <GradeMembroModal membro={gradeDe} token={token} onClose={() => setGradeDe(null)} />
+      )}
+
       {criandoMembro && token && (
         <NovoMembroModal
           contexto={contexto}
@@ -473,6 +484,73 @@ export function Membros() {
         />
       )}
     </PageStack>
+  );
+}
+
+/**
+ * A grade de aulas de um membro específico, somente leitura.
+ *
+ * O backend nunca expôs a grade individual de ninguém além do próprio dono
+ * — só o cruzamento de compatibilidade entre um grupo (§11). Esta é a
+ * exceção deliberada: atrás de `pode_gerir_membros`, a mesma permissão que
+ * já guarda a página inteira de Membros, não uma caixinha nova.
+ */
+function GradeMembroModal({
+  membro,
+  token,
+  onClose,
+}: {
+  membro: UsuarioResumo;
+  token: string;
+  onClose: () => void;
+}) {
+  const [faixasDisponiveis, setFaixasDisponiveis] = useState<FaixaDisponivel[]>([]);
+  const [salvas, setSalvas] = useState<FaixaGrade[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    let cancelado = false;
+    Promise.all([getFaixasDisponiveis(token), getGradeDeUsuario(membro.id, token)])
+      .then(([faixas, grade]) => {
+        if (cancelado) return;
+        setFaixasDisponiveis(faixas);
+        setSalvas(grade.faixas);
+      })
+      .catch((err) => {
+        if (cancelado) return;
+        setErro(err instanceof Error ? err.message : "Erro ao carregar a grade");
+      })
+      .finally(() => {
+        if (!cancelado) setCarregando(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [membro.id, token]);
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="grade-membro-titulo"
+      >
+        <ModalHeader>
+          <ModalTitle id="grade-membro-titulo">Grade de aulas de {membro.nome}</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          {carregando && <EmptyText>Carregando…</EmptyText>}
+          {!carregando && erro && <ErrorText>{erro}</ErrorText>}
+          {!carregando && !erro && (
+            <GradeEditor faixasDisponiveis={faixasDisponiveis} salvas={salvas} somenteLeitura />
+          )}
+        </ModalBody>
+      </WideModalContent>
+    </ModalOverlay>
   );
 }
 
