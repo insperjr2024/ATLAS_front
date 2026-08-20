@@ -10,6 +10,7 @@ import { getEscopos } from "@/lib/escopos";
 import { montarEquipePayload, validarEquipe, type EquipeSelecionada } from "@/components/membros/MemberPicker";
 import { EquipeCampo } from "@/components/membros/EquipePainel";
 import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
+import { MultiSelect } from "@/components/MultiSelect";
 import {
   EscopoPicker,
   montarEscoposPayload,
@@ -137,6 +138,10 @@ export function ProjetoNovo() {
   // vezes só existe depois do kickoff.
   const [entregaPrevista, setEntregaPrevista] = useState("");
   const [equipe, setEquipe] = useState<EquipeSelecionada>({ coordenadorIds: [], consultorIds: [] });
+  // Fora da equipe de propósito: quem vendeu não é do time (ver
+  // `projeto_vendedor` no backend). Vazio é o caso normal — vendedor é
+  // opcional.
+  const [vendedorIds, setVendedorIds] = useState<number[]>([]);
   const [escopos, setEscopos] = useState<EscopoEmEdicao[]>([]);
 
   const [salvando, setSalvando] = useState(false);
@@ -248,6 +253,7 @@ export function ProjetoNovo() {
             dias_ambientacao: Number(diasAmbientacao) || 5,
             max_consultores: Number(maxConsultores) || 3,
             equipe: montarEquipePayload(equipe),
+            vendedor_ids: vendedorIds,
             dia_reuniao_padrao: diaReuniao ? Number(diaReuniao) : null,
             data_entrega_prevista_cliente: entregaPrevista || null,
             escopos: montarEscoposPayload(escopos),
@@ -495,6 +501,24 @@ export function ProjetoNovo() {
                 menos de 2 consultores, a comparação é entre pessoas, e o
                 próprio componente já devolve `null` nesse caso. */}
             <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={usuarios} />
+
+            <FieldGroup>
+              <FieldLabel htmlFor="vendedores">Quem vendeu o projeto</FieldLabel>
+              <MultiSelect
+                valores={vendedorIds.map(String)}
+                onChange={(ids) => setVendedorIds(ids.map(Number))}
+                opcoes={usuarios
+                  .filter((u) => u.ativo)
+                  .map((u) => ({ value: String(u.id), label: u.nome }))}
+                rotuloVazio="Ninguém marcado"
+                resumo={(n) => `${n} vendedores`}
+                aria-label="Quem vendeu o projeto"
+              />
+              <EmptyText style={{ fontSize: "0.7rem" }}>
+                Opcional. Quem vendeu enxerga o projeto em modo somente leitura, mesmo
+                sem estar na equipe — e não pode avaliar a banca dele.
+              </EmptyText>
+            </FieldGroup>
           </BlocoSecao>
 
           <BlocoSecao

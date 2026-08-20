@@ -94,6 +94,11 @@ export interface ProjetoContexto {
    * que já aconteceu quando nome, descrição e equipe tinham um botão cada.
    */
   abrirEdicao: () => void;
+  /** `true` quando a pessoa enxerga o projeto SÓ por tê-lo vendido.
+   *
+   *  As abas usam para esconder os próprios botões de ação — o cabeçalho já
+   *  cuida dos dele. Ver o comentário em `somenteLeitura` no componente. */
+  somenteLeitura: boolean;
 }
 
 export function useProjeto() {
@@ -304,12 +309,24 @@ export function ProjetoPage() {
   const consultores = projeto.equipe.filter((m) => m.papel !== "coordenador");
   const teto = tetoDeConsultores(projeto.max_consultores, consultores.length);
 
-  const podeMudarStatus = pode(usuario, "mudar_status_projeto");
-  const podeArquivar = pode(usuario, "arquivar_projeto");
-  const podeExcluir = pode(usuario, "apagar_projeto_permanente");
+  // ⭐ **Quem só enxerga o projeto por tê-lo VENDIDO não age nele.**
+  //
+  // As permissões da plataforma são globais por posição, não por projeto: um
+  // consultor-vendedor tem `pode_criar_tarefa` em qualquer projeto que
+  // enxergue. Sem este corte, a tela ofereceria botões que a API responde com
+  // 403 — o backend já barra (`exigir_acesso_ao_projeto`), isto é só para não
+  // prometer o que vai falhar.
+  //
+  // Vale a `&&` em cada permissão, e não um `return` cedo: ele continua vendo
+  // a ficha inteira e todas as abas. O que some são as AÇÕES.
+  const somenteLeitura = projeto.somente_leitura;
+
+  const podeMudarStatus = !somenteLeitura && pode(usuario, "mudar_status_projeto");
+  const podeArquivar = !somenteLeitura && pode(usuario, "arquivar_projeto");
+  const podeExcluir = !somenteLeitura && pode(usuario, "apagar_projeto_permanente");
   // Mesma permissão que já gatilhava a edição do nome quando ela morava no
   // card de Descrição, só mudou de lugar, não de regra.
-  const podeRenomear = !!usuario?.permissoes.pode_editar_equipe;
+  const podeRenomear = !somenteLeitura && !!usuario?.permissoes.pode_editar_equipe;
   const temKickoff = !!projeto.data_kickoff;
 
   /**
@@ -348,6 +365,7 @@ export function ProjetoPage() {
     frentes,
     recarregar: carregar,
     abrirEdicao: () => setEditandoProjeto(true),
+    somenteLeitura,
   };
 
   return (

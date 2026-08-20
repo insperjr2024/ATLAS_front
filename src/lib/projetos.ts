@@ -68,6 +68,10 @@ export interface CreateProjetoPayload {
   /** Teto de consultores, decide quando o projeto sai da lista de vagas. */
   max_consultores: number;
   equipe: MembroEquipePayload[];
+  /** Quem vendeu. Opcional e sem obrigatoriedade: nem toda venda tem vendedor
+   *  identificado, e exigir travaria o cadastro por um dado que às vezes
+   *  ninguém lembra na hora. Editável depois, na tela da equipe. */
+  vendedor_ids?: number[];
   dia_reuniao_padrao?: number | null;
   /** A promessa ao cliente, registrada já na venda. */
   data_entrega_prevista_cliente?: string | null;
@@ -111,11 +115,23 @@ export async function baixarAnexoProposta(projetoId: number, nomeArquivo: string
   URL.revokeObjectURL(url);
 }
 
-export function updateEquipe(projetoId: number, equipe: MembroEquipePayload[], token: string) {
+/**
+ * @param vendedorIds quem VENDEU o projeto. Omitir (`undefined`) deixa os
+ *   vendedores como estão; `[]` apaga todos. A distinção importa: sem ela,
+ *   qualquer tela que salvasse só a equipe apagaria os vendedores em silêncio.
+ */
+export function updateEquipe(
+  projetoId: number,
+  equipe: MembroEquipePayload[],
+  token: string,
+  vendedorIds?: number[],
+) {
   return apiFetch<{ equipe: MembroEquipePayload[] }>(`/projetos/${projetoId}/equipe`, {
     method: "PUT",
     token,
-    body: JSON.stringify({ equipe }),
+    body: JSON.stringify(
+      vendedorIds === undefined ? { equipe } : { equipe, vendedor_ids: vendedorIds },
+    ),
   });
 }
 

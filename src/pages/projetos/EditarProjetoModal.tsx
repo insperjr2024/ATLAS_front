@@ -17,6 +17,7 @@ import {
   type EquipeSelecionada,
 } from "@/components/membros/MemberPicker";
 import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
+import { MultiSelect } from "@/components/MultiSelect";
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { ProjetoCompleto } from "@/types/projeto";
 import type { Frente } from "@/types/banca";
@@ -83,6 +84,9 @@ export function EditarProjetoModal({
     coordenadorIds: projeto.coordenador_ids,
     consultorIds: projeto.consultor_ids,
   });
+  // Separado da equipe de propósito: quem vendeu não é do time. Vender não
+  // ocupa vaga de consultor nem entra na conta de capacidade.
+  const [vendedorIds, setVendedorIds] = useState<number[]>(projeto.vendedor_ids ?? []);
   const [maxConsultores, setMaxConsultores] = useState(String(projeto.max_consultores));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
@@ -111,6 +115,11 @@ export function EditarProjetoModal({
     equipe.coordenadorIds.some((id) => !projeto.coordenador_ids.includes(id)) ||
     equipe.consultorIds.length !== projeto.consultor_ids.length ||
     equipe.consultorIds.some((id) => !projeto.consultor_ids.includes(id));
+
+  const vendedoresAtuais = projeto.vendedor_ids ?? [];
+  const vendedoresMudaram =
+    vendedorIds.length !== vendedoresAtuais.length ||
+    vendedorIds.some((id) => !vendedoresAtuais.includes(id));
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
@@ -160,8 +169,16 @@ export function EditarProjetoModal({
       if (numeroTeto !== projeto.max_consultores) {
         await updateMaxConsultores(projeto.id, numeroTeto, token);
       }
-      if (equipeMudou) {
-        await updateEquipe(projeto.id, montarEquipePayload(equipe), token);
+      // A mesma rota grava os dois, mas `vendedor_ids` só vai quando mudou:
+      // mandar sempre apagaria a lista de quem salvou só a equipe, e omitir
+      // é o jeito de dizer "não mexa nos vendedores".
+      if (equipeMudou || vendedoresMudaram) {
+        await updateEquipe(
+          projeto.id,
+          montarEquipePayload(equipe),
+          token,
+          vendedoresMudaram ? vendedorIds : undefined,
+        );
       }
       await onSalvo();
     } catch (err) {
@@ -273,6 +290,18 @@ export function EditarProjetoModal({
               frentes={frentes}
               frenteIdsProjeto={frenteIds}
             />
+
+            <FieldGroup>
+              <FieldLabel htmlFor="vendedores">Quem vendeu o projeto</FieldLabel>
+              <MultiSelect
+                valores={vendedorIds.map(String)}
+                onChange={(ids) => setVendedorIds(ids.map(Number))}
+                opcoes={ativos.map((u) => ({ value: String(u.id), label: u.nome }))}
+                rotuloVazio="Ninguém marcado"
+                resumo={(n) => `${n} vendedores`}
+                aria-label="Quem vendeu o projeto"
+              />
+            </FieldGroup>
 
             {/* Mesma leitura de quando o projeto nasceu: trocar alguém pode
                 fechar a única janela em que o time se reunia. */}

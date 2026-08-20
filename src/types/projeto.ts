@@ -36,6 +36,12 @@ export interface ProjetoResumo {
   coordenador_id: number | null;
   coordenador_ids: number[];
   consultor_ids: number[];
+  /** Quem VENDEU o projeto. Zero ou mais.
+   *
+   *  ⚠ Fora de `consultor_ids` de propósito: vendedor não é da equipe. Vender
+   *  não ocupa vaga de consultor nem entra na conta de capacidade — quem
+   *  vendeu ganhou visão de leitura, não trabalho. */
+  vendedor_ids: number[];
   /** Teto de consultores da equipe, escolhido na criação do projeto. O
    *  backend já mandava; faltava declarar aqui. */
   max_consultores: number | null;
@@ -240,6 +246,16 @@ export interface ProjetoCompleto extends ProjetoResumo {
    *  deste projeto, sem enxergá-lo pelo §3. O shell usa a flag para mostrar
    *  só a aba Banca — as outras devolveriam 404 no clique. */
   apenas_banca: boolean;
+  /** `true` quando a pessoa enxerga este projeto SÓ por tê-lo vendido.
+   *
+   *  Vê a ficha inteira, todas as abas, e nenhum botão de ação. Independente
+   *  de `apenas_banca`: um avaliador não é vendedor, e o vendedor vê muito
+   *  mais que a aba Banca.
+   *
+   *  A flag existe porque as permissões são globais por posição: sem ela, a
+   *  tela de um consultor-vendedor mostraria "Nova tarefa" num projeto onde a
+   *  API responde 403. */
+  somente_leitura: boolean;
 }
 
 /**
