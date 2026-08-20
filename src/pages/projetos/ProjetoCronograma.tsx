@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Pencil,
   Plus,
@@ -219,6 +219,31 @@ export function ProjetoCronograma() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
+
+  /**
+   * ⭐ **O atalho das Pendências** — `?marcar=banca&escopo=12`.
+   *
+   * A Visão geral sabe exatamente o que falta e em qual escopo; sem isto, ela
+   * despejava a pessoa na aba e a fazia refazer à mão as duas escolhas que a
+   * pendência já tinha dito (o escopo na barra, o modo em MARCAR) antes de
+   * poder clicar no dia. Com o atalho, o clique no dia é o próximo gesto.
+   *
+   * Os parâmetros são consumidos UMA vez, no estado inicial, e apagados da URL
+   * logo em seguida: eles são um empurrão, não estado da tela. Deixá-los lá
+   * faria o F5 (ou o voltar do navegador) rearmar um modo de marcação que a
+   * pessoa já tinha desligado no Esc.
+   */
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    if (!params.has("marcar") && !params.has("escopo")) return;
+    const limpo = new URLSearchParams(params);
+    limpo.delete("marcar");
+    limpo.delete("escopo");
+    setParams(limpo, { replace: true });
+    // Só na montagem: `params` muda por causa deste próprio efeito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /**
    * O escopo em foco, ou "geral" para o projeto inteiro.
    *
@@ -227,7 +252,15 @@ export function ProjetoCronograma() {
    * "como está o cronograma?" é a pergunta de quem chega; editar é ação
    * deliberada de quem escolhe um escopo.
    */
-  const [escopoSelecionado, setEscopoSelecionado] = useState<number | "geral">("geral");
+  /** O escopo que o atalho pediu, guardado porque a URL é limpa logo em
+   *  seguida — `carregar` ainda precisa dele para conferir se existe. */
+  const [escopoPedido] = useState<number | null>(() => {
+    const pedido = Number(params.get("escopo"));
+    return Number.isInteger(pedido) && pedido > 0 ? pedido : null;
+  });
+  const [escopoSelecionado, setEscopoSelecionado] = useState<number | "geral">(
+    escopoPedido ?? "geral",
+  );
 
   /**
    * A última marcação, enquanto ela ainda pode ser desfeita.
@@ -292,8 +325,15 @@ export function ProjetoCronograma() {
    * `null` = o comportamento de sempre (pintar com o pincel). Ligar um modo
    * desliga o pincel, e vice-versa: os dois usam o mesmo clique, e deixá-los
    * ligados juntos faria o gesto ser ambíguo.
+   *
+   * Nasce ligado quando as Pendências mandaram `?marcar=` (ver acima). O valor
+   * é conferido contra `MODOS` em vez de sofrer um cast: a URL é digitável, e
+   * um `?marcar=qualquercoisa` deixaria a tela num modo que não existe.
    */
-  const [modoMarcacao, setModoMarcacao] = useState<ModoMarcacao>(null);
+  const [modoMarcacao, setModoMarcacao] = useState<ModoMarcacao>(() => {
+    const pedido = params.get("marcar");
+    return MODOS.some((m) => m.valor === pedido) ? (pedido as ModoMarcacao) : null;
+  });
   /** A banca cuja ficha está aberta, o clique no marco do calendário. */
   const [bancaAberta, setBancaAberta] = useState<number | null>(null);
   const [remarcando, setRemarcando] = useState<{ dia: string; escopoId: number } | null>(null);
@@ -423,12 +463,23 @@ export function ProjetoCronograma() {
         const unico = resposta.escopos[0].id;
         setEscopoSelecionado((atual) => (atual === "geral" ? unico : atual));
       }
+      // O `?escopo=` das Pendências apontou para um escopo que não existe neste
+      // projeto — URL velha, escopo cancelado no meio do caminho, id digitado à
+      // mão. Volta para Geral e desliga a marcação: com um escopo inexistente
+      // selecionado o calendário filtra tudo, e a pessoa veria um cronograma
+      // vazio sem nada explicando por quê. Aqui e não num efeito, pelo mesmo
+      // motivo da âncora acima (`react-hooks/set-state-in-effect`).
+      if (escopoPedido !== null && !resposta.escopos.some((e) => e.id === escopoPedido)) {
+        setEscopoSelecionado("geral");
+        setModoMarcacao(null);
+        setAviso("O escopo do atalho não existe mais neste projeto.");
+      }
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar o cronograma");
     } finally {
       setCarregando(false);
     }
-  }, [projeto.id, token]);
+  }, [projeto.id, token, escopoPedido]);
 
   useEffect(() => {
     setCarregando(true);

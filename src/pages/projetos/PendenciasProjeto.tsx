@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { derivarPendencias } from "@/lib/pendencias-projeto";
+import { derivarPendencias, type Pendencia } from "@/lib/pendencias-projeto";
 import type { ProjetoCompleto } from "@/types/projeto";
 import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import { PageCard, PageCardContent, PageCardHeader, PageCardTitle } from "@/styles/page.styled";
@@ -26,6 +26,21 @@ interface Props {
  * plataforma já usa para explicar botão desabilitado. Quem entende "Banca sem
  * data" não lê nada; quem não entende, alcança.
  */
+/**
+ * Para onde o item leva — e, quando dá, já com o Cronograma armado.
+ *
+ * `?marcar=…&escopo=…` liga o modo de marcação e escolhe o escopo do outro
+ * lado, então a pessoa chega faltando só clicar no dia. Ver o comentário de
+ * `Pendencia.marcar` para por que nem todo item tem atalho.
+ */
+function rotaDa(pendencia: Pendencia, projetoId: number): string {
+  const base =
+    pendencia.aba === "visao-geral" ? `/projetos/${projetoId}` : `/projetos/${projetoId}/${pendencia.aba}`;
+  if (!pendencia.marcar) return base;
+  const { modo, escopoId } = pendencia.marcar;
+  return `${base}?marcar=${modo}&escopo=${escopoId}`;
+}
+
 export function PendenciasProjeto({ projeto }: Props) {
   const pendencias = derivarPendencias(projeto);
 
@@ -46,15 +61,7 @@ export function PendenciasProjeto({ projeto }: Props) {
                 <Sinal $gravidade={p.gravidade} aria-hidden />
                 <Acao>
                   <MotivoDesabilitado motivo={p.explicacao}>
-                    <Link
-                      to={
-                        p.aba === "visao-geral"
-                          ? `/projetos/${projeto.id}`
-                          : `/projetos/${projeto.id}/${p.aba}`
-                      }
-                    >
-                      {p.acao}
-                    </Link>
+                    <Link to={rotaDa(p, projeto.id)}>{p.acao}</Link>
                   </MotivoDesabilitado>
                 </Acao>
                 <Onde>{p.onde}</Onde>

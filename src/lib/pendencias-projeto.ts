@@ -58,6 +58,20 @@ export interface Pendencia {
   gravidade: GravidadePendencia;
   /** Para onde o clique leva. A rota é montada por quem renderiza. */
   aba: "cronograma" | "banca" | "visao-geral";
+  /**
+   * ⭐ **O atalho**: chega no Cronograma com o modo de marcação já ligado e o
+   * escopo já escolhido, faltando só clicar no dia.
+   *
+   * Sem ele o link cumpria metade do trabalho — levava à aba certa e largava a
+   * pessoa ali, tendo que refazer à mão as duas escolhas que esta lista já
+   * sabia (qual escopo, o que marcar). Vira `?marcar=…&escopo=…`, lido em
+   * `ProjetoCronograma`.
+   *
+   * Só existe onde a marcação é REALMENTE o próximo passo. Nada de apontar
+   * para `banca` num escopo sem reunião inicial: o backend recusa (§20.4, sem
+   * janela não há banca), e o atalho terminaria num erro.
+   */
+  marcar?: { modo: "reuniao_inicial" | "banca"; escopoId: number };
 }
 
 const ORDEM: Record<GravidadePendencia, number> = { travado: 0, atencao: 1, espera: 2 };
@@ -89,7 +103,7 @@ function plural(n: number, um: string, muitos: string): string {
  * inicial também não tem banca marcada, mas listar as duas seria ruído: a
  * segunda é consequência da primeira, e só resolver a primeira destrava.
  */
-function doEscopo(escopo: EscopoVendido): Pendencia[] {
+function doEscopo(escopo: EscopoVendido, silenciarBancaSemData = false): Pendencia[] {
   const chave = `escopo-${escopo.id}`;
   const nome = escopo.nome;
 
@@ -108,6 +122,7 @@ function doEscopo(escopo: EscopoVendido): Pendencia[] {
         dono: "coordenação",
         gravidade: "travado",
         aba: "cronograma",
+        marcar: { modo: "reuniao_inicial", escopoId: escopo.id },
       },
     ];
   }
@@ -115,23 +130,31 @@ function doEscopo(escopo: EscopoVendido): Pendencia[] {
   const lista: Pendencia[] = [];
 
   if (!escopo.banca?.data_hora) {
-    const faltam = diasAte(escopo.fim_janela);
-    const venceu = faltam !== null && faltam < 0;
-    lista.push({
-      id: `${chave}-banca-sem-data`,
-      acao: "Banca sem data",
-      onde: nome,
-      prazo: curta(escopo.fim_janela),
-      vencido: venceu,
-      explicacao: venceu
-        ? `A janela do escopo fechou em ${curta(escopo.fim_janela)}. Marcar a banca fora dela é decisão da diretoria.`
-        : `A banca precisa caber na janela do escopo, que fecha em ${curta(escopo.fim_janela)}${
-            faltam !== null ? ` — faltam ${plural(faltam, "dia", "dias")}` : ""
-          }.`,
-      dono: "coordenação",
-      gravidade: venceu ? "travado" : "atencao",
-      aba: "cronograma",
-    });
+    // `silenciarBancaSemData`: o prazo do §5.3 já está cobrado no item do
+    // PROJETO, que vale por todos os escopos de uma vez. Repetir aqui daria
+    // três linhas dizendo a mesma coisa num projeto de dois escopos — o mesmo
+    // motivo pelo qual a reunião inicial silencia a banca logo acima.
+    if (!silenciarBancaSemData) {
+      const faltam = diasAte(escopo.fim_janela);
+      const venceu = faltam !== null && faltam < 0;
+      lista.push({
+        id: `${chave}-banca-sem-data`,
+        acao: "Banca sem data",
+        onde: nome,
+        prazo: curta(escopo.fim_janela),
+        vencido: venceu,
+        explicacao: venceu
+          ? `A janela do escopo fechou em ${curta(escopo.fim_janela)}. Marcar a banca fora dela é decisão da diretoria.`
+          : `A banca precisa caber na janela do escopo, que fecha em ${curta(escopo.fim_janela)}${
+              faltam !== null ? ` — faltam ${plural(faltam, "dia", "dias")}` : ""
+            }.`,
+        dono: "coordenação",
+        gravidade: venceu ? "travado" : "atencao",
+        aba: "cronograma",
+        // Seguro: chegar aqui já garante `data_inicio`, e portanto janela aberta.
+        marcar: { modo: "banca", escopoId: escopo.id },
+      });
+    }
   } else if (!escopo.banca.realizado_em && (diasAte(escopo.banca.data_hora) ?? 1) < 0) {
     // Passou a data e ninguém registrou: a banca fica "atrasada" para sempre,
     // e o §7.4 mede o atraso do projeto exatamente por isso.
@@ -238,7 +261,58 @@ export function derivarPendencias(projeto: ProjetoCompleto): Pendencia[] {
     });
   }
 
-  for (const escopo of projeto.escopos) lista.push(...doEscopo(escopo));
+  /**
+   * ⭐ **§5.3: a banca é cravada no fim da ambientação.**
+   *
+   * *"Ao fim da ambientação, o coordenador crava o cronograma oficial do escopo
+   * e a data e horário da banca."* É o mesmo alerta que o Monitoramento mostra
+   * em "Atenção agora" (`ambientacao_sem_banca`, no backend) — aqui ele chega
+   * ao lugar onde dá para resolver.
+   *
+   * ⚠ **Do PROJETO, não de cada escopo.** O prazo do §5.3 é um só: marcar a
+   * primeira banca já o cumpre. Por isso a condição é "nenhum escopo vivo tem
+   * banca" — e por isso ela silencia os "Banca sem data" de cada escopo
+   * enquanto está de pé, que diriam a mesma coisa N vezes.
+   *
+   * ⏱ `<= 0` é hoje >= fim: o alerta nasce NO último dia da ambientação, que é
+   * o dia de cravar — esperar o seguinte avisaria com o prazo já vencido.
+   */
+  const vivos = projeto.escopos.filter((e) => e.status !== "cancelado");
+  const semBancaAlguma = vivos.every((e) => !e.banca?.data_hora);
+  const cobrarBancaDaAmbientacao =
+    projeto.status !== "finalizado" &&
+    vivos.length > 0 &&
+    semBancaAlguma &&
+    (diasAte(projeto.fim_ambientacao) ?? 1) <= 0;
+
+  if (cobrarBancaDaAmbientacao) {
+    // ⚠ **A banca precisa de uma janela aberta** (§20.4): a plataforma recusa a
+    // data enquanto o escopo não tiver reunião inicial. Então o atalho aponta
+    // para a banca quando já existe escopo iniciado, e para a reunião inicial
+    // quando não existe — que é literalmente o próximo clique possível. Mandar
+    // para "banca" nesse caso daria um erro na cara de quem clicou.
+    const pronto = vivos.find((e) => e.data_inicio);
+    const alvo = pronto ?? vivos[0];
+    const fim = curta(projeto.fim_ambientacao);
+    lista.push({
+      id: "projeto-ambientacao-sem-banca",
+      acao: "Banca não marcada",
+      onde: alvo.nome,
+      prazo: fim,
+      vencido: true,
+      explicacao: pronto
+        ? `A ambientação terminou em ${fim} e o projeto ainda não tem nenhuma banca marcada — é no fim dela que a data e o horário são cravados.`
+        : `A ambientação terminou em ${fim} e o projeto ainda não tem nenhuma banca marcada. Antes vem a reunião inicial de “${alvo.nome}”: é ela que abre a janela em que a banca cabe, e sem janela a plataforma recusa a data.`,
+      dono: "coordenação",
+      gravidade: "travado",
+      aba: "cronograma",
+      marcar: { modo: pronto ? "banca" : "reuniao_inicial", escopoId: alvo.id },
+    });
+  }
+
+  for (const escopo of projeto.escopos) {
+    lista.push(...doEscopo(escopo, cobrarBancaDaAmbientacao));
+  }
 
   return lista.sort((a, b) => ORDEM[a.gravidade] - ORDEM[b.gravidade]);
 }
