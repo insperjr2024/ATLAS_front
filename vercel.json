@@ -1,5 +1,9 @@
 {
   "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://atlas-back-production-xcfvgh.up.railway.app/:path*"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
