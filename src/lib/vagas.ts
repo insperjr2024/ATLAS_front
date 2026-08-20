@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import type { Posicao } from "@/types/auth";
 
 export interface ProjetoComVaga {
   id: number;
@@ -140,7 +141,7 @@ export function getSolicitacoesRecebidas(token: string) {
 export interface CandidatoAlocacao {
   usuario_id: number;
   nome: string;
-  posicao: "diretor" | "gerente" | "coordenador" | "consultor";
+  posicao: Posicao;
   frentes: string[];
   /** Quantos projetos ativos ocupa hoje, a régua. */
   carga: number;

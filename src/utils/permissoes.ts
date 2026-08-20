@@ -6,6 +6,12 @@ import type { Posicao, StatusUsuario, Usuario } from "@/types/auth";
  * Nenhum botão da aplicação deve fazer `if (usuario.posicao === "diretor")`
  * solto: todos consultam `pode()`. E o backend revalida tudo, esconder o
  * botão é conveniência de UI, não segurança.
+ *
+ * ⭐ **A diretoria são três cargos desde 2026-08-20.** Quem herdou os poderes
+ * do `diretor` de antes é `diretor_projetos`, e é ele que aparece na matriz
+ * abaixo. O `diretor` de hoje só visualiza, e o `diretor_pessoas` acrescenta
+ * a isso a Avaliação de Desempenho — nenhum dos dois conduz projeto, então
+ * nenhum dos dois entra nas ações daqui.
  */
 export type Acao =
   | "arquivar_projeto"
@@ -21,46 +27,81 @@ export type Acao =
   | "filtrar_por_frente"
   | "ver_tarefas_gerais"
   | "ver_cronogramas_gerais"
-  | "ver_historico_projetos";
+  | "ver_historico_projetos"
+  // Acrescentadas na divisão da diretoria (2026-08-20): eram comparações
+  // soltas espalhadas pelas telas, e agora que "diretor" deixou de ser um
+  // cargo só, cada uma precisava decidir QUAL diretoria — melhor decidir uma
+  // vez aqui do que em 6 arquivos.
+  | "acoes_de_pessoas"
+  | "ser_mentor"
+  | "ver_dashboard_bancas"
+  | "aprovar_pedidos";
+
+/** Os três cargos de diretoria. O que os une é enxergar o portfólio inteiro
+ *  — e mais nada. Espelha `DIRETORIA` em `middlewares/authorization.py`. */
+export const DIRETORIA: Posicao[] = ["diretor_projetos", "diretor_pessoas", "diretor"];
+
+/** Quem conduz a operação de projeto. Herdeiro do `diretor` de antes. */
+const DIR_PROJETOS: Posicao = "diretor_projetos";
+
+/** Quem pode ser mentor de alguém. Espelha `POSICOES_ELEGIVEIS_MENTOR` do
+ *  backend — a tela do PDI filtra a lista de candidatos por ela. */
+export const MENTORES_ELEGIVEIS: Posicao[] = ["coordenador", "gerente", ...DIRETORIA];
 
 const MATRIZ: Record<Acao, Posicao[]> = {
   // Gestão, restrito às lideranças
-  arquivar_projeto: ["diretor", "gerente"],
+  arquivar_projeto: [DIR_PROJETOS, "gerente"],
 
   // Só a diretoria
   /** Sem volta, mais pesado que arquivar, por isso não é diretor+gerente. */
-  apagar_projeto_permanente: ["diretor"],
+  apagar_projeto_permanente: [DIR_PROJETOS],
   /** Sem volta, e cascata bem maior que a de projeto, só quem já está
    *  desligado, e só diretoria. */
-  apagar_usuario_permanente: ["diretor"],
-  remarcar_banca: ["diretor"],
-  liberar_excecao_choque: ["diretor"],
-  registrar_justificativa_atraso: ["diretor"],
-  filtrar_por_frente: ["diretor"],
+  apagar_usuario_permanente: [DIR_PROJETOS],
+  remarcar_banca: [DIR_PROJETOS],
+  liberar_excecao_choque: [DIR_PROJETOS],
+  registrar_justificativa_atraso: [DIR_PROJETOS],
+  filtrar_por_frente: [DIR_PROJETOS],
   /** O kanban de projetos muda o ciclo de vida por arrasto, mais informal
    *  que os botões de `mudar_status_projeto`, por isso fica restrito à
    *  diretoria, mesmo o botão equivalente aceitando gerente/coordenador. */
-  mover_projeto_kanban: ["diretor"],
+  mover_projeto_kanban: [DIR_PROJETOS],
   //: As colunas do kanban são por projeto, mas quem as edita é sempre a
   //: diretoria, o time move cards, não redesenha o fluxo.
-  configurar_colunas: ["diretor"],
+  configurar_colunas: [DIR_PROJETOS],
   /** O board macro de tarefas (todos os projetos juntos), o backend usa
    *  require_diretor, não require_gestao: mais informal que os números
    *  agregados do resto do Monitoramento, então fica só pra diretoria. */
-  ver_tarefas_gerais: ["diretor"],
+  ver_tarefas_gerais: [DIR_PROJETOS],
   /** O board macro de cronogramas (todos os projetos juntos), mesma trava
    *  do board de tarefas: o backend usa require_diretor. */
-  ver_cronogramas_gerais: ["diretor"],
+  ver_cronogramas_gerais: [DIR_PROJETOS],
   /** A aba Histórico de projetos (portfólio encerrado) — o backend usa
    *  require_gestao, então diretor e gerente, como o arquivar. */
-  ver_historico_projetos: ["diretor", "gerente"],
+  ver_historico_projetos: [DIR_PROJETOS, "gerente"],
 
   // Condução do projeto, o consultor não define cronograma nem move o
   // ciclo de vida do projeto
-  mudar_status_projeto: ["diretor", "gerente", "coordenador"],
+  mudar_status_projeto: [DIR_PROJETOS, "gerente", "coordenador"],
+
+  /** Cadastrar pessoa, reemitir senha provisória, apagar em definitivo e
+   *  passar o bastão. As duas diretorias com poder — espelha
+   *  `require_diretoria_de_pessoas` no backend. */
+  acoes_de_pessoas: ["diretor_projetos", "diretor_pessoas"],
+
+  /** Vínculo de mentoria, independente do projeto. Os três cargos de
+   *  diretoria entram: mentoria é acompanhamento de gente, não condução de
+   *  projeto. Espelha `POSICOES_ELEGIVEIS_MENTOR`. */
+  ser_mentor: MENTORES_ELEGIVEIS,
+
+  /** O painel de notas de banca (`/avaliacoes`) e os formulários dele. */
+  ver_dashboard_bancas: [DIR_PROJETOS],
+
+  /** A fila de decisões da diretoria no Monitoramento. */
+  aprovar_pedidos: [DIR_PROJETOS],
 
   // Todo mundo (a regra de herança do  já está refletida aqui)
-  registrar_reuniao: ["diretor", "gerente", "coordenador", "consultor"],
+  registrar_reuniao: [DIR_PROJETOS, "gerente", "coordenador", "consultor"],
 
   // As 13 ações de `Permissoes` (types/auth.ts) saíram desta matriz: são
   // editáveis por posição em Configurações (`GET /posicoes-permissoes`).
@@ -70,17 +111,56 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   // pura (identidade organizacional, não permissão delegável).
 };
 
+/**
+ * A diretoria QUE CONDUZ PROJETO — espelha `eh_diretoria_de_projetos` do
+ * backend.
+ *
+ * Existe para as telas que davam a um diretor o poder de passar por cima de
+ * uma regra do projeto (editar comentário alheio, agendar banca fora da
+ * janela, apagar tarefa de outro). Todas escreviam `posicao === "diretor"`;
+ * com três cargos, todas queriam dizer este aqui.
+ */
+export function ehDiretoriaDeProjetos(usuario: Usuario | null | undefined): boolean {
+  return usuario?.posicao === "diretor_projetos";
+}
+
+/**
+ * Enxerga o portfólio inteiro — os três cargos de diretoria e o gerente
+ * (este, restrito às frentes dele).
+ *
+ * É o RECORTE DE VISÃO, não permissão: diz o que aparece na lista, nunca o
+ * que a pessoa pode fazer com o que apareceu. Quem decide de verdade é
+ * `aplicar_recorte_visao` no backend.
+ */
+export function veTodosOsProjetos(usuario: Usuario | null | undefined): boolean {
+  if (!usuario) return false;
+  return DIRETORIA.includes(usuario.posicao) || usuario.posicao === "gerente";
+}
+
 export function pode(usuario: Usuario | null | undefined, acao: Acao): boolean {
   if (!usuario) return false;
   return MATRIZ[acao].includes(usuario.posicao);
 }
 
-/** Diretor, gerente e coordenador. Consultor não é liderança. */
+/**
+ * Quem CONDUZ projeto: coordenador, gerente e diretoria de projetos.
+ *
+ * ⚠ Era `posicao !== "consultor"`, que parava de valer com a divisão da
+ * diretoria: o diretor só-visualização e o de gestão de pessoas não são
+ * consultores, e também não conduzem nada. Espelha `eh_lideranca` do backend.
+ */
 export function ehLideranca(usuario: Usuario | null | undefined): boolean {
-  return !!usuario && usuario.posicao !== "consultor";
+  return (
+    !!usuario &&
+    (usuario.posicao === "diretor_projetos" ||
+      usuario.posicao === "gerente" ||
+      usuario.posicao === "coordenador")
+  );
 }
 
 export const ROTULO_POSICAO: Record<Posicao, string> = {
+  diretor_projetos: "Diretor(a) de Projetos",
+  diretor_pessoas: "Diretor(a) de Gestão de Pessoas",
   diretor: "Diretor(a)",
   gerente: "Gerente de frente",
   coordenador: "Coordenador(a)",
@@ -102,9 +182,13 @@ export const ROTULO_STATUS_USUARIO: Record<StatusUsuario, string> = {
 /**
  * Coordenador e consultor enxergam só os projetos em que estão alocados —
  * para eles o menu diz "Meus projetos".
+ *
+ * ⚠ **Sai do RECORTE DE VISÃO, não de `ehLideranca`.** Eram a mesma pergunta
+ * enquanto a diretoria era um cargo só; deixaram de ser. O diretor
+ * só-visualização não conduz projeto (fora de `ehLideranca`) mas enxerga o
+ * portfólio inteiro — com a regra antiga, o menu dele diria "Meus projetos"
+ * sobre uma lista com todos os projetos do núcleo.
  */
 export function rotuloProjetos(usuario: Usuario | null | undefined): string {
-  return usuario && ehLideranca(usuario) && usuario.posicao !== "coordenador"
-    ? "Projetos"
-    : "Meus projetos";
+  return veTodosOsProjetos(usuario) ? "Projetos" : "Meus projetos";
 }

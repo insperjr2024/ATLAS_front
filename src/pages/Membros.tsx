@@ -28,7 +28,7 @@ function colunasDeMembro(
     nome: { valor: (m) => m.nome, inicial: "asc" },
     email: { valor: (m) => m.email_insper, inicial: "asc" },
     // Pelo RÓTULO, que é o que está escrito na célula: ordenar pela chave
-    // ("consultor", "diretor") daria uma ordem que a tela não mostra.
+    // ("consultor", "diretor_projetos") daria uma ordem que a tela não mostra.
     posicao: { valor: (m) => ROTULO_POSICAO[m.posicao] ?? m.posicao, inicial: "asc" },
     frentes: {
       valor: (m) => frentesDoUsuario(usuariosFrentes, frentes, m.id).join(", "),
@@ -257,7 +257,7 @@ export function Membros() {
           </PageSubheading>
         </PageHeaderText>
         {/* ninguém se auto-registra, só a diretoria pré-cadastra. */}
-        {usuario?.posicao === "diretor" && (
+        {pode(usuario, "acoes_de_pessoas") && (
           <HeaderActions>
             <PageButton $variant="outline" type="button" onClick={() => setTransferindo(true)}>
               Transferir diretoria
@@ -394,7 +394,7 @@ export function Membros() {
                       <ActionsCell>
                         {/* Reemitir derruba a senha da pessoa, por isso é
                             da diretoria, a mesma régua do cadastro. */}
-                        {usuario?.posicao === "diretor" && membro.ativo && (
+                        {pode(usuario, "acoes_de_pessoas") && membro.ativo && (
                           <PageButtonSm
                             $variant="outline"
                             type="button"
@@ -463,6 +463,7 @@ export function Membros() {
         <TransferirDiretoriaModal
           membros={membros}
           diretorAtualId={usuario.id}
+          posicaoAtual={usuario.posicao}
           token={token}
           onClose={() => setTransferindo(false)}
           onTransferido={() => {
@@ -484,12 +485,16 @@ export function Membros() {
 function TransferirDiretoriaModal({
   membros,
   diretorAtualId,
+  posicaoAtual,
   token,
   onClose,
   onTransferido,
 }: {
   membros: UsuarioResumo[];
   diretorAtualId: number;
+  /** O cargo de quem está transferindo — é ele que muda de mão. Não há
+   *  seletor porque não há escolha: você só passa a diretoria que ocupa. */
+  posicaoAtual: Posicao;
   token: string;
   onClose: () => void;
   onTransferido: () => void;
@@ -513,7 +518,7 @@ function TransferirDiretoriaModal({
     setErro("");
     try {
       await transferirDiretoria(
-        { novo_diretor_id: escolhido.id, diretor_atual_id: diretorAtualId },
+        { novo_diretor_id: escolhido.id, diretor_atual_id: diretorAtualId, posicao: posicaoAtual },
         token,
       );
       onTransferido();
@@ -528,7 +533,7 @@ function TransferirDiretoriaModal({
     <ModalOverlay onClick={onClose} role="presentation">
       <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="transferir-titulo">
         <ModalHeader>
-          <ModalTitle id="transferir-titulo">Transferir diretoria</ModalTitle>
+          <ModalTitle id="transferir-titulo">Transferir {ROTULO_POSICAO[posicaoAtual]}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>

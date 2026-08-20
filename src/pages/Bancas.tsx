@@ -5,6 +5,7 @@ import { AlocarPessoasModal } from "./AlocarPessoasModal";
 import { Desempenho } from "./Desempenho";
 import { Clock, Plus, User, Users, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   alocar,
   deleteBanca,
@@ -228,7 +229,7 @@ export function Bancas() {
   const [resultadoPush, setResultadoPush] = useState("");
 
   const podeAgendar = !!usuario?.permissoes.pode_definir_cronograma;
-  const ehDiretor = usuario?.posicao === "diretor";
+  const ehDiretor = ehDiretoriaDeProjetos(usuario);
 
   async function recarregar() {
     if (!token || !usuario) return;
@@ -759,7 +760,7 @@ export function Bancas() {
         <BancaFormModal
           contexto={contexto}
           token={token}
-          ehDiretor={usuario.posicao === "diretor"}
+          ehDiretor={ehDiretoriaDeProjetos(usuario)}
           onClose={() => setCriarAberto(false)}
           onSalvo={() => {
             setCriarAberto(false);
@@ -773,7 +774,7 @@ export function Bancas() {
           banca={bancaEditar}
           contexto={contexto}
           token={token}
-          ehDiretor={usuario.posicao === "diretor"}
+          ehDiretor={ehDiretoriaDeProjetos(usuario)}
           onClose={() => setBancaEditar(null)}
           onSalvo={() => {
             setBancaEditar(null);

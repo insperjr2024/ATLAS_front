@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { NotebookPen, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { pode } from "@/utils/permissoes";
 import {
   createNovaVersaoFormulario,
   getAvaliacoes,
@@ -146,7 +147,7 @@ export function Avaliacoes() {
   const [editarFormulario, setEditarFormulario] = useState(false);
 
   // O formulário de banca saiu das caixas de cargo: volta a ser da diretoria.
-  const podeEditarFormulario = usuario?.posicao === "diretor";
+  const podeEditarFormulario = pode(usuario, "ver_dashboard_bancas");
 
   async function buscar() {
     if (!token) return;
@@ -224,7 +225,7 @@ export function Avaliacoes() {
   // Sem coluna inicial: a lista já vem da mais recente para a mais antiga.
   const { itens: bancasOrdenadas, ordem, ordenarPor } = useOrdenacao(historicoFiltrado, colunas);
 
-  if (usuario?.posicao !== "diretor") {
+  if (!pode(usuario, "ver_dashboard_bancas")) {
     return <Navigate to="/dashboard" replace />;
   }
 

@@ -3,6 +3,7 @@ import { Send, Trash2, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   createComentario,
   deleteComentario,
@@ -256,7 +257,7 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
                 <Autor>
                   <strong>{nomeUsuario(c.autor_id)}</strong>
                   <small>{formatarDataHora(c.criado_em)}</small>
-                  {(c.autor_id === usuario?.id || usuario?.posicao === "diretor") && (
+                  {(c.autor_id === usuario?.id || ehDiretoriaDeProjetos(usuario)) && (
                     <button
                       type="button"
                       aria-label="Apagar comentário"

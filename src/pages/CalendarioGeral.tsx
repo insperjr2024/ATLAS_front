@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { addDays, addMonths, format, isSameMonth, isToday } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { veTodosOsProjetos } from "@/utils/permissoes";
 import {
   Calendar,
   CalendarClock,
@@ -133,7 +134,7 @@ export function CalendarioGeral() {
   // Só diretor e gerente enxergam o portfólio inteiro, o texto
   // reflete o que a pessoa está de fato vendo, em vez de prometer "todos os
   // projetos" pra quem só vê os próprios.
-  const veTudo = usuario?.posicao === "diretor" || usuario?.posicao === "gerente";
+  const veTudo = veTodosOsProjetos(usuario);
   const [visao, setVisao] = useState<Visao>("mes");
   const [data, setData] = useState(() => new Date());
   const [eventos, setEventos] = useState<EventoCalendario[]>([]);

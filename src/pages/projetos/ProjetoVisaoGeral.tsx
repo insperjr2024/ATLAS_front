@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { InfoDica } from "@/components/InfoDica";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   confirmarEntregaEscopo,
   DIAS_REUNIAO,
@@ -357,7 +358,7 @@ function TabelaEscopos() {
    * (O front só esconde o botão; quem recusa é o use case, que checa a equipe.)
    */
   const podeConfirmar =
-    !!usuario && (usuario.posicao === "diretor" || usuario.id === projeto.coordenador_id);
+    !!usuario && (ehDiretoriaDeProjetos(usuario) || usuario.id === projeto.coordenador_id);
 
   // A única escrita daqui é a JUSTIFICATIVA DO ATRASO, e ela é
   // exceção pelo mesmo motivo que o resto não é: datas de escopo, banca e
@@ -1054,7 +1055,7 @@ function DataEditavelInicioAmbientacao({
 }) {
   const { usuario } = useAuth();
   const podeEditar =
-    !!usuario && (usuario.posicao === "diretor" || usuario.id === projeto.coordenador_id);
+    !!usuario && (ehDiretoriaDeProjetos(usuario) || usuario.id === projeto.coordenador_id);
   const [editando, setEditando] = useState(false);
   const [data, setData] = useState(projeto.data_inicio_ambientacao?.slice(0, 10) ?? "");
   const [salvando, setSalvando] = useState(false);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   Pencil,
   Plus,
@@ -418,7 +419,7 @@ export function ProjetoCronograma() {
   } | null>(null);
 
   const podeEditar = !!usuario?.permissoes.pode_definir_cronograma;
-  const ehDiretor = usuario?.posicao === "diretor";
+  const ehDiretor = ehDiretoriaDeProjetos(usuario);
   /**
    * Só o COORDENADOR do projeto pede dias de ajuste, e por isso o botão
    * é dele, mostrar para gerente ou diretor entregaria um 422 depois de
