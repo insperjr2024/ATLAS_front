@@ -23,6 +23,7 @@ import {
 import { useFiltroFrente } from "./FiltroFrente";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { useFiltroEscopo } from "./FiltroEscopo";
+import { useFiltroStatus } from "./FiltroStatus";
 
 /** Um limiar curto o bastante para chamar atenção antes de estourar, não
  *  é a mesma régua do backend (que só distingue em_contagem/estourou), é
@@ -63,10 +64,12 @@ export function CronogramasGeraisAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
+  const { status, seletor: seletorStatus } = useFiltroStatus();
   const seletor = (
     <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
+      {seletorStatus}
     </BarraFiltros>
   );
   const [dados, setDados] = useState<CronogramasGerais | null>(null);
@@ -78,7 +81,7 @@ export function CronogramasGeraisAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getCronogramasGerais(token, frenteId, escopoId));
+      setDados(await getCronogramasGerais(token, frenteId, escopoId, status));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar os cronogramas");
     } finally {
@@ -89,7 +92,7 @@ export function CronogramasGeraisAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId, escopoId]);
+  }, [token, frenteId, escopoId, status]);
 
   if (erro) {
     return (
@@ -118,7 +121,7 @@ export function CronogramasGeraisAba() {
     // ⭐ Duas causas MUITO diferentes chegam aqui, e a régua que as separa são
     // os filtros: com algum ligado, o dado provavelmente existe e está a um
     // clique de distância; sem nenhum, é o recorte de visão da pessoa.
-    const filtrando = frenteId !== null || escopoId !== null;
+    const filtrando = frenteId !== null || escopoId !== null || status.length > 0;
     return (
       <PageStack>
         {seletor}

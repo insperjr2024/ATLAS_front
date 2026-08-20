@@ -414,17 +414,42 @@ export interface CronogramasGerais {
   projetos: CronogramaProjetoResumo[];
 }
 
-function query(frenteId?: number | null, escopoId?: number | null, extra?: Record<string, string | undefined>): string {
+/**
+ * A query string dos filtros, a mesma em todas as abas.
+ *
+ * `status` vai como um `?status=` REPETIDO por etapa, não como lista separada
+ * por vírgula: é o formato que o FastAPI lê direto em `List[str]`, sem parse
+ * manual no servidor — e é o único que sobrevive a um nome de etapa que um dia
+ * contenha vírgula.
+ *
+ * ⚠ Lista vazia não vira parâmetro nenhum. Um `?status=` pelado chegaria ao
+ * backend como `[""]`, que é valor inválido: a aba responderia 422 quando a
+ * pessoa apenas desmarcou tudo.
+ */
+function query(
+  frenteId?: number | null,
+  escopoId?: number | null,
+  status?: StatusProjeto[] | null,
+  extra?: Record<string, string | undefined>,
+): string {
   const partes = [
     frenteId ? `frente_id=${frenteId}` : "",
     escopoId ? `escopo_id=${escopoId}` : "",
+    ...(status ?? []).map((s) => `status=${encodeURIComponent(s)}`),
     ...Object.entries(extra ?? {}).map(([k, v]) => (v ? `${k}=${v}` : "")),
   ].filter(Boolean);
   return partes.length ? `?${partes.join("&")}` : "";
 }
 
-export function getVisaoGeral(token: string, frenteId?: number | null, escopoId?: number | null) {
-  return apiFetch<VisaoGeral>(`/monitoramento/visao-geral${query(frenteId, escopoId)}`, { token });
+export function getVisaoGeral(
+  token: string,
+  frenteId?: number | null,
+  escopoId?: number | null,
+  status?: StatusProjeto[] | null,
+) {
+  return apiFetch<VisaoGeral>(`/monitoramento/visao-geral${query(frenteId, escopoId, status)}`, {
+    token,
+  });
 }
 
 /**
@@ -441,27 +466,53 @@ export function getExecucao(
   frenteId?: number | null,
   referencia?: string,
   escopoId?: number | null,
+  status?: StatusProjeto[] | null,
 ) {
   return apiFetch<Execucao>(
-    `/monitoramento/execucao${query(frenteId, escopoId, { referencia })}`,
+    `/monitoramento/execucao${query(frenteId, escopoId, status, { referencia })}`,
     { token },
   );
 }
 
-export function getAlocacao(token: string, frenteId?: number | null, escopoId?: number | null) {
-  return apiFetch<Alocacao>(`/monitoramento/alocacao${query(frenteId, escopoId)}`, { token });
+export function getAlocacao(
+  token: string,
+  frenteId?: number | null,
+  escopoId?: number | null,
+  status?: StatusProjeto[] | null,
+) {
+  return apiFetch<Alocacao>(`/monitoramento/alocacao${query(frenteId, escopoId, status)}`, { token });
 }
 
-export function getAtrasos(token: string, frenteId?: number | null, escopoId?: number | null) {
-  return apiFetch<Atrasos>(`/monitoramento/atrasos${query(frenteId, escopoId)}`, { token });
+export function getAtrasos(
+  token: string,
+  frenteId?: number | null,
+  escopoId?: number | null,
+  status?: StatusProjeto[] | null,
+) {
+  return apiFetch<Atrasos>(`/monitoramento/atrasos${query(frenteId, escopoId, status)}`, { token });
 }
 
-export function getTarefasGerais(token: string, frenteId?: number | null, escopoId?: number | null) {
-  return apiFetch<TarefasGerais>(`/monitoramento/tarefas${query(frenteId, escopoId)}`, { token });
+export function getTarefasGerais(
+  token: string,
+  frenteId?: number | null,
+  escopoId?: number | null,
+  status?: StatusProjeto[] | null,
+) {
+  return apiFetch<TarefasGerais>(`/monitoramento/tarefas${query(frenteId, escopoId, status)}`, {
+    token,
+  });
 }
 
-export function getCronogramasGerais(token: string, frenteId?: number | null, escopoId?: number | null) {
-  return apiFetch<CronogramasGerais>(`/monitoramento/cronogramas${query(frenteId, escopoId)}`, { token });
+export function getCronogramasGerais(
+  token: string,
+  frenteId?: number | null,
+  escopoId?: number | null,
+  status?: StatusProjeto[] | null,
+) {
+  return apiFetch<CronogramasGerais>(
+    `/monitoramento/cronogramas${query(frenteId, escopoId, status)}`,
+    { token },
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -488,8 +539,15 @@ export interface ProjetoAtivo {
   proxima_banca: string | null;
 }
 
-export function getProjetosAtivos(token: string, frenteId?: number | null) {
-  return apiFetch<ProjetoAtivo[]>(`/monitoramento/projetos-ativos${query(frenteId)}`, { token });
+export function getProjetosAtivos(
+  token: string,
+  frenteId?: number | null,
+  status?: StatusProjeto[] | null,
+) {
+  return apiFetch<ProjetoAtivo[]>(
+    `/monitoramento/projetos-ativos${query(frenteId, null, status)}`,
+    { token },
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -535,7 +593,7 @@ export function getHistoricoProjetos(
   filtro: FiltroHistorico = "todos",
 ) {
   return apiFetch<HistoricoProjeto[]>(
-    `/monitoramento/historico-projetos${query(frenteId, null, { filtro })}`,
+    `/monitoramento/historico-projetos${query(frenteId, null, null, { filtro })}`,
     { token },
   );
 }

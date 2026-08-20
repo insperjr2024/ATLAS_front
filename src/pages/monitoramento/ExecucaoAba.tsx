@@ -44,6 +44,7 @@ import {
 } from "./Monitoramento.styled";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
+import { useFiltroStatus } from "./FiltroStatus";
 
 /** Pra "voltar" do projeto cair de novo aqui, não em `/projetos`. */
 const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/execucao", voltarRotulo: "Voltar para Execução" };
@@ -78,10 +79,12 @@ export function ExecucaoAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
+  const { status, seletor: seletorStatus } = useFiltroStatus();
   const seletor = (
     <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
+      {seletorStatus}
     </BarraFiltros>
   );
   const [dados, setDados] = useState<Execucao | null>(null);
@@ -97,7 +100,7 @@ export function ExecucaoAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getExecucao(token, frenteId, referencia ?? undefined, escopoId));
+      setDados(await getExecucao(token, frenteId, referencia ?? undefined, escopoId, status));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar a execução");
     } finally {
@@ -108,7 +111,7 @@ export function ExecucaoAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId, referencia, escopoId]);
+  }, [token, frenteId, referencia, escopoId, status]);
 
   /** Anda `dias` a partir do início da semana exibida. */
   function navegar(dias: number) {
