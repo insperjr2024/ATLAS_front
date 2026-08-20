@@ -81,7 +81,7 @@ export function ProjetoTarefas() {
   // Só quem está de fato alocado neste projeto pode ser responsável por uma
   // tarefa dele, `usuarios` (do useProjeto) é o quadro inteiro da Insper Jr.
   const membrosDoProjeto = usuarios.filter(
-    (u) => u.id === projeto.coordenador_id || projeto.consultor_ids.includes(u.id),
+    (u) => projeto.coordenador_ids.includes(u.id) || projeto.consultor_ids.includes(u.id),
   );
 
   /**

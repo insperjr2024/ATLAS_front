@@ -28,7 +28,7 @@ import {
 } from "./MemberPicker.styled";
 
 export interface EquipeSelecionada {
-  coordenadorId: number | null;
+  coordenadorIds: number[];
   consultorIds: number[];
 }
 
@@ -66,19 +66,19 @@ export const POSICOES_ELEGIVEIS_COORDENADOR: Posicao[] = ["coordenador", "gerent
  * Ninguém tem limite de projetos: a mesma pessoa pode coordenar (ou consultar)
  * vários ao mesmo tempo, por isso não há checagem contra outros projetos.
  */
-export function validarEquipe({ coordenadorId, consultorIds }: EquipeSelecionada): string | null {
-  if (coordenadorId && consultorIds.includes(coordenadorId)) {
+export function validarEquipe({ coordenadorIds, consultorIds }: EquipeSelecionada): string | null {
+  if (coordenadorIds.some((id) => consultorIds.includes(id))) {
     return "O coordenador não pode ser também consultor do mesmo projeto.";
   }
   return null;
 }
 
 export function montarEquipePayload({
-  coordenadorId,
+  coordenadorIds,
   consultorIds,
 }: EquipeSelecionada): MembroEquipePayload[] {
   return [
-    ...(coordenadorId ? [{ usuario_id: coordenadorId, papel: "coordenador" as const }] : []),
+    ...coordenadorIds.map((id) => ({ usuario_id: id, papel: "coordenador" as const })),
     ...consultorIds.map((id) => ({ usuario_id: id, papel: "consultor" as const })),
   ];
 }
@@ -120,7 +120,7 @@ export function MemberPicker({
   }
 
   const nomePorId = new Map(usuarios.map((u) => [u.id, u.nome]));
-  const { coordenadorId, consultorIds } = valor;
+  const { coordenadorIds, consultorIds } = valor;
 
   const frenteIdsPorUsuario = new Map<number, Set<number>>();
   for (const uf of usuariosFrentes) {
@@ -150,17 +150,24 @@ export function MemberPicker({
     return `${ROTULO_POSICAO[usuario.posicao]} · ${carga}`;
   };
 
-  // O backend recusa quem não tem a posição do papel, então nem oferecemos.
-  const elegiveisCoordenador = usuarios.filter(
-    (u) => POSICOES_ELEGIVEIS_COORDENADOR.includes(u.posicao) && atendeFiltroFrente(u),
-  );
-
   // Menos carregado primeiro: quem tem menos projetos abre a lista, para a
   // alocação distribuir a carga em vez de cair sempre em quem já está no
   // limiar de gargalo. Empate desempata por nome, sem isso a ordem
   // dos que têm a mesma carga varia conforme a API responde.
   const porCargaCrescente = (a: UsuarioResumo, b: UsuarioResumo) =>
     a.projetos_alocados - b.projetos_alocados || a.nome.localeCompare(b.nome, "pt-BR");
+
+  // O backend recusa quem não tem a posição do papel, então nem oferecemos.
+  // Quem já foi escolhido sai da lista, um projeto pode ter mais de um
+  // coordenador (2026-08-20), mas a mesma pessoa não entra duas vezes.
+  const elegiveisCoordenador = usuarios
+    .filter(
+      (u) =>
+        POSICOES_ELEGIVEIS_COORDENADOR.includes(u.posicao) &&
+        !coordenadorIds.includes(u.id) &&
+        atendeFiltroFrente(u),
+    )
+    .sort(porCargaCrescente);
 
   // Consultor aceita posição igual ou acima na hierarquia (coordenador,
   // gerente e diretor também entram, nunca o contrário). Ninguém aparece
@@ -177,20 +184,20 @@ export function MemberPicker({
 
   function adicionarConsultor(id: number) {
     if (consultorIds.includes(id)) return;
-    onChange({ coordenadorId, consultorIds: [...consultorIds, id] });
+    onChange({ coordenadorIds, consultorIds: [...consultorIds, id] });
   }
 
   function removerConsultor(id: number) {
-    onChange({ coordenadorId, consultorIds: consultorIds.filter((x) => x !== id) });
+    onChange({ coordenadorIds, consultorIds: consultorIds.filter((x) => x !== id) });
   }
 
-  function trocarCoordenador(novoId: number | null) {
-    // As duas listas são disjuntas por posição, mas equipes salvas antes desta
-    // regra podem ter a mesma pessoa nos dois papéis, tira da lista de baixo.
-    onChange({
-      coordenadorId: novoId,
-      consultorIds: novoId ? consultorIds.filter((x) => x !== novoId) : consultorIds,
-    });
+  function adicionarCoordenador(id: number) {
+    if (coordenadorIds.includes(id)) return;
+    onChange({ coordenadorIds: [...coordenadorIds, id], consultorIds });
+  }
+
+  function removerCoordenador(id: number) {
+    onChange({ coordenadorIds: coordenadorIds.filter((x) => x !== id), consultorIds });
   }
 
   return (
@@ -198,22 +205,43 @@ export function MemberPicker({
       <FieldGroup>
         {/* Sem asterisco: a equipe deixou de ser obrigatória, ver
             `validarEquipe`. Um projeto pode ficar sem coordenador enquanto a
-            gestão decide quem assume. */}
-        <FieldLabel htmlFor="equipe-coordenador">Coordenador</FieldLabel>
-        <PessoaDropdown
-          id="equipe-coordenador"
-          opcoes={elegiveisCoordenador}
-          meta={metaTexto}
-          desabilitado={desabilitado}
-          gatilho={coordenadorId ? (nomePorId.get(coordenadorId) ?? `Usuário ${coordenadorId}`) : "Selecione…"}
-          gatilhoVazio={!coordenadorId}
-          vazio={elegiveisCoordenador.length === 0 ? "Nenhum coordenador cadastrado" : "Nenhum coordenador com essa frente"}
-          onSelecionar={(id) => trocarCoordenador(id)}
-          onLimpar={coordenadorId ? () => trocarCoordenador(null) : undefined}
-          frentes={frentes}
-          frentesFiltro={frentesFiltro}
-          onToggleFrente={alternarFrenteFiltro}
-        />
+            gestão decide quem assume, e pode ter mais de um em projetos
+            grandes que dividem a coordenação (2026-08-20). */}
+        <FieldLabel htmlFor="equipe-coordenador">Coordenadores</FieldLabel>
+        <ChipRow>
+          {coordenadorIds.length === 0 && (
+            <CountHint $ok={false}>Nenhum coordenador no time ainda.</CountHint>
+          )}
+          {coordenadorIds.map((id) => (
+            <Chip key={id}>
+              {nomePorId.get(id) ?? `Usuário ${id}`}
+              <ChipRemove
+                type="button"
+                aria-label={`Remover ${nomePorId.get(id) ?? id}`}
+                disabled={desabilitado}
+                onClick={() => removerCoordenador(id)}
+              >
+                <X size={14} />
+              </ChipRemove>
+            </Chip>
+          ))}
+        </ChipRow>
+
+        <AddRow>
+          <PessoaDropdown
+            id="equipe-coordenador"
+            opcoes={elegiveisCoordenador}
+            meta={metaTexto}
+            desabilitado={desabilitado}
+            gatilho="Adicionar coordenador…"
+            gatilhoVazio
+            vazio={elegiveisCoordenador.length === 0 ? "Nenhum coordenador cadastrado" : "Nenhum coordenador com essa frente"}
+            onSelecionar={adicionarCoordenador}
+            frentes={frentes}
+            frentesFiltro={frentesFiltro}
+            onToggleFrente={alternarFrenteFiltro}
+          />
+        </AddRow>
       </FieldGroup>
 
       <FieldGroup>

@@ -14,6 +14,7 @@ import {
   type SenhaProvisoriaEmitida,
 } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
+import { getLotes, getPendencias } from "@/lib/desempenho-lotes";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 
@@ -52,6 +53,7 @@ import {
   ErrorBlock,
   ErrorText,
   EmptyText,
+  PageBadge,
 } from "@/styles/page.styled";
 import {
   PageHeaderRow,
@@ -105,10 +107,40 @@ interface Contexto {
   usuariosFrentes: UsuarioFrente[];
 }
 
+/** Quantas avaliações da rodada aberta cada pessoa já respondeu, como
+ *  avaliadora, e quantas ainda faltam. */
+interface AvaliacaoResumo {
+  total: number;
+  pendentes: number;
+}
+
+/**
+ * Soma as pendências de todos os lotes abertos por avaliador. Uma pessoa
+ * pode ter pendência em mais de um lote ao mesmo tempo (ex: periódico e
+ * finalização rodando juntos), então o número é a soma, não "o pior lote".
+ */
+async function carregarAvaliacaoPorMembro(token: string): Promise<Map<number, AvaliacaoResumo>> {
+  const lotesAbertos = await getLotes(token);
+  const pendenciasPorLote = await Promise.all(lotesAbertos.map((lote) => getPendencias(lote.id, token)));
+  const mapa = new Map<number, AvaliacaoResumo>();
+  for (const pendencias of pendenciasPorLote) {
+    for (const pendencia of pendencias) {
+      const atual = mapa.get(pendencia.avaliador_id) ?? { total: 0, pendentes: 0 };
+      atual.total += 1;
+      if (!pendencia.respondida) atual.pendentes += 1;
+      mapa.set(pendencia.avaliador_id, atual);
+    }
+  }
+  return mapa;
+}
+
 export function Membros() {
   const { usuario, token } = useAuth();
   const [membros, setMembros] = useState<UsuarioResumo[]>([]);
   const [contexto, setContexto] = useState<Contexto | null>(null);
+  /** `null` até carregar (ou pra quem não administra desempenho, que nunca
+   *  pede isso). Mapa vazio é resultado válido: ninguém tem lote aberto. */
+  const [avaliacaoPorMembro, setAvaliacaoPorMembro] = useState<Map<number, AvaliacaoResumo> | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [membroDetalhe, setMembroDetalhe] = useState<UsuarioResumo | null>(null);
@@ -143,6 +175,17 @@ export function Membros() {
       setErro(err instanceof Error ? err.message : "Erro ao carregar membros");
     } finally {
       if (mostrarCarregando) setCarregando(false);
+    }
+
+    // Separado do try/catch acima de propósito: um problema no módulo de
+    // desempenho não pode travar a lista de membros inteira, é só uma
+    // coluna a mais, não o motivo da pessoa estar nesta tela.
+    if (usuario?.permissoes.pode_administrar_desempenho) {
+      try {
+        setAvaliacaoPorMembro(await carregarAvaliacaoPorMembro(token));
+      } catch {
+        setAvaliacaoPorMembro(new Map());
+      }
     }
   }
 
@@ -275,8 +318,9 @@ export function Membros() {
             <TableScrollWrap
               $scrollable={membrosFiltrados.length > MEMBROS_MAX_VISIVEIS}
               $maxVisiveis={MEMBROS_MAX_VISIVEIS}
-              // 7 colunas: abaixo de 56rem a tabela rola na horizontal em vez de
-              // espremer "E-mail" e "Posição" até quebrarem letra a letra.
+              // 7 colunas (8 com "Avaliação", pra quem administra desempenho):
+              // abaixo de 56rem a tabela rola na horizontal em vez de espremer
+              // "E-mail" e "Posição" até quebrarem letra a letra.
               $min="56rem"
             >
             <DataTable>
@@ -300,6 +344,9 @@ export function Membros() {
                   <Th coluna="status" ordem={ordem} onOrdenar={ordenarPor}>
                     Status
                   </Th>
+                  {/* Só quem administra desempenho vê esta coluna: é
+                      informação de gestão da avaliação, não do cadastro. */}
+                  {avaliacaoPorMembro && <TableHeadCell>Avaliação</TableHeadCell>}
                   <TableHeadCell />
                 </TableRow>
               </TableHead>
@@ -327,6 +374,23 @@ export function Membros() {
                           </EmptyText>
                         )}
                       </TableCell>
+                      {avaliacaoPorMembro && (
+                        <TableCell>
+                          {(() => {
+                            const resumo = avaliacaoPorMembro.get(membro.id);
+                            // Sem linha no mapa = a pessoa não é avaliadora
+                            // de ninguém no lote aberto, não é "atrasada".
+                            if (!resumo) return <EmptyText>—</EmptyText>;
+                            return resumo.pendentes > 0 ? (
+                              <PageBadge $tone="warning">
+                                {resumo.pendentes} de {resumo.total} pendente{resumo.pendentes > 1 ? "s" : ""}
+                              </PageBadge>
+                            ) : (
+                              <PageBadge $tone="success">Completo</PageBadge>
+                            );
+                          })()}
+                        </TableCell>
+                      )}
                       <ActionsCell>
                         {/* Reemitir derruba a senha da pessoa, por isso é
                             da diretoria, a mesma régua do cadastro. */}

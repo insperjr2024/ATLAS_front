@@ -179,7 +179,7 @@ export function PainelAvaliacoes() {
     const comuns = idsDoLote.filter((id) => {
       const projeto = projetoPorId.get(id);
       if (!projeto) return false;
-      const membros = new Set([projeto.coordenador_id, ...projeto.consultor_ids]);
+      const membros = new Set([...projeto.coordenador_ids, ...projeto.consultor_ids]);
       return membros.has(a.avaliador_id) && membros.has(a.avaliado_id);
     });
     return comuns.map((id) => nomeProjetoPorId.get(id)).filter(Boolean).join(", ") || "—";

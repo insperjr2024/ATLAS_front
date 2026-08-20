@@ -136,7 +136,7 @@ export function ProjetoNovo() {
   // data combinada, e exigi-la aqui travaria o cadastro por um dado que às
   // vezes só existe depois do kickoff.
   const [entregaPrevista, setEntregaPrevista] = useState("");
-  const [equipe, setEquipe] = useState<EquipeSelecionada>({ coordenadorId: null, consultorIds: [] });
+  const [equipe, setEquipe] = useState<EquipeSelecionada>({ coordenadorIds: [], consultorIds: [] });
   const [escopos, setEscopos] = useState<EscopoEmEdicao[]>([]);
 
   const [salvando, setSalvando] = useState(false);

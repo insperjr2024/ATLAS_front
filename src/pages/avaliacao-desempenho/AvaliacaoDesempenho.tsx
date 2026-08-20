@@ -191,13 +191,17 @@ export function AvaliacaoDesempenho() {
 
   // `getProjetos` já aplica o recorte de visão: pra coordenador e
   // consultor devolve só os projetos onde eles estão hoje, daí dá pra
-  // derivar o papel de cada um sem endpoint novo (coordenador_id/
+  // derivar o papel de cada um sem endpoint novo (coordenador_ids/
   // consultor_ids já vêm no resumo).
+  //
+  // ⚠ `coordenador_ids.includes`, não `coordenador_id ===`: projeto pode
+  // ter mais de um coordenador (2026-08-20), e comparar só com o primeiro
+  // classificaria o segundo coordenador como consultor.
   const minhasParticipacoes = useMemo(() => {
     if (!usuario) return [];
     return projetos.map((p) => ({
       projeto: p.nome,
-      papel: (p.coordenador_id === usuario.id ? "coordenador" : "consultor") as "coordenador" | "consultor",
+      papel: (p.coordenador_ids.includes(usuario.id) ? "coordenador" : "consultor") as "coordenador" | "consultor",
     }));
   }, [projetos, usuario]);
 

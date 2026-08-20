@@ -80,7 +80,7 @@ export function EditarProjetoModal({
   const [linkProposta, setLinkProposta] = useState(projeto.link_proposta ?? "");
   const [frenteIds, setFrenteIds] = useState(projeto.frente_ids);
   const [equipe, setEquipe] = useState<EquipeSelecionada>({
-    coordenadorId: projeto.coordenador_id,
+    coordenadorIds: projeto.coordenador_ids,
     consultorIds: projeto.consultor_ids,
   });
   const [maxConsultores, setMaxConsultores] = useState(String(projeto.max_consultores));
@@ -107,7 +107,8 @@ export function EditarProjetoModal({
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
   const equipeMudou =
-    equipe.coordenadorId !== projeto.coordenador_id ||
+    equipe.coordenadorIds.length !== projeto.coordenador_ids.length ||
+    equipe.coordenadorIds.some((id) => !projeto.coordenador_ids.includes(id)) ||
     equipe.consultorIds.length !== projeto.consultor_ids.length ||
     equipe.consultorIds.some((id) => !projeto.consultor_ids.includes(id));
 

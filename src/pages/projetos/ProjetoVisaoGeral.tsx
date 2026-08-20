@@ -97,13 +97,18 @@ export function ProjetoVisaoGeral() {
        escritos.** Agora tem três zonas, na ordem em que se pergunta:
 
        1. **O que precisa de mim** — Pendências, e só quando há alguma.
-       2. **O trabalho vendido** — os escopos e as bancas deles. É o assunto
-          da aba, e ocupa a largura toda.
-       3. **Referência** — datas e equipe, lado a lado no fim. São dados de
-          consulta, não de acompanhamento: quem abre a Visão geral não veio
-          conferir em que dia o projeto foi criado. */
+       2. **Referência** — equipe e datas, lado a lado. É o "quem/quando"
+          do projeto, e vem antes do trabalho vendido porque se pergunta
+          antes dele.
+       3. **O trabalho vendido** — os escopos e as bancas deles. É o assunto
+          da aba, e ocupa a largura toda. */
     <PageStack>
       <PendenciasProjeto projeto={projeto} />
+
+      <PageGrid $columns={2}>
+        <EquipeCard />
+        <DatasCard projeto={projeto} token={token} recarregar={recarregar} />
+      </PageGrid>
 
       <TabelaEscopos />
 
@@ -111,12 +116,6 @@ export function ProjetoVisaoGeral() {
           frente, que é como a coordenação se organiza. Fica colado nos
           escopos porque é a mesma pergunta vista por outro corte. */}
       <BancasPorFrente />
-
-      <PageGrid $columns={2}>
-        <EquipeCard />
-        <DatasCard projeto={projeto} token={token} recarregar={recarregar} />
-      </PageGrid>
-
     </PageStack>
   );
 }

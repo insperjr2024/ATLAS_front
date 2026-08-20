@@ -197,7 +197,7 @@ function PainelEscolherPessoa({
   );
 
   const ehCoordenador = papel === "coordenador";
-  const titulo = ehCoordenador ? "Escolher coordenador" : "Adicionar consultores";
+  const titulo = ehCoordenador ? "Adicionar coordenadores" : "Adicionar consultores";
   const idBusca = `painel-busca-${papel}`;
   const idFiltro = `painel-frente-${papel}`;
 
@@ -210,7 +210,7 @@ function PainelEscolherPessoa({
             <CandidatoNome as="h3">{titulo}</CandidatoNome>
             <CandidatoMeta>
               {visiveis.length} {visiveis.length === 1 ? "pessoa elegível" : "pessoas elegíveis"}
-              {escolhidos.length > 0 && !ehCoordenador && ` · ${escolhidos.length} no time`}
+              {escolhidos.length > 0 && ` · ${escolhidos.length} no time`}
             </CandidatoMeta>
           </PainelTitulo>
           <PainelFechar type="button" aria-label="Fechar painel" onClick={onFechar}>
@@ -275,17 +275,10 @@ function PainelEscolherPessoa({
                           <LinhaAcao
                             type="button"
                             $escolhido={escolhido}
-                            aria-label={`${escolhido ? "Remover" : ehCoordenador ? "Escolher" : "Adicionar"} ${pessoa.nome}`}
-                            onClick={() => {
-                              onAlternar(pessoa.id);
-                              // Coordenador é um só: escolhido, não há mais
-                              // nada a fazer aqui. Consultor é lista, o
-                              // painel fica aberto para montar o time inteiro
-                              // numa passada só.
-                              if (ehCoordenador && !escolhido) onFechar();
-                            }}
+                            aria-label={`${escolhido ? "Remover" : "Adicionar"} ${pessoa.nome}`}
+                            onClick={() => onAlternar(pessoa.id)}
                           >
-                            {escolhido ? "Remover" : ehCoordenador ? "Escolher" : "Adicionar"}
+                            {escolhido ? "Remover" : "Adicionar"}
                           </LinhaAcao>
                         </CandidatoTopo>
                       </CandidatoLinha>
@@ -300,9 +293,7 @@ function PainelEscolherPessoa({
         <PainelRodape>
           <RodapeContagem>
             {ehCoordenador
-              ? escolhidos.length > 0
-                ? "Coordenador escolhido"
-                : "Nenhum coordenador ainda"
+              ? `${escolhidos.length} ${escolhidos.length === 1 ? "coordenador" : "coordenadores"} no time`
               : `${escolhidos.length} ${escolhidos.length === 1 ? "consultor" : "consultores"} no time`}
           </RodapeContagem>
           <PageButton type="button" onClick={onFechar}>
@@ -349,7 +340,7 @@ export function EquipeCampo({
   desabilitado,
 }: EquipeCampoProps) {
   const [painelAberto, setPainelAberto] = useState<Papel | null>(null);
-  const { coordenadorId, consultorIds } = valor;
+  const { coordenadorIds, consultorIds } = valor;
 
   const frentesPorUsuario = useMemo(() => {
     const mapa = new Map<number, number[]>();
@@ -367,29 +358,34 @@ export function EquipeCampo({
   const elegiveisCoordenador = useMemo(
     () =>
       usuarios.filter(
-        (u) => POSICOES_ELEGIVEIS_COORDENADOR.includes(u.posicao) && !consultorIds.includes(u.id),
+        (u) =>
+          POSICOES_ELEGIVEIS_COORDENADOR.includes(u.posicao) &&
+          !consultorIds.includes(u.id) &&
+          !coordenadorIds.includes(u.id),
       ),
-    [usuarios, consultorIds],
+    [usuarios, consultorIds, coordenadorIds],
   );
 
   const elegiveisConsultor = useMemo(
     () =>
       usuarios.filter(
-        (u) => POSICOES_ELEGIVEIS_CONSULTOR.includes(u.posicao) && u.id !== coordenadorId,
+        (u) => POSICOES_ELEGIVEIS_CONSULTOR.includes(u.posicao) && !coordenadorIds.includes(u.id),
       ),
-    [usuarios, coordenadorId],
+    [usuarios, coordenadorIds],
   );
 
   function alternarCoordenador(id: number) {
     onChange({
-      coordenadorId: coordenadorId === id ? null : id,
+      coordenadorIds: coordenadorIds.includes(id)
+        ? coordenadorIds.filter((x) => x !== id)
+        : [...coordenadorIds, id],
       consultorIds: consultorIds.filter((x) => x !== id),
     });
   }
 
   function alternarConsultor(id: number) {
     onChange({
-      coordenadorId: coordenadorId === id ? null : coordenadorId,
+      coordenadorIds,
       consultorIds: consultorIds.includes(id)
         ? consultorIds.filter((x) => x !== id)
         : [...consultorIds, id],
@@ -430,31 +426,25 @@ export function EquipeCampo({
       <EquipeGrade>
         <PapelBloco>
           <PapelCabecalho>
-            <PapelNome>Coordenador</PapelNome>
-            <PapelContagem>{coordenadorId ? "definido" : "opcional"}</PapelContagem>
+            <PapelNome>Coordenadores</PapelNome>
+            <PapelContagem>
+              {coordenadorIds.length === 0 ? "opcional" : `${coordenadorIds.length} escolhido${coordenadorIds.length > 1 ? "s" : ""}`}
+            </PapelContagem>
           </PapelCabecalho>
-          {coordenadorId ? (
-            <PessoaLista>{pessoaCard(coordenadorId, () => alternarCoordenador(coordenadorId))}</PessoaLista>
-          ) : (
-            <AbrirPainel
-              type="button"
-              $vazio
-              disabled={desabilitado}
-              onClick={() => setPainelAberto("coordenador")}
-            >
-              <UserPlus size={16} />
-              Escolher coordenador
-            </AbrirPainel>
+          {coordenadorIds.length > 0 && (
+            <PessoaLista>
+              {coordenadorIds.map((id) => pessoaCard(id, () => alternarCoordenador(id)))}
+            </PessoaLista>
           )}
-          {coordenadorId && (
-            <AbrirPainel
-              type="button"
-              disabled={desabilitado}
-              onClick={() => setPainelAberto("coordenador")}
-            >
-              Trocar
-            </AbrirPainel>
-          )}
+          <AbrirPainel
+            type="button"
+            $vazio={coordenadorIds.length === 0}
+            disabled={desabilitado}
+            onClick={() => setPainelAberto("coordenador")}
+          >
+            <UserPlus size={16} />
+            {coordenadorIds.length === 0 ? "Escolher coordenador" : "Adicionar mais"}
+          </AbrirPainel>
         </PapelBloco>
 
         <PapelBloco>
@@ -497,7 +487,7 @@ export function EquipeCampo({
           frentes={frentes}
           frenteIdsProjeto={frenteIdsProjeto}
           frentesPorUsuario={frentesPorUsuario}
-          escolhidos={coordenadorId ? [coordenadorId] : []}
+          escolhidos={coordenadorIds}
           onAlternar={alternarCoordenador}
           onFechar={() => setPainelAberto(null)}
         />

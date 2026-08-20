@@ -31,7 +31,10 @@ export interface ProjetoResumo {
   frente_ids: number[];
   /** 2 frentes = projeto sinérgico; aparece para os dois gerentes. */
   sinergico: boolean;
+  /** @deprecated Primeiro da lista, só pra quem ainda não migrou pra
+   *  `coordenador_ids` — projeto pode ter mais de um coordenador. */
   coordenador_id: number | null;
+  coordenador_ids: number[];
   consultor_ids: number[];
   /** Teto de consultores da equipe, escolhido na criação do projeto. O
    *  backend já mandava; faltava declarar aqui. */
