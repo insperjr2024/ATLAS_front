@@ -48,8 +48,24 @@ export interface Permissoes {
   pode_ver_todos_projetos: boolean;
 }
 
-/** Os 4 perfis do , desde 2026-08-07 a única dimensão de permissão. */
-export type Posicao = "diretor" | "gerente" | "coordenador" | "consultor";
+/**
+ * Os 6 perfis, desde 2026-08-07 a única dimensão de permissão.
+ *
+ * A diretoria virou TRÊS cargos em 2026-08-20. `diretor_projetos` herdou os
+ * poderes do `diretor` de antes; `diretor` passou a significar
+ * só-visualização. Espelha o enum `posicao_usuario` do backend.
+ *
+ * ⚠ Ao acrescentar um valor aqui, todo `Record<Posicao, ...>` incompleto
+ * quebra a compilação — é de propósito, é o compilador apontando os lugares
+ * que precisam decidir sobre o cargo novo.
+ */
+export type Posicao =
+  | "diretor_projetos"
+  | "diretor_pessoas"
+  | "diretor"
+  | "gerente"
+  | "coordenador"
+  | "consultor";
 
 /** Uma linha de `GET /posicoes-permissoes`: as 13 caixas de UMA posição. */
 export interface PosicaoPermissao extends Permissoes {

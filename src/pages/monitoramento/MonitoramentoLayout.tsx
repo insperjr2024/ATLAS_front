@@ -54,7 +54,7 @@ export function MonitoramentoLayout() {
   // A fila é DELA: gerente vê o Monitoramento inteiro, mas não decide nada
   // do que está nesta aba. Mostrar uma lista que a pessoa não pode
   // responder é só ansiedade.
-  const podeAprovar = usuario?.posicao === "diretor";
+  const podeAprovar = pode(usuario, "aprovar_pedidos");
   const podeVerCronogramasGerais = pode(usuario, "ver_cronogramas_gerais");
   // Histórico de projetos: diretoria e gerência (o backend usa require_gestao).
   const podeVerHistorico = pode(usuario, "ver_historico_projetos");

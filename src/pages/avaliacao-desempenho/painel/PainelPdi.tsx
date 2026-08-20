@@ -3,6 +3,7 @@ import { AlertTriangle, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { createMentoria, deleteMentoria, getMentorias } from "@/lib/desempenho-mentorias";
 import { getUsuarios } from "@/lib/usuarios";
+import { MENTORES_ELEGIVEIS } from "@/utils/permissoes";
 import {
   createItemPdi,
   createPastaPdi,
@@ -146,7 +147,7 @@ export function PainelPdi() {
 
   // Mentor pode ser coordenador, gerente ou diretor (2026-08-06), não só coordenador.
   const mentoresElegiveis = useMemo(
-    () => usuarios.filter((u) => u.posicao === "coordenador" || u.posicao === "gerente" || u.posicao === "diretor"),
+    () => usuarios.filter((u) => MENTORES_ELEGIVEIS.includes(u.posicao)),
     [usuarios],
   );
   const mentoradosJaAlocados = useMemo(() => new Set(mentorias.map((m) => m.mentorado_id)), [mentorias]);

@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import type {
   ComentarioTarefa,
   ReuniaoRegistrada,
@@ -84,7 +85,7 @@ export function podeEditarTarefa(
   tarefa: Tarefa,
 ): boolean {
   if (!usuario) return false;
-  return usuario.posicao === "diretor" || tarefa.criado_por === usuario.id;
+  return ehDiretoriaDeProjetos(usuario) || tarefa.criado_por === usuario.id;
 }
 
 /** O símbolo e a cor de cada nível, glifo junto da cor, nunca cor sozinha. */

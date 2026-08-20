@@ -46,6 +46,7 @@ import { PainelPdi } from "@/pages/avaliacao-desempenho/painel/PainelPdi";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 import { CronogramasGeraisAba } from "@/pages/monitoramento/CronogramasGeraisAba";
+import { MENTORES_ELEGIVEIS } from "@/utils/permissoes";
 
 export default function App() {
   return (
@@ -150,7 +151,7 @@ export default function App() {
                   relação com o processo de avaliação (ver
                   `AvaliacaoDesempenhoHub`). Mentor pode ser coordenador,
                   gerente ou diretor (2026-08-06). */}
-              <Route element={<RequirePosicao posicoes={["coordenador", "gerente", "diretor"]} />}>
+              <Route element={<RequirePosicao posicoes={MENTORES_ELEGIVEIS} />}>
                 <Route path="/avaliacao-desempenho/mentorados" element={<MeusMentorados />} />
               </Route>
 

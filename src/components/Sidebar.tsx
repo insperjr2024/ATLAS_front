@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificacoes } from "@/context/NotificacoesContext";
-import { rotuloProjetos } from "@/utils/permissoes";
+import { pode, rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
@@ -123,7 +123,7 @@ const navItems: NavItemConfig[] = [
     // item "Avaliação de Desempenho" de propósito: mentoria não é processo
     // de avaliação, é acompanhamento; juntar os dois também colidia com o
     // rótulo do painel admin, que a diretoria já vê.
-    visiblePorPosicao: (u) => u.posicao === "coordenador" || u.posicao === "gerente" || u.posicao === "diretor",
+    visiblePorPosicao: (u) => pode(u, "ser_mentor"),
   },
   // "Meu perfil" NÃO é item de navegação: o acesso é pelo nome e pela foto no
   // rodapé, que já estão lá. Notificações também não — o sino do rodapé mostra
@@ -149,7 +149,7 @@ const navItems: NavItemConfig[] = [
     label: "Dashboard Bancas",
     path: "/avaliacoes",
     grupo: "gestao",
-    visiblePorPosicao: (u) => u.posicao === "diretor",
+    visiblePorPosicao: (u) => pode(u, "ver_dashboard_bancas"),
   },
   {
     icon: Star,

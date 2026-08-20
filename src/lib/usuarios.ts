@@ -88,6 +88,13 @@ export interface SenhaProvisoriaEmitida {
 export interface TransferirDiretoriaPayload {
   novo_diretor_id: number;
   diretor_atual_id: number;
+  /** QUAL diretoria está sendo passada — são três desde 2026-08-20.
+   *
+   *  Obrigatório, sem padrão, igual ao backend: adivinhar aqui promoveria
+   *  alguém ao cargo errado, e a operação não tem desfazer (ela desliga quem
+   *  sai). Na tela é sempre a posição de quem está transferindo, que é o
+   *  único cargo que a pessoa tem para dar. */
+  posicao: Posicao;
 }
 
 /**
