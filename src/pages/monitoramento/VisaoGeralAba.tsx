@@ -70,6 +70,7 @@ import {
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
+import { useFiltroStatus } from "./FiltroStatus";
 
 /** Pra "voltar" do projeto cair de novo aqui — Visão geral é a rota índice
  *  de Monitoramento, então o destino é a pasta sem sub-rota. */
@@ -123,10 +124,12 @@ export function VisaoGeralAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
+  const { status, seletor: seletorStatus } = useFiltroStatus();
   const seletor = (
     <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
+      {seletorStatus}
     </BarraFiltros>
   );
   const [dados, setDados] = useState<VisaoGeral | null>(null);
@@ -138,7 +141,7 @@ export function VisaoGeralAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getVisaoGeral(token, frenteId, escopoId));
+      setDados(await getVisaoGeral(token, frenteId, escopoId, status));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar o monitoramento");
     } finally {
@@ -149,7 +152,7 @@ export function VisaoGeralAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId, escopoId]);
+  }, [token, frenteId, escopoId, status]);
 
   if (erro) {
     return (

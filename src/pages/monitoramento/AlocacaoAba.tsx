@@ -44,6 +44,7 @@ import {
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
+import { useFiltroStatus } from "./FiltroStatus";
 
 /** Pra "voltar" do projeto cair de novo aqui, não em `/projetos`. */
 const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/alocacao", voltarRotulo: "Voltar para Alocação" };
@@ -64,10 +65,12 @@ export function AlocacaoAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
+  const { status, seletor: seletorStatus } = useFiltroStatus();
   const seletor = (
     <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
+      {seletorStatus}
     </BarraFiltros>
   );
   const [papel, setPapel] = useState<Papel>("consultor");
@@ -80,7 +83,7 @@ export function AlocacaoAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getAlocacao(token, frenteId, escopoId));
+      setDados(await getAlocacao(token, frenteId, escopoId, status));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar a alocação");
     } finally {
@@ -91,7 +94,7 @@ export function AlocacaoAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId, escopoId]);
+  }, [token, frenteId, escopoId, status]);
 
   // O seletor fica FORA do early return de erro e de carregando. Se ele
   // sumisse durante uma falha, quem filtrasse numa frente que dá erro ficaria

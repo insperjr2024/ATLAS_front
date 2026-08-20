@@ -5,6 +5,7 @@ import { getAtrasos, type Atrasos } from "@/lib/monitoramento";
 import { formatarData, registrarJustificativaAtraso } from "@/lib/projetos";
 import { useFiltroFrente } from "./FiltroFrente";
 import { useFiltroEscopo } from "./FiltroEscopo";
+import { useFiltroStatus } from "./FiltroStatus";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { ConteudoPaginado, Paginacao, usePaginacao } from "./Paginacao";
@@ -88,18 +89,19 @@ export function AtrasosAba() {
   // seletor e cuidam do recorte de visão (o gerente não escolhe frente).
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
+  const { status, seletor: seletorStatus } = useFiltroStatus();
 
   const carregar = useCallback(async () => {
     if (!token) return;
     setErro("");
     try {
-      setDados(await getAtrasos(token, frenteId, escopoId));
+      setDados(await getAtrasos(token, frenteId, escopoId, status));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar os atrasos");
     } finally {
       setCarregando(false);
     }
-  }, [token, frenteId, escopoId]);
+  }, [token, frenteId, escopoId, status]);
 
   useEffect(() => {
     setCarregando(true);
@@ -135,6 +137,7 @@ export function AtrasosAba() {
       <BarraFiltros>
         {seletorFrente}
         {seletorEscopo}
+        {seletorStatus}
       </BarraFiltros>
 
       <CardBancasVencidas
