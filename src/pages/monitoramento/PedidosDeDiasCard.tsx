@@ -24,9 +24,9 @@ import { AprovacaoLinha, FormDecisao } from "./AprovacaoLinha";
 /**
  * A fila de pedidos de dias de ajuste, para quem os aprova.
  *
- * É o segundo caminho, não o único. O mesmo pedido pode ser decidido no
- * banner do cronograma do projeto, onde o estouro está à vista. Esta lista
- * existe para quem chega pelo portfólio.
+ * É o ÚNICO lugar onde o pedido é decidido: no cronograma do projeto o
+ * banner apenas informa que há pedido aguardando. Esta lista existe para
+ * quem chega pelo portfólio.
  *
  * A projeção é o dado que decide. A linha dizia "+5 dias sobre 8
  * vendidos" e deixava a conta para a diretoria fazer de cabeça, e a conta
@@ -40,6 +40,14 @@ import { AprovacaoLinha, FormDecisao } from "./AprovacaoLinha";
  * que abria o Monitoramento, já que a rota é `require_diretor`. A duplicata
  * saiu; a fila de decisões tem uma aba dedicada.
  */
+
+/** Hoje em `yyyy-MM-dd` local — mesmo formato das datas que o backend manda. */
+function hojeIso(): string {
+  const agora = new Date();
+  const mes = String(agora.getMonth() + 1).padStart(2, "0");
+  const dia = String(agora.getDate()).padStart(2, "0");
+  return `${agora.getFullYear()}-${mes}-${dia}`;
+}
 interface Props {
   itens: AprovacaoDiasDeAjuste[];
   onDecidiu: () => void;
@@ -67,8 +75,11 @@ export function PedidosDeDiasCard({ itens, onDecidiu, voltarPara, voltarRotulo }
           <ListaSimples>
             {pedidos.map((p) => {
               const janelaAtual = p.dias_vendidos + p.dias_ajustados;
+              // Comparação de STRINGS de data local: `new Date("yyyy-MM-dd")`
+              // é meia-noite UTC, e a comparação com o agora local carimbava
+              // "fora do prazo" no próprio dia do prazo — que ainda vale (§8).
               const foraDoPrazo =
-                !!p.prazo_pedido_ajuste && new Date(p.prazo_pedido_ajuste) < new Date();
+                !!p.prazo_pedido_ajuste && p.prazo_pedido_ajuste.slice(0, 10) < hojeIso();
               return (
                 <AprovacaoLinha
                   key={p.id}

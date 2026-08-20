@@ -605,12 +605,16 @@ export function ProjetoCronograma() {
    * CORREÇÃO, tem métrica própria e não é estouro de janela.
    */
   const avisoJanela = useMemo(() => {
-    if (!escopo || !escopo.data_inicio) return null;
+    if (!escopo) return null;
 
     // **Aqui só entra INFORMAÇÃO, nunca pedido.** O "peça dias de ajuste"
     // virou um botão na barra, visível apenas nos 3 dias úteis em que o pedido
     // existe, misturado ao aviso de atraso, ele fazia parecer que aumentar a
     // janela e corrigir o que a banca apontou fossem a mesma coisa.
+    //
+    // ANTES do corte de `data_inicio`: um pedido feito na ambientação existe
+    // sem reunião inicial, e sem este aviso ele sumia da tela — o botão some
+    // enquanto há pendente, e ninguém dizia por quê.
     if (escopo.reajuste_pendente) {
       return {
         tom: "aguardando" as const,
@@ -619,6 +623,8 @@ export function ProjetoCronograma() {
           "aguardando a diretoria.",
       };
     }
+
+    if (!escopo.data_inicio) return null;
 
     if (escopo.atraso === 0) return null;
 

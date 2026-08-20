@@ -147,6 +147,26 @@ export function CronogramaBarra({
   const modosVisiveis = modos.filter((modo) => !modo.escopo || escopoAtual);
   const modoAtivo = modos.find((m) => m.valor === modoMarcacao);
 
+  /* ⚠ A porta de aumentar a JANELA do escopo, e nada além disso. Só para o
+     coordenador, com escopo escolhido, durante a ambientação ou nos 3 dias
+     úteis depois da largada — é aí que dá para perceber que o escopo foi
+     vendido apertado. Fora disso o botão some, porque a porta não existe mais.
+
+     Não confundir com as CORREÇÕES pós-banca: aquilo é tempo gasto arrumando
+     o que a banca apontou, não se pede a ninguém e não aumenta janela. */
+  const botaoPedirDias = podePedirDias && (
+    <BotaoBarra
+      type="button"
+      $variant="outline"
+      title={rotuloPrazoPedido ? `O prazo vai até ${rotuloPrazoPedido}` : undefined}
+      onClick={onPedirDias}
+    >
+      <CalendarPlus size={14} />
+      Pedir mais dias
+      {diasUteisRestantesDoPedido > 0 && ` · ${diasUteisRestantesDoPedido} dias úteis`}
+    </BotaoBarra>
+  );
+
   return (
     <BarraZonas>
       {/* ---------------- Zona 1 · onde estou ---------------- */}
@@ -290,27 +310,7 @@ export function CronogramaBarra({
             </FieldEntrega>
           )}
 
-          {/* ⚠ A porta de aumentar a JANELA do escopo, e nada além disso. Só
-              para o coordenador, com escopo escolhido, e só nos 3 dias úteis
-              depois da largada — é a janela em que dá para perceber que o
-              escopo foi vendido apertado. Fora dela o botão some, porque a
-              porta não existe mais.
-
-              Não confundir com as CORREÇÕES pós-banca: aquilo é tempo gasto
-              arrumando o que a banca apontou, não se pede a ninguém e não
-              aumenta janela. */}
-          {podePedirDias && (
-            <BotaoBarra
-              type="button"
-              $variant="outline"
-              title={rotuloPrazoPedido ? `O prazo vai até ${rotuloPrazoPedido}` : undefined}
-              onClick={onPedirDias}
-            >
-              <CalendarPlus size={14} />
-              Pedir mais dias
-              {diasUteisRestantesDoPedido > 0 && ` · ${diasUteisRestantesDoPedido} dias úteis`}
-            </BotaoBarra>
-          )}
+          {botaoPedirDias}
 
           {/* O carimbo, depois da banca marcada: "este é o cronograma
               combinado". Some depois de carimbado porque carimbar de novo não
@@ -322,6 +322,14 @@ export function CronogramaBarra({
             </BotaoBarra>
           )}
         </BarraLinha>
+      )}
+
+      {/* O pedido de dias é do COORDENADOR — papel no projeto, validado no
+          backend sem a caixa `pode_definir_cronograma` (ver o comentário da
+          rota de reajuste). Um coordenador sem a caixa não vê a zona de
+          edição, mas a porta de pedir dias continua sendo dele. */}
+      {!podeEditar && botaoPedirDias && (
+        <BarraLinha $secundaria>{botaoPedirDias}</BarraLinha>
       )}
 
       {/* ---------------- Zona 3 · o que está armado ----------------

@@ -165,9 +165,10 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
             do fim da janela, que abre o mesmo pedido já com os dias contados.
           </PassoTexto>
           <Regra>
-            O prazo é de <strong>3 dias úteis contados da reunião inicial</strong>. Passado
-            isso o botão some, porque a porta deixa de existir: todo dia além da janela vira
-            atraso do projeto, sem autorização envolvida.
+            O prazo é de <strong>3 dias úteis contados da reunião inicial</strong> — e, antes
+            dela, o pedido já vale durante <strong>toda a ambientação</strong>, inclusive no
+            último dia. Passado o prazo o botão some, porque a porta deixa de existir: todo
+            dia além da janela vira atraso do projeto, sem autorização envolvida.
           </Regra>
 
           <SecaoTitulo>Depois da banca</SecaoTitulo>
