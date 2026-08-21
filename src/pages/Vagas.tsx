@@ -806,6 +806,7 @@ function CartaoProjeto({
   onCancelar?: (id: number) => void;
 }) {
   const bloqueado = modo === "solicitar" && !!p.impedimento;
+  const teto = p.max_consultores;
 
   const conteudo = (
     <>
@@ -830,12 +831,16 @@ function CartaoProjeto({
         </FrentesRow>
       )}
 
-      <VagasDots aria-label={`${p.alocados} de ${p.max_consultores} consultores`}>
-        {Array.from({ length: p.max_consultores }, (_, i) => (
+      {/* Teto CRU: quantos estão sobre quantos cabem. Um projeto com mais
+          gente que o teto faria faltar bolinha aqui — e é para faltar mesmo,
+          porque esse estado não deve existir (as três vias de entrada validam
+          o teto, e a migration `c4f7d20a91e5` acertou os projetos legados). */}
+      <VagasDots aria-label={`${p.alocados} de ${teto} consultores`}>
+        {Array.from({ length: teto }, (_, i) => (
           <Bolinha key={i} $ocupada={i < p.alocados} />
         ))}
         <CardLinha>
-          &nbsp;{p.alocados}/{p.max_consultores}
+          &nbsp;{p.alocados}/{teto}
         </CardLinha>
       </VagasDots>
 
