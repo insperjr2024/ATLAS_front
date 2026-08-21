@@ -11,7 +11,6 @@ import {
   DIAS_REUNIAO,
   formatarData,
   formatarDataHora,
-  tetoDeConsultores,
   formatarDataHoraBanca,
   marcarInicioAmbientacao,
   marcarKickoff,
@@ -245,7 +244,8 @@ function EquipeCard() {
   const fotoUsuario = (id: number) => usuarios.find((u) => u.id === id)?.foto ?? null;
   const coordenadores = projeto.equipe.filter((m) => m.papel === "coordenador");
   const consultores = projeto.equipe.filter((m) => m.papel !== "coordenador");
-  const teto = tetoDeConsultores(projeto.max_consultores, consultores.length);
+  // Teto cru — ver o comentário em `ProjetoPage.tsx`.
+  const teto = projeto.max_consultores ?? 0;
 
   return (
     <PageCard>

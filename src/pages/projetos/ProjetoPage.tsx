@@ -27,7 +27,6 @@ import {
   podePausar,
   ROTULO_STATUS,
   STATUS_ORDEM,
-  tetoDeConsultores,
 } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import type { UsuarioResumo } from "@/types/auth";
@@ -307,7 +306,18 @@ export function ProjetoPage() {
   const fotoUsuario = (id: number) => usuarios.find((u) => u.id === id)?.foto ?? null;
   const coordenadores = projeto.equipe.filter((m) => m.papel === "coordenador");
   const consultores = projeto.equipe.filter((m) => m.papel !== "coordenador");
-  const teto = tetoDeConsultores(projeto.max_consultores, consultores.length);
+  // ⚠ O teto CRU, e não um `Math.max` com quem já está alocado.
+  //
+  // Havia um helper que devolvia `max(teto, alocados)`, e com ele o Atlas Tech
+  // — 5 consultores num projeto de teto 3 — se descrevia como "5/5". O número
+  // ficava sempre coerente e por isso nunca denunciava nada. Aqui a conta é
+  // literal: quantos estão sobre quantos cabem. Se algum dia voltar a divergir,
+  // aparece "5/3" na tela, que é a intenção.
+  //
+  // O estado divergente não deve existir: as três vias de entrada validam o
+  // teto, e a migration `c4f7d20a91e5` acertou os projetos legados, que ficaram
+  // com teto 3 pelo `server_default` da migration que criou a coluna.
+  const teto = projeto.max_consultores ?? 0;
 
   // ⭐ **Quem só enxerga o projeto por tê-lo VENDIDO não age nele.**
   //
