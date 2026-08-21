@@ -59,25 +59,23 @@ export const SidebarContainer = styled.aside<{ $aberta: boolean }>`
 
 export const LogoContainer = styled.div`
   flex-shrink: 0;
-  height: 3.75rem;
+  /* 5rem (80px), a altura da faixa do logo no GP.
+     Sem variante para tela baixa de propósito: havia uma que caía para
+     3.25rem em telas de até 800px de altura — a maioria dos notebooks —, e
+     era ela que fazia o logo continuar menor que o do GP mesmo depois de a
+     medida base ser igualada. O logo é a identidade da tela; os 27px que ela
+     economizava saem da navegação, que tem rolagem própria. */
+  height: 5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-bottom: 1px solid var(--sidebar-border);
-
-  @media (max-height: 800px) {
-    height: 3.25rem;
-  }
 `;
 
 export const LogoImg = styled.img`
-  max-height: 2.25rem;
+  max-height: 2.5rem;
   width: auto;
   object-fit: contain;
-
-  @media (max-height: 800px) {
-    max-height: 2rem;
-  }
 `;
 
 export const Nav = styled.nav`
@@ -99,10 +97,12 @@ export const Nav = styled.nav`
 export const NavItem = styled(Link)<{ $isActive: boolean }>`
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 0.75rem;
+  /* min-height não existe no GP, mas fica: é o que garante alvo de toque
+     razoável no drawer do celular, onde a sidebar é a navegação inteira. */
   min-height: 38px;
-  padding: 7px 1.25rem;
-  font-size: 15px;
+  padding: 0.5rem 1.5rem;
+  font-size: 0.875rem;
   line-height: 1.3;
   text-decoration: none;
   color: ${({ $isActive }) => ($isActive ? "var(--destructive)" : "var(--sidebar-foreground)")};
@@ -136,8 +136,11 @@ export const SectionLabel = styled.div`
      do tamanho do conteúdo (ver SidebarContainer), não existe mais espaço
      sobrando pra repartir; um valor fixo é só a respiração normal entre
      grupos. */
-  margin-top: 1.25rem;
-  padding: 14px 1.25rem 5px;
+  /* O GP separa os grupos só com o padding do próprio rótulo. Aqui sobra uma
+     margem menor que a de antes (1.25rem): sem nenhuma, os grupos encostam,
+     porque esta sidebar tem mais itens por grupo que a do GP. */
+  margin-top: 0.5rem;
+  padding: 0.5rem 1.5rem 0.25rem;
   font-size: 0.7rem;
   font-weight: 600;
   line-height: 1.2;
@@ -164,6 +167,11 @@ export const SectionLabel = styled.div`
 
 export const Footer = styled.div`
   flex-shrink: 0;
+  /* Âncora do painel de notificações. Ele era posicionado contra o
+     NotificacoesWrap, que ocupava a largura toda da sidebar; agora o wrap é
+     um botão pequeno dentro da linha, e ancorar nele deixaria o painel do
+     tamanho do sino. */
+  position: relative;
   /* Puxa a si mesmo pro fim da coluna — ver o comentário no SidebarContainer.
      Como o <nav> não cresce mais (flex: 0 1 auto) nem as seções distribuem
      espaço entre si (SectionLabel tem margem fixa), este é o ÚNICO lugar da
@@ -188,7 +196,11 @@ export const UserRow = styled(Link)<{ $isActive: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.375rem 1.25rem 0.5rem;
+  /* Cresce e encolhe: o nome pode ser longo, e é ele que cede espaço para os
+     dois botões à direita, nunca o contrário. O min-width zero é o que deixa
+     o text-overflow do nome funcionar dentro do flex. */
+  flex: 1 1 auto;
+  min-width: 0;
   text-decoration: none;
   transition: color 150ms ease;
   color: ${({ $isActive }) => ($isActive ? "var(--destructive)" : "var(--muted-foreground)")};
@@ -196,10 +208,35 @@ export const UserRow = styled(Link)<{ $isActive: boolean }>`
   &:hover {
     color: var(--destructive);
   }
+`;
+
+/** A linha única do rodapé: identidade à esquerda, ações à direita.
+ *
+ *  Eram três blocos empilhados (perfil, sino com rótulo "Notificações", botão
+ *  "Sair"), e o rodapé ocupava altura demais para o que entrega. O GP resolve
+ *  com duas linhas e nenhum avatar; aqui a compactação é maior porque nada
+ *  pode sair: o perfil, o sino com o painel e o logout continuam todos aqui,
+ *  só que os dois últimos viram ícone.
+ *
+ *  Ícone sem rótulo visível exige `aria-label` nos botões — sem isso o leitor
+ *  de tela anuncia "botão" e nada mais. Ver `Sidebar.tsx`. */
+export const FooterRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 1.25rem 0.5rem;
 
   @media (max-height: 800px) {
     padding: 0.3rem 1.25rem 0.375rem;
   }
+`;
+
+/** Os dois botões de ícone, colados à direita da linha. */
+export const FooterAcoes = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
 `;
 
 /** Fotinho da pessoa quando existe, iniciais quando não — ver
@@ -231,8 +268,9 @@ export const UserName = styled.div`
 `;
 
 export const NotificacoesWrap = styled.div`
-  position: relative;
-  padding: 0 1.25rem 0.5rem;
+  /* Sem position: relative de propósito: quem ancora o painel agora é o
+     Footer, para ele continuar com a largura da sidebar. */
+  display: flex;
 
   /* Em mobile o sino mora na Topbar, alcançável sem abrir o menu — que é o
      ponto de uma notificação. Deixar os dois criaria duas portas para a mesma
@@ -242,42 +280,58 @@ export const NotificacoesWrap = styled.div`
     display: none;
   }
 
-  @media (max-height: 800px) {
-    padding: 0 1.25rem 0.35rem;
-  }
 `;
 
-export const SinoButton = styled.button`
+/** Botão de ícone do rodapé: sino e logout usam o mesmo formato.
+ *
+ *  Perderam o rótulo visível ("Notificações", "Sair") ao virarem ícone, então
+ *  a área de clique deixou de vir do texto. 2.25rem é o alvo confortável no
+ *  desktop; no drawer do celular sobe para 44px, o mínimo recomendado para
+ *  toque — e lá só o logout aparece, porque o sino mora na Topbar. */
+export const BotaoIconeRodape = styled.button`
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.625rem;
-  border: 1px solid var(--sidebar-border);
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
   border-radius: 0.5rem;
   background: none;
-  color: var(--sidebar-foreground);
-  font-size: 0.8rem;
+  color: var(--muted-foreground);
   cursor: pointer;
-  transition: color 150ms ease, border-color 150ms ease;
+  transition: color 150ms ease, background 150ms ease;
 
   &:hover {
     color: var(--destructive);
-    border-color: var(--destructive);
+    background: var(--sidebar-accent);
   }
 
-  @media (max-height: 800px) {
-    padding: 0.3rem 0.55rem;
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: ${DRAWER_ATE - 1}px) {
+    width: 44px;
+    height: 44px;
   }
 `;
 
+export const SinoButton = BotaoIconeRodape;
+
 export const SinoBadge = styled.span`
+  /* Sobre o ícone, e não ao lado: não há mais rótulo depois do qual pousar. */
+  position: absolute;
+  top: 0.125rem;
+  right: 0.125rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.125rem;
-  height: 1.125rem;
-  padding: 0 0.3rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
   border-radius: 9999px;
   background: var(--destructive);
   color: var(--primary-foreground);
@@ -286,6 +340,8 @@ export const SinoBadge = styled.span`
 `;
 
 export const NotificacoesPainel = styled.div`
+  /* Ancorado no Footer (ver lá), então o bottom de 100% o abre para CIMA a
+     partir do rodapé inteiro, e não de dentro do botão do sino. */
   position: absolute;
   bottom: calc(100% + 0.375rem);
   left: 1rem;
@@ -349,6 +405,8 @@ export const NotificacaoVazia = styled.p`
   color: var(--muted-foreground);
 `;
 
+/** @deprecated Mantido só enquanto algo fora da sidebar ainda o importe.
+ *  No rodapé, o logout usa `BotaoIconeRodape`. */
 export const LogoutButton = styled.button`
   display: flex;
   align-items: center;

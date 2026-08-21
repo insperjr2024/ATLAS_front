@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificacoes } from "@/context/NotificacoesContext";
@@ -21,7 +21,9 @@ import {
   UserRow,
   UserAvatar,
   UserName,
-  LogoutButton,
+  BotaoIconeRodape,
+  FooterAcoes,
+  FooterRow,
   NotificacoesWrap,
   SinoButton,
   SinoBadge,
@@ -192,6 +194,26 @@ export function Sidebar({ aberta = false }: SidebarProps) {
   const navigate = useNavigate();
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [painelAberto, setPainelAberto] = useState(false);
+  const notificacoesRef = useRef<HTMLDivElement>(null);
+
+  // Clicar em qualquer lugar fora fecha o painel. Antes só o próprio sino
+  // fechava, e quem abria por engano tinha de achar o botão de novo para se
+  // livrar dele — num painel que cobre parte da navegação, isso é atrito.
+  //
+  // O mesmo padrão de `SelectCustom` e `MultiSelect`: `mousedown` em vez de
+  // `click` para o painel sumir junto com o gesto, e o `contains` cobre o
+  // botão E o painel, porque os dois vivem dentro do mesmo wrap. Clicar no
+  // sino continua alternando — o mousedown cai dentro do wrap e é ignorado,
+  // e o click que vem depois faz o toggle de sempre.
+  useEffect(() => {
+    if (!painelAberto) return;
+    function aoClicarFora(evento: MouseEvent) {
+      if (notificacoesRef.current?.contains(evento.target as Node)) return;
+      setPainelAberto(false);
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, [painelAberto]);
 
   // Só busca a lista quando o painel abre. O sino sozinho precisa apenas do
   // número, e esse já vem do contexto por uma rota bem mais barata.
@@ -271,21 +293,33 @@ export function Sidebar({ aberta = false }: SidebarProps) {
       </Nav>
 
       <Footer>
-        {/* A identidade É o link para o perfil — ver `UserRow` no .styled. */}
-        {usuario && (
-          <UserRow to="/meu-perfil" $isActive={location.pathname === "/meu-perfil"} title="Meu perfil">
-            <UserAvatar>
-              {usuario.foto ? <FotoCircular src={usuario.foto} /> : iniciais(usuario.nome)}
-            </UserAvatar>
-            <UserName>{usuario.nome}</UserName>
-          </UserRow>
-        )}
-        <NotificacoesWrap>
-          <SinoButton type="button" onClick={() => setPainelAberto((v) => !v)} aria-expanded={painelAberto}>
-            <Bell size={16} />
-            Notificações
-            {/* 99+ em vez do número cru: acima disso o badge estoura a largura
-                do botão e empurra o rótulo. */}
+        {/* Uma linha só: identidade à esquerda, ações à direita. Eram três
+            blocos empilhados, e o rodapé ocupava altura demais para o que
+            entrega. Nada saiu — o sino e o logout viraram ícone. */}
+        <FooterRow>
+          {/* A identidade É o link para o perfil — ver `UserRow` no .styled. */}
+          {usuario && (
+            <UserRow to="/meu-perfil" $isActive={location.pathname === "/meu-perfil"} title="Meu perfil">
+              <UserAvatar>
+                {usuario.foto ? <FotoCircular src={usuario.foto} /> : iniciais(usuario.nome)}
+              </UserAvatar>
+              <UserName>{usuario.nome}</UserName>
+            </UserRow>
+          )}
+          <FooterAcoes>
+        <NotificacoesWrap ref={notificacoesRef}>
+          <SinoButton
+            type="button"
+            onClick={() => setPainelAberto((v) => !v)}
+            aria-expanded={painelAberto}
+            /* O rótulo "Notificações" saiu da tela quando o botão virou
+               ícone; sem isto o leitor de tela anuncia só "botão". */
+            aria-label="Notificações"
+            title="Notificações"
+          >
+            <Bell size={18} />
+            {/* 99+ em vez do número cru: acima disso o badge fica maior que o
+                próprio ícone. */}
             {naoLidas > 0 && <SinoBadge>{naoLidas > 99 ? "99+" : naoLidas}</SinoBadge>}
           </SinoButton>
           {painelAberto && (
@@ -317,10 +351,11 @@ export function Sidebar({ aberta = false }: SidebarProps) {
             </NotificacoesPainel>
           )}
         </NotificacoesWrap>
-        <LogoutButton onClick={logout} type="button">
-          <LogOut size={20} />
-          <span>Sair</span>
-        </LogoutButton>
+            <BotaoIconeRodape onClick={logout} type="button" aria-label="Sair" title="Sair">
+              <LogOut size={18} />
+            </BotaoIconeRodape>
+          </FooterAcoes>
+        </FooterRow>
       </Footer>
     </SidebarContainer>
   );
