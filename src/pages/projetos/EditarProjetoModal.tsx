@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import styled from "styled-components";
+import { theme } from "@/styles/theme";
 import { X } from "lucide-react";
 import {
   renomearProjeto,
@@ -27,6 +29,7 @@ import {
   FieldGroup,
   FieldInput,
   FieldLabel,
+  Required,
   FieldTextarea,
   FormErrorText,
   ModalOverlay,
@@ -37,6 +40,59 @@ import {
   ModalFooter,
   WideModalContent,
 } from "./Projetos.styled";
+
+/**
+ * O empilhamento dos campos do modal.
+ *
+ * O `ModalBody` tem `padding` e mais nada: sem `flex` e sem `gap`, os campos
+ * caem um encostado no outro e o formulário lê como um bloco só. O `gap` do
+ * `FieldGroup` não resolve — ele separa o rótulo do próprio campo, e não um
+ * campo do seguinte.
+ *
+ * Não foi corrigido no `ModalBody`: aquele é o corpo de TODOS os modais do
+ * app, e um `gap` lá mexeria de uma vez em telas que ninguém abriu para
+ * conferir. O espaçamento é problema deste formulário, então mora aqui.
+ */
+const SecoesForm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.lg};
+`;
+
+/**
+ * Um bloco de campos do mesmo assunto, separado do anterior por uma linha.
+ *
+ * Deliberadamente NÃO é o `BlocoSecao` numerado de `ProjetoNovo`. Lá o número
+ * é verdade: o cadastro é percorrido inteiro, uma vez, de cima a baixo. Aqui a
+ * pessoa abre o modal para arrumar um campo específico e vai direto nele —
+ * numerar prometeria uma sequência que ninguém segue, e faria a edição
+ * parecer um formulário longo por preencher.
+ *
+ * A divisória vem no `& + &` para que o primeiro bloco não ganhe uma linha
+ * solta logo abaixo do cabeçalho do modal, que já tem a sua.
+ */
+const SecaoForm = styled.section`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+
+  & + & {
+    padding-top: ${theme.spacing.lg};
+    border-top: 1px solid ${theme.colors.border};
+  }
+`;
+
+/** Rótulo do bloco: menor e mais apagado que os rótulos dos campos, senão
+ *  competiria com eles em vez de agrupá-los. Mesma receita do
+ *  `GrupoFrenteTitulo` do Config e do `SecaoTitulo` da ajuda do cronograma. */
+const SecaoFormTitulo = styled.h3`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;
 
 interface Props {
   projeto: ProjetoCompleto;
@@ -66,6 +122,12 @@ interface Props {
  * fica aberto com o erro e o que já passou está gravado. É melhor do que
  * fingir atomicidade que a API não oferece — a pessoa vê o que faltou e tenta
  * de novo só aquilo.
+ *
+ * Os campos vivem em três blocos — Identificação, Alocação e Pessoas — porque
+ * a lista corrida de oito campos não dizia que o teto de consultores e as
+ * frentes são do mesmo assunto, nem que cliente e link da proposta são de
+ * outro. Os títulos são só títulos, sem numeração: quem edita entra atrás de
+ * um campo, não percorre o formulário inteiro.
  */
 export function EditarProjetoModal({
   projeto,
@@ -203,111 +265,144 @@ export function EditarProjetoModal({
         </ModalHeader>
         <form onSubmit={handleSalvar}>
           <ModalBody>
-            <FieldGroup>
-              <FieldLabel htmlFor="editar-nome">Nome do projeto</FieldLabel>
-              <FieldInput
-                id="editar-nome"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                disabled={salvando}
-                autoFocus
-              />
-            </FieldGroup>
+            <SecoesForm>
+              <SecaoForm>
+                <SecaoFormTitulo>Identificação</SecaoFormTitulo>
 
-            <FieldGroup>
-              <FieldLabel htmlFor="editar-cliente">Cliente</FieldLabel>
-              <FieldInput
-                id="editar-cliente"
-                value={cliente}
-                onChange={(e) => setCliente(e.target.value)}
-                disabled={salvando}
-                placeholder="Padaria do Zé"
-              />
-            </FieldGroup>
+                <FieldGroup>
+                  <FieldLabel htmlFor="editar-nome">
+                    Nome do projeto<Required>*</Required>
+                  </FieldLabel>
+                  <FieldInput
+                    id="editar-nome"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    disabled={salvando}
+                    autoFocus
+                  />
+                </FieldGroup>
 
-            <FieldGroup>
-              <FieldLabel htmlFor="editar-descricao">Descrição</FieldLabel>
-              <FieldTextarea
-                id="editar-descricao"
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                rows={4}
-                disabled={salvando}
-                placeholder="Do que se trata este projeto?"
-              />
-            </FieldGroup>
+                <FieldGroup>
+                  <FieldLabel htmlFor="editar-cliente">Cliente</FieldLabel>
+                  <FieldInput
+                    id="editar-cliente"
+                    value={cliente}
+                    onChange={(e) => setCliente(e.target.value)}
+                    disabled={salvando}
+                    placeholder="Padaria do Zé"
+                  />
+                </FieldGroup>
 
-            <FieldGroup>
-              <FieldLabel htmlFor="editar-link-proposta">Link da proposta</FieldLabel>
-              <FieldInput
-                id="editar-link-proposta"
-                value={linkProposta}
-                onChange={(e) => setLinkProposta(e.target.value)}
-                disabled={salvando}
-                placeholder="https://…"
-              />
-            </FieldGroup>
+                <FieldGroup>
+                  <FieldLabel htmlFor="editar-descricao">Descrição</FieldLabel>
+                  <FieldTextarea
+                    id="editar-descricao"
+                    value={descricao}
+                    onChange={(e) => setDescricao(e.target.value)}
+                    rows={4}
+                    disabled={salvando}
+                    placeholder="Do que se trata este projeto?"
+                  />
+                </FieldGroup>
 
-            <FieldGroup>
-              <FieldLabel as="span">Frente(s)</FieldLabel>
-              <FrenteLista>
-                {frentes.map((frente) => {
-                  const marcada = frenteIds.includes(frente.id);
-                  return (
-                    <FrenteToggle key={frente.id} $marcada={marcada}>
-                      <input
-                        type="checkbox"
-                        checked={marcada}
-                        disabled={salvando}
-                        onChange={() => toggleFrente(frente.id)}
-                      />
-                      {frente.nome}
-                    </FrenteToggle>
-                  );
-                })}
-              </FrenteLista>
-            </FieldGroup>
+                <FieldGroup>
+                  <FieldLabel htmlFor="editar-link-proposta">Link da proposta</FieldLabel>
+                  <FieldInput
+                    id="editar-link-proposta"
+                    value={linkProposta}
+                    onChange={(e) => setLinkProposta(e.target.value)}
+                    disabled={salvando}
+                    placeholder="https://…"
+                  />
+                </FieldGroup>
+              </SecaoForm>
 
-            <FieldGroup>
-              <FieldLabel htmlFor="editar-max-consultores">Teto de consultores</FieldLabel>
-              <FieldInput
-                id="editar-max-consultores"
-                type="number"
-                min={0}
-                max={20}
-                value={maxConsultores}
-                onChange={(e) => setMaxConsultores(e.target.value)}
-                disabled={salvando}
-              />
-            </FieldGroup>
+              <SecaoForm>
+                <SecaoFormTitulo>Alocação</SecaoFormTitulo>
 
-            <MemberPicker
-              usuarios={ativos}
-              valor={equipe}
-              onChange={setEquipe}
-              desabilitado={salvando}
-              usuariosFrentes={usuariosFrentes}
-              frentes={frentes}
-              frenteIdsProjeto={frenteIds}
-            />
+                <FieldGroup>
+                  <FieldLabel as="span">
+                    Frente(s)<Required>*</Required>
+                  </FieldLabel>
+                  <FrenteLista>
+                    {frentes.map((frente) => {
+                      const marcada = frenteIds.includes(frente.id);
+                      return (
+                        <FrenteToggle key={frente.id} $marcada={marcada}>
+                          <input
+                            type="checkbox"
+                            checked={marcada}
+                            disabled={salvando}
+                            onChange={() => toggleFrente(frente.id)}
+                          />
+                          {frente.nome}
+                        </FrenteToggle>
+                      );
+                    })}
+                  </FrenteLista>
+                </FieldGroup>
 
-            <FieldGroup>
-              <FieldLabel htmlFor="vendedores">Quem vendeu o projeto</FieldLabel>
-              <MultiSelect
-                valores={vendedorIds.map(String)}
-                onChange={(ids) => setVendedorIds(ids.map(Number))}
-                opcoes={ativos.map((u) => ({ value: String(u.id), label: u.nome }))}
-                rotuloVazio="Ninguém marcado"
-                resumo={(n) => `${n} vendedores`}
-                aria-label="Quem vendeu o projeto"
-              />
-            </FieldGroup>
+                <FieldGroup>
+                  {/* Obrigatório de fato, e não só por hábito: a coluna é
+                      `nullable=False` e `UpdateMaxConsultoresRequest` não tem
+                      default, então não existe "deixar em branco" — apagar o
+                      campo é um erro de validação, não um projeto sem teto. */}
+                  <FieldLabel htmlFor="editar-max-consultores">
+                    Teto de consultores<Required>*</Required>
+                  </FieldLabel>
+                  <FieldInput
+                    id="editar-max-consultores"
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={maxConsultores}
+                    onChange={(e) => setMaxConsultores(e.target.value)}
+                    disabled={salvando}
+                  />
+                </FieldGroup>
+              </SecaoForm>
 
-            {/* Mesma leitura de quando o projeto nasceu: trocar alguém pode
-                fechar a única janela em que o time se reunia. */}
-            <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={ativos} />
+              <SecaoForm>
+                <SecaoFormTitulo>Pessoas</SecaoFormTitulo>
 
-            {erro && <FormErrorText>{erro}</FormErrorText>}
+                {/* Sem asterisco nos dois: a equipe pode ficar incompleta
+                    enquanto a gestão decide quem assume (ver `validarEquipe`),
+                    e vendedor é informação comercial que muitos projetos
+                    simplesmente não têm. */}
+                <MemberPicker
+                  usuarios={ativos}
+                  valor={equipe}
+                  onChange={setEquipe}
+                  desabilitado={salvando}
+                  usuariosFrentes={usuariosFrentes}
+                  frentes={frentes}
+                  frenteIdsProjeto={frenteIds}
+                />
+
+                <FieldGroup>
+                  <FieldLabel htmlFor="vendedores">Quem vendeu o projeto</FieldLabel>
+                  <MultiSelect
+                    valores={vendedorIds.map(String)}
+                    onChange={(ids) => setVendedorIds(ids.map(Number))}
+                    opcoes={ativos.map((u) => ({ value: String(u.id), label: u.nome }))}
+                    rotuloVazio="Ninguém marcado"
+                    resumo={(n) => `${n} vendedores`}
+                    aria-label="Quem vendeu o projeto"
+                  />
+                </FieldGroup>
+
+                {/* Mesma leitura de quando o projeto nasceu: trocar alguém pode
+                    fechar a única janela em que o time se reunia. Fica neste
+                    bloco porque é consequência da equipe escolhida logo acima,
+                    não um campo a preencher. */}
+                <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={ativos} />
+              </SecaoForm>
+
+              {/* Dentro da pilha, e não solto no `ModalBody`: fora dela o erro
+                  encostaria no último bloco, exatamente o problema que a pilha
+                  existe para resolver. */}
+              {erro && <FormErrorText>{erro}</FormErrorText>}
+            </SecoesForm>
           </ModalBody>
           <ModalFooter>
             <PageButton type="button" $variant="outline" onClick={onClose}>
