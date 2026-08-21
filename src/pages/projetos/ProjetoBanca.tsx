@@ -3,12 +3,19 @@ import { Link } from "react-router-dom";
 import { AlertTriangle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
+  aceitaInscricao,
+  getBanca,
   getBancasDoProjeto,
+  getBancasFrentes,
+  getEquipesProjeto,
+  getEscopos,
   realizarBanca,
   registrarDescricaoCoordenador,
   ROTULO_STATUS_BANCA,
   tomDoStatusBanca,
 } from "@/lib/bancas";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
+import { BancaFormModal } from "@/components/bancas/BancaFormModal";
 import { CODIGO_BANCA_ABAIXO_DO_MINIMO, codigoDoErro } from "@/lib/api";
 import { createAvaliacao, getFormularioAtivo, submeterAvaliacao } from "@/lib/avaliacoes";
 import { formatarDataHora } from "@/lib/projetos";
@@ -16,10 +23,16 @@ import { VotoBanca } from "@/components/VotoBanca";
 import type {
   AvaliacaoDaBanca,
   AvaliadorDaBanca,
+  Banca,
   BancaDetalhes,
+  BancaFrente,
+  EquipeProjeto,
+  Escopo,
+  Frente,
   ResultadoBanca,
   SessaoDeBanca,
 } from "@/types/banca";
+import type { UsuarioResumo } from "@/types/auth";
 import {
   PageStack,
   PageCard,
@@ -131,7 +144,7 @@ function explicarPendencia(motivo: string, esperados: number, recebidos: number)
  * continua existindo, com o veredito e os votos que a reprovaram.
  */
 export function ProjetoBanca() {
-  const { projeto } = useProjeto();
+  const { projeto, usuarios, frentes, somenteLeitura } = useProjeto();
   const { token } = useAuth();
   const [bancas, setBancas] = useState<BancaDetalhes[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -182,7 +195,15 @@ export function ProjetoBanca() {
   return (
     <PageStack>
       {bancas.map((banca) => (
-        <FichaDaBanca key={banca.id} banca={banca} projetoId={projeto.id} onMudou={carregar} />
+        <FichaDaBanca
+          key={banca.id}
+          banca={banca}
+          projetoId={projeto.id}
+          usuarios={usuarios}
+          frentes={frentes}
+          somenteLeitura={somenteLeitura}
+          onMudou={carregar}
+        />
       ))}
     </PageStack>
   );
@@ -191,14 +212,21 @@ export function ProjetoBanca() {
 function FichaDaBanca({
   banca,
   projetoId,
+  usuarios,
+  frentes,
+  somenteLeitura,
   onMudou,
 }: {
   banca: BancaDetalhes;
   projetoId: number;
+  usuarios: UsuarioResumo[];
+  frentes: Frente[];
+  somenteLeitura: boolean;
   onMudou: () => Promise<void>;
 }) {
   const { usuario, token } = useAuth();
   const [realizando, setRealizando] = useState(false);
+  const [editando, setEditando] = useState(false);
   const recebidos = banca.apuracao.aprovacoes + banca.apuracao.reprovacoes;
 
   // Quem marca a banca também registra que ela aconteceu — a MESMA permissão
@@ -206,6 +234,19 @@ function FichaDaBanca({
   // (`require_pode_definir_cronograma`) e que o Cronograma já lê para decidir
   // quem pode marcar.
   const podeRegistrar = !!usuario?.permissoes.pode_definir_cronograma;
+  /**
+   * Editar a banca sem sair do projeto.
+   *
+   * O botão existia só na tela `/bancas`, que é organizada por ALOCAÇÃO: quem
+   * queria trocar a data ou os consultores da banca DESTE projeto tinha de
+   * achá-la numa lista de todas as bancas do semestre.
+   *
+   * A permissão é a mesma que o backend cobra em `PATCH /bancas/{id}`
+   * (`require_pode_definir_cronograma` + acesso ao projeto), e o corte por
+   * status é o de `podeGerenciarBanca`: banca já realizada não se edita — o
+   * que ela virou está no resultado, não na data.
+   */
+  const podeEditar = podeRegistrar && !somenteLeitura && aceitaInscricao(banca.status);
   const eu = banca.avaliadores.find((a) => a.usuario_id === usuario?.id);
 
   const porSessao = new Map<number, AvaliacaoDaBanca[]>();
@@ -240,6 +281,11 @@ function FichaDaBanca({
         {podeRegistrar && !banca.realizado_em && banca.data_hora && (
           <PageButtonSm type="button" onClick={() => setRealizando(true)}>
             Registrar realização
+          </PageButtonSm>
+        )}
+        {podeEditar && (
+          <PageButtonSm $variant="outline" type="button" onClick={() => setEditando(true)}>
+            Editar banca
           </PageButtonSm>
         )}
       </PageCardHeader>
@@ -412,7 +458,118 @@ function FichaDaBanca({
           }}
         />
       )}
+
+      {editando && token && (
+        <EditarBancaModal
+          bancaId={banca.id}
+          usuarios={usuarios}
+          frentes={frentes}
+          token={token}
+          ehDiretor={ehDiretoriaDeProjetos(usuario)}
+          onFechar={() => setEditando(false)}
+          onSalvou={async () => {
+            setEditando(false);
+            await onMudou();
+          }}
+        />
+      )}
     </PageCard>
+  );
+}
+
+/**
+ * Busca o que o formulário de banca exige e a aba não tem, e então o abre.
+ *
+ * ⚠ **A ficha da aba não serve para editar.** `BancaDetalhes` traz nomes
+ * resolvidos (é o que a leitura precisa); o formulário mexe em ids —
+ * `escopo_id`, `piso_minimo_override`, os vínculos de `equipe_projeto` e
+ * `banca_frente`. Daí as quatro chamadas aqui.
+ *
+ * Elas acontecem no CLIQUE, não na montagem da aba: são listagens do núcleo
+ * inteiro que só interessam a quem vai editar, e quase todo mundo que abre a
+ * aba vem ler.
+ */
+function EditarBancaModal({
+  bancaId,
+  usuarios,
+  frentes,
+  token,
+  ehDiretor,
+  onFechar,
+  onSalvou,
+}: {
+  bancaId: number;
+  usuarios: UsuarioResumo[];
+  frentes: Frente[];
+  token: string;
+  ehDiretor: boolean;
+  onFechar: () => void;
+  onSalvou: () => Promise<void>;
+}) {
+  const [carregado, setCarregado] = useState<{
+    banca: Banca;
+    escopos: Escopo[];
+    equipesProjeto: EquipeProjeto[];
+    bancasFrentes: BancaFrente[];
+  } | null>(null);
+  const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    let ativo = true;
+    Promise.all([
+      getBanca(bancaId, token),
+      getEscopos(token),
+      getEquipesProjeto(token),
+      getBancasFrentes(token),
+    ])
+      .then(([banca, escopos, equipesProjeto, bancasFrentes]) => {
+        if (ativo) setCarregado({ banca, escopos, equipesProjeto, bancasFrentes });
+      })
+      .catch((err: unknown) => {
+        if (ativo) setErro(err instanceof Error ? err.message : "Erro ao abrir a edição da banca");
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [bancaId, token]);
+
+  if (carregado) {
+    const { banca, ...listas } = carregado;
+    return (
+      <BancaFormModal
+        banca={banca}
+        dados={{ usuarios, frentes, ...listas }}
+        token={token}
+        ehDiretor={ehDiretor}
+        onClose={onFechar}
+        onSalvo={onSalvou}
+      />
+    );
+  }
+
+  // Enquanto as listas não chegam a caixa já aparece: sem ela o clique no
+  // botão não devolveria nada por um instante, e a pessoa clicaria de novo.
+  return (
+    <ModalOverlay onClick={onFechar} role="presentation">
+      <ModalContent onClick={(e) => e.stopPropagation()}>
+        <ModalHeader>
+          <ModalTitle>Editar banca</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onFechar}>
+            ×
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          {erro ? <FormErrorText>{erro}</FormErrorText> : <EmptyText>Carregando…</EmptyText>}
+          {erro && (
+            <AcoesLinha>
+              <PageButton type="button" $variant="outline" onClick={onFechar}>
+                Fechar
+              </PageButton>
+            </AcoesLinha>
+          )}
+        </ModalBody>
+      </ModalContent>
+    </ModalOverlay>
   );
 }
 

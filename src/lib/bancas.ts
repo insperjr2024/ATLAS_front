@@ -103,6 +103,17 @@ export function getBancas(token: string) {
 }
 
 /**
+ * Uma banca só, com os ids CRUS — o que o formulário de edição precisa.
+ *
+ * Não confundir com `getBancaDetalhes` ao lado, que devolve nomes já
+ * resolvidos e serve a quem só vai LER a ficha. Editar exige `escopo_id`,
+ * `piso_minimo_override` e companhia, que a ficha não carrega.
+ */
+export function getBanca(bancaId: number, token: string) {
+  return apiFetch<Banca>(`/bancas/${bancaId}`, { token });
+}
+
+/**
  * A ficha da banca com os NOMES já resolvidos, uma chamada só.
  *
  * Não confundir com `getBancas()` + os cruzamentos de `lib/nucleo.ts`, que é
