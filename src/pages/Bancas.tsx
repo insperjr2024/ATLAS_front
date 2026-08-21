@@ -150,6 +150,7 @@ import {
   BancaDataDiaSemana,
   BancaDataDia,
   BancaDataMes,
+  BancaSemData,
   BancaInfo,
   BancaNomeLinha,
   BancaNome,
@@ -163,8 +164,17 @@ import {
 type AbaBancas = "meus" | "alocacao" | "avaliacao" | "desempenho" | "calendario";
 
 function porDataMaisProxima(a: Banca, b: Banca): number {
+  // ⚠ Banca SEM data vai para o fim, e isto não é detalhe: `data_hora` é nula
+  // enquanto a banca não é marcada, e `new Date(null).getTime()` é 0 — o epoch.
+  // Ou seja, a não marcada era a "mais próxima" de todas e liderava a lista.
+  if (!a.data_hora) return b.data_hora ? 1 : 0;
+  if (!b.data_hora) return -1;
   return new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime();
 }
+
+/** O que a tela mostra no lugar da data quando a banca ainda não foi marcada.
+ *  Constante para as telas não divergirem entre "Sem data", "A marcar" e "—". */
+const SEM_DATA = "Sem data";
 
 interface Contexto {
   usuarios: UsuarioResumo[];
@@ -273,7 +283,13 @@ export function Bancas() {
             (b) =>
               b.status === "realizada" && bancasAvaliadasIds.has(b.id) && candidaturaBancaIds.has(b.id),
           )
-          .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()),
+          // Decrescente (mais recente primeiro), e sem data no fim — mesma
+          // razão de `porDataMaisProxima`.
+          .sort((a, b) => {
+            if (!a.data_hora) return b.data_hora ? 1 : 0;
+            if (!b.data_hora) return -1;
+            return new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime();
+          }),
       );
       setContexto({
         usuarios,
@@ -870,10 +886,17 @@ function SecaoBancas({
         {bancas.length > 0 && (
           <BancaCardScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
             {bancas.map((banca) => {
-              const dataHora = paraDataUtc(banca.data_hora);
-              const diaSemana = dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
-              const mes = dataHora.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "");
-              const hora = dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+              // Banca sem data existe (é o estado `nao_marcada`) e chegava aqui
+              // como "Invalid Date" nos três campos, porque `paraDataUtc(null)`
+              // devolve data inválida em silêncio.
+              const dataHora = banca.data_hora ? paraDataUtc(banca.data_hora) : null;
+              const diaSemana = dataHora
+                ? dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")
+                : "";
+              const mes = dataHora ? dataHora.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") : "";
+              const hora = dataHora
+                ? dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+                : "";
               const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
               const podeGerenciar =
                 gerenciar &&
@@ -945,9 +968,18 @@ function SecaoBancas({
                   }}
                 >
                   <BancaData>
-                    <BancaDataDiaSemana>{diaSemana}</BancaDataDiaSemana>
-                    <BancaDataDia>{dataHora.getDate()}</BancaDataDia>
-                    <BancaDataMes>{mes}</BancaDataMes>
+                    {dataHora ? (
+                      <>
+                        <BancaDataDiaSemana>{diaSemana}</BancaDataDiaSemana>
+                        <BancaDataDia>{dataHora.getDate()}</BancaDataDia>
+                        <BancaDataMes>{mes}</BancaDataMes>
+                      </>
+                    ) : (
+                      <BancaSemData title="Banca ainda não marcada">
+                        <span>Sem</span>
+                        <span>data</span>
+                      </BancaSemData>
+                    )}
                   </BancaData>
 
                   <BancaInfo>
@@ -1165,7 +1197,7 @@ function SecaoTrocas({
 
   function linha(solicitacao: SolicitacaoTroca, propria: boolean) {
     const banca = bancas.find((b) => b.id === solicitacao.banca_id);
-    const dataHora = banca ? paraDataUtc(banca.data_hora) : null;
+    const dataHora = banca?.data_hora ? paraDataUtc(banca.data_hora) : null;
     const convitePraMim = !propria && solicitacao.usuario_convidado_id === usuarioId;
     return (
       <BancaLinha key={solicitacao.id}>
@@ -1257,8 +1289,10 @@ function BancaFormModal({
   } | null>(null);
   const [escoposMarcados, setEscoposMarcados] = useState<number[]>([]);
   const [escopoId, setEscopoId] = useState(banca ? String(banca.escopo_id) : "");
-  const [data, setData] = useState(banca ? toDateInputValue(banca.data_hora) : "");
-  const [hora, setHora] = useState(banca ? toTimeInputValue(banca.data_hora) : "");
+  // Banca sem data abre o formulário com os campos VAZIOS, que é justamente o
+  // caso de quem entra aqui para marcá-la.
+  const [data, setData] = useState(banca?.data_hora ? toDateInputValue(banca.data_hora) : "");
+  const [hora, setHora] = useState(banca?.data_hora ? toTimeInputValue(banca.data_hora) : "");
   const [consultorIds, setConsultorIds] = useState<number[]>(() =>
     banca ? contexto.equipesProjeto.filter((e) => e.banca_id === banca.id).map((e) => e.usuario_id) : [],
   );
@@ -1668,12 +1702,16 @@ function VerMaisModal({
           <DetailList>
             <DetailRow>
               <DetailTerm>Data</DetailTerm>
-              <DetailValue>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
+              <DetailValue>
+                {banca.data_hora ? paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR") : SEM_DATA}
+              </DetailValue>
             </DetailRow>
             <DetailRow>
               <DetailTerm>Horário</DetailTerm>
               <DetailValue>
-                {paraDataUtc(banca.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                {banca.data_hora
+                  ? paraDataUtc(banca.data_hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+                  : SEM_DATA}
               </DetailValue>
             </DetailRow>
             <DetailRow>
