@@ -377,7 +377,8 @@ export function MarcarBancaModal({
             <FieldGroup>
               <AvisoBanner>
                 Você pode pedir autorização à diretoria para marcar mesmo fora da janela.
-                Explique acima por que — é o que ela vai ler para decidir.
+                Explique acima por que — é o que ela vai ler para decidir. Se ela
+                autorizar, a banca é marcada nesta data automaticamente.
               </AvisoBanner>
               <PageButton
                 type="button"
@@ -390,9 +391,17 @@ export function MarcarBancaModal({
             </FieldGroup>
           )}
           {pedidoJanela && (
+            /* ⭐ Nada de "volte aqui para marcar": autorizar já MARCA a banca
+               (`DecidirForaJanelaUseCase`). A frase antiga mandava a pessoa
+               repetir um gesto que, feito depois, só devolveria "nada mudou" —
+               e, pior, sugeria que a banca ficaria por conta dela quando na
+               verdade a decisão da diretoria fecha o ciclo sozinha.
+
+               ⚠ Isto vale só para a janela. O pedido de CHOQUE acima continua
+               dizendo "volte aqui", porque lá a aprovação de fato só libera. */
             <AvisoBanner>
               Pedido enviado. A diretoria decide na aba <strong>Monitoramento → Aprovações</strong>;
-              se autorizar, volte aqui para marcar a banca nesta data.
+              se autorizar, a banca já é marcada nesta data — você não precisa voltar aqui.
             </AvisoBanner>
           )}
         </ModalBody>

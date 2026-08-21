@@ -33,6 +33,12 @@ import { AprovacaoLinha, FormDecisao } from "./AprovacaoLinha";
  * A resposta é obrigatória nos dois sentidos, mesmo motivo das outras filas:
  * recusar sem motivo deixa quem pediu sem saber o que mudar, e aprovar sem
  * motivo apaga por que o §13 foi aberto naquele caso.
+ *
+ * ⭐ **Autorizar MARCA a banca**, não só libera — e a tela diz isso antes do
+ * clique. Enquanto a aprovação era só uma permissão, quem pediu tinha de
+ * voltar ao cronograma e repetir o gesto, e o pedido aprovado ficava parado
+ * valendo para uma data que se aproximava sozinha. Agora o botão grava a data,
+ * então ele precisa se anunciar como o ato que é: "Autorizar e marcar".
  */
 export function BancasForaDaJanelaCard({
   itens,
@@ -74,7 +80,24 @@ export function BancasForaDaJanelaCard({
                 acoes={
                   decidindo?.id === p.id ? (
                     <FormDecisao
-                      rotuloConfirmar={decidindo.aprovar ? "Confirmar autorização" : "Confirmar recusa"}
+                      rotuloConfirmar={
+                        decidindo.aprovar
+                          ? `Autorizar e marcar ${formatarDataHora(p.data_hora_pretendida)}`
+                          : "Confirmar recusa"
+                      }
+                      /* A data no rótulo é a mesma ideia do "+N dias" do card
+                         de dias de ajuste: é o que impede confirmar a data
+                         errada depois de ler três pedidos parecidos. */
+                      aviso={
+                        decidindo.aprovar ? (
+                          <AprovacaoMeta>
+                            <span>
+                              Confirmar já <strong>marca a banca</strong> nesta data — quem
+                              pediu não precisa voltar ao cronograma.
+                            </span>
+                          </AprovacaoMeta>
+                        ) : undefined
+                      }
                       onCancelar={() => setDecidindo(null)}
                       onConfirmar={async (texto) => {
                         if (!token) return;
@@ -90,7 +113,7 @@ export function BancasForaDaJanelaCard({
                         $variant="outline"
                         onClick={() => setDecidindo({ id: p.id, aprovar: true })}
                       >
-                        Autorizar
+                        Autorizar e marcar
                       </PageButtonSm>
                       <PageButtonSm
                         type="button"
