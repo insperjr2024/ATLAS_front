@@ -48,6 +48,83 @@ async function comLayoutDeExport<T>(alvo: HTMLElement, acao: () => Promise<T>): 
   }
 }
 
+/** Um bloco que não pode nascer numa página e terminar na outra, medido em px
+ *  de CSS a partir do topo do nó fotografado. */
+interface FaixaAtomica {
+  topo: number;
+  base: number;
+}
+
+/**
+ * Os blocos que a quebra de página não pode partir.
+ *
+ * São os nós marcados com `data-export-atomico`: hoje, cada mês do calendário
+ * e cada entrada da legenda. Quem chama esta função sem marcar nada nenhum
+ * (o relatório de desempenho, que reusa `exportarPDF`) cai numa lista vazia e
+ * volta a ganhar o corte por régua de antes, que é exatamente o comportamento
+ * que ele já tinha.
+ *
+ * As medidas saem de `getBoundingClientRect` RELATIVAS ao alvo, e não de
+ * `offsetTop`: o segundo é relativo ao ancestral posicionado mais próximo, e
+ * dentro da moldura de export há grid, sticky e um ancestral `position: fixed`
+ * — os números sairiam de sistemas de coordenadas diferentes conforme a
+ * coluna.
+ */
+function faixasAtomicas(alvo: HTMLElement): FaixaAtomica[] {
+  const topoDoAlvo = alvo.getBoundingClientRect().top;
+  return Array.from(alvo.querySelectorAll<HTMLElement>("[data-export-atomico]")).map(
+    (no) => {
+      const caixa = no.getBoundingClientRect();
+      return { topo: caixa.top - topoDoAlvo, base: caixa.bottom - topoDoAlvo };
+    },
+  );
+}
+
+/**
+ * Onde esta página termina: o ponto mais baixo que dê, sem partir nada.
+ *
+ * Os candidatos são o corte da régua (`inicio` mais uma página cheia) e as
+ * bordas de todos os blocos acima dele; ganha o mais baixo em que nenhum bloco
+ * esteja atravessando a linha. Olhar as bordas basta: as alturas seguras formam
+ * os vãos ENTRE os blocos, e todo vão começa e termina numa borda.
+ *
+ * A primeira versão subia o corte de bloco em bloco, do mais baixo para cima,
+ * e parava no primeiro que coubesse. Parecia equivalente e não era: a moldura
+ * tem DUAS colunas, então subir para escapar de um mês do calendário aterrissa
+ * no meio de uma entrada da legenda, subir de novo cai no mês anterior, e a
+ * cascata podia descer abaixo do início da página — aí ela desistia e cortava
+ * na régua, justamente partindo o que devia proteger. Um teste com layouts
+ * sorteados pegou o caso.
+ */
+function corteDaPagina(
+  inicio: number,
+  alturaDaPagina: number,
+  alturaTotal: number,
+  faixas: FaixaAtomica[],
+): number {
+  const daRegua = inicio + alturaDaPagina;
+  if (daRegua >= alturaTotal) return alturaTotal;
+
+  // A folga de meio pixel evita ler como "atravessado" o bloco que apenas
+  // encosta na linha, que é justamente o corte bom.
+  const atravessa = (y: number) =>
+    faixas.some((f) => f.topo < y - 0.5 && f.base > y + 0.5);
+
+  let melhor = atravessa(daRegua) ? -1 : daRegua;
+  for (const faixa of faixas) {
+    for (const borda of [faixa.topo, faixa.base]) {
+      if (borda > melhor && borda <= daRegua && borda > inicio + 1 && !atravessa(borda)) {
+        melhor = borda;
+      }
+    }
+  }
+
+  // Nenhum ponto seguro na página inteira: um bloco sozinho é mais alto que uma
+  // folha, ou começou antes desta página. Corta na régua — uma quebra feia é
+  // melhor do que um laço infinito ou um PDF sem o resto do cronograma.
+  return melhor > inicio + 1 ? melhor : daRegua;
+}
+
 export async function exportarPNG(
   alvo: HTMLElement,
   nomeProjeto: string,
@@ -73,7 +150,14 @@ export async function exportarPDF(
     import("html-to-image"),
     import("jspdf"),
   ]);
-  const dataUrl = await comLayoutDeExport(alvo, () => toPng(alvo, OPCOES));
+  // A medição acontece DENTRO do layout de export e antes do `toPng`: é a
+  // classe `exportando` que solta o `max-height` e des-stickifica a legenda,
+  // então medir fora dela daria as posições da tela, não as da foto.
+  const { dataUrl, faixas, larguraEmCss } = await comLayoutDeExport(alvo, async () => ({
+    faixas: faixasAtomicas(alvo),
+    larguraEmCss: alvo.offsetWidth,
+    dataUrl: await toPng(alvo, OPCOES),
+  }));
 
   const imagem = new Image();
   imagem.src = dataUrl;
@@ -88,18 +172,42 @@ export async function exportarPDF(
   const largura = larguraPagina - margem * 2;
   const altura = (imagem.height / imagem.width) * largura;
 
-  if (altura <= alturaPagina - margem * 2) {
-    pdf.addImage(dataUrl, "PNG", margem, margem, largura, altura);
-  } else {
-    // Mais alto que uma página: fatia por altura em vez de encolher até
-    // ficar ilegível.
-    const alturaUtil = alturaPagina - margem * 2;
-    let deslocamento = 0;
-    while (deslocamento < altura) {
-      if (deslocamento > 0) pdf.addPage();
-      pdf.addImage(dataUrl, "PNG", margem, margem - deslocamento, largura, altura);
-      deslocamento += alturaUtil;
-    }
+  /**
+   * Fatiar, e não encolher até ficar ilegível.
+   *
+   * A versão anterior cortava a cada `alturaUtil` e pronto, sem olhar o que
+   * havia naquela linha: uma semana, um título de mês ou uma entrada da
+   * legenda saía partida, metade no pé de uma folha e metade no topo da
+   * seguinte. Agora o corte desce só até onde nenhum bloco atravessa.
+   *
+   * As contas ficam em px de CSS porque as faixas foram medidas assim; a
+   * conversão para pt acontece só na hora de desenhar.
+   */
+  const escala = largura / larguraEmCss;
+  const alturaUtil = alturaPagina - margem * 2;
+  const alturaUtilEmCss = alturaUtil / escala;
+  const alturaEmCss = altura / escala;
+
+  let inicio = 0;
+  while (inicio < alturaEmCss - 0.5) {
+    const fim = corteDaPagina(inicio, alturaUtilEmCss, alturaEmCss, faixas);
+    if (inicio > 0) pdf.addPage();
+
+    // A imagem inteira entra deslocada, e a página mostra a fatia que calha de
+    // cair na área visível.
+    pdf.addImage(dataUrl, "PNG", margem, margem - inicio * escala, largura, altura);
+
+    // As tarjas brancas são o que de fato recorta a fatia. O PDF só corta no
+    // limite da FOLHA, não no da margem, então sem elas a sobra da imagem
+    // invadiria as margens de cima e de baixo — e, com a página terminando
+    // cedo para não partir um mês, a barra de baixo mostraria um pedaço
+    // repetido do mês que abre a página seguinte.
+    const usado = (fim - inicio) * escala;
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, larguraPagina, margem, "F");
+    pdf.rect(0, margem + usado, larguraPagina, alturaPagina - margem - usado, "F");
+
+    inicio = fim;
   }
 
   pdf.save(nomeArquivo(nomeProjeto, "pdf", prefixoArquivo));

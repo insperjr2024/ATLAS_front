@@ -207,6 +207,29 @@ function periodoDoTrecho(periodos: PeriodoPosBanca[], dataFim: string): PeriodoP
   return null;
 }
 
+/**
+ * O começo e o fim de uma etapa inteira, com quantos pedaços ela tiver.
+ *
+ * Os trechos já chegam ordenados por `data_inicio` (ver `grupos`), então o
+ * começo é o do primeiro. O fim ainda sai de um máximo: um trecho que começa
+ * depois pode terminar antes, e o intervalo precisa cobrir o ponto mais
+ * distante, não o último da lista.
+ *
+ * Mora aqui fora porque a legenda da tela e a do PDF chegaram às duas na mesma
+ * pergunta, e um `reduce` copiado nos dois lugares é convite a consertar só um
+ * deles da próxima vez.
+ */
+function intervaloDaEtapa(trechos: { data_inicio: string; data_fim: string }[]) {
+  if (trechos.length === 0) return null;
+  return {
+    inicio: trechos[0].data_inicio,
+    fim: trechos.reduce(
+      (maior, t) => (t.data_fim > maior ? t.data_fim : maior),
+      trechos[0].data_fim,
+    ),
+  };
+}
+
 export function ProjetoCronograma() {
   // `recarregar` do shell: kickoff e entrega ao cliente moram no PROJETO, e
   // sem ele o cabeçalho e a Visão geral ficariam com a data velha.
@@ -1929,28 +1952,55 @@ export function ProjetoCronograma() {
                       <Amostra $cor={grupo.cor} />
                       <LegendaTexto>
                         <strong>{grupo.nome}</strong>
-                        {/* Um trecho por linha: a etapa pode ocupar pedaços
-                            separados do calendário, e "14/07 – 28/07" esconderia
-                            justamente o vão que o cronograma quer mostrar. */}
-                        {grupo.trechos.map((t) => {
+                        {/* Uma linha por ETAPA, e não uma por trecho: pintada
+                            em pedaços separados, a etapa rendia quatro ou cinco
+                            linhas de "21/08 – 21/08 · 1 dia útil" e a caixa
+                            virava uma parede de datas.
+
+                            A versão anterior abria trecho a trecho de propósito,
+                            para o vão entre eles aparecer. O vão não se perde:
+                            ele está desenhado no calendário ao lado, que é onde
+                            a forma do cronograma se lê de verdade — aqui a
+                            legenda repetia em números o que o desenho já diz. */}
+                        {(() => {
+                          const intervalo = intervaloDaEtapa(grupo.trechos);
+                          if (!intervalo) return null;
                           // Dias ÚTEIS, não corridos: é a unidade em que o
-                          // escopo é vendido e em que o atraso é medido.
-                          const uteis = diasDoIntervalo(t.data_inicio, t.data_fim).filter(
-                            (d) => !diasNaoUteis.has(d),
-                          ).length;
-                          // Qual banca precede este trecho, e como ela
-                          // terminou, é o que decide entre "correção N" e
-                          // "ajustes". Trecho que TERMINA depois do marco tem
-                          // retrabalho dentro dele, inclusive o que o atravessa.
-                          const posBanca = periodoDoTrecho(periodosPosBanca, t.data_fim);
+                          // escopo é vendido e em que o atraso é medido. Somados
+                          // TRECHO A TRECHO, e não de ponta a ponta do
+                          // intervalo: o vão entre um trecho e o seguinte não
+                          // foi trabalhado, e contá-lo inflaria a etapa contra
+                          // os dias vendidos do escopo.
+                          const uteis = grupo.trechos.reduce(
+                            (soma, t) =>
+                              soma +
+                              diasDoIntervalo(t.data_inicio, t.data_fim).filter(
+                                (d) => !diasNaoUteis.has(d),
+                              ).length,
+                            0,
+                          );
+                          // Qual banca precede cada trecho, e como ela terminou,
+                          // é o que decide entre "correção" e "ajustes". As
+                          // etiquetas eram por trecho e agora se juntam na linha
+                          // da etapa, sem repetir a mesma duas vezes. Apagá-las
+                          // junto com as datas esconderia que parte do que está
+                          // pintado é conserto pós-banca, e não trabalho vendido.
+                          const rotulos = grupo.trechos
+                            .map((t) => periodoDoTrecho(periodosPosBanca, t.data_fim)?.rotulo)
+                            .filter(
+                              (r, i, todos): r is string => !!r && todos.indexOf(r) === i,
+                            );
                           return (
-                            <small key={t.id}>
-                              {semAno(t.data_inicio)} – {semAno(t.data_fim)} · {uteis}{" "}
+                            <small>
+                              {semAno(intervalo.inicio)} – {semAno(intervalo.fim)} ·{" "}
+                              {uteis} 
                               {uteis === 1 ? "dia útil" : "dias úteis"}
-                              {posBanca && <TagCorrecao>{posBanca.rotulo}</TagCorrecao>}
+                              {rotulos.map((r) => (
+                                <TagCorrecao key={r}>{r}</TagCorrecao>
+                              ))}
                             </small>
                           );
-                        })}
+                        })()}
                       </LegendaTexto>
                     </LegendaItem>
 
@@ -2067,11 +2117,23 @@ export function ProjetoCronograma() {
                         <Amostra $cor={grupo.cor} />
                         <LegendaTexto>
                           <strong>{grupo.nome}</strong>
-                          {grupo.trechos.map((t) => (
-                            <small key={t.id}>
-                              {formatarData(t.data_inicio)} – {formatarData(t.data_fim)}
-                            </small>
-                          ))}
+                          {/* Uma linha por etapa, como na legenda da tela e pelo
+                              mesmo motivo — no papel a parede de datas é pior
+                              ainda, porque não há rolagem para escapar dela.
+
+                              Só o intervalo, sem a contagem de dias úteis e sem
+                              as etiquetas de correção/ajustes que a tela mostra:
+                              este PDF sai para apresentação, e quanto a banca
+                              reprovou é conversa de dentro de casa. */}
+                          {(() => {
+                            const intervalo = intervaloDaEtapa(grupo.trechos);
+                            return intervalo ? (
+                              <small>
+                                {formatarData(intervalo.inicio)} –{" "}
+                                {formatarData(intervalo.fim)}
+                              </small>
+                            ) : null;
+                          })()}
                         </LegendaTexto>
                       </LegendaItem>
                     ))}

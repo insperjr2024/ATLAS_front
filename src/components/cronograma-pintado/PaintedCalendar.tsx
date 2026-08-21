@@ -442,7 +442,10 @@ export function PaintedCalendar({
       {blocos.map((bloco) => {
         const colunas = bloco.rotulos.length || bloco.linhas[0]?.length || 1;
         return (
-          <BlocoMes key={bloco.chave}>
+          // `data-export-atomico`: o mês é a unidade que a quebra de página do
+          // PDF não pode partir. Sem a marcação o corte caía por régua e uma
+          // semana saía metade numa folha, metade na outra (ver `exportar.ts`).
+          <BlocoMes key={bloco.chave} data-export-atomico>
             <TituloMes>{bloco.titulo}</TituloMes>
             {bloco.rotulos.length > 0 && (
               <CabecalhoDias $colunas={colunas}>
