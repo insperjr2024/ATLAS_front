@@ -156,7 +156,14 @@ export function Desempenho({ embutido = false }: { embutido?: boolean } = {}) {
     .filter((a) => a.avaliador_id === usuario?.id && a.status === "submetida")
     .map((a) => ({ avaliacao: a, banca: bancasPorId.get(a.banca_id) }))
     .filter((item): item is { avaliacao: Avaliacao; banca: Banca } => !!item.banca)
-    .sort((a, b) => new Date(b.banca.data_hora).getTime() - new Date(a.banca.data_hora).getTime());
+    // Da mais recente para a mais antiga. Sem data no fim: uma banca
+    // avaliada sempre tem data na prática, mas o tipo não garante, e a
+    // ordenação não pode depender de "na prática".
+    .sort((a, b) => {
+      if (!a.banca.data_hora) return b.banca.data_hora ? 1 : 0;
+      if (!b.banca.data_hora) return -1;
+      return new Date(b.banca.data_hora).getTime() - new Date(a.banca.data_hora).getTime();
+    });
 
   const avaliacoesDoSemestre = avaliacoesSubmetidas.filter((item) => item.banca.semestre_id === dados.semestre_id);
 
@@ -214,7 +221,9 @@ export function Desempenho({ embutido = false }: { embutido?: boolean } = {}) {
                 >
                   <RowGroup>
                     <RowDot aria-hidden />
-                    <RowMeta>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</RowMeta>
+                    <RowMeta>
+                      {banca.data_hora ? paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR") : "Sem data"}
+                    </RowMeta>
                     <RowLabel>{banca.nome_projeto}</RowLabel>
                   </RowGroup>
                   <HistoricoVerLabel>Ver respostas</HistoricoVerLabel>
@@ -290,7 +299,9 @@ function VerMinhaAvaliacaoModal({
             </DetailRow>
             <DetailRow>
               <DetailTerm>Data da banca</DetailTerm>
-              <DetailValue>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</DetailValue>
+              <DetailValue>
+                {banca.data_hora ? paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR") : "Sem data"}
+              </DetailValue>
             </DetailRow>
             {avaliacao.submetida_em && (
               <DetailRow>

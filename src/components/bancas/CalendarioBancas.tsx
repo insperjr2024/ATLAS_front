@@ -39,6 +39,13 @@ import {
   ResumoMes,
 } from "./CalendarioBancas.styled";
 
+/** Uma banca que JÁ TEM data — o único tipo que este calendário desenha.
+ *
+ *  `Banca.data_hora` é nula enquanto a banca não é marcada, e um calendário
+ *  não tem onde pôr um evento sem dia. O filtro em `marcadas` estreita para
+ *  cá, e daqui para baixo ninguém precisa de guarda. */
+type BancaMarcada = Banca & { data_hora: string };
+
 /** Duas pílulas cabem sem esticar a célula — o resto vira "+N mais",
  *  clicável, do mesmo jeito que o Calendário geral. */
 const MAX_PILULAS_MES = 2;
@@ -107,19 +114,26 @@ export function CalendarioBancas({
   const [data, setData] = useState(() => new Date());
   const [diaAberto, setDiaAberto] = useState<Date | null>(null);
 
-  /** O tipo `Banca.data_hora` promete `string` sempre, mas a promessa vale
-   *  pra quem já filtrou por "tem banca de verdade" — esta tela recebe a
-   *  lista crua da página, que inclui banca "não marcada" (a linha nasce
-   *  junto do escopo, sem data, status `nao_marcada`; ver `get_projeto.py`).
-   *  Um calendário não tem onde desenhar um evento sem data, então essas
-   *  ficam de fora aqui — não é perda: "não marcada" não pertence a dia
-   *  nenhum mesmo. Sem este filtro, `paraDataUtc(null)` vira Invalid Date e
-   *  `format()` explode a página inteira (era o bug real por trás do "a aba
-   *  Calendário não funciona"). */
-  const marcadas = useMemo(() => bancas.filter((b) => b.data_hora), [bancas]);
+  /** Esta tela recebe a lista crua da página, que inclui banca "não marcada"
+   *  (a linha nasce junto do escopo, sem data, status `nao_marcada`; ver
+   *  `get_projeto.py`). Um calendário não tem onde desenhar um evento sem
+   *  data, então essas ficam de fora — não é perda: "não marcada" não
+   *  pertence a dia nenhum mesmo. Sem o filtro, `paraDataUtc(null)` vira
+   *  Invalid Date e `format()` explode a página inteira (era o bug real por
+   *  trás do "a aba Calendário não funciona").
+   *
+   *  ⭐ O retorno é um PREDICADO DE TIPO, e não um `boolean`: assim o
+   *  TypeScript sabe que daqui para baixo `data_hora` é `string`, e os ~10
+   *  usos seguintes dispensam guarda. Antes o tipo prometia `string` sempre
+   *  e a promessa era falsa — o filtro existia, mas nada obrigava ninguém a
+   *  usá-lo. */
+  const marcadas = useMemo(
+    () => bancas.filter((b): b is BancaMarcada => !!b.data_hora),
+    [bancas],
+  );
 
   const porDia = useMemo(() => {
-    const mapa = new Map<string, Banca[]>();
+    const mapa = new Map<string, BancaMarcada[]>();
     for (const b of marcadas) {
       const chave = chaveData(paraDataUtc(b.data_hora));
       const lista = mapa.get(chave) ?? [];
@@ -325,7 +339,7 @@ function PilulaDaBanca({
   chocada,
   onAbrirBanca,
 }: {
-  banca: Banca;
+  banca: BancaMarcada;
   chocada: boolean;
   onAbrirBanca: (banca: Banca) => void;
 }) {
@@ -358,7 +372,7 @@ function DiaModal({
   onClose,
 }: {
   dia: Date;
-  bancas: Banca[];
+  bancas: BancaMarcada[];
   chocados: Set<string>;
   onAbrirBanca: (banca: Banca) => void;
   onClose: () => void;

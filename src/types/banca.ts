@@ -24,7 +24,13 @@ export interface BancaBase {
   nome_projeto: string;
   escopo_id: number | null; // vazio quando o escopo vendido é um "Outro"
   coordenador_id: number;
-  data_hora: string; // ISO 8601
+  /** ⚠ **Nulo quando a banca ainda não foi marcada** — é o que torna o estado
+   *  `nao_marcada` representável (a coluna é `nullable=True` em `banca_model.py`).
+   *
+   *  Este campo dizia `string` e mentia. Por isso o TypeScript nunca apontou os
+   *  usos desprotegidos, e a banca sem data virava "Invalid Date" no card e
+   *  liderava as listas ordenadas (`new Date(null).getTime()` é 0, o epoch). */
+  data_hora: string | null; // ISO 8601
   /** Nulo = usa a soma do piso das frentes vinculadas. Só a diretoria
    *  define, ver `podeAgendar`/`usuario.posicao === "diretor"` no form. */
   piso_minimo_override: number | null;

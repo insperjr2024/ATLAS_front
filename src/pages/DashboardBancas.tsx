@@ -230,8 +230,16 @@ export function DashboardBancas({
   const emRisco = useMemo(() => {
     return bancasSemestre
       .filter(
-        (b) =>
-          !b.realizado_em && b.alocados < b.piso_minimo && paraDataUtc(b.data_hora).getTime() > agora,
+        // ⚠ `b.data_hora &&` primeiro: "em risco" é sobre banca que vai
+        // acontecer e está sem gente. Sem data não há prazo correndo — e o
+        // `paraDataUtc(null)` devolvia Invalid Date, cujo `getTime()` é NaN,
+        // e `NaN > agora` é falso: a banca sumia da lista por acidente, não
+        // por decisão.
+        (b): b is typeof b & { data_hora: string } =>
+          !!b.data_hora &&
+          !b.realizado_em &&
+          b.alocados < b.piso_minimo &&
+          paraDataUtc(b.data_hora).getTime() > agora,
       )
       .map((b) => ({
         banca: b,
@@ -580,7 +588,10 @@ export function DashboardBancas({
                     <InsightTexto>
                       <InsightNome>{banca.nome_projeto}</InsightNome>
                       <InsightMeta>
-                        {paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")} ·{" "}
+                        {banca.data_hora
+                          ? paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")
+                          : "Sem data"}{" "}
+                        ·{" "}
                         {banca.alocados}/{banca.piso_minimo} do mínimo · faltam {faltam}
                       </InsightMeta>
                     </InsightTexto>

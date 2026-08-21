@@ -338,6 +338,30 @@ export const BancaDataMes = styled.span`
   letter-spacing: 0.03em;
 `;
 
+/** O quadrado de data quando a banca AINDA NÃO FOI MARCADA.
+ *
+ *  Substitui as três linhas (dia da semana / dia / mês) por um bloco só,
+ *  centrado no mesmo quadrado de 3rem. Reaproveitar as três fatias não
+ *  funcionava: "Sem data" tem 8 caracteres e a fatia do dia da semana tem
+ *  10px de altura, então o texto espremia e sobrava um travessão grande no
+ *  meio, onde o olho espera o número do dia.
+ *
+ *  Duas linhas curtas em vez de uma: em 3rem, "SEM DATA" numa linha só teria
+ *  de encolher abaixo do legível. */
+export const BancaSemData = styled.span`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.625rem;
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.mutedForeground};
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+`;
+
 export const BancaInfo = styled.div`
   display: flex;
   flex-direction: column;
