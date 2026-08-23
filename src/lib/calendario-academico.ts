@@ -18,6 +18,14 @@ export interface DiaNaoLetivo {
   descricao: string | null;
   /** `null` = vale para TODAS as frentes (feriado nacional, por exemplo). */
   frente_id: number | null;
+  /**
+   * O calendário dentro da frente. `null` = vale para a frente INTEIRA.
+   *
+   * Uma frente cobre mais de um curso, e nem sempre eles têm as mesmas datas:
+   * dentro da Tech, Ciência da Computação não segue o calendário das
+   * engenharias. Aqui vem o rótulo do calendário a que o dia pertence.
+   */
+  variante: string | null;
 }
 
 export interface Semestre {
@@ -74,14 +82,63 @@ export function getDiasNaoLetivos(semestreId: number, token: string) {
  * edição usa, para a diretoria não apagar um feriado nacional achando que
  * está mexendo só no calendário de Business.
  */
+/**
+ * `variantes` aceita VÁRIOS calendários de uma vez, e é assim que a tela de
+ * conferência mostra engenharias e Ciência da Computação lado a lado. Cada dia
+ * volta com o dono em `variante`, então ver as duas é comparar, não misturar.
+ *
+ * Vazio traz só o que vale para a frente inteira, mais os feriados globais —
+ * que entram sempre, em qualquer combinação.
+ */
 export function getCalendarioDaFrente(
   semestreId: number,
   frenteId: number,
   token: string,
   apenasDaFrente = false,
+  variantes: string[] = [],
 ) {
-  const q = `frente_id=${frenteId}${apenasDaFrente ? "&apenas_da_frente=true" : ""}`;
+  const q = [
+    `frente_id=${frenteId}`,
+    apenasDaFrente ? "apenas_da_frente=true" : "",
+    ...variantes.map((v) => `variante=${encodeURIComponent(v)}`),
+  ]
+    .filter(Boolean)
+    .join("&");
   return apiFetch<DiaNaoLetivo[]>(`/semestres/${semestreId}/dias-nao-letivos?${q}`, { token });
+}
+
+export interface CalendariosDaFrente {
+  frente_id: number;
+  /** O calendário que vale para um projeto que não escolheu. `null` na frente de um curso só. */
+  padrao: string | null;
+  /** Os calendários que existem nesta frente. Vazio = ela tem um só. */
+  calendarios: string[];
+}
+
+/**
+ * Quais calendários existem dentro de uma frente.
+ *
+ * Vazio é o caso normal e a tela nem mostra o seletor: só a Tech cobre cursos
+ * que discordam sobre as datas.
+ */
+export function getCalendariosDaFrente(semestreId: number, frenteId: number, token: string) {
+  return apiFetch<CalendariosDaFrente>(
+    `/semestres/${semestreId}/calendarios?frente_id=${frenteId}`,
+    { token },
+  );
+}
+
+/** Define qual calendário da frente vale para quem não escolheu o dele. */
+export function definirCalendarioPadrao(
+  frenteId: number,
+  calendario: string | null,
+  token: string,
+) {
+  return apiFetch(`/frentes/${frenteId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ calendario_padrao: calendario }),
+  });
 }
 
 export interface DiaLidoDoPdf {
@@ -114,6 +171,8 @@ export interface CategoriaDoPdf {
 export interface LeituraPdf {
   semestre_id: number;
   frente_id: number | null;
+  /** Em qual calendário da frente este PDF vai cair. Volta como foi mandado. */
+  variante: string | null;
   dias: DiaLidoDoPdf[];
   /** O catálogo vem do backend para o filtro não repetir a lista aqui. */
   categorias: CategoriaDoPdf[];
@@ -138,11 +197,13 @@ export function lerCalendarioPdf(
   frenteId: number,
   arquivo: File,
   token: string,
+  variante?: string | null,
 ) {
   const corpo = new FormData();
   corpo.append("arquivo", arquivo);
+  const q = `frente_id=${frenteId}${variante ? `&variante=${encodeURIComponent(variante)}` : ""}`;
   return apiFetch<LeituraPdf>(
-    `/semestres/${semestreId}/dias-nao-letivos/ler-pdf?frente_id=${frenteId}`,
+    `/semestres/${semestreId}/dias-nao-letivos/ler-pdf?${q}`,
     { method: "POST", token, body: corpo },
   );
 }
@@ -165,14 +226,18 @@ export interface ResultadoCarga {
  * Carga em lote, o calendário inteiro do semestre de uma vez.
  *
  * Com `frenteId`, grava o calendário base daquela frente; sem ele, o global.
- * `substituir` limpa antes, mas só o calendário da MESMA frente: recarregar o
- * PDF de Business não pode derrubar o que já foi conferido em Tech.
+ * `variante` desce mais um degrau e grava dentro de UM calendário da frente.
+ *
+ * `substituir` limpa antes, mas só o MESMO recorte: recarregar o PDF de
+ * Business não pode derrubar o que foi conferido em Tech, nem o de Ciência da
+ * Computação apagar o das engenharias, que está na mesma frente. Por isso
+ * `variante` tem de viajar junto sempre que `substituir` for verdadeiro.
  */
 export function carregarDiasNaoLetivos(
   semestreId: number,
   dias: DiaNaoLetivoPayload[],
   token: string,
-  opcoes?: { frenteId?: number | null; substituir?: boolean },
+  opcoes?: { frenteId?: number | null; substituir?: boolean; variante?: string | null },
 ) {
   return apiFetch<ResultadoCarga>(`/semestres/${semestreId}/dias-nao-letivos`, {
     method: "POST",
@@ -180,6 +245,7 @@ export function carregarDiasNaoLetivos(
     body: JSON.stringify({
       dias,
       frente_id: opcoes?.frenteId ?? null,
+      variante: opcoes?.variante ?? null,
       substituir: opcoes?.substituir ?? false,
     }),
   });

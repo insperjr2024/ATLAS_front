@@ -263,6 +263,27 @@ export function updateDiaReuniaoPadrao(projetoId: number, diaReuniaoPadrao: numb
   );
 }
 
+/**
+ * Qual calendário acadêmico o time deste projeto segue.
+ *
+ * Não é cosmético: muda a contagem de dias úteis, a janela dos escopos e o
+ * cinza do cronograma. `null` volta a seguir o padrão da frente.
+ *
+ * O backend recusa (422) nome que não exista em nenhuma frente do projeto —
+ * um rótulo errado não casaria com dia nenhum e o projeto passaria a contar a
+ * semana de provas de ninguém.
+ */
+export function updateCalendarioProjeto(
+  projetoId: number,
+  calendario: string | null,
+  token: string,
+) {
+  return apiFetch<{ id: number; calendario: string | null }>(
+    `/projetos/${projetoId}/calendario`,
+    { method: "PATCH", token, body: JSON.stringify({ calendario }) },
+  );
+}
+
 /** O backend recusa (422) se o novo teto ficar abaixo da quantidade de
  *  consultores já alocados agora. */
 export function updateMaxConsultores(projetoId: number, maxConsultores: number, token: string) {

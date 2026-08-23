@@ -238,6 +238,13 @@ export interface ProjetoCompleto extends ProjetoResumo {
   data_entrega_prevista_cliente: string | null;
   /** 1 = segunda … 7 = domingo. */
   dia_reuniao_padrao: number | null;
+  /**
+   * Qual calendário acadêmico o time deste projeto segue.
+   *
+   * `null` = o padrão da frente, o caso normal. Só existe escolha onde uma
+   * frente cobre cursos com datas diferentes — hoje, a Tech.
+   */
+  calendario: string | null;
   criado_por: number | null;
   equipe: MembroProjeto[];
   /** Teto de consultores, decide quando o projeto sai da lista de vagas. */

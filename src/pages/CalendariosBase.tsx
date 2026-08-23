@@ -4,8 +4,10 @@ import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/frentes";
 import {
   carregarDiasNaoLetivos,
+  definirCalendarioPadrao,
   deleteDiaNaoLetivo,
   getCalendarioDaFrente,
+  getCalendariosDaFrente,
   getSemestres,
   lerCalendarioPdf,
   ROTULO_TIPO_DIA,
@@ -20,8 +22,6 @@ import { PaintedCalendar } from "@/components/cronograma-pintado/PaintedCalendar
 import { blocosDaVisao } from "@/components/cronograma-pintado/visao";
 import {
   BotaoNav,
-  BotaoVisao,
-  GrupoVisao,
   NavPeriodo,
   RotuloPeriodo,
 } from "@/components/cronograma-pintado/PaintedCalendar.styled";
@@ -60,8 +60,19 @@ import {
   ModalFooter,
   WideModalContent,
 } from "./Config.styled";
-import { CheckboxGrid, CheckboxLabel } from "./Bancas.styled";
-import { TableScrollWrap } from "@/styles/shared.styled";
+import {
+  CheckboxGrid,
+  CheckboxLabel,
+  FieldGroup,
+  FieldInput,
+  FieldLabel,
+  NarrowModalContent,
+} from "./Bancas.styled";
+import {
+  SegmentedButton,
+  SegmentedGroup,
+  TableScrollWrap,
+} from "@/styles/shared.styled";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { AdicionarDiaModal } from "./AdicionarDiaModal";
 
@@ -91,10 +102,23 @@ const COLUNAS_DIAS: Colunas<DiaNaoLetivo> = {
   data: { valor: (d) => d.data, inicial: "asc" },
   tipo: { valor: (d) => ROTULO_TIPO_DIA[d.tipo] ?? d.tipo, inicial: "asc" },
   descricao: { valor: (d) => d.descricao, inicial: "asc" },
-  // Dia de todas as frentes primeiro no crescente: é a base sobre a qual a
-  // frente adiciona os dela.
-  origem: { valor: (d) => (d.frente_id === null ? 0 : 1), inicial: "asc" },
+  // Do mais amplo ao mais estreito: todas as frentes, depois a frente inteira,
+  // depois cada curso. É a base sobre a qual cada degrau adiciona os dele.
+  //
+  // Ordena por texto, e não por número de degrau, porque com dois calendários
+  // à vista eles empatariam no mesmo degrau — e é justamente separar um do
+  // outro que faz esta coluna valer a pena.
+  origem: {
+    valor: (d) =>
+      d.frente_id === null ? "0" : d.variante === null ? "1" : `2 ${d.variante}`,
+    inicial: "asc",
+  },
 };
+
+/** Por que os botões de gravar ficam travados com mais de um calendário à vista. */
+const AVISO_ALVO =
+  "Deixe apenas um calendário visível para gravar nele — com dois à vista não dá para " +
+  "saber em qual o dia entra.";
 
 export function CalendariosBase() {
   const { token } = useAuth();
@@ -103,6 +127,21 @@ export function CalendariosBase() {
   const [semestre, setSemestre] = useState<Semestre | null>(null);
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [frenteAtiva, setFrenteAtiva] = useState<number | null>(null);
+  /* Os calendários DENTRO da frente ativa. Vazio é o caso normal: só a Tech
+     cobre cursos que discordam sobre as datas, e o seletor nem aparece nas
+     outras. */
+  const [calendarios, setCalendarios] = useState<string[]>([]);
+  const [padrao, setPadrao] = useState<string | null>(null);
+  /* Quais calendários estão VISÍVEIS — vários ao mesmo tempo, de propósito.
+     Cada dia da tabela diz de quem é na coluna Origem, então ver engenharias
+     e Ciência da Computação juntas é comparar as duas, não misturá-las: é
+     assim que se enxerga onde elas divergem.
+
+     Os dias que valem para a frente inteira não entram aqui porque não são
+     uma opção: eles aparecem sempre, como os feriados nacionais. */
+  const [visiveis, setVisiveis] = useState<Set<string>>(new Set());
+  const [criando, setCriando] = useState(false);
+  const [nomeNovo, setNomeNovo] = useState("");
   const [dias, setDias] = useState<DiaNaoLetivo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
@@ -141,20 +180,63 @@ export function CalendariosBase() {
     carregarBase();
   }, [carregarBase]);
 
+  const carregarCalendarios = useCallback(async () => {
+    if (!token || !semestre || !frenteAtiva) return;
+    try {
+      const resposta = await getCalendariosDaFrente(semestre.id, frenteAtiva, token);
+      setCalendarios(resposta.calendarios);
+      setPadrao(resposta.padrao);
+      /* Abre com TODOS ligados: a tela existe para conferir o calendário da
+         frente, e conferir é ver o conjunto. Quem quiser olhar um curso só
+         desliga o outro — o contrário, começar escondendo metade, faz a
+         divergência entre os dois passar despercebida.
+
+         Um calendário que a diretoria acabou de criar e ainda não gravou não
+         volta do servidor; mantê-lo ligado evita que ele saia da tela no meio
+         do trabalho. */
+      setVisiveis((atual) => {
+        const novos = resposta.calendarios.filter((c) => !atual.has(c));
+        return novos.length > 0 || atual.size === 0
+          ? new Set([...atual, ...resposta.calendarios])
+          : atual;
+      });
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Erro ao carregar os calendários da frente");
+    }
+  }, [token, semestre, frenteAtiva]);
+
+  useEffect(() => {
+    carregarCalendarios();
+  }, [carregarCalendarios]);
+
   const carregarDias = useCallback(async () => {
     if (!token || !semestre || !frenteAtiva) return;
     try {
-      setDias(await getCalendarioDaFrente(semestre.id, frenteAtiva, token));
+      setDias(await getCalendarioDaFrente(semestre.id, frenteAtiva, token, false, [...visiveis]));
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao carregar o calendário");
     }
-  }, [token, semestre, frenteAtiva]);
+  }, [token, semestre, frenteAtiva, visiveis]);
 
   useEffect(() => {
     carregarDias();
   }, [carregarDias]);
 
   const nomeFrente = frentes.find((f) => f.id === frenteAtiva)?.nome ?? "";
+
+  /**
+   * Onde a gravação cai: só existe quando UM calendário está visível.
+   *
+   * Ver os dois ao mesmo tempo é ótimo para conferir e ambíguo para gravar —
+   * um PDF de curso não tem como cair em dois calendários, e `substituir`
+   * apagaria o que não era para apagar. Com mais de um ligado a tela não
+   * adivinha: pede que se escolha.
+   *
+   * Numa frente sem calendário de curso o alvo é nulo e continua sendo o que
+   * sempre foi: o calendário da frente inteira.
+   */
+  const alvo = visiveis.size === 1 ? [...visiveis][0] : null;
+  const precisaEscolherAlvo = calendarios.length > 0 && alvo === null;
 
   /* Abre pela data, como sempre abriu — calendário se lê em ordem
      cronológica. As outras colunas viram ferramenta: "quais são feriado?",
@@ -181,11 +263,15 @@ export function CalendariosBase() {
     // a verdade sobre elas. O que está salvo e não veio no PDF vai sumir, e
     // isso precisa estar escrito, não descoberto depois.
     const escolhidas = new Set(selecionadas.map((d) => d.data));
+    // Só o que o `substituir` de fato apaga: os dias da frente que estão no
+    // calendário ALVO. Um dia que vale para a frente inteira, ou o do outro
+    // curso que está visível ao lado, não é tocado — e listá-lo aqui
+    // prometeria um estrago que a gravação não faz.
     const removidas = dias.filter(
-      (d) => d.frente_id !== null && !escolhidas.has(d.data),
+      (d) => d.frente_id !== null && d.variante === alvo && !escolhidas.has(d.data),
     );
     return { novas, repetidas, removidas };
-  }, [leitura, dias, selecionadas]);
+  }, [leitura, dias, selecionadas, alvo]);
 
   async function aoEscolherArquivo(e: React.ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
@@ -194,7 +280,13 @@ export function CalendariosBase() {
     if (!arquivo || !token || !semestre || !frenteAtiva) return;
     setAviso("");
     try {
-      const resultado = await lerCalendarioPdf(semestre.id, frenteAtiva, arquivo, token);
+      const resultado = await lerCalendarioPdf(
+        semestre.id,
+        frenteAtiva,
+        arquivo,
+        token,
+        alvo,
+      );
       setLeitura(resultado);
       // Todas as categorias que acharam algo vêm marcadas: aceitar a leitura
       // inteira é o caso comum, e desmarcar é mais rápido que marcar sete.
@@ -222,11 +314,14 @@ export function CalendariosBase() {
       // é justamente para corrigir as datas dela. O lote leva tudo o que foi
       // selecionado, inclusive o que já estava salvo e por isso não aparece na
       // tabela, mandar só as novas apagaria as antigas.
+      // ⚠ A `variante` é o que impede o `substituir` de estourar o
+      // calendário vizinho: os dois moram na MESMA frente, e sem ela subir o
+      // PDF de Ciência da Computação apagaria o das engenharias.
       await carregarDiasNaoLetivos(
         semestre.id,
         selecionadas.filter((d) => d.escopo === "frente").map(paraGravar),
         token,
-        { frenteId: frenteAtiva, substituir: true },
+        { frenteId: frenteAtiva, substituir: true, variante: alvo },
       );
 
       // Os feriados NÃO substituem: valem para todas as frentes, e um
@@ -254,7 +349,7 @@ export function CalendariosBase() {
     data: string;
     tipo: TipoDiaNaoLetivo;
     descricao: string;
-    global: boolean;
+    destino: "global" | "frente" | "calendario";
   }) {
     if (!token || !semestre || !frenteAtiva) return;
     setAviso("");
@@ -263,10 +358,48 @@ export function CalendariosBase() {
       semestre.id,
       [{ data: d.data, tipo: d.tipo, descricao: d.descricao }],
       token,
-      { frenteId: d.global ? null : frenteAtiva, substituir: false },
+      {
+        frenteId: d.destino === "global" ? null : frenteAtiva,
+        variante: d.destino === "calendario" ? alvo : null,
+        substituir: false,
+      },
     );
     setAdicionando(false);
     await carregarDias();
+    await carregarCalendarios();
+  }
+
+  /** Cria um calendário deixando só ele visível — ele passa a existir ao ganhar
+   *  o primeiro dia, então aqui não há nada a gravar no banco ainda.
+   *
+   *  Sozinho de propósito: quem acabou de criar vai subir o PDF em seguida, e
+   *  é com um só à vista que os botões de gravar destravam. */
+  function criarCalendario() {
+    const nome = nomeNovo.trim();
+    if (!nome) return;
+    if (calendarios.includes(nome)) {
+      setAviso(`${nomeFrente} já tem um calendário chamado ${nome}`);
+      return;
+    }
+    setCalendarios((atuais) => [...atuais, nome].sort());
+    setVisiveis(new Set([nome]));
+    setNomeNovo("");
+    setCriando(false);
+    setAviso(
+      `${nome} ainda está vazio. Suba o PDF do curso, ou adicione os dias à mão, para ele passar ` +
+        "a existir — um calendário sem dia nenhum some quando a tela recarrega.",
+    );
+  }
+
+  async function tornarPadrao() {
+    if (!token || !frenteAtiva || !alvo) return;
+    setAviso("");
+    try {
+      await definirCalendarioPadrao(frenteAtiva, alvo, token);
+      await carregarCalendarios();
+    } catch (e) {
+      setAviso(e instanceof Error ? e.message : "Erro ao definir o padrão");
+    }
   }
 
   async function excluir(dia: DiaNaoLetivo) {
@@ -280,7 +413,22 @@ export function CalendariosBase() {
   /** O mapa que o calendário usa para hachurar, mesmo formato do cronograma. */
   const mapaDeDias = useMemo(() => {
     const mapa = new Map<string, { tipo: string; descricao: string | null }>();
-    for (const d of dias) mapa.set(d.data.slice(0, 10), { tipo: d.tipo, descricao: d.descricao });
+    for (const d of dias) {
+      const chave = d.data.slice(0, 10);
+      // Com dois calendários visíveis a MESMA data pode vir duas vezes — a
+      // prova de um curso e a do outro. A célula é uma só, então o motivo
+      // acumula em vez de a segunda leitura apagar a primeira; sem isso o
+      // calendário mostraria só um dono e esconderia justamente a coincidência
+      // que a diretoria veio conferir.
+      const anterior = mapa.get(chave);
+      const dono = d.variante ? `${d.descricao ?? d.tipo} (${d.variante})` : d.descricao;
+      mapa.set(chave, {
+        tipo: d.tipo,
+        descricao: anterior?.descricao
+          ? [...new Set([anterior.descricao, dono].filter(Boolean))].join(" · ")
+          : dono,
+      });
+    }
     return mapa;
   }, [dias]);
 
@@ -326,26 +474,81 @@ export function CalendariosBase() {
         </PageHeaderText>
       </PageHeaderRow>
 
-      <GrupoVisao role="tablist" aria-label="Frente">
+      <SegmentedGroup role="tablist" aria-label="Frente">
         {frentes.map((f) => (
-          <BotaoVisao
+          <SegmentedButton
             key={f.id}
             type="button"
             role="tab"
             aria-selected={f.id === frenteAtiva}
             $ativo={f.id === frenteAtiva}
-            onClick={() => setFrenteAtiva(f.id)}
+            onClick={() => {
+              setFrenteAtiva(f.id);
+              // Zera o que está visível: "Ciência da Computação" não existe em
+              // Business, e carregar a frente nova com o nome antigo pediria
+              // um calendário que não está lá. `carregarCalendarios` religa
+              // todos os da frente nova em seguida.
+              setVisiveis(new Set());
+            }}
           >
             {f.nome}
-          </BotaoVisao>
+          </SegmentedButton>
         ))}
-      </GrupoVisao>
+      </SegmentedGroup>
+
+      {/* Interruptores, não abas: ligar os dois mostra os dois, e é assim que
+          se vê onde os cursos divergem. `aria-pressed` em vez de `role="tab"`
+          justamente porque não há um selecionado por vez. */}
+      {calendarios.length > 0 && (
+        <SegmentedGroup role="group" aria-label={`Calendários de ${nomeFrente}`}>
+          {calendarios.map((c) => {
+            const ligado = visiveis.has(c);
+            return (
+              <SegmentedButton
+                key={c}
+                type="button"
+                aria-pressed={ligado}
+                $ativo={ligado}
+                title={ligado ? `Esconder ${c}` : `Mostrar ${c}`}
+                onClick={() =>
+                  setVisiveis((atuais) => {
+                    const novo = new Set(atuais);
+                    if (novo.has(c)) novo.delete(c);
+                    else novo.add(c);
+                    return novo;
+                  })
+                }
+              >
+                {c}
+                {c === padrao ? " (padrão)" : ""}
+              </SegmentedButton>
+            );
+          })}
+        </SegmentedGroup>
+      )}
 
       {aviso && <FormErrorText>{aviso}</FormErrorText>}
 
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>{nomeFrente}</PageCardTitle>
+          <PageCardTitle>
+            {nomeFrente}
+            {alvo ? ` · ${alvo}` : ""}
+          </PageCardTitle>
+          {alvo && alvo !== padrao && (
+            <PageButton
+              type="button"
+              $variant="ghost"
+              onClick={tornarPadrao}
+              title={`Projetos de ${nomeFrente} que não escolherem calendário passam a seguir este`}
+            >
+              Tornar padrão
+            </PageButton>
+          )}
+          <PageButton type="button" $variant="ghost" onClick={() => setCriando(true)}>
+            <Plus size={14} />
+            Novo calendário
+          </PageButton>
           <PageButton
             type="button"
             $variant="ghost"
@@ -355,11 +558,25 @@ export function CalendariosBase() {
             {vendoCalendario ? <List size={14} /> : <CalendarDays size={14} />}
             {vendoCalendario ? "Ver como lista" : "Ver como calendário"}
           </PageButton>
-          <PageButton type="button" $variant="ghost" onClick={() => setAdicionando(true)}>
+          {/* Gravar exige um alvo. Com dois calendários visíveis a tela não
+              adivinha em qual o PDF cai, e `substituir` apagaria o errado. */}
+          <PageButton
+            type="button"
+            $variant="ghost"
+            disabled={precisaEscolherAlvo}
+            title={precisaEscolherAlvo ? AVISO_ALVO : undefined}
+            onClick={() => setAdicionando(true)}
+          >
             <Plus size={14} />
             Adicionar dia
           </PageButton>
-          <PageButton type="button" $variant="outline" onClick={() => inputArquivo.current?.click()}>
+          <PageButton
+            type="button"
+            $variant="outline"
+            disabled={precisaEscolherAlvo}
+            title={precisaEscolherAlvo ? AVISO_ALVO : undefined}
+            onClick={() => inputArquivo.current?.click()}
+          >
             <Upload size={14} />
             Subir PDF do calendário
           </PageButton>
@@ -409,8 +626,12 @@ export function CalendariosBase() {
                         <TableCell>
                           {d.frente_id === null ? (
                             <PageBadge $tone="muted">Todas as frentes</PageBadge>
+                          ) : d.variante === null ? (
+                            <PageBadge $tone="muted">{nomeFrente}</PageBadge>
                           ) : (
-                            <PageBadge>{nomeFrente}</PageBadge>
+                            <PageBadge>
+                              {nomeFrente} · {d.variante}
+                            </PageBadge>
                           )}
                         </TableCell>
                         <ActionsCell>
@@ -556,7 +777,10 @@ export function CalendariosBase() {
                             {d.escopo === "global" ? (
                               <PageBadge $tone="muted">Todas as frentes</PageBadge>
                             ) : (
-                              <PageBadge>{nomeFrente}</PageBadge>
+                              <PageBadge>
+                                {nomeFrente}
+                                {alvo ? ` · ${alvo}` : ""}
+                              </PageBadge>
                             )}
                           </TableCell>
                         </TableRow>
@@ -579,9 +803,44 @@ export function CalendariosBase() {
         </ModalOverlay>
       )}
 
+      {criando && (
+        <ModalOverlay onMouseDown={() => setCriando(false)}>
+          <NarrowModalContent onMouseDown={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Novo calendário em {nomeFrente}</ModalTitle>
+              <ModalClose type="button" onClick={() => setCriando(false)}>
+                ×
+              </ModalClose>
+            </ModalHeader>
+            <ModalBody>
+              <FieldGroup>
+                <FieldLabel htmlFor="nome-calendario">Nome do curso</FieldLabel>
+                <FieldInput
+                  id="nome-calendario"
+                  maxLength={30}
+                  autoFocus
+                  value={nomeNovo}
+                  onChange={(e) => setNomeNovo(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && criarCalendario()}
+                />
+              </FieldGroup>
+            </ModalBody>
+            <ModalFooter>
+              <PageButton type="button" $variant="outline" onClick={() => setCriando(false)}>
+                Cancelar
+              </PageButton>
+              <PageButton type="button" disabled={!nomeNovo.trim()} onClick={criarCalendario}>
+                Criar
+              </PageButton>
+            </ModalFooter>
+          </NarrowModalContent>
+        </ModalOverlay>
+      )}
+
       {adicionando && semestre && (
         <AdicionarDiaModal
           nomeFrente={nomeFrente}
+          nomeCalendario={alvo}
           semestre={semestre}
           onCancelar={() => setAdicionando(false)}
           onSalvar={adicionarDia}
@@ -599,6 +858,15 @@ export function CalendariosBase() {
                   {" "}
                   <strong>
                     Este dia vale para TODAS as frentes: excluir aqui o remove de todas elas.
+                  </strong>
+                </>
+              )}
+              {paraExcluir.frente_id !== null && paraExcluir.variante === null && (
+                <>
+                  {" "}
+                  <strong>
+                    Este dia vale para {nomeFrente} inteira: excluir aqui o remove de todos os
+                    cursos dela.
                   </strong>
                 </>
               )}
