@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Lock, UserPen, X } from "lucide-react";
+import { Check, Lock, UserPen, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
@@ -18,9 +18,11 @@ import {
   updateEntregaPrevistaCliente,
   ROTULO_STATUS_ESCOPO,
   rotuloDiaSemana,
+  updateCalendarioProjeto,
   updateDiaReuniaoPadrao,
   updateDiasAmbientacao,
 } from "@/lib/projetos";
+import { getCalendariosDaFrente, getSemestres } from "@/lib/calendario-academico";
 import type { BancaDoEscopo, EscopoVendido, ProjetoCompleto } from "@/types/projeto";
 import {
   PageStack,
@@ -38,6 +40,7 @@ import {
   FieldGroup,
   FieldInput,
   FieldLabel,
+  FieldSelect,
   FieldTextarea,
   FormErrorText,
   ModalOverlay,
@@ -54,6 +57,8 @@ import {
   DataItemValor,
   DataItemMeta,
   DataItemDetalhe,
+  DataItemCampo,
+  DataItemEstado,
   DataTable,
   TableHead,
   TableHeadCell,
@@ -190,6 +195,8 @@ function DatasCard({
           </DataItem>
 
           <DataEditavelDiaReuniao projeto={projeto} token={token} recarregar={recarregar} />
+
+          <DataEditavelCalendario projeto={projeto} token={token} recarregar={recarregar} />
 
           {/* Metadado de auditoria, não conteúdo do dia a dia: menor e por
               último, sem competir com as datas que alguém veio ler. */}
@@ -1354,6 +1361,148 @@ function DataEditavelDiasAmbientacao({
  * mesma largura para "não sei" e para cada dia da semana, e "não sei" não é
  * uma escolha do mesmo peso. O `title` de cada botão avisa do gesto.
  */
+/** Um id estável para amarrar o rótulo ao campo (a11y: label + htmlFor). */
+const ID_CALENDARIO = "calendario-academico-do-projeto";
+
+/**
+ * Qual calendário acadêmico o time deste projeto segue.
+ *
+ * ⚠ **Já foi um segmented control, e ninguém viu que era clicável.** Dois
+ * botões de texto, um preenchido, dentro de uma grade em que todo o resto é
+ * fato só de leitura — lia como etiqueta de status, irmã do `PageBadge` que
+ * aparece a três células dali. O campo funcionava e passava despercebido.
+ *
+ * Agora é um select de verdade: borda, fundo, seta e foco visível dizem
+ * "mexa em mim" antes de qualquer texto explicar. A troca também resolve dois
+ * problemas que o controle antigo tinha de brinde — ele crescia na horizontal
+ * a cada curso novo, e o rótulo do padrão não dizia QUAL calendário era.
+ *
+ * Só aparece quando alguma frente do projeto tem mais de um calendário — hoje
+ * a Tech, que cobre engenharias e Ciência da Computação. Nas outras a linha
+ * seria uma pergunta sem resposta possível.
+ */
+function DataEditavelCalendario({
+  projeto,
+  token,
+  recarregar,
+}: {
+  projeto: ProjetoCompleto;
+  token: string | null;
+  recarregar: () => Promise<void>;
+}) {
+  const { usuario } = useAuth();
+  const podeEditar = !!usuario?.permissoes.pode_editar_equipe;
+  const [opcoes, setOpcoes] = useState<string[]>([]);
+  /** O nome do calendário que a frente segue por padrão, para o rótulo dizer
+   *  qual é em vez de só "padrão" — a escolha de não trocar também é uma
+   *  escolha, e quem lê precisa saber o que ela significa. */
+  const [padrao, setPadrao] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  /** Confirmação que some sozinha. O efeito da troca acontece em OUTRA aba
+   *  (o cronograma), então sem isto a tela não dá sinal nenhum de ter salvo. */
+  const [salvo, setSalvo] = useState(false);
+  const [erro, setErro] = useState("");
+
+  const frentes = useMemo(
+    () => [...new Set(projeto.escopos.map((e) => e.frente_id).filter(Boolean))] as number[],
+    [projeto.escopos],
+  );
+
+  useEffect(() => {
+    let cancelado = false;
+    async function carregar() {
+      if (!token || frentes.length === 0) return;
+      try {
+        const semestres = await getSemestres(token);
+        const ativo = semestres.find((s) => s.status === "ativa") ?? semestres[0];
+        if (!ativo) return;
+        const respostas = await Promise.all(
+          frentes.map((id) => getCalendariosDaFrente(ativo.id, id, token)),
+        );
+        if (cancelado) return;
+        setOpcoes([...new Set(respostas.flatMap((r) => r.calendarios))].sort());
+        // Só nomeia o padrão quando ele é um só. Num projeto sinérgico em que
+        // duas frentes têm padrões diferentes, dizer um nome mentiria sobre a
+        // outra — aí o rótulo genérico é o honesto.
+        const padroes = [...new Set(respostas.map((r) => r.padrao).filter(Boolean))];
+        setPadrao(padroes.length === 1 ? (padroes[0] as string) : null);
+      } catch {
+        // Silencioso de propósito: sem os calendários a linha some, e o
+        // projeto segue no padrão da frente. Não é erro que peça a atenção de
+        // quem só veio ler a visão geral.
+      }
+    }
+    carregar();
+    return () => {
+      cancelado = true;
+    };
+  }, [token, frentes]);
+
+  useEffect(() => {
+    if (!salvo) return;
+    const id = setTimeout(() => setSalvo(false), 2500);
+    return () => clearTimeout(id);
+  }, [salvo]);
+
+  if (opcoes.length === 0) return null;
+
+  const rotuloPadrao = padrao ? `Padrão da frente (${padrao})` : "Padrão da frente";
+  const atual = projeto.calendario ?? "";
+
+  async function escolher(destino: string) {
+    if (!token || salvando || destino === atual) return;
+    setSalvando(true);
+    setErro("");
+    setSalvo(false);
+    try {
+      await updateCalendarioProjeto(projeto.id, destino || null, token);
+      await recarregar();
+      setSalvo(true);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao salvar o calendário");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <DataItemLargo>
+      <DataItemLabel as="label" htmlFor={ID_CALENDARIO}>
+        Calendário acadêmico
+      </DataItemLabel>
+      <DataItemValor>
+        {podeEditar ? (
+          <DataItemCampo>
+            <FieldSelect
+              id={ID_CALENDARIO}
+              value={atual}
+              disabled={salvando}
+              onChange={(e: { target: { value: string } }) => escolher(e.target.value)}
+            >
+              <option value="">{rotuloPadrao}</option>
+              {opcoes.map((nome) => (
+                <option key={nome} value={nome}>
+                  {nome}
+                </option>
+              ))}
+            </FieldSelect>
+            {salvando && <DataItemEstado>Salvando…</DataItemEstado>}
+            {salvo && !salvando && (
+              <DataItemEstado $ok role="status">
+                <Check size={13} aria-hidden />
+                Salvo
+              </DataItemEstado>
+            )}
+          </DataItemCampo>
+        ) : (
+          <span>{projeto.calendario ?? rotuloPadrao}</span>
+        )}
+      </DataItemValor>
+      {erro && <FormErrorText>{erro}</FormErrorText>}
+    </DataItemLargo>
+  );
+}
+
 function DataEditavelDiaReuniao({
   projeto,
   token,

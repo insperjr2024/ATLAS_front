@@ -1004,6 +1004,37 @@ export const DataItemNota = styled.span`
   color: ${theme.colors.mutedForeground};
 `;
 
+/**
+ * A caixa de um campo EDITÁVEL dentro da grade de Datas.
+ *
+ * ⭐ **Por que existe.** A grade é uma parede de fatos só de leitura, e um
+ * controle largado no meio dela é lido como mais um fato. Foi o que aconteceu
+ * com o calendário do projeto: era um segmented control, e quem usou não
+ * percebeu que dava para clicar — os dois botões pareciam etiqueta de status,
+ * que é justamente o que `PageBadge` desenha três células ao lado.
+ *
+ * A largura é limitada porque o `DataItemLargo` ocupa duas colunas do grid: um
+ * select esticado até o fim delas fica com um vazio enorme entre o texto e a
+ * seta, e aí volta a não parecer campo.
+ */
+export const DataItemCampo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+  max-width: 17rem;
+`;
+
+/** O estado da gravação ao lado do campo: "Salvando…" e depois "Salvo". */
+export const DataItemEstado = styled.span<{ $ok?: boolean }>`
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: ${theme.fontSize.xs};
+  color: ${({ $ok }) => ($ok ? theme.colors.primary : theme.colors.mutedForeground)};
+`;
+
 export const EquipeList = styled.ul`
   display: flex;
   flex-direction: column;

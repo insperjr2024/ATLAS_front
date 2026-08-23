@@ -19,8 +19,19 @@ import {
   FormErrorText,
 } from "./Bancas.styled";
 
+/**
+ * Até onde o dia alcança.
+ *
+ * São três degraus, do mais amplo ao mais estreito, e não dois: a frente
+ * deixou de ser o menor recorte quando um curso dela passou a ter calendário
+ * próprio.
+ */
+export type DestinoDoDia = "global" | "frente" | "calendario";
+
 interface Props {
   nomeFrente: string;
+  /** O calendário de curso aberto na tela. `null` = a frente tem um só. */
+  nomeCalendario?: string | null;
   /** Limites do semestre: o backend recusa data fora dele. */
   semestre: { nome: string; inicio: string; fim: string };
   onCancelar: () => void;
@@ -28,7 +39,7 @@ interface Props {
     data: string;
     tipo: TipoDiaNaoLetivo;
     descricao: string;
-    global: boolean;
+    destino: DestinoDoDia;
   }) => Promise<void>;
 }
 
@@ -46,11 +57,22 @@ const TIPOS: { valor: TipoDiaNaoLetivo; rotulo: string }[] = [
  * O calendário do Insper não cobre tudo: a diretoria precisa poder bloquear um
  * dia que só ela sabe, uma data institucional da Jr, um evento interno.
  */
-export function AdicionarDiaModal({ nomeFrente, semestre, onCancelar, onSalvar }: Props) {
+export function AdicionarDiaModal({
+  nomeFrente,
+  nomeCalendario,
+  semestre,
+  onCancelar,
+  onSalvar,
+}: Props) {
   const [data, setData] = useState("");
   const [tipo, setTipo] = useState<TipoDiaNaoLetivo>("feriado");
   const [descricao, setDescricao] = useState("");
-  const [global, setGlobal] = useState(false);
+  /* Nasce no recorte mais estreito que está aberto na tela: quem abriu o
+     calendário de um curso está mexendo nele, e o dia que vale para todos é a
+     exceção, não o padrão. */
+  const [destino, setDestino] = useState<DestinoDoDia>(
+    nomeCalendario ? "calendario" : "frente",
+  );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -65,6 +87,31 @@ export function AdicionarDiaModal({ nomeFrente, semestre, onCancelar, onSalvar }
   // Semana de avaliação é do CURSO: o backend recusa gravá-la sem frente. A
   // trava vive lá; aqui o campo só reflete isso em vez de deixar errar.
   const podeSerGlobal = tipo !== "prova";
+  const escolhido: DestinoDoDia = destino === "global" && !podeSerGlobal ? "frente" : destino;
+
+  const DESTINOS: { valor: DestinoDoDia; rotulo: string; nota?: string }[] = [
+    {
+      valor: "global",
+      rotulo: "Todas as frentes",
+      nota: podeSerGlobal
+        ? "Feriado nacional e afins."
+        : "Indisponível: cada curso tem as suas datas de avaliação.",
+    },
+    {
+      valor: "frente",
+      rotulo: `${nomeFrente} inteira`,
+      nota: "Vale para todos os cursos desta frente.",
+    },
+    ...(nomeCalendario
+      ? [
+          {
+            valor: "calendario" as DestinoDoDia,
+            rotulo: nomeCalendario,
+            nota: "Só para quem segue este calendário.",
+          },
+        ]
+      : []),
+  ];
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -79,7 +126,7 @@ export function AdicionarDiaModal({ nomeFrente, semestre, onCancelar, onSalvar }
         data,
         tipo,
         descricao: descricao.trim() || TIPOS.find((t) => t.valor === tipo)!.rotulo,
-        global: podeSerGlobal && global,
+        destino: escolhido,
       });
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao adicionar");
@@ -139,21 +186,24 @@ export function AdicionarDiaModal({ nomeFrente, semestre, onCancelar, onSalvar }
 
             <FieldGroup>
               <FieldLabel as="span">Vale para</FieldLabel>
-              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <input
-                  type="checkbox"
-                  checked={podeSerGlobal && global}
-                  disabled={!podeSerGlobal}
-                  onChange={(e) => setGlobal(e.target.checked)}
-                />
-                <span>
-                  Todas as frentes
-                  {!podeSerGlobal && " · indisponível: cada curso tem as suas datas de avaliação"}
-                </span>
-              </label>
-              {!(podeSerGlobal && global) && (
-                <small style={{ opacity: 0.75 }}>Fica só em {nomeFrente}.</small>
-              )}
+              {DESTINOS.map((d) => (
+                <label
+                  key={d.valor}
+                  style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                >
+                  <input
+                    type="radio"
+                    name="destino-do-dia"
+                    checked={escolhido === d.valor}
+                    disabled={d.valor === "global" && !podeSerGlobal}
+                    onChange={() => setDestino(d.valor)}
+                  />
+                  <span>
+                    {d.rotulo}
+                    {d.nota && <small style={{ opacity: 0.75 }}> · {d.nota}</small>}
+                  </span>
+                </label>
+              ))}
             </FieldGroup>
 
             {erro && <FormErrorText>{erro}</FormErrorText>}
