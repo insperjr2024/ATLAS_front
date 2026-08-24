@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Maximize2, Minimize2, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { createMentoria, deleteMentoria, getMentorias } from "@/lib/desempenho-mentorias";
 import { getUsuarios } from "@/lib/usuarios";
@@ -244,6 +244,8 @@ export function PainelPdi() {
         </PageCardContent>
       </PageCard>
 
+      <PastasPdiCard />
+
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>
@@ -318,8 +320,6 @@ export function PainelPdi() {
         )}
       </PageCard>
 
-      <PastasPdiCard />
-
       {paraRemover && (
         <ConfirmarModal
           titulo="Remover mentoria"
@@ -354,6 +354,7 @@ function PastasPdiCard() {
   const [erroExcluir, setErroExcluir] = useState("");
 
   const [modalAberto, setModalAberto] = useState(false);
+  const [modalExpandido, setModalExpandido] = useState(false);
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<DesempenhoPdiPastaTipo>("encontro");
   const [prazo, setPrazo] = useState("");
@@ -420,6 +421,7 @@ function PastasPdiCard() {
 
   function abrirModal() {
     setModalAberto(true);
+    setModalExpandido(false);
     setNome("");
     setTipo("encontro");
     setPrazo("");
@@ -859,12 +861,22 @@ function PastasPdiCard() {
 
       {modalAberto && (
         <ModalOverlay onClick={() => setModalAberto(false)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
+          <ModalContent $expandido={modalExpandido} onClick={(e) => e.stopPropagation()}>
             <ModalHeader>
               <ModalTitle>Nova pasta de PDI</ModalTitle>
-              <ModalClose type="button" onClick={() => setModalAberto(false)} aria-label="Fechar">
-                <X size={16} />
-              </ModalClose>
+              <div style={{ display: "flex", gap: "0.25rem" }}>
+                <ModalClose
+                  type="button"
+                  onClick={() => setModalExpandido((v) => !v)}
+                  aria-label={modalExpandido ? "Recolher" : "Expandir"}
+                  title={modalExpandido ? "Recolher" : "Expandir"}
+                >
+                  {modalExpandido ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </ModalClose>
+                <ModalClose type="button" onClick={() => setModalAberto(false)} aria-label="Fechar">
+                  <X size={16} />
+                </ModalClose>
+              </div>
             </ModalHeader>
             <ModalBody>
               <FormStack onSubmit={handleCriar}>

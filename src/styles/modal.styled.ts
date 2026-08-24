@@ -27,15 +27,18 @@ export const ModalOverlay = styled.div`
   background: rgb(0 0 0 / 45%);
 `;
 
-export const ModalContent = styled.div`
+// `$expandido` é opcional e por padrão falso — os outros modais que importam
+// `ModalContent` sem o prop continuam do tamanho de sempre.
+export const ModalContent = styled.div<{ $expandido?: boolean }>`
   width: 100%;
-  max-width: 28rem;
-  max-height: min(90vh, 640px);
+  max-width: ${(p) => (p.$expandido ? "56rem" : "28rem")};
+  max-height: ${(p) => (p.$expandido ? "90vh" : "min(90vh, 640px)")};
   overflow-y: auto;
   border-radius: ${theme.borderRadius.xl};
   border: 1px solid ${theme.colors.border};
   background: ${theme.colors.card};
   box-shadow: ${theme.shadows.lg};
+  transition: max-width 0.15s ease;
 `;
 
 export const ModalHeader = styled.div`
