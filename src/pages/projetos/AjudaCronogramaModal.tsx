@@ -165,10 +165,13 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
             do fim da janela, que abre o mesmo pedido já com os dias contados.
           </PassoTexto>
           <Regra>
-            O prazo é de <strong>3 dias úteis contados da reunião inicial</strong> — e, antes
-            dela, o pedido já vale durante <strong>toda a ambientação</strong>, inclusive no
-            último dia. Passado o prazo o botão some, porque a porta deixa de existir: todo
-            dia além da janela vira atraso do projeto, sem autorização envolvida.
+            O prazo depende de qual escopo é. No <strong>primeiro escopo vendido</strong> ele
+            vai até o <strong>último dia da ambientação</strong> (inclusive) — é nela que dá
+            para perceber que o escopo foi vendido apertado, e depois dela a largada já é o
+            time produzindo. Nos <strong>escopos seguintes</strong>, que não têm ambientação,
+            são <strong>3 dias úteis contados da reunião inicial</strong> daquele escopo.
+            Passado o prazo o botão some, porque a porta deixa de existir: todo dia além da
+            janela vira atraso do projeto, sem autorização envolvida.
           </Regra>
 
           <SecaoTitulo>Depois da banca</SecaoTitulo>

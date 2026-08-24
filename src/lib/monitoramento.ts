@@ -622,8 +622,16 @@ export interface AprovacaoDiasDeAjuste {
    * cabeça olhando "+5 sobre 8 vendidos".
    */
   fim_se_aprovar: string | null;
-  /** §8: último dia em que ainda cabia pedir. Passou, o pedido é fora do prazo. */
+  /** §8: último dia em que ainda cabia pedir — do 1º escopo é o fim da ambientação. */
   prazo_pedido_ajuste: string | null;
+  /**
+   * §20.1: o pedido chegou DEPOIS do prazo dele.
+   *
+   * ⚠ Não é "o prazo já venceu": o que vale é a data do pedido, e um pedido
+   * feito no último dia continua válido por mais que a decisão demore. Por
+   * isso vem pronto do backend, em vez de sair de uma comparação com hoje.
+   */
+  fora_do_prazo: boolean;
 }
 
 /** Um motivo de atraso — a mesma forma que a aba Atrasos consome. */

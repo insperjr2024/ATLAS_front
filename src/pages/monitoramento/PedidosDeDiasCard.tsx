@@ -41,13 +41,6 @@ import { AprovacaoLinha, FormDecisao } from "./AprovacaoLinha";
  * saiu; a fila de decisões tem uma aba dedicada.
  */
 
-/** Hoje em `yyyy-MM-dd` local — mesmo formato das datas que o backend manda. */
-function hojeIso(): string {
-  const agora = new Date();
-  const mes = String(agora.getMonth() + 1).padStart(2, "0");
-  const dia = String(agora.getDate()).padStart(2, "0");
-  return `${agora.getFullYear()}-${mes}-${dia}`;
-}
 interface Props {
   itens: AprovacaoDiasDeAjuste[];
   onDecidiu: () => void;
@@ -75,11 +68,12 @@ export function PedidosDeDiasCard({ itens, onDecidiu, voltarPara, voltarRotulo }
           <ListaSimples>
             {pedidos.map((p) => {
               const janelaAtual = p.dias_vendidos + p.dias_ajustados;
-              // Comparação de STRINGS de data local: `new Date("yyyy-MM-dd")`
-              // é meia-noite UTC, e a comparação com o agora local carimbava
-              // "fora do prazo" no próprio dia do prazo — que ainda vale (§8).
-              const foraDoPrazo =
-                !!p.prazo_pedido_ajuste && p.prazo_pedido_ajuste.slice(0, 10) < hojeIso();
+              // ⚠ **Quem decide isto é o backend** (`fora_do_prazo`), e a
+              // régua é o §20.1: vale a data do PEDIDO. Aqui a conta era
+              // "prazo < hoje", o que acusava de atrasado quem pediu no prazo
+              // e só esperou a diretoria responder — justamente a pessoa que
+              // esta fila está julgando.
+              const foraDoPrazo = p.fora_do_prazo;
               return (
                 <AprovacaoLinha
                   key={p.id}
