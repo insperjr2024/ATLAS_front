@@ -608,8 +608,8 @@ export function ProjetoCronograma() {
     if (!escopo) return null;
 
     // **Aqui só entra INFORMAÇÃO, nunca pedido.** O "peça dias de ajuste"
-    // virou um botão na barra, visível apenas nos 3 dias úteis em que o pedido
-    // existe, misturado ao aviso de atraso, ele fazia parecer que aumentar a
+    // virou um botão na barra, visível apenas enquanto o prazo do pedido
+    // existe; misturado ao aviso de atraso, ele fazia parecer que aumentar a
     // janela e corrigir o que a banca apontou fossem a mesma coisa.
     //
     // ANTES do corte de `data_inicio`: um pedido feito na ambientação existe
@@ -1033,9 +1033,9 @@ export function ProjetoCronograma() {
    * conjunto pediria um dia que a janela não gasta.
    *
    * Vazio (= a parede volta a ser parede) quando o pedido não teria como ser
-   * aceito: fora dos 3 dias úteis, para quem não é o coordenador, ou com um
-   * pedido já pendente. Abrir o formulário nesses casos entregaria um 422
-   * depois de a pessoa escrever a justificativa.
+   * aceito: fora do prazo (`pedido_ajuste_aberto`), para quem não é o
+   * coordenador, ou com um pedido já pendente. Abrir o formulário nesses casos
+   * entregaria um 422 depois de a pessoa escrever a justificativa.
    */
   const diasNegociaveis = useMemo(() => {
     const negociaveis = new Set<string>();
@@ -1611,7 +1611,8 @@ export function ProjetoCronograma() {
   /**
    * o coordenador pede mais dias para a JANELA do escopo.
    *
-   * O backend recusa fora do prazo de 3 dias úteis e para quem não é o
+   * O backend recusa fora do prazo (que é o fim da ambientação no primeiro
+   * escopo e 3 dias úteis da largada nos demais) e para quem não é o
    * coordenador, não duplicamos a regra aqui. Deixa o erro SUBIR para o modal
    * em vez de tratá-lo: a recusa ("o prazo venceu em 08/09") pertence ao
    * formulário que a pessoa está preenchendo, não a um banner no topo.
@@ -1873,7 +1874,7 @@ export function ProjetoCronograma() {
              * A partir daqui, o que está pintado é CORREÇÃO.
              *
              * Correção ≠ dia de ajuste. Ajuste aumenta a JANELA e é pedido à
-             * diretoria nos 3 primeiros dias úteis; correção é o tempo gasto
+             * diretoria dentro do prazo do §8; correção é o tempo gasto
              * depois da banca arrumando o que ela apontou. Sem o rótulo, o
              * mesmo retângulo colorido pode ser o trabalho vendido ou a
              * correção, e o calendário deixa de contar a história certa.

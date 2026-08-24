@@ -46,9 +46,11 @@ interface Props {
  * precisado de mais 10 é a informação inteira, e é ela que a diretoria está
  * decidindo aqui.
  *
- * As regras (só o coordenador, só dentro dos 3 dias úteis) NÃO são repetidas
- * aqui: elas moram no backend, que responde 422 com a explicação pronta. Duas
- * cópias da mesma regra divergiriam no primeiro ajuste.
+ * As regras (só o coordenador, só dentro do prazo — que tem uma régua para o
+ * primeiro escopo vendido e outra para os demais) NÃO são repetidas aqui: elas
+ * moram no backend, que responde 422 com a explicação pronta, e a data que
+ * aparece na tela vem de lá (`prazo_pedido_ajuste`). Duas cópias da mesma
+ * regra divergiriam no primeiro ajuste.
  */
 export function PedirDiasModal({
   nomeEscopo,

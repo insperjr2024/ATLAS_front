@@ -148,9 +148,14 @@ export function CronogramaBarra({
   const modoAtivo = modos.find((m) => m.valor === modoMarcacao);
 
   /* ⚠ A porta de aumentar a JANELA do escopo, e nada além disso. Só para o
-     coordenador, com escopo escolhido, durante a ambientação ou nos 3 dias
-     úteis depois da largada — é aí que dá para perceber que o escopo foi
-     vendido apertado. Fora disso o botão some, porque a porta não existe mais.
+     coordenador, com escopo escolhido, e só dentro do prazo — até o último dia
+     da ambientação no primeiro escopo vendido, nos 3 dias úteis depois da
+     largada nos demais. É aí que dá para perceber que o escopo foi vendido
+     apertado. Fora disso o botão some, porque a porta não existe mais.
+
+     Quem decide o prazo é o backend (`pedido_ajuste_aberto` /
+     `prazo_pedido_ajuste`): a régua tem duas metades e recalculá-la aqui era
+     garantir que a tela e a decisão discordassem em algum caso.
 
      Não confundir com as CORREÇÕES pós-banca: aquilo é tempo gasto arrumando
      o que a banca apontou, não se pede a ninguém e não aumenta janela. */
