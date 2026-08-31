@@ -1037,6 +1037,7 @@ function MembroModal({
   const [excluindo, setExcluindo] = useState(false);
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(membro.nome);
+  const [email, setEmail] = useState(membro.email_insper);
   const [posicao, setPosicao] = useState<Posicao>(membro.posicao);
   const [status, setStatus] = useState<StatusUsuario>(membro.status);
   const [frenteIds, setFrenteIds] = useState<number[]>(() =>
@@ -1080,6 +1081,7 @@ function MembroModal({
         membro.id,
         {
           nome: nome.trim(),
+          email_insper: email.trim(),
           posicao,
           status,
           // `ativo` é espelho de `status` (F2), mandado junto para o front
@@ -1199,6 +1201,21 @@ function MembroModal({
                 </FieldGroup>
 
                 <FieldGroup>
+                  {/* O email é a credencial de login e o destino da recuperação
+                      de senha. Editável pela diretoria para corrigir erro de
+                      cadastro ou troca de email institucional. */}
+                  <FieldLabel htmlFor="email-membro">E-mail Insper</FieldLabel>
+                  <FieldInput
+                    id="email-membro"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="nome@al.insper.edu.br"
+                    required
+                  />
+                </FieldGroup>
+
+                <FieldGroup>
                   {/* "na troca de gestão, muitos consultores viram
                       coordenadores ou gerentes", a promoção da virada é
                       feita por aqui. */}
@@ -1281,6 +1298,8 @@ function MembroModal({
                 type="button"
                 onClick={() => {
                   setEditando(false);
+                  setNome(membro.nome);
+                  setEmail(membro.email_insper);
                   setPosicao(membro.posicao);
                   setStatus(membro.status);
                   setFrenteIds(
