@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Lock, UserPen, X } from "lucide-react";
+import { Check, Lock, Plus, Trash2, UserPen, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS_BANCA, tomDoStatusBanca } from "@/lib/bancas";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
@@ -9,6 +9,8 @@ import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   confirmarEntregaEscopo,
   DIAS_REUNIAO,
+  createEscopoProjeto,
+  deleteEscopoProjeto,
   formatarData,
   formatarDataHora,
   formatarDataHoraBanca,
@@ -23,6 +25,9 @@ import {
   updateDiasAmbientacao,
 } from "@/lib/projetos";
 import { getCalendariosDaFrente, getSemestres } from "@/lib/calendario-academico";
+import { getEscopos } from "@/lib/escopos";
+import { NovoEscopoVendidoModal } from "./NovoEscopoVendidoModal";
+import type { Escopo } from "@/types/banca";
 import type { BancaDoEscopo, EscopoVendido, ProjetoCompleto } from "@/types/projeto";
 import {
   PageStack,
@@ -37,6 +42,7 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  RemoverEscopoBotao,
   FieldGroup,
   FieldInput,
   FieldLabel,
@@ -336,7 +342,7 @@ function motivoDaTrava(banca: BancaDoEscopo | null): string {
  * banca do escopo não estiver aprovada.
  */
 function TabelaEscopos() {
-  const { projeto, recarregar } = useProjeto();
+  const { projeto, frentes, recarregar } = useProjeto();
   const { usuario, token } = useAuth();
   /** o escopo cujo atraso está sendo justificado. */
   const [justificando, setJustificando] = useState<{
@@ -366,6 +372,58 @@ function TabelaEscopos() {
    */
   const podeConfirmar =
     !!usuario && (ehDiretoriaDeProjetos(usuario) || usuario.id === projeto.coordenador_id);
+
+  /**
+   * ⭐ Mexer na LISTA de escopos vendidos: acrescentar e remover (§4).
+   *
+   * São exatamente dois (2026-08-31): o coordenador DESTE projeto — é ele quem
+   * descobre que faltou um escopo ou que um entrou em duplicidade — e a
+   * diretoria de projetos. A gerência de frente, que entrava junto da
+   * diretoria, deixou de entrar.
+   *
+   * ⚠ `coordenador_ids` e não `coordenador_id`: o singular é o primeiro da
+   * lista, mantido só para telas antigas, e um projeto pode ter mais de um
+   * coordenador. O front só ESCONDE — quem recusa é `exigir_pode_editar_escopos`.
+   */
+  const podeEditarEscopos =
+    !!usuario &&
+    (ehDiretoriaDeProjetos(usuario) || projeto.coordenador_ids.includes(usuario.id));
+
+  const [adicionandoEscopo, setAdicionandoEscopo] = useState(false);
+  const [escopoParaRemover, setEscopoParaRemover] = useState<EscopoVendido | null>(null);
+  /** O catálogo só é buscado quando o modal abre — quem não edita não paga. */
+  const [catalogo, setCatalogo] = useState<Escopo[]>([]);
+  /** `frentes` do contexto são TODAS; o escopo só pode ser de uma do projeto,
+   *  e o backend recusa o resto (`validar_escopo_vendido`). */
+  const frentesDoProjeto = useMemo(
+    () => frentes.filter((f) => projeto.frente_ids.includes(f.id)),
+    [frentes, projeto.frente_ids],
+  );
+
+  useEffect(() => {
+    if (!adicionandoEscopo || !token || catalogo.length > 0) return;
+    getEscopos(token)
+      .then(setCatalogo)
+      .catch(() => setCatalogo([]));
+  }, [adicionandoEscopo, token, catalogo.length]);
+
+  async function adicionarEscopo(dados: Parameters<typeof createEscopoProjeto>[1]) {
+    if (!token) return;
+    // O erro sobe: o modal mostra e continua aberto, com o que foi digitado.
+    await createEscopoProjeto(projeto.id, dados, token);
+    setAdicionandoEscopo(false);
+    await recarregar();
+  }
+
+  async function removerEscopo() {
+    if (!token || !escopoParaRemover) return;
+    // O erro SOBE: o `ConfirmarModal` mostra a recusa do backend (escopo com
+    // banca marcada, por exemplo) e continua aberto. Tratar aqui seria fechar
+    // o modal e reescrever a mensagem num lugar mais longe da ação.
+    await deleteEscopoProjeto(escopoParaRemover.id, token);
+    setEscopoParaRemover(null);
+    await recarregar();
+  }
 
   // A única escrita daqui é a JUSTIFICATIVA DO ATRASO, e ela é
   // exceção pelo mesmo motivo que o resto não é: datas de escopo, banca e
@@ -402,6 +460,12 @@ function TabelaEscopos() {
             tabela.
           </InfoDica>
         </PageCardTitle>
+        {podeEditarEscopos && (
+          <PageButtonSm type="button" onClick={() => setAdicionandoEscopo(true)}>
+            <Plus size={14} aria-hidden />
+            Adicionar escopo
+          </PageButtonSm>
+        )}
       </PageCardHeader>
       <PageCardContent>
         {projeto.escopos.length === 0 ? (
@@ -409,8 +473,11 @@ function TabelaEscopos() {
         ) : (
           <>
             {/* 7 colunas, três delas com dica de rodapé: é a tabela mais larga
-                da página do projeto. */}
-            <TabelaRolagem $min="56rem">
+                da página do projeto. A 8ª (a lixeira) só existe para quem edita
+                escopos, e por isso a largura mínima cresce só para essa pessoa
+                — do contrário a tabela ganharia rolagem lateral para todo mundo
+                por causa de uma coluna que a maioria não vê. */}
+            <TabelaRolagem $min={podeEditarEscopos ? "60rem" : "56rem"}>
               <DataTable>
                 <TableHead>
                   <TableRow>
@@ -431,6 +498,9 @@ function TabelaEscopos() {
                     </TableHeadCell>
                     <TableHeadCell>Banca</TableHeadCell>
                     <TableHeadCell>Entrega</TableHeadCell>
+                    {/* Sem rótulo: a coluna é só a lixeira, e "Ações" sobre um
+                        ícone único é uma palavra que não informa nada. */}
+                    {podeEditarEscopos && <TableHeadCell aria-label="Remover" />}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -484,8 +554,10 @@ function TabelaEscopos() {
                                 inteira. A barra usa a soma; o texto, a separação. */}
                             <small>
                               {escopo.dias_uteis_vendidos} vendidos
-                              {escopo.dias_uteis_ajustados > 0 &&
-                                ` · ${escopo.dias_uteis_ajustados} ajustados`}
+                              {escopo.dias_uteis_ajustados !== 0 &&
+                                (escopo.dias_uteis_ajustados > 0
+                                  ? ` · ${escopo.dias_uteis_ajustados} ajustados`
+                                  : ` · ${Math.abs(escopo.dias_uteis_ajustados)} a menos`)}
                             </small>
                           </ProgressoWrap>
                         </TableCell>
@@ -568,6 +640,27 @@ function TabelaEscopos() {
                             </Cadeado>
                           )}
                         </TableCell>
+
+                        {podeEditarEscopos && (
+                          <TableCell>
+                            {/* O backend recusa escopo com banca marcada; aqui
+                                o botão já sai desabilitado dizendo por quê, em
+                                vez de deixar clicar e devolver 422. */}
+                            <RemoverEscopoBotao
+                              type="button"
+                              disabled={!!banca}
+                              aria-label={`Remover o escopo ${escopo.nome}`}
+                              title={
+                                banca
+                                  ? "Escopo com banca marcada não pode ser removido"
+                                  : "Remover escopo"
+                              }
+                              onClick={() => setEscopoParaRemover(escopo)}
+                            >
+                              <Trash2 size={14} />
+                            </RemoverEscopoBotao>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -577,6 +670,32 @@ function TabelaEscopos() {
           </>
         )}
       </PageCardContent>
+
+      {adicionandoEscopo && (
+        <NovoEscopoVendidoModal
+          catalogo={catalogo}
+          frentes={frentesDoProjeto}
+          jaVendidos={projeto.escopos}
+          onCancelar={() => setAdicionandoEscopo(false)}
+          onCriar={adicionarEscopo}
+        />
+      )}
+
+      {escopoParaRemover && (
+        <ConfirmarModal
+          titulo="Remover escopo"
+          mensagem={
+            <>
+              O escopo <strong>{escopoParaRemover.nome}</strong> sai deste projeto, e com
+              ele as etapas pintadas no cronograma dele. As reuniões já registradas não
+              somem — voltam a ser reuniões gerais do projeto.
+            </>
+          }
+          rotuloConfirmar="Remover"
+          onCancelar={() => setEscopoParaRemover(null)}
+          onConfirmar={removerEscopo}
+        />
+      )}
 
       {justificando && token && (
         <JustificarAtrasoEscopoModal

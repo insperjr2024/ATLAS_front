@@ -159,8 +159,9 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
 
           <SecaoTitulo>Precisa de mais dias?</SecaoTitulo>
           <PassoTexto>
-            Se o escopo foi vendido apertado, o coordenador pode pedir dias extras à
-            diretoria, e eles <strong>aumentam a janela</strong>. Há dois caminhos: o botão{" "}
+            Se o escopo foi vendido apertado, o coordenador do projeto ou a diretoria de
+            projetos podem pedir dias extras, e eles <strong>aumentam a janela</strong>. Quem
+            decide é sempre a diretoria de projetos. Há dois caminhos: o botão{" "}
             <strong>Pedir mais dias</strong> na barra, ou simplesmente arrastar a etapa além
             do fim da janela, que abre o mesmo pedido já com os dias contados.
           </PassoTexto>

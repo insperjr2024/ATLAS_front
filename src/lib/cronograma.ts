@@ -99,6 +99,28 @@ export function editarEtapa(
   });
 }
 
+/**
+ * ⭐ O ajuste manual da janela do escopo — **só a diretoria de projetos**.
+ *
+ * Muda o tamanho da janela a qualquer momento, sem a janela, o prazo do §8 ou
+ * o estado do projeto no caminho.
+ *
+ * ⚠ `dias_uteis_janela` é o TOTAL (vendidos + ajustados), não um incremento.
+ * O backend guarda a diferença em `dias_uteis_ajustados` e nunca toca no
+ * vendido, que é o registro comercial.
+ */
+export function ajustarJanelaManual(
+  escopoId: number,
+  dados: { dias_uteis_janela: number },
+  token: string,
+) {
+  return apiFetch(`/escopos-projeto/${escopoId}/ajuste-manual`, {
+    method: "PUT",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
 /** Apaga a etapa e, com ela, a pintura dos dias que eram dela. */
 export function deleteEtapa(etapaId: number, token: string) {
   return apiFetch(`/cronograma/etapas/${etapaId}`, { method: "DELETE", token });
@@ -154,11 +176,14 @@ export function oficializarCronograma(escopoId: number, token: string) {
    abaixo, e é só ele que passa por aprovação. */
 
 /**
- * O coordenador pede dias extras para o escopo.
+ * O coordenador do projeto (ou a diretoria de projetos) pede dias extras para
+ * o escopo.
  *
- * Só dá certo nos **3 primeiros dias úteis** da janela (a partir da reunião
- * inicial) e só para o coordenador daquele projeto, as duas regras são do
- * backend, e ele responde 422 com a explicação pronta para a tela mostrar.
+ * Só dá certo dentro do prazo — o fim da ambientação no primeiro escopo
+ * vendido, os **3 primeiros dias úteis** da reunião inicial nos demais — e só
+ * para o coordenador daquele projeto ou para a diretoria de projetos
+ * (2026-08-31). As duas regras são do backend, e ele responde 422 com a
+ * explicação pronta para a tela mostrar.
  */
 export function pedirDiasDeAjuste(
   escopoId: number,
