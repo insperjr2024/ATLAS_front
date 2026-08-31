@@ -484,8 +484,10 @@ function TabelaEscopos() {
                                 inteira. A barra usa a soma; o texto, a separação. */}
                             <small>
                               {escopo.dias_uteis_vendidos} vendidos
-                              {escopo.dias_uteis_ajustados > 0 &&
-                                ` · ${escopo.dias_uteis_ajustados} ajustados`}
+                              {escopo.dias_uteis_ajustados !== 0 &&
+                                (escopo.dias_uteis_ajustados > 0
+                                  ? ` · ${escopo.dias_uteis_ajustados} ajustados`
+                                  : ` · ${Math.abs(escopo.dias_uteis_ajustados)} a menos`)}
                             </small>
                           </ProgressoWrap>
                         </TableCell>
