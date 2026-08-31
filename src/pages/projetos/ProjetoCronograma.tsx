@@ -22,6 +22,7 @@ import {
   type RascunhoEtapa,
   moverEtapa,
   oficializarCronograma,
+  ajustarJanelaManual,
   pedirDiasDeAjuste,
 } from "@/lib/cronograma";
 import {
@@ -100,6 +101,7 @@ import { NovaEtapaModal } from "./NovaEtapaModal";
 import { MarcarBancaModal } from "./MarcarBancaModal";
 import { MarcarEntregaModal } from "./MarcarEntregaModal";
 import { AjudaCronogramaModal } from "./AjudaCronogramaModal";
+import { AjusteJanelaModal } from "./AjusteJanelaModal";
 import { AvisoRegra } from "@/components/AvisoRegra";
 import { MarcarReuniaoModal } from "./MarcarReuniaoModal";
 import { BancaDetalhesModal } from "./BancaDetalhesModal";
@@ -440,17 +442,25 @@ export function ProjetoCronograma() {
     cor: string;
     escopoId: number;
   } | null>(null);
+  /** O escopo cuja janela a diretoria está ajustando, ou `null`. */
+  const [ajustandoJanela, setAjustandoJanela] = useState<number | null>(null);
 
   const podeEditar = !!usuario?.permissoes.pode_definir_cronograma;
   const ehDiretor = ehDiretoriaDeProjetos(usuario);
-  /**
-   * Só o COORDENADOR do projeto pede dias de ajuste, e por isso o botão
-   * é dele, mostrar para gerente ou diretor entregaria um 422 depois de
-   * preencher o formulário.
-   */
   const souCoordenador = projeto.equipe.some(
     (m) => m.usuario_id === usuario?.id && m.papel === "coordenador",
   );
+  /**
+   * Quem pede dias de ajuste (§8): o COORDENADOR deste projeto ou a DIRETORIA
+   * DE PROJETOS (2026-08-31, a pedido — ela enxerga o portfólio inteiro e pede
+   * sem estar na equipe).
+   *
+   * ⚠ Espelha `_exigir_quem_pode` do backend, e existe uma vez só porque a
+   * regra vale em dois lugares desta tela: o botão da barra e o arrasto para
+   * além da janela (`diasNegociaveis`). Mostrar para gerente ou consultor
+   * entregaria um 422 depois de preencher o formulário.
+   */
+  const podePedirDiasDeAjuste = souCoordenador || ehDiretor;
 
   const carregar = useCallback(async () => {
     if (!token) return;
@@ -655,7 +665,13 @@ export function ProjetoCronograma() {
       tom: "atraso" as const,
       texto:
         `${escopo.dias_uteis_vendidos} vendidos` +
-        (escopo.dias_uteis_ajustados ? ` · ${escopo.dias_uteis_ajustados} ajustados` : "") +
+        // Negativo desde o ajuste manual da diretoria: "· -15 ajustados" lia
+        // como erro de conta, "· 15 a menos" diz o que houve.
+        (escopo.dias_uteis_ajustados
+          ? escopo.dias_uteis_ajustados > 0
+            ? ` · ${escopo.dias_uteis_ajustados} ajustados`
+            : ` · ${Math.abs(escopo.dias_uteis_ajustados)} a menos`
+          : "") +
         ` · ${escopo.consumidos} consumidos · ${escopo.atraso} ` +
         `${escopo.atraso === 1 ? "dia" : "dias"} em atraso.`,
     };
@@ -1056,9 +1072,10 @@ export function ProjetoCronograma() {
    * conjunto pediria um dia que a janela não gasta.
    *
    * Vazio (= a parede volta a ser parede) quando o pedido não teria como ser
-   * aceito: fora do prazo (`pedido_ajuste_aberto`), para quem não é o
-   * coordenador, ou com um pedido já pendente. Abrir o formulário nesses casos
-   * entregaria um 422 depois de a pessoa escrever a justificativa.
+   * aceito: fora do prazo (`pedido_ajuste_aberto`), para quem não pode pedir
+   * (ver `podePedirDiasDeAjuste`), ou com um pedido já pendente. Abrir o
+   * formulário nesses casos entregaria um 422 depois de a pessoa escrever a
+   * justificativa.
    */
   const diasNegociaveis = useMemo(() => {
     const negociaveis = new Set<string>();
@@ -1070,7 +1087,7 @@ export function ProjetoCronograma() {
     const emAjustes = !!alvo.data_entrega_real || !!alvo.banca?.realizado_em;
     const fim = alvo.fim_janela?.slice(0, 10) ?? null;
     if (emAjustes || !fim) return negociaveis;
-    if (!souCoordenador || !alvo.pedido_ajuste_aberto || alvo.reajuste_pendente) {
+    if (!podePedirDiasDeAjuste || !alvo.pedido_ajuste_aberto || alvo.reajuste_pendente) {
       return negociaveis;
     }
 
@@ -1086,7 +1103,7 @@ export function ProjetoCronograma() {
       if (dia > fim && !naoUteis.has(dia)) negociaveis.add(dia);
     }
     return negociaveis;
-  }, [dados, escopoDoPincel, frenteDoPincel, fimDeSemana, souCoordenador]);
+  }, [dados, escopoDoPincel, frenteDoPincel, fimDeSemana, podePedirDiasDeAjuste]);
 
 
   /**
@@ -1394,6 +1411,23 @@ export function ProjetoCronograma() {
     if (trechos.length > 0) await carregar();
   }
 
+  /**
+   * ⭐ O ajuste manual da janela: um número, sem passar por trava nenhuma.
+   *
+   * ⚠ **Recarrega o PROJETO junto do cronograma.** `dias_uteis_ajustados` mora
+   * no escopo, e é dele que saem a faixa da janela, o aviso de estouro e a
+   * conta de dias na legenda — sem `recarregarProjeto`, a janela na tela
+   * continuaria a antiga com as etapas já na posição nova.
+   */
+  async function salvarAjusteDaJanela(escopoId: number, diasJanela: number) {
+    if (!token) return;
+    setAviso("");
+    // O erro sobe: o modal mostra e continua aberto, com o que foi digitado.
+    await ajustarJanelaManual(escopoId, { dias_uteis_janela: diasJanela }, token);
+    setAjustandoJanela(null);
+    await Promise.all([carregar(), recarregarProjeto()]);
+  }
+
   async function excluirGrupo(chave: string) {
     if (!token) return;
     const grupo = grupos.find((g) => g.chave === chave);
@@ -1632,11 +1666,12 @@ export function ProjetoCronograma() {
   }
 
   /**
-   * o coordenador pede mais dias para a JANELA do escopo.
+   * o coordenador (ou a diretoria de projetos) pede mais dias para a JANELA
+   * do escopo.
    *
    * O backend recusa fora do prazo (que é o fim da ambientação no primeiro
-   * escopo e 3 dias úteis da largada nos demais) e para quem não é o
-   * coordenador, não duplicamos a regra aqui. Deixa o erro SUBIR para o modal
+   * escopo e 3 dias úteis da largada nos demais) e para quem não pode pedir,
+   * não duplicamos a regra aqui. Deixa o erro SUBIR para o modal
    * em vez de tratá-lo: a recusa ("o prazo venceu em 08/09") pertence ao
    * formulário que a pessoa está preenchendo, não a um banner no topo.
    */
@@ -1821,7 +1856,7 @@ export function ProjetoCronograma() {
         escopoAtual={escopo}
         onEntregaPlanejada={salvarEntrega}
         podePedirDias={
-          !!escopo?.pedido_ajuste_aberto && souCoordenador && !escopo.reajuste_pendente
+          !!escopo?.pedido_ajuste_aberto && podePedirDiasDeAjuste && !escopo.reajuste_pendente
         }
         rotuloPrazoPedido={escopo ? formatarData(escopo.prazo_pedido_ajuste) : null}
         diasUteisRestantesDoPedido={diasUteisEntre(
@@ -1910,18 +1945,38 @@ export function ProjetoCronograma() {
                     Sem janela, o escopo ainda não teve reunião inicial, e é
                     isso que a linha diz. */}
                 {periodo ? (
-                  <LegendaItem as="div">
-                    <Amostra $cor={periodo.cor} />
-                    <LegendaTexto>
-                      <strong>janela do escopo</strong>
-                      <small>
-                        {semAno(periodo.inicio)} – {semAno(periodo.fim)} ·{" "}
-                        {esc.dias_uteis_vendidos} vendidos
-                        {esc.dias_uteis_ajustados > 0 &&
-                          ` + ${esc.dias_uteis_ajustados} ajustados`}
-                      </small>
-                    </LegendaTexto>
-                  </LegendaItem>
+                  <LegendaLinha>
+                    <LegendaItem as="div">
+                      <Amostra $cor={periodo.cor} />
+                      <LegendaTexto>
+                        <strong>janela do escopo</strong>
+                        <small>
+                          {semAno(periodo.inicio)} – {semAno(periodo.fim)} ·{" "}
+                          {esc.dias_uteis_vendidos} vendidos
+                          {esc.dias_uteis_ajustados !== 0 &&
+                            ` ${esc.dias_uteis_ajustados > 0 ? "+" : "−"} ${Math.abs(
+                              esc.dias_uteis_ajustados,
+                            )} ajustados`}
+                        </small>
+                      </LegendaTexto>
+                    </LegendaItem>
+                    {/* ⭐ A porta manual da DIRETORIA DE PROJETOS (2026-08-31).
+                        Mora aqui, e não no lápis de cada etapa, porque o que
+                        se remaneja é o conjunto: esticar a janela e mover as
+                        etapas dentro dela são o mesmo ato, e um modal por
+                        etapa faria decidir sem nunca ver o todo. */}
+                    {ehDiretor && (
+                      <BotaoEditarEtapa
+                        type="button"
+                        data-acao-etapa
+                        aria-label={`Ajustar a janela e as etapas de ${esc.nome}`}
+                        title="Ajustar janela e datas das etapas"
+                        onClick={() => setAjustandoJanela(esc.id)}
+                      >
+                        <Pencil size={14} />
+                      </BotaoEditarEtapa>
+                    )}
+                  </LegendaLinha>
                 ) : (
                   <EmptyText>
                     Sem janela: marque a reunião inicial no calendário, é ela que abre a
@@ -2207,6 +2262,20 @@ export function ProjetoCronograma() {
           onCriar={(nome, cor) => salvarEdicaoEtapa(nome, cor)}
         />
       )}
+
+      {/* ⭐ O ajuste manual da janela — o lápis ao lado de "janela do escopo". */}
+      {ajustandoJanela !== null && (() => {
+        const esc = dados.escopos.find((e) => e.id === ajustandoJanela);
+        if (!esc) return null;
+        return (
+          <AjusteJanelaModal
+            nomeEscopo={esc.nome}
+            diasJanela={esc.dias_uteis_vendidos + esc.dias_uteis_ajustados}
+            onCancelar={() => setAjustandoJanela(null)}
+            onSalvar={(dias) => salvarAjusteDaJanela(esc.id, dias)}
+          />
+        );
+      })()}
 
       {etapaParaExcluir && (
         <ConfirmarModal

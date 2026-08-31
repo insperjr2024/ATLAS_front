@@ -2537,3 +2537,45 @@ export const EquipeAvatarLista = styled.span<{ $cor: string }>`
   color: ${theme.colors.background};
   overflow: hidden;
 `;
+
+/**
+ * A lixeira da linha de escopo vendido.
+ *
+ * 📐 Discreta por padrão e com contraste no hover, como o `BotaoExcluir` da
+ * legenda do cronograma — visível sempre, porque no celular não existe hover
+ * e um botão que só aparece no mouse fica inalcançável por lá.
+ *
+ * Desabilitada quando o escopo já tem banca marcada: o backend recusa, e
+ * deixar clicar para devolver 422 é fazer a pessoa descobrir do jeito difícil.
+ */
+export const RemoverEscopoBotao = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: ${theme.borderRadius.sm};
+  background: transparent;
+  color: ${theme.colors.mutedForeground};
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity ${theme.transitions.fast}, background-color ${theme.transitions.fast},
+    color ${theme.transitions.fast};
+
+  &:hover:not(:disabled) {
+    opacity: 1;
+    background: ${theme.colors.muted};
+    color: ${theme.colors.destructive};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.ring};
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+`;
