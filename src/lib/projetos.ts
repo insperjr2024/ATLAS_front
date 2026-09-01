@@ -411,6 +411,13 @@ export function deleteEscopoProjeto(escopoId: number, token: string) {
 }
 
 export interface UpdateEscopoProjetoPayload {
+  /**
+   * Qual item do catálogo este escopo é, ou `null` pra virar "Outro" (e aí
+   * `nome_customizado` é obrigatório). Os dois campos viajam juntos sempre
+   * que o TIPO muda: mandar só um limpa o outro no backend, mas o front evita
+   * depender disso e já manda o par.
+   */
+  escopo_id?: number | null;
   nome_customizado?: string | null;
   dias_uteis_vendidos?: number;
   data_entrega_planejada?: string | null;
