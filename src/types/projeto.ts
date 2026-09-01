@@ -118,6 +118,16 @@ export interface EscopoVendido {
   /** Já resolvido: o nome do catálogo, ou o digitado quando é um "Outro". */
   nome: string;
   frente_id: number;
+  /**
+   * O calendário acadêmico que ESTE escopo segue — a base de contagem dos
+   * dias úteis dele: janela, atraso e o cinza do cronograma.
+   *
+   * Vale dentro de `frente_id`: o par (frente, calendário) é o que identifica
+   * um calendário base. `null` não quer dizer "não escolhido" — é o calendário
+   * da frente que tem um só (Business, Direito, Processos), que não tem rótulo.
+   * Ver `GET /calendarios-para-escolha`.
+   */
+  calendario: string | null;
   /** Ordem de exibição na tela do projeto, setinhas trocam este valor
    *  entre vizinhos, não é a ordem de criação (`id`). */
   ordem: number;
@@ -238,13 +248,6 @@ export interface ProjetoCompleto extends ProjetoResumo {
   data_entrega_prevista_cliente: string | null;
   /** 1 = segunda … 7 = domingo. */
   dia_reuniao_padrao: number | null;
-  /**
-   * Qual calendário acadêmico o time deste projeto segue.
-   *
-   * `null` = o padrão da frente, o caso normal. Só existe escolha onde uma
-   * frente cobre cursos com datas diferentes — hoje, a Tech.
-   */
-  calendario: string | null;
   criado_por: number | null;
   equipe: MembroProjeto[];
   /** Teto de consultores, decide quando o projeto sai da lista de vagas. */

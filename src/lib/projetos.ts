@@ -263,27 +263,6 @@ export function updateDiaReuniaoPadrao(projetoId: number, diaReuniaoPadrao: numb
   );
 }
 
-/**
- * Qual calendário acadêmico o time deste projeto segue.
- *
- * Não é cosmético: muda a contagem de dias úteis, a janela dos escopos e o
- * cinza do cronograma. `null` volta a seguir o padrão da frente.
- *
- * O backend recusa (422) nome que não exista em nenhuma frente do projeto —
- * um rótulo errado não casaria com dia nenhum e o projeto passaria a contar a
- * semana de provas de ninguém.
- */
-export function updateCalendarioProjeto(
-  projetoId: number,
-  calendario: string | null,
-  token: string,
-) {
-  return apiFetch<{ id: number; calendario: string | null }>(
-    `/projetos/${projetoId}/calendario`,
-    { method: "PATCH", token, body: JSON.stringify({ calendario }) },
-  );
-}
-
 /** O backend recusa (422) se o novo teto ficar abaixo da quantidade de
  *  consultores já alocados agora. */
 export function updateMaxConsultores(projetoId: number, maxConsultores: number, token: string) {
@@ -380,8 +359,39 @@ export interface EscopoVendidoPayload {
   escopo_id: number | null;
   nome_customizado?: string | null;
   frente_id: number;
+  /**
+   * O calendário acadêmico que este escopo segue. Obrigatório no cadastro: o
+   * backend recusa (422) quando a frente tem calendários nomeados e nenhum foi
+   * escolhido — `null` só passa na frente que tem um calendário só.
+   */
+  calendario: string | null;
   dias_uteis_vendidos: number;
   data_entrega_planejada?: string | null;
+}
+
+/** Uma opção do seletor de calendário. `valor` é o que vai no escopo; `null`
+ *  é o calendário único da frente, que não tem rótulo para mostrar. */
+export interface OpcaoCalendario {
+  valor: string | null;
+  rotulo: string;
+}
+
+export interface CalendariosDaFrente {
+  frente_id: number;
+  frente_nome: string;
+  padrao: string | null;
+  calendarios: OpcaoCalendario[];
+}
+
+/**
+ * Os calendários escolhíveis de cada frente, para o cadastro do escopo.
+ *
+ * Toda frente vem com ao menos uma opção — a de calendário único tem `valor`
+ * nulo. Esconder o campo quando a lista parece vazia é o que deixava projeto
+ * sem calendário nenhum, então a tela sempre mostra o seletor.
+ */
+export function listCalendariosParaEscolha(token: string) {
+  return apiFetch<CalendariosDaFrente[]>("/calendarios-para-escolha", { token });
 }
 
 export function getEscoposProjeto(projetoId: number, token: string) {
@@ -406,6 +416,12 @@ export interface UpdateEscopoProjetoPayload {
   data_entrega_planejada?: string | null;
   /** Trocada pelas setinhas de reordenar na tabela de escopos vendidos. */
   ordem?: number;
+  /**
+   * O calendário acadêmico deste escopo. Omitir NÃO mexe nele; mandar `null`
+   * aponta para o calendário único da frente, e o backend recusa (422) o nulo
+   * quando a frente tem calendários nomeados.
+   */
+  calendario?: string | null;
 }
 
 export function updateEscopoProjeto(
