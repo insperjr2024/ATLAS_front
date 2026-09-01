@@ -427,3 +427,57 @@ export const EscolhaEscopoDica = styled.span`
   color: ${theme.colors.mutedForeground};
   white-space: nowrap;
 `;
+
+/* ------------------------------------------------------------------ */
+/* O balão de "por que este card não sai do lugar"                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * O conteúdo do balão do `MotivoDesabilitado`, quando o motivo é um card
+ * travado. Só a estrutura interna — a caixa, a posição e o comportamento são
+ * do componente, e é de propósito: um segundo balão desenhado à mão aqui
+ * divergiria do resto da aplicação na primeira mudança de tema.
+ */
+export const MotivoBloco = styled.span`
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+`;
+
+/**
+ * O ícone que diz de que TIPO é o impedimento antes de a pessoa ler.
+ *
+ * `flex-shrink: 0` porque o texto quebra em duas ou três linhas e um ícone
+ * espremido no meio delas ficaria oval.
+ */
+export const MotivoIcone = styled.span`
+  display: flex;
+  flex-shrink: 0;
+  /* Alinha o ícone com a primeira LINHA do título, não com o topo da caixa —
+     sem isto ele flutua um pouco acima do texto. */
+  margin-top: 0.0625rem;
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const MotivoTexto = styled.span`
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+`;
+
+/** O que está bloqueado, numa linha. */
+export const MotivoTitulo = styled.strong`
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.popoverForeground};
+`;
+
+/**
+ * O porquê e o que fazer agora — o pedaço que faz a pessoa parar de
+ * perguntar. Um tom abaixo do título para a hierarquia se ler de relance.
+ */
+export const MotivoDetalhe = styled.span`
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.normal};
+  color: ${theme.colors.mutedForeground};
+`;

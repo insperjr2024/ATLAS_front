@@ -21,6 +21,22 @@ interface Props {
    * está desabilitado, sem `if` na chamada.
    */
   motivo?: ReactNode;
+  /**
+   * O invólucro ocupa a linha inteira, para abraçar um card em vez de um
+   * botão no meio de uma barra de controles.
+   */
+  bloco?: boolean;
+  /**
+   * O filho já é focável por conta própria (um card clicável, um link) e por
+   * isso NÃO precisa do `tabIndex` do invólucro — `focus` e `blur` sobem do
+   * descendente até aqui sozinhos, e o balão abre igual.
+   *
+   * ⚠ O padrão é `false` porque o caso que deu origem a este componente é
+   * botão DESABILITADO, que não emite evento nenhum: lá o `tabIndex` do
+   * invólucro é a única porta do teclado. Ligar isto num filho que não seja
+   * focável tira a explicação de quem navega por Tab.
+   */
+  filhoFocavel?: boolean;
   children: ReactNode;
 }
 
@@ -37,7 +53,7 @@ interface Props {
  * nada. Para a recusa que acontece DEPOIS de agir, o componente é o
  * `AvisoRegra`, que fica na tela até ser dispensado.
  */
-export function MotivoDesabilitado({ motivo, children }: Props) {
+export function MotivoDesabilitado({ motivo, bloco, filhoFocavel, children }: Props) {
   const id = useId();
   const balaoRef = useRef<HTMLSpanElement>(null);
   const envolucroRef = useRef<HTMLSpanElement>(null);
@@ -99,7 +115,8 @@ export function MotivoDesabilitado({ motivo, children }: Props) {
   return (
     <Envolucro
       ref={envolucroRef}
-      tabIndex={0}
+      $bloco={bloco}
+      tabIndex={filhoFocavel ? undefined : 0}
       aria-describedby={aberto ? id : undefined}
       onMouseEnter={abrir}
       onMouseLeave={() => setAberto(false)}

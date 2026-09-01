@@ -62,10 +62,6 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   liberar_excecao_choque: [DIR_PROJETOS],
   registrar_justificativa_atraso: [DIR_PROJETOS],
   filtrar_por_frente: [DIR_PROJETOS],
-  /** O kanban de projetos muda o ciclo de vida por arrasto, mais informal
-   *  que os botões de `mudar_status_projeto`, por isso fica restrito à
-   *  diretoria, mesmo o botão equivalente aceitando gerente/coordenador. */
-  mover_projeto_kanban: [DIR_PROJETOS],
   //: As colunas do kanban são por projeto, mas quem as edita é sempre a
   //: diretoria, o time move cards, não redesenha o fluxo.
   configurar_colunas: [DIR_PROJETOS],
@@ -83,6 +79,13 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   // Condução do projeto, o consultor não define cronograma nem move o
   // ciclo de vida do projeto
   mudar_status_projeto: [DIR_PROJETOS, "gerente", "coordenador"],
+  /** Arrastar o card no kanban é o MESMO ato que o seletor de etapa da página
+   *  do projeto — mesma rota (`PATCH /projetos/{id}/status`, `require_lideranca`)
+   *  e mesma régua de destinos (`destinosValidos`). Ficou restrito à diretoria
+   *  por um tempo, com o argumento de que o arrasto era "mais informal" que o
+   *  botão; na prática isso só escondia do gerente e do coordenador um caminho
+   *  que o backend já aceitava deles. Anda junto com `mudar_status_projeto`. */
+  mover_projeto_kanban: [DIR_PROJETOS, "gerente", "coordenador"],
 
   /** Cadastrar pessoa, reemitir senha provisória, apagar em definitivo e
    *  passar o bastão. As duas diretorias com poder — espelha
