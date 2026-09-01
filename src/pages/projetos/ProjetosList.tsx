@@ -266,8 +266,8 @@ export function ProjetosList() {
 
   /**
    * Otimista, igual ao kanban de tarefas: o card já pula de coluna antes da
-   * resposta do PATCH. Se o backend recusar a transição, volta pro estado
-   * anterior, a fonte da verdade nunca é o arrasto local.
+   * resposta do PATCH. A fonte da verdade nunca é o arrasto local — o status
+   * final vem da resposta, e uma recusa recarrega a lista do servidor.
    */
   async function moverStatus(projetoId: number, statusNovo: StatusProjeto) {
     if (!token) return;
@@ -275,10 +275,33 @@ export function ProjetosList() {
     setProjetos((lista) => lista.map((p) => (p.id === projetoId ? { ...p, status: statusNovo } : p)));
     setAvisoKanban("");
     try {
-      await mudarStatus(projetoId, statusNovo, token);
+      // ⭐ O status que vale é o que o backend DEVOLVE, não o que se pediu.
+      // Arrastar para Ambientação com a janela já vencida (kickoff antigo)
+      // faz `encerrar_ambientacao` virar para Em andamento na mesma
+      // requisição — o §4 chama isso de a única transição automática. Fixando
+      // o palpite otimista, o card ficava parado em Ambientação enquanto o
+      // banco já dizia Em andamento, e o arrasto seguinte mandava
+      // `em_andamento` sobre `em_andamento` e voltava 422.
+      const resposta = await mudarStatus(projetoId, statusNovo, token);
+      if (resposta.status !== statusNovo) {
+        setProjetos((lista) =>
+          lista.map((p) => (p.id === projetoId ? { ...p, status: resposta.status } : p)),
+        );
+      }
     } catch (err) {
-      setProjetos(anterior);
       setAvisoKanban(err instanceof Error ? err.message : "Erro ao mudar o status do projeto");
+      // Volta pro retrato anterior NA HORA (o card não pode ficar na coluna
+      // errada enquanto a rede responde) e, logo depois, recarrega do
+      // servidor.
+      //
+      // ⭐ O recarregar é o que fecha o buraco: a recusa mais comum é
+      // justamente a tela estar atrasada — outra pessoa mexeu, ou a virada
+      // automática de Ambientação correu por baixo. Nesses casos `anterior`
+      // TAMBÉM está velho, e voltar pra ele deixa o card na mesma coluna
+      // errada, pronto pra ser arrastado de novo e recusado de novo. Foi esse
+      // laço que apareceu no teste do MEDICINA II.
+      setProjetos(anterior);
+      carregar();
     }
   }
 

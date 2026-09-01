@@ -184,6 +184,17 @@ function CardArrastavel({
   temPendencia: boolean;
 }) {
   const arrastavel = podeArrastar && statusAlvoValidos(projeto.status, !!projeto.data_kickoff).length > 0;
+  // Por que este card não sai do lugar. Sem isso o card travado é
+  // indistinguível de um kanban quebrado: o cursor não pega, nada acontece e
+  // a tela não diz nada — foi assim que um projeto Vendido sem kickoff virou
+  // "não consigo mover o CONEXÕES".
+  const motivoTravado = !podeArrastar
+    ? "Só a coordenação, a gerência e a diretoria de projetos movem o ciclo de vida"
+    : projeto.status === "vendido"
+      ? "Marque o kickoff para poder mover este projeto para Ambientação"
+      : projeto.status === "pausado"
+        ? "Projeto pausado — use Retomar na página do projeto"
+        : null;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: projeto.id,
     disabled: !arrastavel,
@@ -206,7 +217,11 @@ function CardArrastavel({
       // quando o card não é arrastável (aí `attributes` não traz nenhum).
       role="button"
       tabIndex={0}
-      title="Clique para abrir o projeto"
+      title={
+        arrastavel || !motivoTravado
+          ? "Clique para abrir o projeto"
+          : `${motivoTravado}. Clique para abrir o projeto.`
+      }
       onClick={() => navigate(`/projetos/${projeto.id}`)}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
