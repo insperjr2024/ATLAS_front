@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
 import { X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   renomearProjeto,
   updateCliente,
@@ -243,19 +245,26 @@ export function EditarProjetoModal({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [usuariosFrentes, setUsuariosFrentes] = useState<UsuarioFrente[]>([]);
+
+  // Trocar o tipo de um escopo ou os dias úteis vendidos é só da diretoria de
+  // projetos (o coordenador segue adicionando/removendo escopo na Visão
+  // geral). O backend recusa com 422 de qualquer jeito; aqui só não mostramos.
+  const { usuario } = useAuth();
+  const podeEditarEscopos = ehDiretoriaDeProjetos(usuario);
+
   const [escoposEdicao, setEscoposEdicao] = useState<EscopoEmEdicao[]>(() =>
     projeto.escopos.map(paraEdicao),
   );
-  /** O catálogo só é buscado se o projeto tiver algum escopo vendido. */
+  /** O catálogo só é buscado se houver escopo pra editar e quem abriu puder. */
   const [catalogoEscopos, setCatalogoEscopos] = useState<Escopo[]>([]);
 
   useEffect(() => {
-    if (projeto.escopos.length === 0 || !token) return;
+    if (!podeEditarEscopos || projeto.escopos.length === 0 || !token) return;
     getEscopos(token)
       .then(setCatalogoEscopos)
       .catch(() => setCatalogoEscopos([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, podeEditarEscopos]);
 
   function atualizarEscopo(id: number, patch: Partial<EscopoEmEdicao>) {
     setEscoposEdicao((lista) => lista.map((l) => (l.id === id ? { ...l, ...patch } : l)));
@@ -310,17 +319,19 @@ export function EditarProjetoModal({
       setErro("O teto de consultores precisa ser um número de 0 a 20.");
       return;
     }
-    for (const linha of escoposEdicao) {
-      const original = projeto.escopos.find((e) => e.id === linha.id);
-      if (!original) continue;
-      if (linha.tipo === OUTRO_ESCOPO && !linha.nomeCustomizado.trim()) {
-        setErro(`Dê um nome ao escopo "${original.nome}", ou escolha um item do catálogo.`);
-        return;
-      }
-      const dias = Number(linha.dias);
-      if (!Number.isInteger(dias) || dias < 1) {
-        setErro(`Os dias úteis vendidos de "${original.nome}" precisam ser maiores que zero.`);
-        return;
+    if (podeEditarEscopos) {
+      for (const linha of escoposEdicao) {
+        const original = projeto.escopos.find((e) => e.id === linha.id);
+        if (!original) continue;
+        if (linha.tipo === OUTRO_ESCOPO && !linha.nomeCustomizado.trim()) {
+          setErro(`Dê um nome ao escopo "${original.nome}", ou escolha um item do catálogo.`);
+          return;
+        }
+        const dias = Number(linha.dias);
+        if (!Number.isInteger(dias) || dias < 1) {
+          setErro(`Os dias úteis vendidos de "${original.nome}" precisam ser maiores que zero.`);
+          return;
+        }
       }
     }
 
@@ -365,12 +376,14 @@ export function EditarProjetoModal({
       // Por último: se um escopo falhar (tipo do catálogo removido nesse
       // meio-tempo, por exemplo), o resto já está salvo, e o modal segue
       // aberto só com o que faltou, igual à equipe logo acima.
-      for (const linha of escoposEdicao) {
-        const original = projeto.escopos.find((e) => e.id === linha.id);
-        if (!original) continue;
-        const payload = payloadDoEscopo(linha, original);
-        if (payload) {
-          await updateEscopoProjeto(linha.id, payload, token);
+      if (podeEditarEscopos) {
+        for (const linha of escoposEdicao) {
+          const original = projeto.escopos.find((e) => e.id === linha.id);
+          if (!original) continue;
+          const payload = payloadDoEscopo(linha, original);
+          if (payload) {
+            await updateEscopoProjeto(linha.id, payload, token);
+          }
         }
       }
       await onSalvo();
@@ -529,10 +542,10 @@ export function EditarProjetoModal({
                 <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={ativos} />
               </SecaoForm>
 
-              {/* Só aparece com escopo cadastrado: adicionar o primeiro
-                  continua sendo feito na Visão geral, onde a reunião inicial
-                  e a banca de cada um também moram. */}
-              {escoposEdicao.length > 0 && (
+              {/* Só a diretoria de projetos, e só com escopo já cadastrado:
+                  adicionar/remover continua na Visão geral (aberto ao
+                  coordenador), junto da reunião inicial e da banca de cada um. */}
+              {podeEditarEscopos && escoposEdicao.length > 0 && (
                 <SecaoForm>
                   <SecaoFormTitulo>Escopos vendidos</SecaoFormTitulo>
                   <EmptyText style={{ margin: 0, fontSize: "0.75rem" }}>
