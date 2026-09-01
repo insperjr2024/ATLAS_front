@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { CODIGO_CHOQUE_DE_HORARIO } from "@/lib/api";
 import { decidirForaJanela } from "@/lib/bancas";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
 import type { AprovacaoForaDaJanela } from "@/lib/monitoramento";
@@ -105,6 +106,31 @@ export function BancasForaDaJanelaCard({
                         setDecidindo(null);
                         onDecidiu();
                       }}
+                      /* ⭐ O beco sem saída do §8 dentro do §13. Autorizar uma
+                         data que já tem banca de outro projeto falhava com
+                         "peça uma exceção de choque à diretoria" — dito a quem
+                         É a diretoria, numa fila sem botão nenhum para
+                         conceder. As duas regras cobram o mesmo cargo, então
+                         ela decide as duas aqui, num segundo clique que diz
+                         com QUAL banca o horário conflita. */
+                      segundaChance={
+                        decidindo.aprovar
+                          ? {
+                              quando: CODIGO_CHOQUE_DE_HORARIO,
+                              rotulo: "Autorizar o choque também e marcar",
+                              onConfirmar: async (texto) => {
+                                if (!token) return;
+                                await decidirForaJanela(
+                                  p.id,
+                                  { aprovar: true, resposta: texto, autorizar_choque: true },
+                                  token,
+                                );
+                                setDecidindo(null);
+                                onDecidiu();
+                              },
+                            }
+                          : undefined
+                      }
                     />
                   ) : (
                     <>

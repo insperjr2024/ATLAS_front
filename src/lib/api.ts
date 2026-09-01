@@ -140,3 +140,10 @@ export async function apiFetch<T>(endpoint: string, options: ApiOptions = {}): P
  * toda regra que existe — as outras 200 só precisam ser exibidas.
  */
 export const CODIGO_BANCA_ABAIXO_DO_MINIMO = "banca_abaixo_do_minimo";
+
+/** Choque de horário (§8): a data pretendida já tem banca de outro projeto.
+ *
+ *  Reage em dois lugares, com leitores diferentes: quem marca pelo cronograma
+ *  precisa PEDIR a exceção, e a diretoria, decidindo um pedido de banca fora
+ *  da janela (§13), pode conceder as duas coisas no mesmo ato. */
+export const CODIGO_CHOQUE_DE_HORARIO = "choque_de_horario";

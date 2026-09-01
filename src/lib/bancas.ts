@@ -416,7 +416,9 @@ export function getForaJanelaPendentes(token: string) {
 /** A decisão da diretoria — `resposta` é obrigatória nos dois sentidos. */
 export function decidirForaJanela(
   pedidoId: number,
-  dados: { aprovar: boolean; resposta: string },
+  /** `autorizar_choque` acompanha um SIM e libera também a exceção do §8,
+   *  quando a data pedida esbarra na banca de outro projeto. */
+  dados: { aprovar: boolean; resposta: string; autorizar_choque?: boolean },
   token: string,
 ) {
   return apiFetch(`/bancas/fora-janela/${pedidoId}`, {

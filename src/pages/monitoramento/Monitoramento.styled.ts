@@ -1181,9 +1181,16 @@ export const AtrasoFlagIcone = styled.span`
 
 export const LinhaAprovacao = styled.li`
   display: grid;
-  /* A coluna de ação tem largura MÍNIMA, não fixa: o formulário de decisão
-     abre dentro dela e precisa poder crescer. */
-  grid-template-columns: 3.75rem minmax(0, 1fr) minmax(10rem, auto);
+  /* A coluna de ação tem largura MÍNIMA e MÁXIMA, não fixa nem livre: o
+     formulário de decisão abre dentro dela e precisa poder crescer — mas com
+     auto ela crescia até o max-content do que estivesse lá dentro. Bastava
+     uma recusa longa (a do choque de horário nomeia o projeto conflitante)
+     para a terceira coluna comer a linha inteira e espremer a segunda, que é
+     1fr com mínimo zero e encolhe até sumir: o nome do projeto saía quebrado
+     em uma palavra por linha, ao lado de um formulário gigante. O teto mantém
+     o formulário confortável sem deixá-lo tomar a linha de quem ele está
+     decidindo. */
+  grid-template-columns: 3.75rem minmax(0, 1fr) minmax(10rem, 22rem);
   align-items: start;
   gap: 0 ${theme.spacing.md};
   padding: 0.9rem 0.5rem;
@@ -1308,6 +1315,9 @@ export const AprovacaoForm = styled.div`
   flex-direction: column;
   gap: 0.4rem;
   min-width: 16rem;
+  /* O nome do projeto conflitante numa recusa de choque não tem espaço em
+     branco onde quebrar; sem isto ele estoura a coluna em vez de embrulhar. */
+  overflow-wrap: anywhere;
 
   textarea {
     width: 100%;

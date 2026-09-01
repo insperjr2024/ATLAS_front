@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { codigoDoErro } from "@/lib/api";
 import { PageButtonSm, ErrorText } from "@/styles/page.styled";
 import { FieldInput } from "@/pages/projetos/Projetos.styled";
 import {
@@ -102,6 +103,22 @@ interface FormProps {
   aviso?: ReactNode;
   onConfirmar: (texto: string) => Promise<void>;
   onCancelar: () => void;
+  /**
+   * ⭐ A saída oferecida quando a recusa é de um tipo que a diretoria PODE
+   * atropelar — mesma ideia do "registrar assim mesmo" da composição de banca.
+   *
+   * ⚠ Destravada pelo `codigo` da recusa, nunca por um trecho do texto. Foi
+   * assim que o botão da composição sumiu sem ninguém perceber: a frase mudou
+   * e o `includes` parou de casar, deixando a plataforma recusando sem
+   * oferecer saída. Texto é para ler; código é contrato.
+   */
+  segundaChance?: {
+    /** O `codigo` da recusa que faz o botão aparecer. */
+    quando: string;
+    /** O rótulo do botão — diga o que ele autoriza A MAIS, não só "confirmar". */
+    rotulo: string;
+    onConfirmar: (texto: string) => Promise<void>;
+  };
 }
 
 /**
@@ -119,23 +136,31 @@ export function FormDecisao({
   aviso,
   onConfirmar,
   onCancelar,
+  segundaChance,
 }: FormProps) {
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+  const [codigoRecusa, setCodigoRecusa] = useState<string | undefined>(undefined);
 
-  async function confirmar() {
+  async function enviar(acao: (texto: string) => Promise<void>) {
     setErro("");
+    setCodigoRecusa(undefined);
     setEnviando(true);
     try {
-      await onConfirmar(texto.trim());
+      await acao(texto.trim());
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Não foi possível concluir");
+      setCodigoRecusa(codigoDoErro(err));
       setEnviando(false);
     }
     // No sucesso quem chamou recarrega e este componente some — mexer no
     // estado depois seria atualizar um componente que já morreu.
   }
+
+  const ofereceSegundaChance = Boolean(
+    segundaChance && codigoRecusa && codigoRecusa === segundaChance.quando,
+  );
 
   return (
     <AprovacaoForm>
@@ -152,13 +177,27 @@ export function FormDecisao({
       )}
       {erro && <ErrorText>{erro}</ErrorText>}
       <AprovacaoFormBotoes>
-        <PageButtonSm
-          type="button"
-          disabled={enviando || (exigeTexto && !texto.trim())}
-          onClick={confirmar}
-        >
-          {enviando ? "Enviando…" : rotuloConfirmar}
-        </PageButtonSm>
+        {/* ⚠ A segunda chance SUBSTITUI o botão normal em vez de aparecer ao
+            lado: repetir o gesto que acabou de falhar só produziria o mesmo
+            erro, e dois botões parecidos logo abaixo de uma recusa é onde se
+            clica no errado. */}
+        {ofereceSegundaChance ? (
+          <PageButtonSm
+            type="button"
+            disabled={enviando || (exigeTexto && !texto.trim())}
+            onClick={() => enviar(segundaChance!.onConfirmar)}
+          >
+            {enviando ? "Enviando…" : segundaChance!.rotulo}
+          </PageButtonSm>
+        ) : (
+          <PageButtonSm
+            type="button"
+            disabled={enviando || (exigeTexto && !texto.trim())}
+            onClick={() => enviar(onConfirmar)}
+          >
+            {enviando ? "Enviando…" : rotuloConfirmar}
+          </PageButtonSm>
+        )}
         <PageButtonSm type="button" $variant="ghost" onClick={onCancelar} disabled={enviando}>
           Cancelar
         </PageButtonSm>
