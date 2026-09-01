@@ -12,7 +12,8 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CalendarClock, Lock, PauseCircle } from "lucide-react";
+import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import { tonsDaColuna, type TonsColuna } from "@/lib/colunas-tarefa";
 import { CORES_STATUS, destinosValidos, formatarDataHoraBanca, podePausar, ROTULO_STATUS } from "@/lib/projetos";
 import { StatusPilula } from "@/pages/projetos/Projetos.styled";
@@ -32,6 +33,11 @@ import {
   ColunaTitulo,
   ColunaVazia,
   Contador,
+  MotivoBloco,
+  MotivoDetalhe,
+  MotivoIcone,
+  MotivoTexto,
+  MotivoTitulo,
   PendenteDot,
   Ponto,
 } from "./Kanban.styled";
@@ -50,6 +56,53 @@ const COLUNAS = (Object.keys(ROTULO_STATUS) as StatusProjeto[]).map((status) => 
 function statusAlvoValidos(atual: StatusProjeto, temKickoff: boolean): StatusProjeto[] {
   const alvos = destinosValidos(atual, temKickoff);
   return podePausar(atual) ? [...alvos, "pausado"] : alvos;
+}
+
+/**
+ * Por que este card não sai do lugar — o que está bloqueado, por quê, e o que
+ * fazer agora.
+ *
+ * ⭐ **A terceira parte é a que importa.** Um card travado sem explicação é
+ * indistinguível de um kanban quebrado: o cursor não pega, nada acontece, a
+ * tela não diz nada. Foi assim que um projeto Vendido sem kickoff — travado
+ * exatamente como o §5.2 manda — virou "não consigo mover o CONEXÕES".
+ *
+ * Devolve `null` quando não há o que explicar; aí o `MotivoDesabilitado` sai
+ * de cena sozinho e o card volta a ser um card.
+ */
+function motivoDeTravamento(projeto: ProjetoResumo, podeArrastar: boolean) {
+  if (!podeArrastar) {
+    return {
+      Icone: Lock,
+      titulo: "Você não move o ciclo de vida",
+      detalhe:
+        "Mudar a etapa de um projeto é da coordenação, da gerência e da diretoria de projetos.",
+    };
+  }
+
+  if (projeto.status === "vendido") {
+    return {
+      Icone: CalendarClock,
+      titulo: "Falta marcar o kickoff",
+      detalhe:
+        "Vendido só avança para Ambientação, e é o kickoff que dá a data de início. Abra o projeto e marque a data.",
+    };
+  }
+
+  if (projeto.status === "pausado") {
+    return {
+      Icone: PauseCircle,
+      titulo: "Projeto pausado",
+      detalhe:
+        "Ele volta para a etapa em que parou pelo botão Retomar, na página do projeto — por isso não há coluna de destino para arrastar.",
+    };
+  }
+
+  return {
+    Icone: Lock,
+    titulo: "Sem etapa de destino",
+    detalhe: "Não há para onde mover este projeto a partir da etapa atual.",
+  };
 }
 
 interface ProjetoKanbanBoardProps {
@@ -184,17 +237,7 @@ function CardArrastavel({
   temPendencia: boolean;
 }) {
   const arrastavel = podeArrastar && statusAlvoValidos(projeto.status, !!projeto.data_kickoff).length > 0;
-  // Por que este card não sai do lugar. Sem isso o card travado é
-  // indistinguível de um kanban quebrado: o cursor não pega, nada acontece e
-  // a tela não diz nada — foi assim que um projeto Vendido sem kickoff virou
-  // "não consigo mover o CONEXÕES".
-  const motivoTravado = !podeArrastar
-    ? "Só a coordenação, a gerência e a diretoria de projetos movem o ciclo de vida"
-    : projeto.status === "vendido"
-      ? "Marque o kickoff para poder mover este projeto para Ambientação"
-      : projeto.status === "pausado"
-        ? "Projeto pausado — use Retomar na página do projeto"
-        : null;
+  const motivoTravado = arrastavel ? null : motivoDeTravamento(projeto, podeArrastar);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: projeto.id,
     disabled: !arrastavel,
@@ -202,6 +245,26 @@ function CardArrastavel({
   const navigate = useNavigate();
 
   return (
+    <MotivoDesabilitado
+      bloco
+      // O card não é um botão desabilitado: ele continua clicável e focável,
+      // então já abre o balão sozinho — pôr `tabIndex` no invólucro criaria
+      // uma segunda parada de Tab que não leva a lugar nenhum.
+      filhoFocavel
+      motivo={
+        motivoTravado && (
+          <MotivoBloco>
+            <MotivoIcone>
+              <motivoTravado.Icone size={14} aria-hidden />
+            </MotivoIcone>
+            <MotivoTexto>
+              <MotivoTitulo>{motivoTravado.titulo}</MotivoTitulo>
+              <MotivoDetalhe>{motivoTravado.detalhe}</MotivoDetalhe>
+            </MotivoTexto>
+          </MotivoBloco>
+        )
+      }
+    >
     <Card
       ref={setNodeRef}
       $cor={tons}
@@ -217,11 +280,9 @@ function CardArrastavel({
       // quando o card não é arrastável (aí `attributes` não traz nenhum).
       role="button"
       tabIndex={0}
-      title={
-        arrastavel || !motivoTravado
-          ? "Clique para abrir o projeto"
-          : `${motivoTravado}. Clique para abrir o projeto.`
-      }
+      // ⚠ Sem `title` nativo: ele e o balão do `MotivoDesabilitado` apareceriam
+      // JUNTOS no hover, dizendo a mesma coisa duas vezes, uma delas na caixa
+      // amarela do sistema operacional que não segue tema nenhum.
       onClick={() => navigate(`/projetos/${projeto.id}`)}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
@@ -253,5 +314,6 @@ function CardArrastavel({
         </CardBanca>
       )}
     </Card>
+    </MotivoDesabilitado>
   );
 }

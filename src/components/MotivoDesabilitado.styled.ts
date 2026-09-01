@@ -11,12 +11,24 @@ import { theme } from "@/styles/theme";
  * o acesso que o `disabled` tirou: sem ele, quem navega por Tab passa reto e
  * nunca descobre por que não pode agir.
  */
-export const Envolucro = styled.span`
+export const Envolucro = styled.span<{ $bloco?: boolean }>`
   position: relative;
-  display: inline-flex;
+  /* inline-flex é o padrão porque o caso original é um botão no meio de uma
+     linha de controles. A variante em bloco existe para o caso oposto —
+     envolver um card que precisa ocupar a coluna inteira: como item de um
+     flex column, um invólucro em linha entrega ao filho a largura do
+     CONTEÚDO, e o card encolheria em relação aos vizinhos não envolvidos. */
+  display: ${({ $bloco }) => ($bloco ? "flex" : "inline-flex")};
+  ${({ $bloco }) => $bloco && "width: 100%;"}
   /* O foco é do invólucro, mas o desenho de foco tem de sair do botão que ele
      abraça — dois anéis concêntricos poluiriam. */
   outline: none;
+
+  /* O balão fica de fora: ele é fixed e tem largura própria (max-content
+     limitado pela janela); esticá-lo para 100% do invólucro o deformaria. */
+  > *:not([role="tooltip"]) {
+    ${({ $bloco }) => $bloco && "width: 100%;"}
+  }
 `;
 
 /**
