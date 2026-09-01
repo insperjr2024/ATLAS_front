@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Lock, Plus, Trash2, UserPen, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -395,6 +395,9 @@ function TabelaEscopos() {
   const [escopoParaRemover, setEscopoParaRemover] = useState<EscopoVendido | null>(null);
   /** O catálogo só é buscado quando o modal abre — quem não edita não paga. */
   const [catalogo, setCatalogo] = useState<Escopo[]>([]);
+  /** Os calendários escolhíveis, pela mesma régua do catálogo: só quando o
+   *  modal abre. É deles que sai o campo obrigatório do §5.4. */
+  const [calendariosParaEscolha, setCalendariosParaEscolha] = useState<CalendariosDaFrente[]>([]);
   /** `frentes` do contexto são TODAS; o escopo só pode ser de uma do projeto,
    *  e o backend recusa o resto (`validar_escopo_vendido`). */
   const frentesDoProjeto = useMemo(
@@ -408,6 +411,17 @@ function TabelaEscopos() {
       .then(setCatalogo)
       .catch(() => setCatalogo([]));
   }, [adicionandoEscopo, token, catalogo.length]);
+
+  // ⚠ Lista vazia em caso de falha, e NÃO um erro na tela: sem as opções o
+  // seletor do modal fica desabilitado e o envio é barrado ali mesmo, com a
+  // mensagem do próprio campo. Um erro aqui apareceria antes de a pessoa ter
+  // sequer aberto o modal.
+  useEffect(() => {
+    if (!adicionandoEscopo || !token || calendariosParaEscolha.length > 0) return;
+    listCalendariosParaEscolha(token)
+      .then(setCalendariosParaEscolha)
+      .catch(() => setCalendariosParaEscolha([]));
+  }, [adicionandoEscopo, token, calendariosParaEscolha.length]);
 
   async function adicionarEscopo(dados: Parameters<typeof createEscopoProjeto>[1]) {
     if (!token) return;
@@ -676,6 +690,7 @@ function TabelaEscopos() {
       {adicionandoEscopo && (
         <NovoEscopoVendidoModal
           catalogo={catalogo}
+          calendarios={calendariosParaEscolha}
           frentes={frentesDoProjeto}
           jaVendidos={projeto.escopos}
           onCancelar={() => setAdicionandoEscopo(false)}
