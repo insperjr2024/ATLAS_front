@@ -15,7 +15,18 @@ import {
 import { PageBadge, PageButton, PageButtonSm, EmptyText } from "@/styles/page.styled";
 import { FormErrorText } from "./Bancas.styled";
 import { ListScrollWrap, LIST_MAX_VISIVEIS } from "@/styles/shared.styled";
-import { BancaAcoes, BancaInfo, BancaLinha, BancaMeta, BancaNome } from "./Bancas.styled";
+import {
+  BancaAcoes,
+  BancaInfo,
+  BancaLinha,
+  BancaMeta,
+  BancaNome,
+  ComposicaoLista,
+} from "./Bancas.styled";
+
+/** Espelha `SEM_TETO` de `use_cases/configuracao/composicao_banca.py`: o teto
+ *  de quem não configurou teto. */
+const SEM_TETO = 99;
 
 interface Props {
   banca: Banca;
@@ -104,6 +115,34 @@ export function AlocarPessoasModal({
           <p style={{ marginTop: 0, fontSize: "0.875rem" }}>
             {banca.alocados} alocados · mínimo {banca.piso_minimo} · cabem {banca.vagas}.
           </p>
+
+          {/* ⭐ A composição por frente (§8), aberta aqui porque é esta a tela
+              em que se decide QUEM entra: o mínimo somado não diz de qual
+              frente falta gente, e o backend recusa quem estoura o máximo da
+              frente dele — melhor ver o número antes do clique do que na
+              mensagem de erro depois. */}
+          {/* `?? []` pelo mesmo motivo dos helpers em `lib/bancas`: front e
+              back sobem separados, e a API antiga não manda este campo. */}
+          {(banca.composicao ?? []).length > 0 && (
+            <ComposicaoLista>
+              {(banca.composicao ?? []).map((c) => {
+                const faltaMembros = Math.max(0, c.min_membros - c.membros);
+                const faltaLideranca = Math.max(0, c.min_lideranca - c.liderancas);
+                return (
+                  <li key={c.frente_id}>
+                    <strong>{c.frente_nome}</strong>{" "}
+                    {c.membros}/{c.min_membros} membros
+                    {c.min_lideranca > 0 && ` · ${c.liderancas}/${c.min_lideranca} liderança`}
+                    {faltaMembros + faltaLideranca === 0 && " · completa"}
+                    {/* O teto só é dito quando existe de verdade: 99 é o
+                        `SEM_TETO` do backend, e escrevê-lo faria a tela
+                        anunciar um limite que ninguém configurou. */}
+                    {c.max_membros < SEM_TETO && ` · máx. ${c.max_membros}`}
+                  </li>
+                );
+              })}
+            </ComposicaoLista>
+          )}
 
           {erro && <FormErrorText>{erro}</FormErrorText>}
 

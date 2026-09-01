@@ -653,6 +653,17 @@ function ModalFrente({
                 onChange={(e) => setPisoBanca(e.target.value)}
                 required
               />
+              {/* ⚠ Desde 2026-09-01 este número é o PADRÃO, não a palavra
+                  final: a combinação de frentes que alguém configurou em
+                  "Composição por combinação de frentes" manda nele. Sem esta
+                  linha, mexer aqui e não ver efeito nenhum na banca parecia
+                  bug — e o motivo é que aquela combinação já tem número
+                  próprio. */}
+              <EmptyText style={{ fontSize: "0.7rem" }}>
+                Vale nas combinações de frentes que ninguém configurou ainda. Onde há
+                regra própria, quem manda é ela — ver "Composição por combinação de
+                frentes".
+              </EmptyText>
             </FieldGroup>
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>

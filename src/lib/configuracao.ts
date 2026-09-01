@@ -1,6 +1,14 @@
 import { apiFetch } from "@/lib/api";
 import type { Configuracao } from "@/types/banca";
 
+/**
+ * ⚠ Sem uso na interface desde 2026-09-02: o teto de vagas, único campo que a
+ * tela de Configurações editava por aqui, virou da COMBINAÇÃO de frentes e
+ * viaja no `PUT /composicao-banca/{combinacao}`. Os dois wrappers ficam
+ * porque a linha `configuracao` continua existindo e ainda é o PADRÃO de quem
+ * não configurou (e da banca legada, sem frente vinculada) — o dia em que
+ * alguém quiser editar esse padrão, é por aqui.
+ */
 export function getConfiguracao(token: string) {
   return apiFetch<Configuracao>("/configuracao", { token });
 }
@@ -31,6 +39,9 @@ export interface CombinacaoComposicao {
   sinergica: boolean;
   /** Mínimo de pessoas: soma de membros + liderança de cada frente. */
   minimo_total: number;
+  /** Quantas pessoas CABEM numa banca desta combinação — o teto próprio dela
+   *  ou, se não tiver um, o global (`configuracao.vagas_por_banca`). */
+  vagas: number;
   /** `false` = está herdando o padrão, ninguém gravou números para ela. */
   configurada: boolean;
 }
@@ -49,6 +60,11 @@ export interface ComposicaoDaCombinacao {
   combinacao: string;
   rotulo: string;
   minimo_total: number;
+  /** O teto que vale hoje para esta combinação. */
+  vagas: number;
+  /** `true` quando o teto acima é DELA; `false` quando está herdado do
+   *  global e some no dia em que alguém mudar o padrão. */
+  vagas_propria: boolean;
   frentes: RegraDaFrente[];
 }
 
@@ -69,11 +85,15 @@ export function getComposicaoBanca(combinacao: string, token: string) {
 export function salvarComposicaoBanca(
   combinacao: string,
   frentes: Omit<RegraDaFrente, "frente_nome" | "configurada">[],
+  vagas: number,
   token: string,
 ) {
   return apiFetch<{ combinacao: string }>(`/composicao-banca/${combinacao}`, {
     method: "PUT",
     token,
-    body: JSON.stringify({ frentes }),
+    // ⭐ O teto vai junto: ele é da COMBINAÇÃO desde 2026-09-02, e não mais o
+    // `vagas_por_banca` global que esta tela editava à parte. O global
+    // continua sendo o padrão de quem nunca salvou.
+    body: JSON.stringify({ frentes, vagas }),
   });
 }

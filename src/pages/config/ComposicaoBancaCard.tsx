@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
-  getConfiguracao,
-  updateConfiguracao,
   getComposicaoBanca,
   listarCombinacoesComposicao,
   salvarComposicaoBanca,
@@ -63,21 +61,20 @@ export function ComposicaoBancaCard() {
   const [marcadas, setMarcadas] = useState<number[]>([]);
   const [regra, setRegra] = useState<ComposicaoDaCombinacao | null>(null);
   const [rascunho, setRascunho] = useState<Rascunho>({});
-  /** O teto de vagas por banca — global, e a única coisa que sobrou do card
-   *  "Configurações de banca". Não é composição: é quantos CABEM, e é ele que
-   *  faz `create_candidatura` recusar com "banca lotada". */
+  /** O teto de vagas DESTA combinação (2026-09-02) — quantos cabem, não
+   *  quantos são exigidos; é ele que faz `create_candidatura` recusar com
+   *  "banca lotada".
+   *
+   *  ⚠ Era global: um número para a plataforma inteira, salvo à parte por
+   *  `PATCH /configuracao`. A banca de Direito sozinha (2 pessoas exigidas) e
+   *  a de Business + Tech + Processos (9) cabiam o mesmo tanto de gente.
+   *  Agora viaja junto com a matriz da combinação; o global continua no banco
+   *  como padrão de quem nunca salvou. */
   const [teto, setTeto] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
-
-  useEffect(() => {
-    if (!token) return;
-    getConfiguracao(token)
-      .then((c) => setTeto(String(c.vagas_por_banca)))
-      .catch(() => undefined);
-  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -113,6 +110,7 @@ export function ComposicaoBancaCard() {
     getComposicaoBanca(escolhida, token)
       .then((resp) => {
         setRegra(resp);
+        setTeto(String(resp.vagas));
         setRascunho(
           Object.fromEntries(
             resp.frentes.map((f) => [
@@ -162,31 +160,49 @@ export function ComposicaoBancaCard() {
       setErro("Preencha os quatro números de cada frente.");
       return;
     }
-    setSalvando(true);
-    setErro("");
-    setAviso("");
     const numeroTeto = Number(teto);
     if (!Number.isInteger(numeroTeto) || numeroTeto < 1) {
       setErro("Informe um teto de vagas por banca válido.");
-      setSalvando(false);
       return;
     }
+    if (numeroTeto < minimoDigitado) {
+      // A mesma recusa do backend, dita antes do clique custar uma ida ao
+      // servidor: banca com teto abaixo do mínimo nunca fecha a composição —
+      // a inscrição recusaria com "banca lotada" antes de completá-la.
+      setErro(
+        `O teto de ${numeroTeto} vagas é menor que as ${minimoDigitado} pessoas que ` +
+          "esta combinação passa a exigir.",
+      );
+      return;
+    }
+    setSalvando(true);
+    setErro("");
+    setAviso("");
     try {
-      await updateConfiguracao({ vagas_por_banca: numeroTeto }, token);
-      await salvarComposicaoBanca(escolhida, frentes, token);
-      setAviso("Salvo.");
-      // A lista do seletor carrega o "configurada" e o mínimo de cada
-      // combinação — sem recarregar, o selo continuaria dizendo "padrão".
+      await salvarComposicaoBanca(escolhida, frentes, numeroTeto, token);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao salvar");
+      return;
+    } finally {
+      // ⚠ O botão volta aqui, com a ESCRITA — não depois das recargas abaixo.
+      // Com elas dentro do `try`, ele ficava em "Salvando…" por mais duas
+      // idas ao servidor depois de o dado já estar gravado, e parecia travado.
+      setSalvando(false);
+    }
+    setAviso("Salvo.");
+    // A lista do seletor carrega o "configurada", o mínimo e o teto de cada
+    // combinação — sem recarregar, o selo continuaria dizendo "padrão".
+    try {
       const [lista, atualizada] = await Promise.all([
         listarCombinacoesComposicao(token),
         getComposicaoBanca(escolhida, token),
       ]);
       setCombinacoes(lista);
       setRegra(atualizada);
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao salvar");
-    } finally {
-      setSalvando(false);
+      setTeto(String(atualizada.vagas));
+    } catch {
+      // Recarregar é conforto, não parte do salvamento: falhar aqui não
+      // desfaz nada, e anunciar erro depois do "Salvo." seria mentira.
     }
   }
 
@@ -215,22 +231,6 @@ export function ComposicaoBancaCard() {
           <EmptyText>Nenhuma frente ativa cadastrada.</EmptyText>
         ) : (
           <>
-            {/* O teto é GLOBAL, não da combinação: responde "quantos cabem
-                nesta banca" e é o que faz a inscrição recusar com "banca
-                lotada". Mora aqui porque era o último campo do card
-                "Configurações de banca", que saiu — três lugares configurando
-                banca era exatamente o que confundia. */}
-            <FieldGroup style={{ marginBottom: "1rem" }}>
-              <FieldLabel htmlFor="teto-vagas">Teto de vagas por banca</FieldLabel>
-              <FieldInput
-                id="teto-vagas"
-                type="number"
-                min={1}
-                value={teto}
-                onChange={(e) => setTeto(e.target.value)}
-              />
-            </FieldGroup>
-
             {/* 📐 **Monta-se a combinação, não se escolhe uma pronta.**
                 Antes era um `<select>` com as 15 combinações em lista corrida:
                 para saber se "Business + Direito" existia, era preciso abrir o
@@ -293,6 +293,34 @@ export function ComposicaoBancaCard() {
 
             {regra && (
               <div style={{ marginTop: "0.75rem" }}>
+                {/* ⭐ O teto é DA COMBINAÇÃO (2026-09-02), por isso mora aqui
+                    dentro, depois do seletor: acima dele parecia — e era — um
+                    número global. Responde "quantos cabem nesta banca", e é
+                    ele que faz a inscrição recusar com "banca lotada". Não
+                    confundir com o mínimo logo abaixo da tabela, que é
+                    quantos ela EXIGE. */}
+                <FieldGroup style={{ marginBottom: "1rem" }}>
+                  <FieldLabel htmlFor="teto-vagas">
+                    Teto de vagas nesta banca
+                  </FieldLabel>
+                  <FieldInput
+                    id="teto-vagas"
+                    type="number"
+                    min={1}
+                    value={teto}
+                    onChange={(e) => {
+                      setTeto(e.target.value);
+                      setAviso("");
+                    }}
+                  />
+                  {!regra.vagas_propria && (
+                    <EmptyText style={{ fontSize: "0.7rem", marginTop: "0.25rem" }}>
+                      Herdado do padrão da plataforma. Salvar torna este teto próprio
+                      desta combinação.
+                    </EmptyText>
+                  )}
+                </FieldGroup>
+
                 <TableScrollWrap $min="34rem">
                   <DataTable>
                     <TableHead>

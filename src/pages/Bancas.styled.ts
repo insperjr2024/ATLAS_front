@@ -633,3 +633,25 @@ export const EscopoIndisponivel = styled.span`
   color: ${theme.colors.mutedForeground};
   font-style: italic;
 `;
+
+/** A composição por frente no modal de alocar: uma linha por frente, com o
+ *  que ela tem contra o que ela exige. Lista e não tabela — são no máximo
+ *  quatro linhas curtas, e uma tabela pediria cabeçalho para dizer o que
+ *  cada texto já diz. */
+export const ComposicaoLista = styled.ul`
+  margin: 0 0 ${theme.spacing.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.muted};
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+
+  strong {
+    color: ${theme.colors.foreground};
+  }
+`;

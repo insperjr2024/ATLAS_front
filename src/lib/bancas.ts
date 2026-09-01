@@ -3,6 +3,7 @@ import { paraDataUtc } from "@/lib/projetos";
 import type {
   Banca,
   BancaDetalhes,
+  ComposicaoDaFrente,
   BancaFrente,
   BancaParaAvaliar,
   Candidatura,
@@ -181,8 +182,11 @@ export interface CreateBancaPayload {
 export interface UpdateBancaPayload {
   nome_projeto?: string;
   /** O escopo do CATÁLOGO — um rótulo da banca. Não confundir com o campo
-   *  abaixo, que é o vínculo com os escopos vendidos do projeto. */
-  escopo_id?: number;
+   *  abaixo, que é o vínculo com os escopos vendidos do projeto.
+   *
+   *  `null` é válido: escopo vendido "Outro" não tem item de catálogo, e a
+   *  coluna é nullable justamente por isso. */
+  escopo_id?: number | null;
   data_hora?: string;
   piso_minimo_override?: number | null;
   /**
@@ -273,6 +277,56 @@ export async function syncBancaFrentes(
   await Promise.all(
     frenteIds.filter((id) => !atuaisIds.has(id)).map((frenteId) => createBancaFrente({ banca_id: bancaId, frente_id: frenteId }, token)),
   );
+}
+
+/** O que falta em UMA frente para a banca fechar a composição exigida. */
+export interface FaltaDaFrente {
+  frente_nome: string;
+  membros: number;
+  lideranca: number;
+}
+
+/**
+ * O que falta nesta banca, frente a frente — derivado de `banca.composicao`,
+ * que o backend já entrega contado.
+ *
+ * ⚠ Nada de regra aqui, só subtração. Quem decide quem conta como membro e
+ * quem cobre a liderança é `utils/composicao_banca.py` no backend (a cota de
+ * liderança é vaga a mais, a equipe do projeto não conta, o diretor cobre
+ * qualquer frente); refazer essa conta no front era exatamente o jeito de as
+ * duas telas passarem a discordar.
+ *
+ * ⚠ Aceita `undefined` de propósito: front e back sobem separados (Vercel e
+ * Railway), e a tela nova contra a API antiga receberia banca sem o campo. Um
+ * `.map` em `undefined` derruba a lista de bancas inteira.
+ */
+export function faltasDaComposicao(
+  composicao: ComposicaoDaFrente[] | undefined,
+): FaltaDaFrente[] {
+  return (composicao ?? [])
+    .map((c) => ({
+      frente_nome: c.frente_nome,
+      membros: Math.max(0, c.min_membros - c.membros),
+      lideranca: Math.max(0, c.min_lideranca - c.liderancas),
+    }))
+    .filter((f) => f.membros > 0 || f.lideranca > 0);
+}
+
+/** Quantas pessoas faltam ao todo — a soma do que `faltasDaComposicao` achou. */
+export function totalFaltando(composicao: ComposicaoDaFrente[] | undefined): number {
+  return faltasDaComposicao(composicao).reduce((s, f) => s + f.membros + f.lideranca, 0);
+}
+
+/** "2 de Business · 1 liderança de Direito" — o que falta, em uma frase. */
+export function resumoDoQueFalta(composicao: ComposicaoDaFrente[] | undefined): string {
+  return faltasDaComposicao(composicao)
+    .map((f) => {
+      const partes = [];
+      if (f.membros > 0) partes.push(`${f.membros} de ${f.frente_nome}`);
+      if (f.lideranca > 0) partes.push(`${f.lideranca} liderança de ${f.frente_nome}`);
+      return partes.join(" · ");
+    })
+    .join(" · ");
 }
 
 /**
