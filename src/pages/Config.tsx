@@ -6,6 +6,7 @@ import { getPosicoesPermissoes, updatePosicaoPermissao } from "@/lib/posicoes-pe
 import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/escopos";
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
+import { ComposicaoBancaCard } from "./config/ComposicaoBancaCard";
 import { ConfiguracaoBancaCard } from "./config/ConfiguracaoBancaCard";
 import { GestaoSemestralCard } from "./config/GestaoSemestralCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
@@ -344,6 +345,8 @@ export function Config() {
         </SecaoCabecalho>
 
         <ConfiguracaoBancaCard />
+
+        <ComposicaoBancaCard />
 
         <SituacoesCargaCard />
       </SecaoGrupo>
