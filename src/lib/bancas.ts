@@ -180,9 +180,17 @@ export interface CreateBancaPayload {
 
 export interface UpdateBancaPayload {
   nome_projeto?: string;
+  /** O escopo do CATÁLOGO — um rótulo da banca. Não confundir com o campo
+   *  abaixo, que é o vínculo com os escopos vendidos do projeto. */
   escopo_id?: number;
   data_hora?: string;
   piso_minimo_override?: number | null;
+  /**
+   * ⭐ Os escopos vendidos que a banca cobre. A lista SUBSTITUI a atual: o que
+   * não vier é removido, e o backend recalcula as frentes da banca a partir do
+   * que sobrou. Omitir o campo é "não mexer".
+   */
+  projeto_escopo_ids?: number[];
 }
 
 export function createBanca(dados: CreateBancaPayload, token: string) {

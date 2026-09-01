@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import {
+  getEscoposVendidos,
   syncBancaFrentes,
   syncEquipeProjeto,
   toDateInputValue,
@@ -105,7 +106,9 @@ export function BancaFormModal({
     projetoId: number;
     lista: EscopoVendido[];
   } | null>(null);
-  const [escoposMarcados, setEscoposMarcados] = useState<number[]>([]);
+  const [escoposMarcados, setEscoposMarcados] = useState<number[]>(
+    banca?.projeto_escopo_ids ?? [],
+  );
   const [escopoId, setEscopoId] = useState(banca ? String(banca.escopo_id) : "");
   // Banca sem data abre o formulário com os campos VAZIOS, que é justamente o
   // caso de quem entra aqui para marcá-la.
@@ -138,6 +141,26 @@ export function BancaFormModal({
     };
   }, [editando, token]);
 
+  // ⭐ Editando, o projeto não é escolhido — vem da banca. Como ela guarda só
+  // os ids dos escopos, a lista GLOBAL de escopos vendidos é o caminho mais
+  // curto para o `projeto_id` deles; buscar escopo a escopo seria uma
+  // requisição por escopo para chegar ao mesmo número.
+  useEffect(() => {
+    if (!editando || !banca || projetoId != null) return;
+    const primeiro = banca.projeto_escopo_ids[0];
+    if (primeiro == null) return;
+    let ativo = true;
+    getEscoposVendidos(token)
+      .then((todos) => {
+        const dono = todos.find((e) => e.id === primeiro);
+        if (ativo && dono) setProjetoId(dono.projeto_id);
+      })
+      .catch(() => undefined);
+    return () => {
+      ativo = false;
+    };
+  }, [editando, banca, projetoId, token]);
+
   useEffect(() => {
     if (projetoId == null) return;
     let ativo = true;
@@ -155,6 +178,10 @@ export function BancaFormModal({
 
   // Derivados em vez de estado espelhado: a lista só vale para o projeto que
   // a trouxe, então trocar de projeto já a invalida sozinho.
+  /** O escopo já pertence à banca que está sendo editada. */
+  const ehDestaBanca = (escopo: EscopoVendido) =>
+    !!banca && banca.projeto_escopo_ids.includes(escopo.id);
+
   const escoposDoProjeto =
     escoposCarregados?.projetoId === projetoId ? escoposCarregados.lista : [];
   const carregandoEscopos = projetoId != null && escoposCarregados?.projetoId !== projetoId;
@@ -187,7 +214,13 @@ export function BancaFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!data || !hora) return;
+    // Editando, os escopos também são obrigatórios: o backend recusa esvaziar
+    // a banca (ela ficaria órfã), e barrar aqui evita o 422 depois do clique.
     if (editando ? !escopoId : escoposMarcados.length === 0) return;
+    if (editando && escoposMarcados.length === 0) {
+      setErro("A banca precisa cobrir ao menos um escopo.");
+      return;
+    }
     setEnviando(true);
     setErro("");
     try {
@@ -204,6 +237,11 @@ export function BancaFormModal({
             nome_projeto: nomeProjeto.trim(),
             escopo_id: Number(escopoId),
             data_hora: dataHora,
+            // ⭐ A lista SUBSTITUI a atual: o que foi desmarcado sai da banca,
+            // e o backend recalcula as frentes dela a partir dos escopos que
+            // sobraram. Não confundir com `escopo_id`, que é o rótulo do
+            // catálogo.
+            projeto_escopo_ids: escoposMarcados,
             ...(pisoMinimoOverride !== undefined ? { piso_minimo_override: pisoMinimoOverride } : {}),
           },
           token,
@@ -318,9 +356,11 @@ export function BancaFormModal({
               </FieldGroup>
             )}
 
-            {!editando && projetoEscolhido && (
+            {(editando ? projetoId != null : !!projetoEscolhido) && (
               <FieldGroup>
-                <FieldLabel as="span">Escopos que esta banca cobre</FieldLabel>
+                <FieldLabel as="span">
+                  Escopos que esta banca cobre
+                </FieldLabel>
                 {carregandoEscopos ? (
                   <EmptyText>Carregando escopos...</EmptyText>
                 ) : escoposDoProjeto.length === 0 ? (
@@ -333,13 +373,16 @@ export function BancaFormModal({
                       <CheckboxLabel key={escopo.id}>
                         <input
                           type="checkbox"
-                          disabled={!!escopo.banca}
+                          // ⚠ Editando, o escopo que já é DESTA banca aparece
+                          // com `escopo.banca` preenchida — desabilitá-lo por
+                          // isso travaria justamente o que se veio remover.
+                          disabled={!!escopo.banca && !ehDestaBanca(escopo)}
                           checked={escoposMarcados.includes(escopo.id)}
                           onChange={() => setEscoposMarcados((ids) => toggleId(ids, escopo.id))}
                         />
                         <span>
                           {escopo.nome}
-                          {escopo.banca && (
+                          {escopo.banca && !ehDestaBanca(escopo) && (
                             <>
                               {" "}
                               <EscopoIndisponivel>
