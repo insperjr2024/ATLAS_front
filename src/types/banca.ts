@@ -43,6 +43,29 @@ export interface BancaBase {
    * toda banca, o teto é 5 e o  pede 3 numa banca só de Business.
    */
   piso_minimo: number;
+  /**
+   * ⭐ O mesmo `piso_minimo` acima, ABERTO por frente — o que a matriz de
+   * Configurações exige e o que a banca tem hoje (2026-09-02).
+   *
+   * Existe porque o piso é uma soma: ele diz "faltam 2" e não diz de quê.
+   * Vazio na banca legada, que não tem frente vinculada e por isso não cai em
+   * combinação nenhuma.
+   */
+  composicao: ComposicaoDaFrente[];
+}
+
+/** Uma linha da composição da banca — a regra da frente e a contagem dela. */
+export interface ComposicaoDaFrente {
+  frente_id: number;
+  frente_nome: string;
+  min_membros: number;
+  /** 99 (`SEM_TETO` no backend) quando a combinação não tem teto configurado. */
+  max_membros: number;
+  min_lideranca: number;
+  max_lideranca: number;
+  /** Já sem quem ocupa a cota de liderança: ela é vaga A MAIS, não sai daqui. */
+  membros: number;
+  liderancas: number;
 }
 
 // Campos calculados que a API adiciona em GET /bancas e GET /bancas/{id}
