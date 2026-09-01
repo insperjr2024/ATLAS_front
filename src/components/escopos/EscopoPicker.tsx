@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 import type { Escopo, Frente } from "@/types/banca";
+import type { CalendariosDaFrente } from "@/lib/projetos";
 import { EmptyText } from "@/styles/page.styled";
 import { FieldInput, FieldSelect } from "@/pages/Bancas.styled";
 import {
@@ -20,6 +21,10 @@ import {
  *  quando aparecem juntos num projeto (a pedido do usuário, 2026-08-07).
  *  Espelha `ORDEM_PADRAO_BUSINESS` da migration `9ef5e8c8a983` no backend,
  *  só o nome muda de arquivo, a regra é a mesma. */
+/** O valor do `<option>` de "ainda nao escolheu". Precisa ser distinto de `""`,
+ *  que e o calendario unico da frente — uma resposta de verdade. */
+const SEM_ESCOLHA = "__sem_escolha__";
+
 const ORDEM_PADRAO_BUSINESS: Record<string, number> = {
   "Análise Mercadológica": 0,
   "Plano Operacional": 1,
@@ -33,10 +38,26 @@ export interface EscopoEmEdicao {
   escopo_id: number | null;
   nome_customizado: string;
   frente_id: number;
+  /**
+   * O calendario academico em que os dias deste escopo sao contados.
+   *
+   * `null` e resposta legitima — e o calendario da frente que tem um so —, e
+   * por isso `undefined` e o estado "ainda nao respondeu": os dois precisam se
+   * distinguir para `validarEscopos` conseguir cobrar a escolha.
+   */
+  calendario?: string | null;
   dias_uteis_vendidos: string;
 }
 
-export function validarEscopos(escopos: EscopoEmEdicao[]): string | null {
+/** As opcoes de calendario de uma frente. Lista vazia = ainda carregando. */
+function opcoesDaFrente(calendarios: CalendariosDaFrente[], frenteId: number) {
+  return calendarios.find((c) => c.frente_id === frenteId)?.calendarios ?? [];
+}
+
+export function validarEscopos(
+  escopos: EscopoEmEdicao[],
+  calendarios: CalendariosDaFrente[] = [],
+): string | null {
   if (escopos.length === 0) return "Adicione pelo menos um escopo vendido.";
   for (const escopo of escopos) {
     const ehOutro = escopo.escopo_id === null;
@@ -47,6 +68,12 @@ export function validarEscopos(escopos: EscopoEmEdicao[]): string | null {
     if (!dias || dias <= 0) {
       return "Cada escopo precisa de dias úteis vendidos maiores que zero.";
     }
+    // O calendario e obrigatorio quando ha mais de uma opcao. Com uma so,
+    // `adicionar` ja a aplicou e nao ha o que perguntar.
+    const opcoes = opcoesDaFrente(calendarios, escopo.frente_id);
+    if (opcoes.length > 1 && escopo.calendario === undefined) {
+      return "Escolha o calendário de cada escopo: é nele que os dias vendidos são contados.";
+    }
   }
   return null;
 }
@@ -56,6 +83,9 @@ export function montarEscoposPayload(escopos: EscopoEmEdicao[]) {
     escopo_id: e.escopo_id,
     nome_customizado: e.escopo_id === null ? e.nome_customizado.trim() : null,
     frente_id: e.frente_id,
+    // `undefined` so chega aqui na frente de calendario unico, onde nulo e a
+    // resposta certa — `validarEscopos` barra o resto antes.
+    calendario: e.calendario ?? null,
     dias_uteis_vendidos: Number(e.dias_uteis_vendidos),
   }));
 }
@@ -65,6 +95,9 @@ interface EscopoPickerProps {
   catalogo: Escopo[];
   frentes: Frente[];
   frentesMarcadas: number[];
+  /** Os calendarios escolhiveis por frente (`GET /calendarios-para-escolha`).
+   *  Vazio enquanto carrega: o seletor aparece desabilitado, nunca some. */
+  calendarios?: CalendariosDaFrente[];
   valor: EscopoEmEdicao[];
   onChange: (valor: EscopoEmEdicao[]) => void;
   desabilitado?: boolean;
@@ -74,6 +107,7 @@ export function EscopoPicker({
   catalogo,
   frentes,
   frentesMarcadas,
+  calendarios = [],
   valor,
   onChange,
   desabilitado,
@@ -88,6 +122,17 @@ export function EscopoPicker({
 
   function alterar(indice: number, mudanca: Partial<EscopoEmEdicao>) {
     onChange(valor.map((e, i) => (i === indice ? { ...e, ...mudanca } : e)));
+  }
+
+  /** Trocar a frente invalida o calendario: o rotulo vale DENTRO de uma frente,
+   *  e "Engenharias" nao existe em Business. Volta a `undefined` quando a nova
+   *  frente tem escolha a fazer, e se resolve sozinho quando nao tem. */
+  function trocarFrente(indice: number, frenteId: number) {
+    const opcoes = opcoesDaFrente(calendarios, frenteId);
+    alterar(indice, {
+      frente_id: frenteId,
+      calendario: opcoes.length === 1 ? opcoes[0].valor : undefined,
+    });
   }
 
   function remover(indice: number) {
@@ -107,10 +152,14 @@ export function EscopoPicker({
   function adicionar(escopoId: number | null) {
     const catalogoItem = escopoId !== null ? catalogo.find((e) => e.id === escopoId) : null;
     const frentePadrao = catalogoItem?.frente_id ?? frentesMarcadas[0];
+    // Com uma opcao so nao ha pergunta a fazer: ja nasce resolvido. Com mais
+    // de uma fica `undefined`, e `validarEscopos` cobra a escolha.
+    const opcoesNovo = opcoesDaFrente(calendarios, frentePadrao);
     const novo: EscopoEmEdicao = {
       escopo_id: escopoId,
       nome_customizado: "",
       frente_id: frentePadrao,
+      calendario: opcoesNovo.length === 1 ? opcoesNovo[0].valor : undefined,
       dias_uteis_vendidos: "",
     };
 
@@ -187,12 +236,40 @@ export function EscopoPicker({
             <FieldSelect
               value={String(escopo.frente_id)}
               disabled={desabilitado || frentesMarcadas.length === 1}
-              onChange={(e) => alterar(indice, { frente_id: Number(e.target.value) })}
+              onChange={(e) => trocarFrente(indice, Number(e.target.value))}
               aria-label="Frente do escopo"
             >
               {frentesMarcadas.map((id) => (
                 <option key={id} value={id}>
                   {nomeFrente(id)}
+                </option>
+              ))}
+            </FieldSelect>
+
+            {/* O calendario em que os dias deste escopo sao contados. Sempre
+                visivel, mesmo com uma opcao so: e o campo que diz QUAL
+                calendario esta valendo, e esconde-lo e o que deixou 22
+                projetos rodando sem ninguem ter escolhido nada. */}
+            <FieldSelect
+              value={escopo.calendario === undefined ? SEM_ESCOLHA : escopo.calendario ?? ""}
+              disabled={
+                desabilitado || opcoesDaFrente(calendarios, escopo.frente_id).length <= 1
+              }
+              onChange={(e) =>
+                alterar(indice, {
+                  calendario: e.target.value === "" ? null : e.target.value,
+                })
+              }
+              aria-label="Calendário do escopo"
+            >
+              {escopo.calendario === undefined && (
+                <option value={SEM_ESCOLHA} disabled>
+                  Calendário…
+                </option>
+              )}
+              {opcoesDaFrente(calendarios, escopo.frente_id).map((opcao) => (
+                <option key={opcao.rotulo} value={opcao.valor ?? ""}>
+                  {opcao.rotulo}
                 </option>
               ))}
             </FieldSelect>

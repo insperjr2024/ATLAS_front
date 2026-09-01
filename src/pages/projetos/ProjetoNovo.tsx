@@ -3,7 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Paperclip, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
-import { createProjeto, DIAS_REUNIAO, uploadAnexoProposta } from "@/lib/projetos";
+import {
+  createProjeto,
+  DIAS_REUNIAO,
+  listCalendariosParaEscolha,
+  uploadAnexoProposta,
+} from "@/lib/projetos";
+import type { CalendariosDaFrente } from "@/lib/projetos";
 import { getUsuarios } from "@/lib/usuarios";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import { getEscopos } from "@/lib/escopos";
@@ -115,6 +121,9 @@ export function ProjetoNovo() {
 
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [catalogo, setCatalogo] = useState<Escopo[]>([]);
+  // Os calendarios escolhiveis por frente. O escopo declara em qual deles os
+  // dias vendidos dele sao contados (§5.4) — e sem isso a janela sai errada.
+  const [calendarios, setCalendarios] = useState<CalendariosDaFrente[]>([]);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [usuariosFrentes, setUsuariosFrentes] = useState<UsuarioFrente[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -155,13 +164,21 @@ export function ProjetoNovo() {
     setCarregando(true);
     setErroCarga("");
     try {
-      const [frentesResp, usuariosResp, catalogoResp, usuariosFrentesResp] = await Promise.all([
+      const [
+        frentesResp,
+        usuariosResp,
+        catalogoResp,
+        usuariosFrentesResp,
+        calendariosResp,
+      ] = await Promise.all([
         getFrentes(token),
         getUsuarios(token),
         getEscopos(token),
         getUsuariosFrentes(token),
+        listCalendariosParaEscolha(token),
       ]);
       setFrentes(frentesResp);
+      setCalendarios(calendariosResp);
       setCatalogo(catalogoResp.filter((e) => e.ativo));
       setUsuarios(
         usuariosResp.filter((u) => u.ativo).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
@@ -221,7 +238,7 @@ export function ProjetoNovo() {
       setErro("Escolha pelo menos uma frente.");
       return;
     }
-    const erroEscopos = validarEscopos(escopos);
+    const erroEscopos = validarEscopos(escopos, calendarios);
     if (erroEscopos) {
       setErro(erroEscopos);
       return;
@@ -401,6 +418,7 @@ export function ProjetoNovo() {
                 catalogo={catalogo}
                 frentes={frentes}
                 frentesMarcadas={frenteIds}
+                calendarios={calendarios}
                 valor={escopos}
                 onChange={setEscopos}
                 desabilitado={salvando}
