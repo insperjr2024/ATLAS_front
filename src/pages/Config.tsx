@@ -7,7 +7,6 @@ import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/esco
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
 import { ComposicaoBancaCard } from "./config/ComposicaoBancaCard";
-import { ConfiguracaoBancaCard } from "./config/ConfiguracaoBancaCard";
 import { GestaoSemestralCard } from "./config/GestaoSemestralCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { Escopo, Frente } from "@/types/banca";
@@ -279,15 +278,18 @@ export function Config() {
                   <TableHead>
                     <TableRow>
                       <TableHeadCell>Nome</TableHeadCell>
-                      <TableHeadCell>Piso mínimo por banca</TableHeadCell>
                       <TableHeadCell />
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {frentes.map((frente) => (
                       <TableRow key={frente.id}>
+                        {/* ⚠ A coluna "Piso mínimo por banca" saiu em
+                            2026-09-01: o número virou só o PADRÃO de combinação
+                            não configurada, e mostrá-lo aqui fazia parecer que
+                            editá-lo mudava as bancas — quem manda é a matriz,
+                            em "Composição por combinação de frentes". */}
                         <NameCell>{frente.nome}</NameCell>
-                        <TableCell>{frente.piso_banca}</TableCell>
                         <ActionsCell>
                           <PageButtonSm $variant="outline" type="button" onClick={() => setModalFrente(frente)}>
                             Editar
@@ -344,8 +346,13 @@ export function Config() {
           </SecaoDescricao>
         </SecaoCabecalho>
 
-        <ConfiguracaoBancaCard />
-
+        {/* ⚠ O card "Configurações de banca" saiu daqui em 2026-09-01. Ele
+            editava `vagas_por_banca` e `lideranca_minima_por_frente`, e com a
+            matriz por combinação existindo eram TRÊS lugares configurando a
+            mesma coisa — a diretoria mexia num e não via efeito, porque quem
+            manda é a matriz. O teto migrou para o card abaixo; o mínimo de
+            liderança virou só o padrão de combinação não configurada, e se
+            edita por lá. */}
         <ComposicaoBancaCard />
 
         <SituacoesCargaCard />

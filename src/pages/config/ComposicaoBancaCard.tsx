@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
+  getConfiguracao,
+  updateConfiguracao,
   getComposicaoBanca,
   listarCombinacoesComposicao,
   salvarComposicaoBanca,
@@ -25,6 +27,7 @@ import {
   TableRow,
   TableBody,
   TableCell,
+  FieldGroup,
   FieldLabel,
   FieldInput,
   FormErrorText,
@@ -60,10 +63,21 @@ export function ComposicaoBancaCard() {
   const [marcadas, setMarcadas] = useState<number[]>([]);
   const [regra, setRegra] = useState<ComposicaoDaCombinacao | null>(null);
   const [rascunho, setRascunho] = useState<Rascunho>({});
+  /** O teto de vagas por banca — global, e a única coisa que sobrou do card
+   *  "Configurações de banca". Não é composição: é quantos CABEM, e é ele que
+   *  faz `create_candidatura` recusar com "banca lotada". */
+  const [teto, setTeto] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
+
+  useEffect(() => {
+    if (!token) return;
+    getConfiguracao(token)
+      .then((c) => setTeto(String(c.vagas_por_banca)))
+      .catch(() => undefined);
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -151,7 +165,14 @@ export function ComposicaoBancaCard() {
     setSalvando(true);
     setErro("");
     setAviso("");
+    const numeroTeto = Number(teto);
+    if (!Number.isInteger(numeroTeto) || numeroTeto < 1) {
+      setErro("Informe um teto de vagas por banca válido.");
+      setSalvando(false);
+      return;
+    }
     try {
+      await updateConfiguracao({ vagas_por_banca: numeroTeto }, token);
       await salvarComposicaoBanca(escolhida, frentes, token);
       setAviso("Salvo.");
       // A lista do seletor carrega o "configurada" e o mínimo de cada
@@ -194,6 +215,22 @@ export function ComposicaoBancaCard() {
           <EmptyText>Nenhuma frente ativa cadastrada.</EmptyText>
         ) : (
           <>
+            {/* O teto é GLOBAL, não da combinação: responde "quantos cabem
+                nesta banca" e é o que faz a inscrição recusar com "banca
+                lotada". Mora aqui porque era o último campo do card
+                "Configurações de banca", que saiu — três lugares configurando
+                banca era exatamente o que confundia. */}
+            <FieldGroup style={{ marginBottom: "1rem" }}>
+              <FieldLabel htmlFor="teto-vagas">Teto de vagas por banca</FieldLabel>
+              <FieldInput
+                id="teto-vagas"
+                type="number"
+                min={1}
+                value={teto}
+                onChange={(e) => setTeto(e.target.value)}
+              />
+            </FieldGroup>
+
             {/* 📐 **Monta-se a combinação, não se escolhe uma pronta.**
                 Antes era um `<select>` com as 15 combinações em lista corrida:
                 para saber se "Business + Direito" existia, era preciso abrir o
