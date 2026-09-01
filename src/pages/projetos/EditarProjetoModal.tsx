@@ -7,11 +7,14 @@ import {
   updateCliente,
   updateDescricao,
   updateEquipe,
+  updateEscopoProjeto,
   updateFrentes,
   updateLinkProposta,
   updateMaxConsultores,
+  type UpdateEscopoProjetoPayload,
 } from "@/lib/projetos";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
+import { getEscopos } from "@/lib/escopos";
 import {
   MemberPicker,
   montarEquipePayload,
@@ -21,14 +24,15 @@ import {
 import { CompatibilidadeHorarios } from "@/components/grade/CompatibilidadeHorarios";
 import { MultiSelect } from "@/components/MultiSelect";
 import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
-import type { ProjetoCompleto } from "@/types/projeto";
-import type { Frente } from "@/types/banca";
-import { PageButton } from "@/styles/page.styled";
+import type { EscopoVendido, ProjetoCompleto } from "@/types/projeto";
+import type { Escopo, Frente } from "@/types/banca";
+import { EmptyText, PageButton } from "@/styles/page.styled";
 import { FrenteLista, FrenteToggle } from "./ProjetoNovo.styled";
 import {
   FieldGroup,
   FieldInput,
   FieldLabel,
+  FieldSelect,
   Required,
   FieldTextarea,
   FormErrorText,
@@ -40,6 +44,92 @@ import {
   ModalFooter,
   WideModalContent,
 } from "./Projetos.styled";
+
+/** O valor do `<select>` de tipo de escopo para "Outro", mesmo rótulo do
+ *  `NovoEscopoVendidoModal`, que é onde esse `<select>` nasceu. */
+const OUTRO_ESCOPO = "outro";
+
+/** Um escopo já vendido, editado nesta linha. Diferente do escopo NOVO
+ *  (`NovoEscopoVendidoModal`): não tem `frente_id` escolhível, porque a
+ *  frente de um escopo que já existe não é editável (ver
+ *  `UpdateEscopoProjetoRequest.calendario`, mesma régua). */
+interface EscopoEmEdicao {
+  id: number;
+  frenteId: number;
+  tipo: string;
+  nomeCustomizado: string;
+  dias: string;
+}
+
+function paraEdicao(escopo: EscopoVendido): EscopoEmEdicao {
+  return {
+    id: escopo.id,
+    frenteId: escopo.frente_id,
+    tipo: escopo.escopo_id !== null ? String(escopo.escopo_id) : OUTRO_ESCOPO,
+    nomeCustomizado: escopo.nome_customizado ?? "",
+    dias: String(escopo.dias_uteis_vendidos),
+  };
+}
+
+/** `null` quando nada mudou nesta linha, evita um PATCH vazio por escopo
+ *  que ninguém tocou. */
+function payloadDoEscopo(
+  linha: EscopoEmEdicao,
+  original: EscopoVendido,
+): UpdateEscopoProjetoPayload | null {
+  const payload: UpdateEscopoProjetoPayload = {};
+
+  const ehOutro = linha.tipo === OUTRO_ESCOPO;
+  const novoEscopoId = ehOutro ? null : Number(linha.tipo);
+  const novoNome = ehOutro ? linha.nomeCustomizado.trim() : null;
+  // Os dois campos formam UM tipo: se qualquer um dos dois mudou, os dois
+  // viajam juntos, mandar só a metade deixaria o outro lado com o valor
+  // antigo no PATCH.
+  if (novoEscopoId !== original.escopo_id || novoNome !== (original.nome_customizado ?? null)) {
+    payload.escopo_id = novoEscopoId;
+    payload.nome_customizado = novoNome;
+  }
+
+  const novosDias = Number(linha.dias);
+  if (novosDias !== original.dias_uteis_vendidos) {
+    payload.dias_uteis_vendidos = novosDias;
+  }
+
+  return Object.keys(payload).length > 0 ? payload : null;
+}
+
+/** Um escopo por bloco, com borda própria. A tabela "Escopos vendidos" (na
+ *  Visão geral) já lista todos lado a lado; aqui cada um vira um cartão
+ *  porque editar pede mais campo por linha do que aquela tabela tem coluna. */
+const EscopoBloco = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+
+  & + & {
+    margin-top: ${theme.spacing.sm};
+  }
+`;
+
+const EscopoBlocoTitulo = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
+`;
+
+const EscopoBlocoCampos = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+
+  & > * {
+    flex: 1 1 12rem;
+  }
+`;
 
 /**
  * O empilhamento dos campos do modal.
@@ -153,6 +243,23 @@ export function EditarProjetoModal({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [usuariosFrentes, setUsuariosFrentes] = useState<UsuarioFrente[]>([]);
+  const [escoposEdicao, setEscoposEdicao] = useState<EscopoEmEdicao[]>(() =>
+    projeto.escopos.map(paraEdicao),
+  );
+  /** O catálogo só é buscado se o projeto tiver algum escopo vendido. */
+  const [catalogoEscopos, setCatalogoEscopos] = useState<Escopo[]>([]);
+
+  useEffect(() => {
+    if (projeto.escopos.length === 0 || !token) return;
+    getEscopos(token)
+      .then(setCatalogoEscopos)
+      .catch(() => setCatalogoEscopos([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  function atualizarEscopo(id: number, patch: Partial<EscopoEmEdicao>) {
+    setEscoposEdicao((lista) => lista.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  }
 
   function toggleFrente(id: number) {
     setFrenteIds((atual) =>
@@ -203,6 +310,19 @@ export function EditarProjetoModal({
       setErro("O teto de consultores precisa ser um número de 0 a 20.");
       return;
     }
+    for (const linha of escoposEdicao) {
+      const original = projeto.escopos.find((e) => e.id === linha.id);
+      if (!original) continue;
+      if (linha.tipo === OUTRO_ESCOPO && !linha.nomeCustomizado.trim()) {
+        setErro(`Dê um nome ao escopo "${original.nome}", ou escolha um item do catálogo.`);
+        return;
+      }
+      const dias = Number(linha.dias);
+      if (!Number.isInteger(dias) || dias < 1) {
+        setErro(`Os dias úteis vendidos de "${original.nome}" precisam ser maiores que zero.`);
+        return;
+      }
+    }
 
     setSalvando(true);
     setErro("");
@@ -241,6 +361,17 @@ export function EditarProjetoModal({
           token,
           vendedoresMudaram ? vendedorIds : undefined,
         );
+      }
+      // Por último: se um escopo falhar (tipo do catálogo removido nesse
+      // meio-tempo, por exemplo), o resto já está salvo, e o modal segue
+      // aberto só com o que faltou, igual à equipe logo acima.
+      for (const linha of escoposEdicao) {
+        const original = projeto.escopos.find((e) => e.id === linha.id);
+        if (!original) continue;
+        const payload = payloadDoEscopo(linha, original);
+        if (payload) {
+          await updateEscopoProjeto(linha.id, payload, token);
+        }
       }
       await onSalvo();
     } catch (err) {
@@ -397,6 +528,78 @@ export function EditarProjetoModal({
                     não um campo a preencher. */}
                 <CompatibilidadeHorarios consultorIds={equipe.consultorIds} usuarios={ativos} />
               </SecaoForm>
+
+              {/* Só aparece com escopo cadastrado: adicionar o primeiro
+                  continua sendo feito na Visão geral, onde a reunião inicial
+                  e a banca de cada um também moram. */}
+              {escoposEdicao.length > 0 && (
+                <SecaoForm>
+                  <SecaoFormTitulo>Escopos vendidos</SecaoFormTitulo>
+                  <EmptyText style={{ margin: 0, fontSize: "0.75rem" }}>
+                    Troque o tipo de um escopo já cadastrado e corrija os dias úteis vendidos. Para
+                    adicionar ou remover escopos, use a tabela "Escopos vendidos" na Visão geral.
+                  </EmptyText>
+                  {escoposEdicao.map((linha) => {
+                    const original = projeto.escopos.find((e) => e.id === linha.id);
+                    if (!original) return null;
+                    const ehOutro = linha.tipo === OUTRO_ESCOPO;
+                    const opcoesDaFrente = catalogoEscopos.filter(
+                      (c) => c.frente_id === linha.frenteId,
+                    );
+                    return (
+                      <EscopoBloco key={linha.id}>
+                        <EscopoBlocoTitulo>{original.nome}</EscopoBlocoTitulo>
+                        <EscopoBlocoCampos>
+                          <FieldGroup>
+                            <FieldLabel htmlFor={`escopo-tipo-${linha.id}`}>Tipo</FieldLabel>
+                            <FieldSelect
+                              id={`escopo-tipo-${linha.id}`}
+                              value={linha.tipo}
+                              disabled={salvando}
+                              onChange={(e) => atualizarEscopo(linha.id, { tipo: e.target.value })}
+                            >
+                              {opcoesDaFrente.map((c) => (
+                                <option key={c.id} value={String(c.id)}>
+                                  {c.nome}
+                                </option>
+                              ))}
+                              <option value={OUTRO_ESCOPO}>Outro (digitar o nome)</option>
+                            </FieldSelect>
+                          </FieldGroup>
+
+                          {ehOutro && (
+                            <FieldGroup>
+                              <FieldLabel htmlFor={`escopo-nome-${linha.id}`}>Nome</FieldLabel>
+                              <FieldInput
+                                id={`escopo-nome-${linha.id}`}
+                                value={linha.nomeCustomizado}
+                                disabled={salvando}
+                                onChange={(e) =>
+                                  atualizarEscopo(linha.id, { nomeCustomizado: e.target.value })
+                                }
+                              />
+                            </FieldGroup>
+                          )}
+
+                          <FieldGroup>
+                            <FieldLabel htmlFor={`escopo-dias-${linha.id}`}>
+                              Dias úteis vendidos
+                            </FieldLabel>
+                            <FieldInput
+                              id={`escopo-dias-${linha.id}`}
+                              type="number"
+                              min={1}
+                              value={linha.dias}
+                              disabled={salvando}
+                              onChange={(e) => atualizarEscopo(linha.id, { dias: e.target.value })}
+                            />
+                          </FieldGroup>
+                        </EscopoBlocoCampos>
+                      </EscopoBloco>
+                    );
+                  })}
+                </SecaoForm>
+              )}
 
               {/* Dentro da pilha, e não solto no `ModalBody`: fora dela o erro
                   encostaria no último bloco, exatamente o problema que a pilha
