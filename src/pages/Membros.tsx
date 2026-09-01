@@ -15,7 +15,7 @@ import {
 } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import { getLotes, getPendencias } from "@/lib/desempenho-lotes";
-import { getFaixasDisponiveis, getGradeDeUsuario } from "@/lib/grade-horaria";
+import { getFaixasDisponiveis, getGradeDeUsuario, getGradesPreenchidas } from "@/lib/grade-horaria";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { GradeEditor } from "@/components/grade/GradeEditor";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
@@ -97,6 +97,8 @@ import {
   FiltersRow,
   SearchField,
   HeaderActions,
+  BotaoComPino,
+  PinoGrade,
   SenhaProvisoriaCaixa,
   SenhaProvisoriaValor,
 } from "./Membros.styled";
@@ -144,6 +146,10 @@ export function Membros() {
   /** `null` até carregar (ou pra quem não administra desempenho, que nunca
    *  pede isso). Mapa vazio é resultado válido: ninguém tem lote aberto. */
   const [avaliacaoPorMembro, setAvaliacaoPorMembro] = useState<Map<number, AvaliacaoResumo> | null>(null);
+  /** Ids de quem já enviou a grade do semestre. `null` até carregar; um id
+   *  ausente do conjunto = grade não enviada, e o botão "Ver grade" ganha um
+   *  pino. Conjunto vazio é resultado válido (ninguém enviou ainda). */
+  const [gradesPreenchidas, setGradesPreenchidas] = useState<Set<number> | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [membroDetalhe, setMembroDetalhe] = useState<UsuarioResumo | null>(null);
@@ -168,13 +174,17 @@ export function Membros() {
     if (mostrarCarregando) setCarregando(true);
     setErro("");
     try {
-      const [usuariosResp, frentes, usuariosFrentes] = await Promise.all([
+      const [usuariosResp, frentes, usuariosFrentes, grades] = await Promise.all([
         getUsuarios(token),
         getFrentes(token),
         getUsuariosFrentes(token),
+        // Sem gestão ativa a rota devolve 422. O pino é acessório, então uma
+        // falha aqui só o deixa de fora, não derruba a lista.
+        getGradesPreenchidas(token).catch(() => ({ semestre_id: 0, usuario_ids: [] as number[] })),
       ]);
       setMembros(usuariosResp.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
       setContexto({ frentes, usuariosFrentes });
+      setGradesPreenchidas(new Set(grades.usuario_ids));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar membros");
     } finally {
@@ -407,9 +417,16 @@ export function Membros() {
                             {membro.senha_provisoria ? "Reenviar senha" : "Resetar senha"}
                           </PageButtonSm>
                         )}
-                        <PageButtonSm $variant="outline" type="button" onClick={() => setGradeDe(membro)}>
-                          Ver grade
-                        </PageButtonSm>
+                        {/* Pino só para quem está ativo e ainda não enviou a
+                            grade do semestre: ex-membro não precisa preencher. */}
+                        <BotaoComPino>
+                          <PageButtonSm $variant="outline" type="button" onClick={() => setGradeDe(membro)}>
+                            Ver grade
+                          </PageButtonSm>
+                          {membro.ativo && gradesPreenchidas && !gradesPreenchidas.has(membro.id) && (
+                            <PinoGrade title="Grade do semestre não enviada" aria-label="Grade do semestre não enviada" />
+                          )}
+                        </BotaoComPino>
                         <PageButtonSm $variant="outline" type="button" onClick={() => setMembroDetalhe(membro)}>
                           Ver mais
                         </PageButtonSm>
