@@ -181,8 +181,11 @@ export interface CreateBancaPayload {
 export interface UpdateBancaPayload {
   nome_projeto?: string;
   /** O escopo do CATÁLOGO — um rótulo da banca. Não confundir com o campo
-   *  abaixo, que é o vínculo com os escopos vendidos do projeto. */
-  escopo_id?: number;
+   *  abaixo, que é o vínculo com os escopos vendidos do projeto.
+   *
+   *  `null` é válido: escopo vendido "Outro" não tem item de catálogo, e a
+   *  coluna é nullable justamente por isso. */
+  escopo_id?: number | null;
   data_hora?: string;
   piso_minimo_override?: number | null;
   /**

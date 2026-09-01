@@ -15,13 +15,7 @@ import {
   paraDataUtc,
 } from "@/lib/projetos";
 import { consultoresDoNucleo } from "@/lib/nucleo";
-import type {
-  Banca,
-  BancaFrente,
-  EquipeProjeto,
-  Escopo,
-  Frente,
-} from "@/types/banca";
+import type { Banca, BancaFrente, EquipeProjeto, Frente } from "@/types/banca";
 import type { EscopoVendido, ProjetoResumo } from "@/types/projeto";
 import type { UsuarioResumo } from "@/types/auth";
 import { EmptyText, PageButton, PageButtonSm } from "@/styles/page.styled";
@@ -30,7 +24,6 @@ import {
   FieldGroup,
   FieldLabel,
   FieldInput,
-  FieldSelect,
   CheckboxGrid,
   CheckboxLabel,
   DateTimeRow,
@@ -62,8 +55,6 @@ import {
  */
 export interface DadosDoFormularioDeBanca {
   usuarios: UsuarioResumo[];
-  /** O catálogo de escopos, para o select de escopo da edição. */
-  escopos: Escopo[];
   frentes: Frente[];
   equipesProjeto: EquipeProjeto[];
   bancasFrentes: BancaFrente[];
@@ -109,7 +100,6 @@ export function BancaFormModal({
   const [escoposMarcados, setEscoposMarcados] = useState<number[]>(
     banca?.projeto_escopo_ids ?? [],
   );
-  const [escopoId, setEscopoId] = useState(banca ? String(banca.escopo_id) : "");
   // Banca sem data abre o formulário com os campos VAZIOS, que é justamente o
   // caso de quem entra aqui para marcá-la.
   const [data, setData] = useState(banca?.data_hora ? toDateInputValue(banca.data_hora) : "");
@@ -249,15 +239,20 @@ export function BancaFormModal({
     if (!data || !hora) return;
     // Editando, os escopos também são obrigatórios: o backend recusa esvaziar
     // a banca (ela ficaria órfã), e barrar aqui evita o 422 depois do clique.
-    if (editando ? !escopoId : escoposMarcados.length === 0) return;
-    if (editando && escoposMarcados.length === 0) {
-      setErro("A banca precisa cobrir ao menos um escopo.");
+    // A banca LEGADA (nenhum escopo vendido) é a única que pode ser salva sem
+    // nenhum marcado — ela nunca teve vínculo para perder.
+    if (escoposMarcados.length === 0 && (banca?.projeto_escopo_ids.length ?? 1) > 0) {
+      if (editando) setErro("A banca precisa cobrir ao menos um escopo.");
       return;
     }
     setEnviando(true);
     setErro("");
     try {
       const dataHora = new Date(`${data}T${hora}:00`).toISOString();
+      // Ordem do PROJETO, não a de clique: qual escopo é "o primeiro" não pode
+      // depender da ordem em que as caixas foram marcadas.
+      const primeiroMarcado = escoposDoProjeto.find((e) => escoposMarcados.includes(e.id));
+      const escopoDoCatalogo = primeiroMarcado ? primeiroMarcado.escopo_id : undefined;
       const pisoMinimoOverride = ehDiretor
         ? pisoOverride.trim() === ""
           ? null
@@ -268,13 +263,20 @@ export function BancaFormModal({
           banca.id,
           {
             nome_projeto: nomeProjeto.trim(),
-            escopo_id: Number(escopoId),
             data_hora: dataHora,
             // ⭐ A lista SUBSTITUI a atual: o que foi desmarcado sai da banca,
             // e o backend recalcula as frentes dela a partir dos escopos que
             // sobraram. Não confundir com `escopo_id`, que é o rótulo do
             // catálogo.
             projeto_escopo_ids: escoposMarcados,
+            // ⭐ O rótulo legado do catálogo acompanha os escopos marcados, em
+            // vez de ter um campo próprio: ele é o mesmo dado, e escolhido à
+            // parte divergia da banca (a tela de Avaliações e o Dashboard
+            // agrupam por ele). É o catálogo do PRIMEIRO escopo marcado —
+            // a mesma regra da criação, em `marcar_banca_escopo`. Só vai
+            // quando os escopos do projeto estão carregados: sem eles,
+            // mandar `null` apagaria o rótulo sem que ninguém tenha pedido.
+            ...(escopoDoCatalogo !== undefined ? { escopo_id: escopoDoCatalogo } : {}),
             ...(pisoMinimoOverride !== undefined ? { piso_minimo_override: pisoMinimoOverride } : {}),
           },
           token,
@@ -445,20 +447,6 @@ export function BancaFormModal({
                 <FieldInput id="hora-banca" type="time" value={hora} onChange={(e) => setHora(e.target.value)} required />
               </FieldGroup>
             </DateTimeRow>
-
-            {editando && (
-              <FieldGroup>
-                <FieldLabel htmlFor="escopo">Escopo</FieldLabel>
-                <FieldSelect id="escopo" value={escopoId} onChange={(e) => setEscopoId(e.target.value)} required>
-                  <option value="">Selecione um escopo</option>
-                  {dados.escopos.map((escopo) => (
-                    <option key={escopo.id} value={escopo.id}>
-                      {escopo.nome}
-                    </option>
-                  ))}
-                </FieldSelect>
-              </FieldGroup>
-            )}
 
             {ehDiretor && (
               <FieldGroup>
