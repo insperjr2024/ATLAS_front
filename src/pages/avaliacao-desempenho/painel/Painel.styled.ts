@@ -385,13 +385,15 @@ export const PastaCardTitulo = styled.span`
 `;
 
 /** Rolagem própria: com 20 projetos a lista empurrava o botão "Criar lote"
- *  para fora da tela, e não dava para ver o que tinha sido marcado. */
-export const ProjetoChipsRow = styled.div`
+ *  para fora da tela, e não dava para ver o que tinha sido marcado.
+ *  `$expandido` tira esse teto pra quem prefere rolar a página toda em vez
+ *  de rolar dentro de uma caixinha de 11rem. */
+export const ProjetoChipsRow = styled.div<{ $expandido?: boolean }>`
   display: flex;
   flex-wrap: wrap;
   gap: ${theme.spacing.xs};
-  max-height: 11rem;
-  overflow-y: auto;
+  max-height: ${(p) => (p.$expandido ? "none" : "11rem")};
+  overflow-y: ${(p) => (p.$expandido ? "visible" : "auto")};
   padding: ${theme.spacing.sm};
   border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.md};

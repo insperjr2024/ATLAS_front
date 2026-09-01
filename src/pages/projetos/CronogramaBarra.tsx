@@ -82,7 +82,8 @@ interface Props {
     | null;
   onEntregaPlanejada: (valor: string) => void;
 
-  /** Só o coordenador deste projeto pede dias, e só dentro do prazo. */
+  /** O coordenador deste projeto ou a diretoria de projetos pedem dias, e só
+   *  dentro do prazo. */
   podePedirDias: boolean;
   rotuloPrazoPedido: string | null;
   diasUteisRestantesDoPedido: number;
@@ -147,11 +148,12 @@ export function CronogramaBarra({
   const modosVisiveis = modos.filter((modo) => !modo.escopo || escopoAtual);
   const modoAtivo = modos.find((m) => m.valor === modoMarcacao);
 
-  /* ⚠ A porta de aumentar a JANELA do escopo, e nada além disso. Só para o
-     coordenador, com escopo escolhido, e só dentro do prazo — até o último dia
-     da ambientação no primeiro escopo vendido, nos 3 dias úteis depois da
-     largada nos demais. É aí que dá para perceber que o escopo foi vendido
-     apertado. Fora disso o botão some, porque a porta não existe mais.
+  /* ⚠ A porta de aumentar a JANELA do escopo, e nada além disso. Para o
+     coordenador do projeto ou a diretoria de projetos (2026-08-31), com escopo
+     escolhido, e só dentro do prazo — até o último dia da ambientação no
+     primeiro escopo vendido, nos 3 dias úteis depois da largada nos demais. É
+     aí que dá para perceber que o escopo foi vendido apertado. Fora disso o
+     botão some, porque a porta não existe mais.
 
      Quem decide o prazo é o backend (`pedido_ajuste_aberto` /
      `prazo_pedido_ajuste`): a régua tem duas metades e recalculá-la aqui era

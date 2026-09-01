@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle, Pencil } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   abrirLote,
@@ -125,6 +125,7 @@ export function PainelLotes() {
   const [dataFim, setDataFim] = useState("");
   const [projetoIds, setProjetoIds] = useState<number[]>([]);
   const [buscaProjeto, setBuscaProjeto] = useState("");
+  const [projetosExpandido, setProjetosExpandido] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState("");
 
@@ -391,8 +392,25 @@ export function PainelLotes() {
                 <SeletorContagem>
                   {projetoIds.length} de {projetos.length} escolhidos
                 </SeletorContagem>
+                <PageButtonSm
+                  type="button"
+                  $variant="outline"
+                  onClick={() => setProjetosExpandido((v) => !v)}
+                >
+                  {projetosExpandido ? (
+                    <>
+                      <ChevronUp size={14} />
+                      Recolher
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown size={14} />
+                      Expandir
+                    </>
+                  )}
+                </PageButtonSm>
               </SeletorBarra>
-              <ProjetoChipsRow>
+              <ProjetoChipsRow $expandido={projetosExpandido}>
                 {projetosVisiveis.length === 0 ? (
                   <EmptyText>Nenhum projeto encontrado.</EmptyText>
                 ) : (
