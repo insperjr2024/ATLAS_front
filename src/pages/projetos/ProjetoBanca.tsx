@@ -1,9 +1,10 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   aceitaInscricao,
+  deleteBanca,
   getBanca,
   getBancasDoProjeto,
   getBancasFrentes,
@@ -19,6 +20,7 @@ import { CODIGO_BANCA_ABAIXO_DO_MINIMO, codigoDoErro } from "@/lib/api";
 import { createAvaliacao, getFormularioAtivo, submeterAvaliacao } from "@/lib/avaliacoes";
 import { formatarDataHora } from "@/lib/projetos";
 import { VotoBanca } from "@/components/VotoBanca";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type {
   AvaliacaoDaBanca,
   AvaliadorDaBanca,
@@ -225,6 +227,7 @@ function FichaDaBanca({
   const { usuario, token } = useAuth();
   const [realizando, setRealizando] = useState(false);
   const [editando, setEditando] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
   const recebidos = banca.apuracao.aprovacoes + banca.apuracao.reprovacoes;
 
   // Quem marca a banca também registra que ela aconteceu — a MESMA permissão
@@ -246,6 +249,9 @@ function FichaDaBanca({
    */
   const podeEditar = podeRegistrar && !somenteLeitura && aceitaInscricao(banca.status);
   const eu = banca.avaliadores.find((a) => a.usuario_id === usuario?.id);
+  // O mesmo nome no título do card e na confirmação de exclusão: quem clicou
+  // no lixo precisa reconhecer no modal exatamente o que estava olhando.
+  const nomeDaBanca = banca.escopos.join(" + ") || banca.nome_projeto;
 
   const porSessao = new Map<number, AvaliacaoDaBanca[]>();
   for (const a of banca.avaliacoes) {
@@ -257,7 +263,7 @@ function FichaDaBanca({
   return (
     <PageCard>
       <PageCardHeader>
-        <PageCardTitle>{banca.escopos.join(" + ") || banca.nome_projeto}</PageCardTitle>
+        <PageCardTitle>{nomeDaBanca}</PageCardTitle>
         <PageBadge $tone={tomDoStatusBanca(banca.status)}>
           {ROTULO_STATUS_BANCA[banca.status]}
         </PageBadge>
@@ -281,10 +287,29 @@ function FichaDaBanca({
             Registrar realização
           </PageButtonSm>
         )}
+        {/* ⚠ Os dois num filho SÓ do cabeçalho, e não lado a lado soltos: o
+            `PageCardHeader` distribui os filhos com `space-between`, então
+            cada botão solto era empurrado para longe do vizinho. Agrupados,
+            andam juntos e ficam separados só pelo gap desta linha.
+
+            Excluir mora ao lado de editar e sob a MESMA permissão: as duas
+            desfazem a marcação, e uma banca que se pode remarcar é uma banca
+            que se pode apagar. Só o ícone porque o rótulo já está no modal. */}
         {podeEditar && (
-          <PageButtonSm $variant="outline" type="button" onClick={() => setEditando(true)}>
-            Editar banca
-          </PageButtonSm>
+          <AcoesLinha>
+            <PageButtonSm $variant="outline" type="button" onClick={() => setEditando(true)}>
+              Editar banca
+            </PageButtonSm>
+            <PageButtonSm
+              $variant="outline"
+              type="button"
+              aria-label={`Excluir a banca ${nomeDaBanca}`}
+              title="Excluir banca"
+              onClick={() => setExcluindo(true)}
+            >
+              <Trash2 size={14} />
+            </PageButtonSm>
+          </AcoesLinha>
         )}
       </PageCardHeader>
 
@@ -467,6 +492,21 @@ function FichaDaBanca({
           onFechar={() => setEditando(false)}
           onSalvou={async () => {
             setEditando(false);
+            await onMudou();
+          }}
+        />
+      )}
+
+      {/* Mesma redação da tela de Bancas: é a mesma exclusão, pela mesma rota
+          (`DELETE /bancas/{id}`), só alcançada de outro lugar. */}
+      {excluindo && token && (
+        <ConfirmarModal
+          titulo="Excluir banca"
+          mensagem={`Excluir a banca "${nomeDaBanca}"? Esta ação não pode ser desfeita.`}
+          onCancelar={() => setExcluindo(false)}
+          onConfirmar={async () => {
+            await deleteBanca(banca.id, token);
+            setExcluindo(false);
             await onMudou();
           }}
         />
