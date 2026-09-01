@@ -184,7 +184,13 @@ export function BancaFormModal({
 
   const escoposDoProjeto =
     escoposCarregados?.projetoId === projetoId ? escoposCarregados.lista : [];
-  const carregandoEscopos = projetoId != null && escoposCarregados?.projetoId !== projetoId;
+  /** Editando, o projeto ainda está sendo descoberto a partir dos escopos da
+   *  banca (o efeito acima). Sem isto o bloco de escopos simplesmente não
+   *  existia até a resposta chegar. */
+  const resolvendoProjeto =
+    editando && projetoId == null && (banca?.projeto_escopo_ids.length ?? 0) > 0;
+  const carregandoEscopos =
+    resolvendoProjeto || (projetoId != null && escoposCarregados?.projetoId !== projetoId);
 
   const projetoEscolhido = projetos.find((p) => p.id === projetoId) ?? null;
 
@@ -195,8 +201,13 @@ export function BancaFormModal({
     : projetos;
 
   /** Escopo que já tem banca não pode ser puxado para outra: o backend recusa
-   *  (seria apagar em silêncio a data já marcada). */
-  const escoposLivres = escoposDoProjeto.filter((e) => !e.banca);
+   *  (seria apagar em silêncio a data já marcada).
+   *
+   *  ⚠ Editando, os escopos DESTA banca também contam como disponíveis: eles
+   *  aparecem com `escopo.banca` preenchida (a própria), e tratá-los como
+   *  ocupados escondia a lista inteira — toda banca cujos escopos fossem todos
+   *  os do projeto caía no "todos já têm banca" e não dava para trocar nada. */
+  const escoposSelecionaveis = escoposDoProjeto.filter((e) => !e.banca || ehDestaBanca(e));
 
   const frentesDosEscoposMarcados = [
     ...new Set(
@@ -209,6 +220,28 @@ export function BancaFormModal({
 
   function toggleId(lista: number[], id: number): number[] {
     return lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id];
+  }
+
+  /**
+   * Marca/desmarca um escopo e, na edição, faz as frentes acompanharem.
+   *
+   * ⚠ O `syncBancaFrentes` do submit é o ÚLTIMO a gravar e manda a lista de
+   * checkboxes de Frentes. Se ela não acompanhasse os escopos, o recálculo que
+   * o backend faz em `updateBanca` seria desfeito logo em seguida: a frente do
+   * escopo removido voltaria e a do escopo acrescentado sumiria. As frentes
+   * que o usuário marcou à mão e não vêm de escopo nenhum do projeto ficam.
+   */
+  function alternarEscopo(escopoId: number) {
+    const marcados = toggleId(escoposMarcados, escopoId);
+    setEscoposMarcados(marcados);
+    if (!editando) return;
+    const frentesDeEscopo = new Set(escoposDoProjeto.map((e) => e.frente_id));
+    const frentesDosMarcados = escoposDoProjeto
+      .filter((e) => marcados.includes(e.id))
+      .map((e) => e.frente_id);
+    setFrenteIds((ids) => [
+      ...new Set([...ids.filter((id) => !frentesDeEscopo.has(id)), ...frentesDosMarcados]),
+    ]);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -356,7 +389,7 @@ export function BancaFormModal({
               </FieldGroup>
             )}
 
-            {(editando ? projetoId != null : !!projetoEscolhido) && (
+            {(editando ? projetoId != null || resolvendoProjeto : !!projetoEscolhido) && (
               <FieldGroup>
                 <FieldLabel as="span">
                   Escopos que esta banca cobre
@@ -365,8 +398,10 @@ export function BancaFormModal({
                   <EmptyText>Carregando escopos...</EmptyText>
                 ) : escoposDoProjeto.length === 0 ? (
                   <EmptyText>Este projeto ainda não tem escopo vendido.</EmptyText>
-                ) : escoposLivres.length === 0 ? (
-                  <EmptyText>Todos os escopos deste projeto já têm banca marcada.</EmptyText>
+                ) : escoposSelecionaveis.length === 0 ? (
+                  <EmptyText>
+                    Os outros escopos deste projeto já têm banca marcada.
+                  </EmptyText>
                 ) : (
                   <CheckboxGrid>
                     {escoposDoProjeto.map((escopo) => (
@@ -378,7 +413,7 @@ export function BancaFormModal({
                           // isso travaria justamente o que se veio remover.
                           disabled={!!escopo.banca && !ehDestaBanca(escopo)}
                           checked={escoposMarcados.includes(escopo.id)}
-                          onChange={() => setEscoposMarcados((ids) => toggleId(ids, escopo.id))}
+                          onChange={() => alternarEscopo(escopo.id)}
                         />
                         <span>
                           {escopo.nome}
