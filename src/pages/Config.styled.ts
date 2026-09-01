@@ -170,3 +170,26 @@ export const CardHeaderActions = styled.div`
   gap: ${theme.spacing.md};
   width: 100%;
 `;
+
+/**
+ * A frase que confirma a combinação montada no card de composição de banca.
+ *
+ * 📐 Os botões de frente já mostram o que está marcado, mas só como estado —
+ * lidos de relance, quatro botões com dois acesos não dizem "banca sinérgica
+ * de duas frentes". Esta linha diz, e é o que a pessoa confere antes de mexer
+ * nos números.
+ */
+export const ResumoCombinacao = styled.p`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.foreground};
+
+  span {
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
