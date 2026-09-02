@@ -75,10 +75,41 @@ function renovarSessao(token: string) {
     .catch(() => {});
 }
 
+/**
+ * O último `Usuario` montado fica guardado no `localStorage` para o próximo
+ * load abrir DIRETO na tela, sem o "Carregando..." em branco.
+ *
+ * Num reload duro não sobra nada em memória: só o token está persistido, e o
+ * `Usuario` completo (nome, posição, as 14 caixas de permissão) precisa ser
+ * remontado com `/auth/me` + `/posicoes-permissoes`, duas idas ao backend. O
+ * `PrivateRoute` e os guards seguram a tela inteira enquanto isso, e é esse
+ * intervalo que aparece como um flash de texto sem estilo.
+ *
+ * Com o cache, a sessão válida abre otimista com o último usuário conhecido e
+ * `carregarUsuario` revalida por baixo. Se o token tiver expirado, o `/auth/me`
+ * falha e o `catch` desloga na sequência; se as permissões tiverem mudado no
+ * servidor, elas se corrigem em menos de um segundo (e o backend recusa o que
+ * não deve, de qualquer forma).
+ */
+const USUARIO_CACHE_KEY = "usuario";
+
+function lerUsuarioCache(): Usuario | null {
+  try {
+    const bruto = localStorage.getItem(USUARIO_CACHE_KEY);
+    return bruto ? (JSON.parse(bruto) as Usuario) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("token"));
-  const [carregando, setCarregando] = useState(true);
+  const [usuario, setUsuario] = useState<Usuario | null>(() =>
+    token ? lerUsuarioCache() : null,
+  );
+  // Só espera de verdade quando não há como abrir otimista: há token mas
+  // nenhum usuário em cache para mostrar enquanto a revalidação corre.
+  const [carregando, setCarregando] = useState(() => !!token && !lerUsuarioCache());
 
   const carregarUsuario = useCallback(async () => {
     if (!token) {
@@ -97,11 +128,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ? PERMISSOES_PLACEHOLDER
         : (await getPosicoesPermissoes(token)).find((p) => p.posicao === dados.posicao) ??
           PERMISSOES_PLACEHOLDER;
-      setUsuario({ ...dados, permissoes });
+      const completo = { ...dados, permissoes };
+      setUsuario(completo);
+      localStorage.setItem(USUARIO_CACHE_KEY, JSON.stringify(completo));
       renovarSessao(token);
     } catch {
       setToken(null);
+      setUsuario(null);
       localStorage.removeItem("token");
+      localStorage.removeItem(USUARIO_CACHE_KEY);
     } finally {
       setCarregando(false);
     }
@@ -128,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout() {
     localStorage.removeItem("token");
+    localStorage.removeItem(USUARIO_CACHE_KEY);
     setToken(null);
     setUsuario(null);
   }

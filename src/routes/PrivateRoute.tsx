@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { PageLoadingBlock } from "@/styles/page.styled";
 
 /**
  * A porta de todas as telas logadas.
@@ -18,7 +19,9 @@ export function PrivateRoute() {
   const { token, usuario, carregando } = useAuth();
   const { pathname } = useLocation();
 
-  if (carregando) return <div>Carregando...</div>;
+  // Só cai aqui no cold start sem sessão em cache (primeiro login, ou
+  // localStorage limpo); a sessão conhecida abre otimista, ver AuthContext.
+  if (carregando) return <PageLoadingBlock />;
   if (!token) return <Navigate to="/login" replace />;
 
   if (usuario?.senha_provisoria && pathname !== "/definir-senha") {
