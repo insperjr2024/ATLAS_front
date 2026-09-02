@@ -139,6 +139,12 @@ const PERMISSOES = [
       "Mudar as seções e critérios dos formulários, afeta o que todo mundo é avaliado, não só a rotina de administrar.",
   },
   {
+    campo: "pode_ver_dashboard_bancas" as const,
+    titulo: "Ver o Dashboard Bancas",
+    descricao:
+      "Abrir o Dashboard Bancas: notas por pergunta, histórico de bancas e a edição dos formulários de banca. Não é o formulário da Avaliação de Desempenho, que tem caixa própria acima.",
+  },
+  {
     campo: "pode_administrar_configuracoes" as const,
     titulo: "Administrar Configurações",
     descricao:
