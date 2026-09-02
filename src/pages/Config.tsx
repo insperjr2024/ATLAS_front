@@ -6,6 +6,7 @@ import { getPosicoesPermissoes, updatePosicaoPermissao } from "@/lib/posicoes-pe
 import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/escopos";
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
 import { normalizarTexto } from "@/lib/nucleo";
+import { CODIGO_ULTIMO_ADMINISTRADOR, codigoDoErro } from "@/lib/api";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
 import { ComposicaoBancaCard } from "./config/ComposicaoBancaCard";
 import { GestaoSemestralCard } from "./config/GestaoSemestralCard";
@@ -763,6 +764,8 @@ function ModalPosicaoPermissao({
   onSalvar: (dados: Partial<Permissoes>) => Promise<void>;
 }) {
   const [permissoes, setPermissoes] = useState(permissoesDe(posicao));
+  /** A caixa que está esperando confirmação para ser desmarcada. */
+  const [campoPendente, setCampoPendente] = useState<CampoPermissao | null>(null);
   const [busca, setBusca] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
@@ -788,6 +791,16 @@ function ModalPosicaoPermissao({
     setPermissoes((p) => ({ ...p, [campo]: !p[campo] }));
   }
 
+  /* Desmarcar ESTA caixa é a única mudança daqui que pode fechar a porta por
+     onde se desfaz a mudança. Um "tem certeza?" não bastaria: quem está
+     varrendo a lista clica no automático, então o aviso diz o que acontece e
+     o que fazer antes. O backend recusa de qualquer jeito se for a última
+     porta (`ultimo_administrador_de_permissoes`); isto é para a pessoa não
+     chegar lá sem saber. */
+  const desligandoAdministracao =
+    campoPendente === "pode_administrar_permissoes" &&
+    permissoes.pode_administrar_permissoes;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSalvando(true);
@@ -795,6 +808,12 @@ function ModalPosicaoPermissao({
     try {
       await onSalvar(permissoes);
     } catch (err) {
+      /* A recusa de última porta é a única que precisa MEXER na tela: o
+         backend não gravou, mas o checkbox local já está desmarcado, e deixá-lo
+         assim faria a tela mostrar um estado que não existe no servidor. */
+      if (codigoDoErro(err) === CODIGO_ULTIMO_ADMINISTRADOR) {
+        setPermissoes((atual) => ({ ...atual, pode_administrar_permissoes: true }));
+      }
       setErro(err instanceof Error ? err.message : "Erro ao salvar permissões");
     } finally {
       setSalvando(false);
@@ -839,7 +858,11 @@ function ModalPosicaoPermissao({
                     <input
                       type="checkbox"
                       checked={permissoes[p.campo]}
-                      onChange={() => togglePermissao(p.campo)}
+                      onChange={() =>
+                        p.campo === "pode_administrar_permissoes" && permissoes[p.campo]
+                          ? setCampoPendente(p.campo)
+                          : togglePermissao(p.campo)
+                      }
                     />
                     <PermissaoTexto>
                       <PermissaoTitulo>{p.titulo}</PermissaoTitulo>
@@ -862,6 +885,36 @@ function ModalPosicaoPermissao({
           </ModalFooter>
         </FormStack>
       </WideModalContent>
+
+      {desligandoAdministracao && (
+        <ConfirmarModal
+          titulo="Tirar quem edita permissões?"
+          mensagem={
+            <>
+              Esta é a caixa que dá acesso a esta tela. Tirando-a de{" "}
+              <strong>{ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</strong>, ninguém
+              dessa posição consegue mais abrir as permissões de ninguém, nem devolver esta
+              caixa a si mesmo.
+              <br />
+              <br />
+              Se ninguém de outra posição tiver esta caixa, a plataforma fica sem quem edite
+              permissões, e não sobra tela nenhuma para desfazer: o conserto passa a ser no
+              banco de dados. Por isso a plataforma recusa quando esta é a última porta.
+              <br />
+              <br />
+              O caminho seguro é conceder a permissão a outra posição com gente ativa
+              <strong> antes</strong> de tirá-la desta.
+            </>
+          }
+          rotuloConfirmar="Tirar mesmo assim"
+          rotuloProcessando="Tirando..."
+          onCancelar={() => setCampoPendente(null)}
+          onConfirmar={() => {
+            togglePermissao("pode_administrar_permissoes");
+            setCampoPendente(null);
+          }}
+        />
+      )}
     </ModalOverlay>
   );
 }
