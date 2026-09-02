@@ -339,9 +339,13 @@ export function ProjetoPage() {
   const podeMudarStatus = !somenteLeitura && pode(usuario, "mudar_status_projeto");
   const podeArquivar = !somenteLeitura && pode(usuario, "arquivar_projeto");
   const podeExcluir = !somenteLeitura && pode(usuario, "apagar_projeto_permanente");
-  // Mesma permissão que já gatilhava a edição do nome quando ela morava no
-  // card de Descrição, só mudou de lugar, não de regra.
-  const podeRenomear = !somenteLeitura && !!usuario?.permissoes.pode_editar_equipe;
+  // Quem vendeu o projeto edita os campos descritivos (nome, cliente,
+  // descrição, link e PDF da proposta) mesmo sem estar na equipe. O resto
+  // do projeto segue leitura para ele.
+  const ehVendedorDesteProjeto = !!usuario && projeto.vendedor_ids.includes(usuario.id);
+  const podeEditarTudo = !somenteLeitura && !!usuario?.permissoes.pode_editar_equipe;
+  // Abre o modal "Editar projeto". O vendedor entra no modo enxuto.
+  const podeEditarProjeto = podeEditarTudo || ehVendedorDesteProjeto;
   const temKickoff = !!projeto.data_kickoff;
 
   /**
@@ -411,7 +415,7 @@ export function ProjetoPage() {
             {projeto.arquivado_em && <FrenteTag>arquivado</FrenteTag>}
 
             <MenuAcoesProjeto
-              podeEditar={podeRenomear}
+              podeEditar={podeEditarProjeto}
               podeArquivar={podeArquivar}
               podeExcluir={podeExcluir}
               arquivado={!!projeto.arquivado_em}
@@ -546,6 +550,7 @@ export function ProjetoPage() {
           usuarios={usuarios}
           frentes={frentes}
           token={token}
+          soMetadados={!podeEditarTudo}
           onClose={() => setEditandoProjeto(false)}
           onSalvo={async () => {
             setEditandoProjeto(false);

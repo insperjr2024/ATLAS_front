@@ -13,6 +13,7 @@ import {
   updateFrentes,
   updateLinkProposta,
   updateMaxConsultores,
+  uploadAnexoProposta,
   type UpdateEscopoProjetoPayload,
 } from "@/lib/projetos";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
@@ -193,6 +194,13 @@ interface Props {
   token: string;
   onClose: () => void;
   onSalvo: () => Promise<void>;
+  /**
+   * O vendedor do projeto edita só os campos DESCRITIVOS (nome, cliente,
+   * descrição, link e PDF da proposta): foi ele que fechou isso com o
+   * cliente. Alocação, Pessoas e Escopos ficam fora, e o resto do projeto
+   * segue leitura para ele. O backend recusa o que passar disso.
+   */
+  soMetadados?: boolean;
 }
 
 /**
@@ -228,11 +236,14 @@ export function EditarProjetoModal({
   token,
   onClose,
   onSalvo,
+  soMetadados = false,
 }: Props) {
   const [nome, setNome] = useState(projeto.nome);
   const [cliente, setCliente] = useState(projeto.cliente ?? "");
   const [descricao, setDescricao] = useState(projeto.descricao ?? "");
   const [linkProposta, setLinkProposta] = useState(projeto.link_proposta ?? "");
+  /** PDF da proposta escolhido agora. Envia só no salvar. */
+  const [anexoProposta, setAnexoProposta] = useState<File | null>(null);
   const [frenteIds, setFrenteIds] = useState(projeto.frente_ids);
   const [equipe, setEquipe] = useState<EquipeSelecionada>({
     coordenadorIds: projeto.coordenador_ids,
@@ -305,21 +316,26 @@ export function EditarProjetoModal({
       setErro("O nome do projeto não pode ficar vazio.");
       return;
     }
-    if (frenteIds.length === 0) {
+    if (anexoProposta && !anexoProposta.name.toLowerCase().endsWith(".pdf")) {
+      setErro("O anexo da proposta precisa ser um PDF.");
+      return;
+    }
+    // As checagens abaixo são das seções que o vendedor não vê.
+    if (!soMetadados && frenteIds.length === 0) {
       setErro("Escolha pelo menos uma frente.");
       return;
     }
-    const problema = equipeMudou ? validarEquipe(equipe) : null;
+    const problema = !soMetadados && equipeMudou ? validarEquipe(equipe) : null;
     if (problema) {
       setErro(problema);
       return;
     }
     const numeroTeto = Number(maxConsultores);
-    if (!Number.isInteger(numeroTeto) || numeroTeto < 0 || numeroTeto > 20) {
+    if (!soMetadados && (!Number.isInteger(numeroTeto) || numeroTeto < 0 || numeroTeto > 20)) {
       setErro("O teto de consultores precisa ser um número de 0 a 20.");
       return;
     }
-    if (podeEditarEscopos) {
+    if (!soMetadados && podeEditarEscopos) {
       for (const linha of escoposEdicao) {
         const original = projeto.escopos.find((e) => e.id === linha.id);
         if (!original) continue;
@@ -350,6 +366,19 @@ export function EditarProjetoModal({
       if (linkProposta.trim() !== (projeto.link_proposta ?? "")) {
         await updateLinkProposta(projeto.id, linkProposta.trim(), token);
       }
+      // O PDF por último dos campos descritivos: o upload zera o link no
+      // backend, então mandar depois do link acima evita reescrever um link
+      // que ia sumir de qualquer forma.
+      if (anexoProposta) {
+        await uploadAnexoProposta(projeto.id, anexoProposta, token);
+      }
+
+      // Daqui para baixo é o que o vendedor não edita.
+      if (soMetadados) {
+        await onSalvo();
+        return;
+      }
+
       // Antes da equipe: se uma frente saiu, quem ela habilitava no
       // MemberPicker precisa já ter sumido da lista antes de a equipe ser
       // validada do lado do servidor.
@@ -459,8 +488,26 @@ export function EditarProjetoModal({
                     placeholder="https://…"
                   />
                 </FieldGroup>
+
+                <FieldGroup>
+                  <FieldLabel htmlFor="editar-anexo-proposta">PDF da proposta</FieldLabel>
+                  <input
+                    id="editar-anexo-proposta"
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    disabled={salvando}
+                    onChange={(e) => setAnexoProposta(e.target.files?.[0] ?? null)}
+                  />
+                  <EmptyText style={{ margin: 0, fontSize: "0.7rem" }}>
+                    {projeto.anexo_proposta_nome
+                      ? `Atual: ${projeto.anexo_proposta_nome}. Escolher um novo substitui.`
+                      : "Opcional. Enviar um PDF apaga o link da proposta."}
+                  </EmptyText>
+                </FieldGroup>
               </SecaoForm>
 
+              {!soMetadados && (
+              <>
               <SecaoForm>
                 <SecaoFormTitulo>Alocação</SecaoFormTitulo>
 
@@ -612,6 +659,8 @@ export function EditarProjetoModal({
                     );
                   })}
                 </SecaoForm>
+              )}
+              </>
               )}
 
               {/* Dentro da pilha, e não solto no `ModalBody`: fora dela o erro
