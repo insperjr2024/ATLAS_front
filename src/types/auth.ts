@@ -111,6 +111,10 @@ export interface UsuarioResumo {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
+  /** Coordenador comercial (de vendas). Só relevante quando `posicao` é
+   *  `coordenador`: não muda acesso, só tira a pessoa da contagem de
+   *  capacidade de coordenadores no Monitoramento. */
+  coordenador_vendas: boolean;
   /** 1º a 8º semestre da graduação, `null` pra quem não é aluno em curso
    *  (diretoria, gerência já formada etc). */
   semestre_graduacao: number | null;

@@ -1063,6 +1063,7 @@ function MembroModal({
   const [semestreGraduacao, setSemestreGraduacao] = useState(
     membro.semestre_graduacao ? String(membro.semestre_graduacao) : "",
   );
+  const [coordenadorVendas, setCoordenadorVendas] = useState(membro.coordenador_vendas);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -1104,6 +1105,9 @@ function MembroModal({
           // `ativo` é espelho de `status` (F2), mandado junto para o front
           // legado que ainda lê o booleano não divergir.
           ativo: status === "ativo",
+          // Só coordenador tem essa marca. Fora disso manda `false` para não
+          // deixar a flag pendurada se a pessoa deixou de ser coordenador.
+          coordenador_vendas: posicao === "coordenador" ? coordenadorVendas : false,
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
@@ -1148,7 +1152,10 @@ function MembroModal({
                 </DetailRow>
                 <DetailRow>
                   <DetailTerm>Posição</DetailTerm>
-                  <DetailValue>{ROTULO_POSICAO[membro.posicao] ?? membro.posicao}</DetailValue>
+                  <DetailValue>
+                    {ROTULO_POSICAO[membro.posicao] ?? membro.posicao}
+                    {membro.posicao === "coordenador" && membro.coordenador_vendas && " · vendas"}
+                  </DetailValue>
                 </DetailRow>
                 <DetailRow>
                   <DetailTerm>Frentes</DetailTerm>
@@ -1251,6 +1258,26 @@ function MembroModal({
                   </FieldSelect>
                 </FieldGroup>
 
+                {/* Só faz sentido para coordenador: o acesso não muda, a marca
+                    só tira a pessoa da contagem de capacidade de coordenadores
+                    no Monitoramento. */}
+                {posicao === "coordenador" && (
+                  <FieldGroup>
+                    <ToggleRow>
+                      <input
+                        type="checkbox"
+                        checked={coordenadorVendas}
+                        onChange={(e) => setCoordenadorVendas(e.target.checked)}
+                      />
+                      Coordenador de vendas (comercial)
+                    </ToggleRow>
+                    <EmptyText style={{ fontSize: "0.7rem" }}>
+                      Mesmo acesso dos outros coordenadores. Fica de fora da conta de
+                      "quantos projetos cada coordenador tem" no Monitoramento.
+                    </EmptyText>
+                  </FieldGroup>
+                )}
+
                 <FieldGroup>
                   <FieldLabel htmlFor="semestre-membro">Semestre da graduação</FieldLabel>
                   <FieldSelect
@@ -1319,6 +1346,7 @@ function MembroModal({
                   setEmail(membro.email_insper);
                   setPosicao(membro.posicao);
                   setStatus(membro.status);
+                  setCoordenadorVendas(membro.coordenador_vendas);
                   setFrenteIds(
                     contexto.usuariosFrentes.filter((uf) => uf.usuario_id === membro.id).map((uf) => uf.frente_id),
                   );
