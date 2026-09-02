@@ -1,6 +1,9 @@
 import styled, { css } from "styled-components";
 import { theme } from "@/styles/theme";
 import { ModalFooter as BaseModalFooter } from "./Calendario.styled";
+/* Direto de `modal.styled`, e não do reexport de `Calendario.styled`: o
+   formulário de banca estende o corpo e o rodapé do chrome compartilhado. */
+import { ModalBody as BaseModalBody, ModalHeader } from "@/styles/modal.styled";
 /* Importado além do reexport logo abaixo: `export { X } from "..."` não cria
    binding local, e `FiltroFrenteSelect` precisa dele para estender. */
 import { SelectCustom } from "@/components/SelectCustom";
@@ -732,5 +735,328 @@ export const ComposicaoLista = styled.ul`
 
   strong {
     color: ${theme.colors.foreground};
+  }
+`;
+
+/* ------------------------------------------------------------------ */
+/* O formulário de banca (criar / editar)                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A caixa do formulário de banca.
+ *
+ * Difere do `WideModalContent` num ponto só, e é o ponto: quem rola é o
+ * CORPO, não a caixa inteira. O formulário tem oito campos, três deles com
+ * lista de rolagem própria — com a caixa rolando, o cabeçalho e o rodapé (que
+ * é onde ficam Cancelar e Salvar) saíam da tela junto com o resto, e o botão
+ * que termina a tarefa ficava a uma rolagem de distância do último campo
+ * preenchido.
+ *
+ * Não estende `WideModalContent` porque precisaria desfazer o `overflow-y` e
+ * a `max-height` dele; e não muda `WideModalContent` porque são outros 16
+ * modais usando aquele formato.
+ */
+export const FormModalContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 38rem;
+  /* \`dvh\` e não \`vh\`: no celular a \`vh\` mede a janela SEM a barra de
+     endereço, então 92vh é mais alto do que se vê e o rodapé — onde estão
+     Cancelar e Salvar — nasce escondido atrás dela. A linha de \`vh\` fica
+     como reserva para quem não conhece \`dvh\`. */
+  max-height: min(92vh, 46rem);
+  max-height: min(92dvh, 46rem);
+  overflow: hidden;
+  border-radius: ${theme.borderRadius.xl};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.card};
+  box-shadow: ${theme.shadows.lg};
+  animation: formModalEntrar ${theme.transitions.fast};
+
+  /* Ver a nota do respiro em \`FormModalBody\`: os três precisam do mesmo
+     recuo lateral, senão o título e os botões ficam fora do eixo dos campos. */
+  @media (max-width: ${theme.breakpoints.md}px) {
+    ${ModalHeader},
+    ${BaseModalFooter} {
+      padding-left: ${theme.spacing.md};
+      padding-right: ${theme.spacing.md};
+    }
+  }
+
+  @keyframes formModalEntrar {
+    from {
+      opacity: 0;
+      transform: translateY(0.5rem) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+`;
+
+/** O `<form>` ocupa a altura toda da caixa: é dentro dele que o corpo rola e
+ *  o rodapé fica colado embaixo. `min-height: 0` porque item de flex não
+ *  encolhe abaixo do conteúdo sem isso, e o corpo nunca ganharia a barra. */
+export const FormModalForm = styled.form`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+`;
+
+export const FormModalBody = styled(BaseModalBody)`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.lg};
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+
+  /*
+   * A linha das três listas de marcar deste formulário — escopos, consultores
+   * (dentro da \`ListaMarcavel\`) e frentes. Escopado ao corpo do modal, e não
+   * posto na \`CheckboxLabel\`, que tem 34 usos espalhados e densidades
+   * próprias.
+   *
+   * A área de clique passa a ser a linha inteira, não os 13px da caixinha; o
+   * marcado ganha fundo tênue para a seleção ser legível de relance, sem
+   * depender de enxergar caixa por caixa; e o indisponível perde o
+   * \`cursor: pointer\`, que prometia um clique que não acontece.
+   */
+  ${CheckboxLabel} {
+    align-items: flex-start;
+    padding: 0.375rem 0.5rem;
+    margin: 0 -0.25rem;
+    border-radius: ${theme.borderRadius.md};
+    line-height: 1.35;
+    transition: background ${theme.transitions.fast};
+
+    input {
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+    }
+
+    &:hover {
+      background: ${theme.colors.muted};
+    }
+
+    &:has(input:checked) {
+      background: ${theme.alpha(theme.colors.primary, 0.07)};
+    }
+
+    &:has(input:disabled) {
+      cursor: not-allowed;
+      color: ${theme.colors.mutedForeground};
+
+      &:hover {
+        background: transparent;
+      }
+    }
+
+    /* 30px de altura é confortável com um mouse e pequeno para o polegar.
+       Cresce só no celular: no desktop a lista rola menos por caber mais
+       linha na mesma caixa de 10rem. */
+    @media (max-width: ${theme.breakpoints.md}px) {
+      min-height: 2.75rem;
+      align-items: center;
+
+      input {
+        margin-top: 0;
+      }
+    }
+  }
+
+  /* Num aparelho de 390px, 24px de cada lado aqui mais 16px do véu deixam
+     310px para o formulário. Com 16px sobram 326px — 5% de largura que
+     aparecem justamente nos rótulos longos dos escopos. O cabeçalho e o
+     rodapé acompanham (logo abaixo), senão o conteúdo desalinha deles. */
+  @media (max-width: ${theme.breakpoints.md}px) {
+    padding: ${theme.spacing.md};
+  }
+
+  /* Grade de duas colunas não encolhe abaixo do conteúdo sem isto: um
+     \`input[type=date]\` largo (o Safari do iPhone desenha o dele maior que o
+     Chrome) empurraria a linha para fora em vez de espremer. */
+  ${DateTimeRow} > * {
+    min-width: 0;
+  }
+`;
+
+/** Título e linha de apoio empilhados no cabeçalho do modal. */
+export const ModalTituloBloco = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+`;
+
+export const ModalSubtitulo = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** Um bloco do formulário: os campos que pertencem uns aos outros, mais
+ *  juntos entre si (\`md\`) do que do bloco vizinho (o \`lg\` do
+ *  \`FormModalBody\`). Sem isto o modal é uma coluna de oito campos de peso
+ *  igual, em que "Data" parece tão ligada a "Consultores" quanto a "Horário".
+ *
+ *  O respiro é a única marca do agrupamento, de propósito: os títulos com
+ *  régua que existiam aqui repetiam o nome do campo logo abaixo ("Projeto"
+ *  sobre o campo Projeto) e sujavam a leitura em troca de nada. */
+export const FormSecao = styled.section`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+`;
+
+/** Rótulo à esquerda, contador ("2 de 3 marcados") à direita, na mesma linha. */
+export const FieldLabelRow = styled.div`
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+`;
+
+export const FieldContador = styled.span`
+  flex-shrink: 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+/** A frase de apoio abaixo de um campo (o que ele faz, de onde o valor vem).
+ *  `BuscaMeta` fazia esse papel emprestado, sendo um `span` de item de
+ *  resultado de busca. */
+export const FieldHint = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  line-height: 1.4;
+`;
+
+/** O campo de busca com a lupa dentro. O ícone não é enfeite: a caixa de
+ *  texto solta acima de uma lista parecia um campo a preencher, e não o
+ *  filtro dela. */
+export const BuscaCampo = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  > svg {
+    position: absolute;
+    left: 0.625rem;
+    color: ${theme.colors.mutedForeground};
+    pointer-events: none;
+  }
+
+  > input {
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 2.125rem;
+  }
+`;
+
+/** O lugar da lista de escopos enquanto ela chega. Reserva altura para o
+ *  resto do formulário não pular quando a resposta volta. */
+export const EscoposCarregando = styled.div`
+  height: 4.5rem;
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.input};
+  background: linear-gradient(
+    90deg,
+    ${theme.colors.muted} 0%,
+    color-mix(in srgb, ${theme.colors.muted} 55%, white) 50%,
+    ${theme.colors.muted} 100%
+  );
+  background-size: 200% 100%;
+  animation: escoposShimmer 1.2s ease-in-out infinite;
+
+  @keyframes escoposShimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+`;
+
+/**
+ * O erro do envio, numa faixa colada ao rodapé em vez de solto no fim do
+ * corpo: o corpo rola, e o erro que nasce depois do clique em Salvar
+ * aparecia a uma tela de distância do botão que a pessoa acabou de apertar.
+ */
+export const FormModalErro = styled.p`
+  display: flex;
+  align-items: flex-start;
+  gap: ${theme.spacing.sm};
+  margin: 0;
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  border-top: 1px solid ${theme.alpha(theme.colors.destructive, 0.3)};
+  background: ${theme.alpha(theme.colors.destructive, 0.08)};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.destructive};
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+`;
+
+/** O rodapé do formulário: o que ainda falta à esquerda, os botões à
+ *  direita. Botão desativado sem explicação é beco sem saída — quem não
+ *  marcou escopo nenhum via "Criar" apagado e nada dizendo por quê. */
+export const FormModalFooter = styled(BaseModalFooter)`
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+`;
+
+export const FormModalPendencia = styled.span`
+  flex: 1;
+  min-width: 10rem;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const FormModalAcoes = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-left: auto;
+`;
+
+/** O anel girando dentro do botão enquanto o envio corre. Sem ele, "Salvando…"
+ *  é uma troca de rótulo que passa despercebida numa requisição rápida e
+ *  parece um botão travado numa lenta. */
+export const BotaoSpinner = styled.span`
+  /* O \`gap\` do \`buttonBase\` já separa o anel do rótulo — margem aqui somaria
+     em cima dele. */
+  flex-shrink: 0;
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: ${theme.borderRadius.full};
+  animation: botaoGirar 0.6s linear infinite;
+
+  @keyframes botaoGirar {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 2s;
   }
 `;

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlertCircle, Search, X } from "lucide-react";
 import {
   getEscoposVendidos,
   syncBancaFrentes,
@@ -21,21 +21,16 @@ import type { EscopoVendido, ProjetoResumo } from "@/types/projeto";
 import type { UsuarioResumo } from "@/types/auth";
 import { EmptyText, PageButton, PageButtonSm } from "@/styles/page.styled";
 import {
-  FormStack,
   FieldGroup,
   FieldLabel,
   FieldInput,
   CheckboxGrid,
   CheckboxLabel,
   DateTimeRow,
-  FormErrorText,
   ModalOverlay,
   ModalHeader,
   ModalTitle,
   ModalClose,
-  ModalBody,
-  ModalFooter,
-  WideModalContent,
   BuscaLista,
   BuscaItem,
   BuscaTexto,
@@ -43,6 +38,22 @@ import {
   BuscaMeta,
   EscolhidoBox,
   EscopoIndisponivel,
+  FormModalContent,
+  FormModalForm,
+  FormModalBody,
+  FormModalErro,
+  FormModalFooter,
+  FormModalPendencia,
+  FormModalAcoes,
+  FormSecao,
+  FieldLabelRow,
+  FieldContador,
+  FieldHint,
+  BuscaCampo,
+  EscoposCarregando,
+  ModalTituloBloco,
+  ModalSubtitulo,
+  BotaoSpinner,
 } from "@/pages/Bancas.styled";
 
 /**
@@ -68,6 +79,13 @@ export interface DadosDoFormularioDeBanca {
  * abre o MESMO formulário: quem está olhando a banca de um projeto edita data,
  * escopo, consultores e frentes ali mesmo, em vez de procurar a banca certa na
  * lista de todas as bancas do semestre.
+ *
+ * Os campos estão agrupados em três blocos — projeto, quando, composição —
+ * separados só por respiro, sem título: numa coluna única de oito campos de
+ * mesmo peso não dava para ver que "Horário" pertence a "Data" e "Frentes"
+ * pertence a "Consultores". A ordem dentro de cada bloco é a de sempre; só o
+ * piso mínimo mudou de lugar, do meio do formulário para o fim da composição,
+ * que é sobre o que ele decide (quanta gente a banca exige).
  */
 export function BancaFormModal({
   banca,
@@ -117,9 +135,60 @@ export function BancaFormModal({
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
+  const caixaRef = useRef<HTMLDivElement>(null);
+  const primeiroCampoRef = useRef<HTMLInputElement>(null);
+  // O `onClose` das duas telas que abrem este modal é uma arrow criada a cada
+  // render; como dependência do efeito abaixo ele o remontaria a cada
+  // digitação, roubando o foco do campo em uso. Por ref, o efeito roda uma vez
+  // só e ainda enxerga o `onClose` atual.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   const consultores = consultoresDoNucleo(dados.usuarios).sort((a, b) =>
     a.nome.localeCompare(b.nome, "pt-BR"),
   );
+
+  /**
+   * O contrato de diálogo que faltava: Esc fecha, o Tab não escapa para a
+   * página atrás, a página atrás não rola junto e o foco volta para o botão
+   * que abriu o modal. É o mesmo Esc que os outros ~15 modais do app já têm.
+   */
+  useEffect(() => {
+    const focoAnterior = document.activeElement as HTMLElement | null;
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    primeiroCampoRef.current?.focus();
+
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab" || !caixaRef.current) return;
+      const focaveis = caixaRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focaveis.length === 0) return;
+      const primeiro = focaveis[0];
+      const ultimo = focaveis[focaveis.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && document.activeElement === ultimo) {
+        e.preventDefault();
+        primeiro.focus();
+      }
+    }
+
+    window.addEventListener("keydown", aoTeclar);
+    return () => {
+      window.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = overflowAnterior;
+      focoAnterior?.focus?.();
+    };
+  }, []);
 
   useEffect(() => {
     if (editando) return;
@@ -212,6 +281,17 @@ export function BancaFormModal({
         .filter((nome): nome is string => !!nome),
     ),
   ];
+
+  /** O que ainda falta para o botão principal sair do cinza. Um botão
+   *  desativado sem explicação é um beco sem saída: quem chegava sem escopo
+   *  marcado via "Criar" apagado e nada dizendo o porquê. */
+  const pendencia = editando
+    ? ""
+    : projetoEscolhido == null
+      ? "Escolha o projeto para continuar."
+      : escoposMarcados.length === 0
+        ? "Marque ao menos um escopo que esta banca cobre."
+        : "";
 
   function toggleId(lista: number[], id: number): number[] {
     return lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id];
@@ -315,217 +395,269 @@ export function BancaFormModal({
   }
 
   return (
-    <ModalOverlay onClick={onClose} role="presentation">
-      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="banca-form-titulo">
+    // `onMouseDown` e não `onClick`: arrastar para selecionar o texto de dentro
+    // e soltar o botão em cima do véu contava como clique fora e fechava o
+    // formulário preenchido.
+    <ModalOverlay onMouseDown={onClose} role="presentation">
+      <FormModalContent
+        ref={caixaRef}
+        onMouseDown={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="banca-form-titulo"
+      >
         <ModalHeader>
-          <ModalTitle id="banca-form-titulo">{editando ? "Editar banca" : "Criar banca"}</ModalTitle>
+          <ModalTituloBloco>
+            <ModalTitle id="banca-form-titulo">{editando ? "Editar banca" : "Criar banca"}</ModalTitle>
+            <ModalSubtitulo>
+              {editando
+                ? "Data, escopos, consultores e frentes desta banca."
+                : "A banca nasce de um escopo já vendido: escolha o projeto e o que ela cobre."}
+            </ModalSubtitulo>
+          </ModalTituloBloco>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
             <X size={18} />
           </ModalClose>
         </ModalHeader>
-        <FormStack onSubmit={handleSubmit}>
-          <ModalBody>
-            {editando ? (
+
+        <FormModalForm onSubmit={handleSubmit}>
+          <FormModalBody>
+            <FormSecao>
+              {editando ? (
+                <FieldGroup>
+                  <FieldLabel htmlFor="nome-projeto">Nome do projeto</FieldLabel>
+                  <FieldInput
+                    id="nome-projeto"
+                    ref={primeiroCampoRef}
+                    value={nomeProjeto}
+                    onChange={(e) => setNomeProjeto(e.target.value)}
+                    placeholder="Ex.: Portugal 1"
+                    required
+                  />
+                </FieldGroup>
+              ) : (
+                <FieldGroup>
+                  <FieldLabel htmlFor="busca-projeto">Projeto</FieldLabel>
+                  {projetoEscolhido ? (
+                    <EscolhidoBox>
+                      <BuscaTexto>
+                        <BuscaNome>{projetoEscolhido.nome}</BuscaNome>
+                        <BuscaMeta>{projetoEscolhido.cliente}</BuscaMeta>
+                      </BuscaTexto>
+                      <PageButtonSm
+                        $variant="outline"
+                        type="button"
+                        onClick={() => {
+                          setProjetoId(null);
+                          setEscoposMarcados([]);
+                          setBusca("");
+                        }}
+                      >
+                        Trocar
+                      </PageButtonSm>
+                    </EscolhidoBox>
+                  ) : (
+                    <>
+                      <BuscaCampo>
+                        <Search size={15} aria-hidden="true" />
+                        <FieldInput
+                          id="busca-projeto"
+                          ref={primeiroCampoRef}
+                          value={busca}
+                          onChange={(e) => setBusca(e.target.value)}
+                          placeholder="Busque pelo nome do projeto ou do cliente"
+                          autoComplete="off"
+                        />
+                      </BuscaCampo>
+                      {projetos.length === 0 ? (
+                        <EmptyText>Nenhum projeto ativo para marcar banca.</EmptyText>
+                      ) : projetosFiltrados.length === 0 ? (
+                        <EmptyText>Nenhum projeto encontrado para "{busca}".</EmptyText>
+                      ) : (
+                        <BuscaLista>
+                          {projetosFiltrados.map((projeto) => (
+                            <BuscaItem
+                              key={projeto.id}
+                              type="button"
+                              onClick={() => {
+                                setProjetoId(projeto.id);
+                                setEscoposMarcados([]);
+                                // A equipe do projeto é quem apresenta, e por
+                                // isso não assiste à própria banca, já
+                                // vem marcada para não montar à mão.
+                                setConsultorIds(projeto.consultor_ids);
+                              }}
+                            >
+                              <BuscaNome>{projeto.nome}</BuscaNome>
+                              <BuscaMeta>{projeto.cliente}</BuscaMeta>
+                            </BuscaItem>
+                          ))}
+                        </BuscaLista>
+                      )}
+                    </>
+                  )}
+                </FieldGroup>
+              )}
+
+              {(editando ? projetoId != null || resolvendoProjeto : !!projetoEscolhido) && (
+                <FieldGroup>
+                  <FieldLabelRow>
+                    <FieldLabel as="span">Escopos que esta banca cobre</FieldLabel>
+                    {!carregandoEscopos && escoposSelecionaveis.length > 0 && (
+                      <FieldContador>
+                        {escoposMarcados.length} de {escoposSelecionaveis.length} marcados
+                      </FieldContador>
+                    )}
+                  </FieldLabelRow>
+                  {carregandoEscopos ? (
+                    <EscoposCarregando role="status" aria-label="Carregando escopos" />
+                  ) : escoposDoProjeto.length === 0 ? (
+                    <EmptyText>Este projeto ainda não tem escopo vendido.</EmptyText>
+                  ) : escoposSelecionaveis.length === 0 ? (
+                    <EmptyText>Os outros escopos deste projeto já têm banca marcada.</EmptyText>
+                  ) : (
+                    <CheckboxGrid>
+                      {escoposDoProjeto.map((escopo) => (
+                        <CheckboxLabel key={escopo.id}>
+                          <input
+                            type="checkbox"
+                            // ⚠ Editando, o escopo que já é DESTA banca aparece
+                            // com `escopo.banca` preenchida — desabilitá-lo por
+                            // isso travaria justamente o que se veio remover.
+                            disabled={!!escopo.banca && !ehDestaBanca(escopo)}
+                            checked={escoposMarcados.includes(escopo.id)}
+                            onChange={() => alternarEscopo(escopo.id)}
+                          />
+                          <span>
+                            {escopo.nome}
+                            {escopo.banca && !ehDestaBanca(escopo) && (
+                              <>
+                                {" "}
+                                <EscopoIndisponivel>
+                                  {escopo.banca.data_hora
+                                    ? `já tem banca em ${paraDataUtc(escopo.banca.data_hora).toLocaleDateString("pt-BR")}`
+                                    : "já tem banca, sem data"}
+                                </EscopoIndisponivel>
+                              </>
+                            )}
+                          </span>
+                        </CheckboxLabel>
+                      ))}
+                    </CheckboxGrid>
+                  )}
+                </FieldGroup>
+              )}
+            </FormSecao>
+
+            <FormSecao>
+              <DateTimeRow>
+                <FieldGroup>
+                  <FieldLabel htmlFor="data-banca">Data</FieldLabel>
+                  <FieldInput id="data-banca" type="date" value={data} onChange={(e) => setData(e.target.value)} required />
+                </FieldGroup>
+                <FieldGroup>
+                  <FieldLabel htmlFor="hora-banca">Horário</FieldLabel>
+                  <FieldInput id="hora-banca" type="time" value={hora} onChange={(e) => setHora(e.target.value)} required />
+                </FieldGroup>
+              </DateTimeRow>
+            </FormSecao>
+
+            <FormSecao>
               <FieldGroup>
-                <FieldLabel htmlFor="nome-projeto">Nome do projeto</FieldLabel>
-                <FieldInput
-                  id="nome-projeto"
-                  value={nomeProjeto}
-                  onChange={(e) => setNomeProjeto(e.target.value)}
-                  placeholder="Ex.: Portugal 1"
-                  required
+                <FieldLabelRow>
+                  <FieldLabel as="span">Consultores do projeto</FieldLabel>
+                  {consultorIds.length > 0 && (
+                    <FieldContador>{consultorIds.length} marcados</FieldContador>
+                  )}
+                </FieldLabelRow>
+                <ListaMarcavel
+                  opcoes={consultores}
+                  marcados={(id) => consultorIds.includes(id)}
+                  onAlternar={(id) => setConsultorIds((ids) => toggleId(ids, id))}
+                  vazio="Nenhum consultor disponível."
+                  placeholder="Buscar consultor…"
+                  aria-label="Buscar consultor"
                 />
               </FieldGroup>
-            ) : (
-              <FieldGroup>
-                <FieldLabel htmlFor="busca-projeto">Projeto</FieldLabel>
-                {projetoEscolhido ? (
-                  <EscolhidoBox>
-                    <BuscaTexto>
-                      <BuscaNome>{projetoEscolhido.nome}</BuscaNome>
-                      <BuscaMeta>{projetoEscolhido.cliente}</BuscaMeta>
-                    </BuscaTexto>
-                    <PageButtonSm
-                      $variant="outline"
-                      type="button"
-                      onClick={() => {
-                        setProjetoId(null);
-                        setEscoposMarcados([]);
-                        setBusca("");
-                      }}
-                    >
-                      Trocar
-                    </PageButtonSm>
-                  </EscolhidoBox>
-                ) : (
-                  <>
-                    <FieldInput
-                      id="busca-projeto"
-                      value={busca}
-                      onChange={(e) => setBusca(e.target.value)}
-                      placeholder="Busque pelo nome do projeto ou do cliente"
-                      autoComplete="off"
-                    />
-                    {projetos.length === 0 ? (
-                      <EmptyText>Nenhum projeto ativo para marcar banca.</EmptyText>
-                    ) : projetosFiltrados.length === 0 ? (
-                      <EmptyText>Nenhum projeto encontrado para "{busca}".</EmptyText>
-                    ) : (
-                      <BuscaLista>
-                        {projetosFiltrados.map((projeto) => (
-                          <BuscaItem
-                            key={projeto.id}
-                            type="button"
-                            onClick={() => {
-                              setProjetoId(projeto.id);
-                              setEscoposMarcados([]);
-                              // A equipe do projeto é quem apresenta, e por
-                              // isso não assiste à própria banca, já
-                              // vem marcada para não montar à mão.
-                              setConsultorIds(projeto.consultor_ids);
-                            }}
-                          >
-                            <BuscaNome>{projeto.nome}</BuscaNome>
-                            <BuscaMeta>{projeto.cliente}</BuscaMeta>
-                          </BuscaItem>
-                        ))}
-                      </BuscaLista>
-                    )}
-                  </>
-                )}
-              </FieldGroup>
-            )}
 
-            {(editando ? projetoId != null || resolvendoProjeto : !!projetoEscolhido) && (
-              <FieldGroup>
-                <FieldLabel as="span">
-                  Escopos que esta banca cobre
-                </FieldLabel>
-                {carregandoEscopos ? (
-                  <EmptyText>Carregando escopos...</EmptyText>
-                ) : escoposDoProjeto.length === 0 ? (
-                  <EmptyText>Este projeto ainda não tem escopo vendido.</EmptyText>
-                ) : escoposSelecionaveis.length === 0 ? (
-                  <EmptyText>
-                    Os outros escopos deste projeto já têm banca marcada.
-                  </EmptyText>
-                ) : (
+              {editando ? (
+                <FieldGroup>
+                  <FieldLabelRow>
+                    <FieldLabel as="span">Frentes</FieldLabel>
+                    {frenteIds.length > 0 && (
+                      <FieldContador>{frenteIds.length} marcadas</FieldContador>
+                    )}
+                  </FieldLabelRow>
                   <CheckboxGrid>
-                    {escoposDoProjeto.map((escopo) => (
-                      <CheckboxLabel key={escopo.id}>
+                    {dados.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
+                    {dados.frentes.map((frente) => (
+                      <CheckboxLabel key={frente.id}>
                         <input
                           type="checkbox"
-                          // ⚠ Editando, o escopo que já é DESTA banca aparece
-                          // com `escopo.banca` preenchida — desabilitá-lo por
-                          // isso travaria justamente o que se veio remover.
-                          disabled={!!escopo.banca && !ehDestaBanca(escopo)}
-                          checked={escoposMarcados.includes(escopo.id)}
-                          onChange={() => alternarEscopo(escopo.id)}
+                          checked={frenteIds.includes(frente.id)}
+                          onChange={() => setFrenteIds((ids) => toggleId(ids, frente.id))}
                         />
-                        <span>
-                          {escopo.nome}
-                          {escopo.banca && !ehDestaBanca(escopo) && (
-                            <>
-                              {" "}
-                              <EscopoIndisponivel>
-                                {escopo.banca.data_hora
-                                  ? `já tem banca em ${paraDataUtc(escopo.banca.data_hora).toLocaleDateString("pt-BR")}`
-                                  : "já tem banca, sem data"}
-                              </EscopoIndisponivel>
-                            </>
-                          )}
-                        </span>
+                        <span>{frente.nome}</span>
                       </CheckboxLabel>
                     ))}
                   </CheckboxGrid>
-                )}
-              </FieldGroup>
-            )}
-
-            <DateTimeRow>
-              <FieldGroup>
-                <FieldLabel htmlFor="data-banca">Data</FieldLabel>
-                <FieldInput id="data-banca" type="date" value={data} onChange={(e) => setData(e.target.value)} required />
-              </FieldGroup>
-              <FieldGroup>
-                <FieldLabel htmlFor="hora-banca">Horário</FieldLabel>
-                <FieldInput id="hora-banca" type="time" value={hora} onChange={(e) => setHora(e.target.value)} required />
-              </FieldGroup>
-            </DateTimeRow>
-
-            {ehDiretor && (
-              <FieldGroup>
-                <FieldLabel htmlFor="piso-override">
-                  Piso mínimo desta banca (opcional)
-                </FieldLabel>
-                <FieldInput
-                  id="piso-override"
-                  type="number"
-                  min={0}
-                  value={pisoOverride}
-                  onChange={(e) => setPisoOverride(e.target.value)}
-                  placeholder="Deixe em branco para usar o padrão da(s) frente(s)"
-                />
-              </FieldGroup>
-            )}
-
-            <FieldGroup>
-              <FieldLabel>Consultores do projeto</FieldLabel>
-              <ListaMarcavel
-                opcoes={consultores}
-                marcados={(id) => consultorIds.includes(id)}
-                onAlternar={(id) => setConsultorIds((ids) => toggleId(ids, id))}
-                vazio="Nenhum consultor disponível."
-                placeholder="Buscar consultor…"
-                aria-label="Buscar consultor"
-              />
-            </FieldGroup>
-
-            {editando ? (
-              <FieldGroup>
-                <FieldLabel>Frentes</FieldLabel>
-                <CheckboxGrid>
-                  {dados.frentes.length === 0 && <EmptyText>Nenhuma frente cadastrada.</EmptyText>}
-                  {dados.frentes.map((frente) => (
-                    <CheckboxLabel key={frente.id}>
-                      <input
-                        type="checkbox"
-                        checked={frenteIds.includes(frente.id)}
-                        onChange={() => setFrenteIds((ids) => toggleId(ids, frente.id))}
-                      />
-                      {frente.nome}
-                    </CheckboxLabel>
-                  ))}
-                </CheckboxGrid>
-              </FieldGroup>
-            ) : (
-              escoposMarcados.length > 0 && (
-                <FieldGroup>
-                  <FieldLabel as="span">Frentes</FieldLabel>
-                  <BuscaMeta>
-                    {frentesDosEscoposMarcados.length > 0
-                      ? `${frentesDosEscoposMarcados.join(" · ")}, vêm dos escopos escolhidos.`
-                      : "Definidas pelos escopos escolhidos."}
-                  </BuscaMeta>
+                  <FieldHint>
+                    Marcar ou desmarcar um escopo acima já ajusta as frentes que vêm dele.
+                  </FieldHint>
                 </FieldGroup>
-              )
-            )}
+              ) : (
+                escoposMarcados.length > 0 && (
+                  <FieldGroup>
+                    <FieldLabel as="span">Frentes</FieldLabel>
+                    <FieldHint>
+                      {frentesDosEscoposMarcados.length > 0
+                        ? `${frentesDosEscoposMarcados.join(" · ")}, vêm dos escopos escolhidos.`
+                        : "Definidas pelos escopos escolhidos."}
+                    </FieldHint>
+                  </FieldGroup>
+                )
+              )}
 
-            {erro && <FormErrorText>{erro}</FormErrorText>}
-          </ModalBody>
-          <ModalFooter>
-            <PageButton $variant="outline" type="button" onClick={onClose}>
-              Cancelar
-            </PageButton>
-            <PageButton
-              type="submit"
-              disabled={enviando || (!editando && escoposMarcados.length === 0)}
-            >
-              {enviando ? (editando ? "Salvando..." : "Criando...") : editando ? "Salvar" : "Criar"}
-            </PageButton>
-          </ModalFooter>
-        </FormStack>
-      </WideModalContent>
+              {ehDiretor && (
+                <FieldGroup>
+                  <FieldLabel htmlFor="piso-override">Piso mínimo desta banca (opcional)</FieldLabel>
+                  <FieldInput
+                    id="piso-override"
+                    type="number"
+                    min={0}
+                    value={pisoOverride}
+                    onChange={(e) => setPisoOverride(e.target.value)}
+                    placeholder="Deixe em branco para usar o padrão da(s) frente(s)"
+                  />
+                </FieldGroup>
+              )}
+            </FormSecao>
+          </FormModalBody>
+
+          {erro && (
+            <FormModalErro role="alert">
+              <AlertCircle size={16} aria-hidden="true" />
+              {erro}
+            </FormModalErro>
+          )}
+
+          <FormModalFooter>
+            {pendencia && <FormModalPendencia>{pendencia}</FormModalPendencia>}
+            <FormModalAcoes>
+              <PageButton $variant="outline" type="button" onClick={onClose}>
+                Cancelar
+              </PageButton>
+              <PageButton
+                type="submit"
+                disabled={enviando || (!editando && escoposMarcados.length === 0)}
+              >
+                {enviando && <BotaoSpinner aria-hidden="true" />}
+                {enviando ? (editando ? "Salvando..." : "Criando...") : editando ? "Salvar" : "Criar"}
+              </PageButton>
+            </FormModalAcoes>
+          </FormModalFooter>
+        </FormModalForm>
+      </FormModalContent>
     </ModalOverlay>
   );
 }

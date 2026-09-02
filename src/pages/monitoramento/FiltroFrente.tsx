@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { pode } from "@/utils/permissoes";
+import { podeFiltrarPorFrente } from "@/utils/permissoes";
 import { FiltroSelect, FrenteTravadaAviso } from "./Monitoramento.styled";
 import { useMonitoramento } from "./MonitoramentoLayout";
 
@@ -26,7 +26,7 @@ export function useFiltroFrente() {
   const { frentes } = useMonitoramento();
   const [frenteId, setFrenteId] = useState<number | null>(null);
 
-  const podeFiltrar = pode(usuario, "filtrar_por_frente");
+  const podeFiltrar = podeFiltrarPorFrente(usuario);
 
   return {
     /** O que vai para a API. `null` quando não pode filtrar: o backend já

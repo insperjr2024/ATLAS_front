@@ -53,6 +53,13 @@ const PERMISSOES_PLACEHOLDER: Permissoes = {
   pode_administrar_desempenho: false,
   pode_editar_formularios_desempenho: false,
   pode_administrar_configuracoes: false,
+  pode_administrar_permissoes: false,
+  pode_gerir_calendarios_base: false,
+  pode_ver_historico_projetos: false,
+  pode_ver_tarefas_gerais: false,
+  pode_ver_cronogramas_gerais: false,
+  pode_configurar_colunas: false,
+  pode_aprovar_pedidos: false,
   pode_ver_todos_projetos: false,
   pode_ver_dashboard_bancas: false,
 };
