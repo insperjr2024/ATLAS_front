@@ -54,6 +54,7 @@ const PERMISSOES_PLACEHOLDER: Permissoes = {
   pode_editar_formularios_desempenho: false,
   pode_administrar_configuracoes: false,
   pode_ver_todos_projetos: false,
+  pode_ver_dashboard_bancas: false,
 };
 
 /**

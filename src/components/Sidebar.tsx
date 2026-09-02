@@ -151,7 +151,7 @@ const navItems: NavItemConfig[] = [
     label: "Dashboard Bancas",
     path: "/avaliacoes",
     grupo: "gestao",
-    visiblePorPosicao: (u) => pode(u, "ver_dashboard_bancas"),
+    visible: (c) => c.pode_ver_dashboard_bancas,
   },
   {
     icon: Star,
