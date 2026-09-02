@@ -8,6 +8,7 @@ import {
 } from "@/lib/vagas";
 import { PageButtonSm, EmptyText, ErrorText } from "@/styles/page.styled";
 import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
+import { compararFrentes } from "@/lib/nucleo";
 import { FieldGroup, FieldLabel, FieldSelect } from "./Bancas.styled";
 import {
   PainelOverlay,
@@ -57,8 +58,11 @@ function agruparPorFrente(
       mapa.set(chave, [...(mapa.get(chave) ?? []), c]);
     }
   }
+  /* A ordem fixa do núcleo, e não o tamanho de cada grupo: ordenar por
+     quantidade fazia os blocos trocarem de lugar a cada pessoa alocada, e
+     ninguém decora uma ordem que muda sozinha. */
   return [...mapa.entries()].sort((a, b) =>
-    a[0] === SEM_FRENTE ? 1 : b[0] === SEM_FRENTE ? -1 : b[1].length - a[1].length,
+    a[0] === SEM_FRENTE ? 1 : b[0] === SEM_FRENTE ? -1 : compararFrentes(a[0], b[0]),
   );
 }
 
@@ -220,7 +224,7 @@ export function VagasAlocarPainel({ projeto, token, onFechar, onAlocou }: Props)
       for (const f of c.frentes) nomes.add(f);
     }
     return [...nomes].sort((a, b) =>
-      a === SEM_FRENTE ? 1 : b === SEM_FRENTE ? -1 : a.localeCompare(b),
+      a === SEM_FRENTE ? 1 : b === SEM_FRENTE ? -1 : compararFrentes(a, b),
     );
   }, [candidatos]);
 
