@@ -293,10 +293,15 @@ export function ProjetoPage() {
   async function baixarProposta() {
     if (!token || !projeto?.anexo_proposta_nome) return;
     setBaixandoAnexo(true);
+    setErroStatus("");
     try {
       await baixarAnexoProposta(projeto.id, projeto.anexo_proposta_nome, token);
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao baixar a proposta");
+      // Erro LOCAL e dispensável, não o `erro` de página: um download que
+      // falha (ex: arquivo perdido no servidor) não pode trocar a tela
+      // inteira pelo "Não foi possível abrir o projeto" quando o projeto
+      // carregou normal.
+      setErroStatus(err instanceof Error ? err.message : "Erro ao baixar a proposta");
     } finally {
       setBaixandoAnexo(false);
     }
