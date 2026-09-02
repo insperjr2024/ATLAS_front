@@ -105,6 +105,11 @@ export async function baixarAnexoProposta(projetoId: number, nomeArquivo: string
   const response = await fetch(`${API_URL}/projetos/${projetoId}/anexo-proposta`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  if (response.status === 404) {
+    throw new Error(
+      "O arquivo da proposta não está mais no servidor. Envie o PDF de novo pela edição do projeto.",
+    );
+  }
   if (!response.ok) throw new Error("Erro ao baixar o anexo da proposta");
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);

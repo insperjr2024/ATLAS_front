@@ -15,7 +15,7 @@ import {
 } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
 import { getLotes, getPendencias } from "@/lib/desempenho-lotes";
-import { getFaixasDisponiveis, getGradeDeUsuario } from "@/lib/grade-horaria";
+import { getFaixasDisponiveis, getGradeDeUsuario, getGradesPreenchidas } from "@/lib/grade-horaria";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { GradeEditor } from "@/components/grade/GradeEditor";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
@@ -97,6 +97,8 @@ import {
   FiltersRow,
   SearchField,
   HeaderActions,
+  BotaoComPino,
+  PinoGrade,
   SenhaProvisoriaCaixa,
   SenhaProvisoriaValor,
 } from "./Membros.styled";
@@ -144,6 +146,10 @@ export function Membros() {
   /** `null` até carregar (ou pra quem não administra desempenho, que nunca
    *  pede isso). Mapa vazio é resultado válido: ninguém tem lote aberto. */
   const [avaliacaoPorMembro, setAvaliacaoPorMembro] = useState<Map<number, AvaliacaoResumo> | null>(null);
+  /** Ids de quem já enviou a grade do semestre. `null` até carregar; um id
+   *  ausente do conjunto = grade não enviada, e o botão "Ver grade" ganha um
+   *  pino. Conjunto vazio é resultado válido (ninguém enviou ainda). */
+  const [gradesPreenchidas, setGradesPreenchidas] = useState<Set<number> | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [membroDetalhe, setMembroDetalhe] = useState<UsuarioResumo | null>(null);
@@ -168,13 +174,17 @@ export function Membros() {
     if (mostrarCarregando) setCarregando(true);
     setErro("");
     try {
-      const [usuariosResp, frentes, usuariosFrentes] = await Promise.all([
+      const [usuariosResp, frentes, usuariosFrentes, grades] = await Promise.all([
         getUsuarios(token),
         getFrentes(token),
         getUsuariosFrentes(token),
+        // Sem gestão ativa a rota devolve 422. O pino é acessório, então uma
+        // falha aqui só o deixa de fora, não derruba a lista.
+        getGradesPreenchidas(token).catch(() => ({ semestre_id: 0, usuario_ids: [] as number[] })),
       ]);
       setMembros(usuariosResp.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
       setContexto({ frentes, usuariosFrentes });
+      setGradesPreenchidas(new Set(grades.usuario_ids));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar membros");
     } finally {
@@ -407,9 +417,16 @@ export function Membros() {
                             {membro.senha_provisoria ? "Reenviar senha" : "Resetar senha"}
                           </PageButtonSm>
                         )}
-                        <PageButtonSm $variant="outline" type="button" onClick={() => setGradeDe(membro)}>
-                          Ver grade
-                        </PageButtonSm>
+                        {/* Pino só para quem está ativo e ainda não enviou a
+                            grade do semestre: ex-membro não precisa preencher. */}
+                        <BotaoComPino>
+                          <PageButtonSm $variant="outline" type="button" onClick={() => setGradeDe(membro)}>
+                            Ver grade
+                          </PageButtonSm>
+                          {membro.ativo && gradesPreenchidas && !gradesPreenchidas.has(membro.id) && (
+                            <PinoGrade title="Grade do semestre não enviada" aria-label="Grade do semestre não enviada" />
+                          )}
+                        </BotaoComPino>
                         <PageButtonSm $variant="outline" type="button" onClick={() => setMembroDetalhe(membro)}>
                           Ver mais
                         </PageButtonSm>
@@ -1046,6 +1063,7 @@ function MembroModal({
   const [semestreGraduacao, setSemestreGraduacao] = useState(
     membro.semestre_graduacao ? String(membro.semestre_graduacao) : "",
   );
+  const [coordenadorVendas, setCoordenadorVendas] = useState(membro.coordenador_vendas);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -1087,6 +1105,9 @@ function MembroModal({
           // `ativo` é espelho de `status` (F2), mandado junto para o front
           // legado que ainda lê o booleano não divergir.
           ativo: status === "ativo",
+          // Só coordenador tem essa marca. Fora disso manda `false` para não
+          // deixar a flag pendurada se a pessoa deixou de ser coordenador.
+          coordenador_vendas: posicao === "coordenador" ? coordenadorVendas : false,
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
@@ -1131,7 +1152,10 @@ function MembroModal({
                 </DetailRow>
                 <DetailRow>
                   <DetailTerm>Posição</DetailTerm>
-                  <DetailValue>{ROTULO_POSICAO[membro.posicao] ?? membro.posicao}</DetailValue>
+                  <DetailValue>
+                    {ROTULO_POSICAO[membro.posicao] ?? membro.posicao}
+                    {membro.posicao === "coordenador" && membro.coordenador_vendas && " · vendas"}
+                  </DetailValue>
                 </DetailRow>
                 <DetailRow>
                   <DetailTerm>Frentes</DetailTerm>
@@ -1234,6 +1258,26 @@ function MembroModal({
                   </FieldSelect>
                 </FieldGroup>
 
+                {/* Só faz sentido para coordenador: o acesso não muda, a marca
+                    só tira a pessoa da contagem de capacidade de coordenadores
+                    no Monitoramento. */}
+                {posicao === "coordenador" && (
+                  <FieldGroup>
+                    <ToggleRow>
+                      <input
+                        type="checkbox"
+                        checked={coordenadorVendas}
+                        onChange={(e) => setCoordenadorVendas(e.target.checked)}
+                      />
+                      Coordenador de vendas (comercial)
+                    </ToggleRow>
+                    <EmptyText style={{ fontSize: "0.7rem" }}>
+                      Mesmo acesso dos outros coordenadores. Fica de fora da conta de
+                      "quantos projetos cada coordenador tem" no Monitoramento.
+                    </EmptyText>
+                  </FieldGroup>
+                )}
+
                 <FieldGroup>
                   <FieldLabel htmlFor="semestre-membro">Semestre da graduação</FieldLabel>
                   <FieldSelect
@@ -1302,6 +1346,7 @@ function MembroModal({
                   setEmail(membro.email_insper);
                   setPosicao(membro.posicao);
                   setStatus(membro.status);
+                  setCoordenadorVendas(membro.coordenador_vendas);
                   setFrenteIds(
                     contexto.usuariosFrentes.filter((uf) => uf.usuario_id === membro.id).map((uf) => uf.frente_id),
                   );

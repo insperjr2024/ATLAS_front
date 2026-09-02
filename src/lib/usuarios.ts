@@ -17,6 +17,9 @@ export interface UpdateUsuarioPayload {
    */
   status?: StatusUsuario;
   ativo?: boolean;
+  /** Marca o coordenador como comercial (de vendas). Não mexe em acesso, só
+   *  o tira da contagem de capacidade de coordenadores. */
+  coordenador_vendas?: boolean;
   /** 1º a 8º semestre da graduação, ou `null` pra limpar. */
   semestre_graduacao?: number | null;
 }

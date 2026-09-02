@@ -101,6 +101,26 @@ export const HeaderActions = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
+/** Envolve o "Ver grade" para pendurar o `PinoGrade` no canto: quem ainda
+ *  não enviou a grade do semestre. `inline-flex` para não esticar a célula. */
+export const BotaoComPino = styled.span`
+  position: relative;
+  display: inline-flex;
+`;
+
+/** O pino de alerta mordendo o canto superior direito do botão. `border` na
+ *  cor do card recorta o pino contra a borda do botão. */
+export const PinoGrade = styled.span`
+  position: absolute;
+  top: -0.3rem;
+  right: -0.3rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.warning};
+  border: 2px solid ${theme.colors.card};
+`;
+
 /* ------------------------------------------------------------------ */
 /* Senha de primeiro acesso                                      */
 /* ------------------------------------------------------------------ */
