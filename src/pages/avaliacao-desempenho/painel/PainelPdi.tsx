@@ -147,12 +147,18 @@ export function PainelPdi() {
 
   // Mentor pode ser coordenador, gerente ou diretor (2026-08-06), não só coordenador.
   const mentoresElegiveis = useMemo(
-    () => usuarios.filter((u) => MENTORES_ELEGIVEIS.includes(u.posicao)),
+    () =>
+      usuarios
+        .filter((u) => MENTORES_ELEGIVEIS.includes(u.posicao))
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [usuarios],
   );
   const mentoradosJaAlocados = useMemo(() => new Set(mentorias.map((m) => m.mentorado_id)), [mentorias]);
   const candidatosMentorado = useMemo(
-    () => usuarios.filter((u) => u.posicao === "consultor" && !mentoradosJaAlocados.has(u.id)),
+    () =>
+      usuarios
+        .filter((u) => u.posicao === "consultor" && !mentoradosJaAlocados.has(u.id))
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
     [usuarios, mentoradosJaAlocados],
   );
 

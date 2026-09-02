@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ChevronDown, ChevronRight, Inbox, TriangleAlert, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ROTULO_STATUS, formatarDataHora } from "@/lib/projetos";
+import { compararFrentes } from "@/lib/nucleo";
 import type { StatusProjeto } from "@/types/projeto";
 import {
   cancelarSolicitacao,
@@ -149,6 +150,11 @@ type Aba = (typeof ABAS)[number];
 
 /** Rótulo do grupo de projetos sem frente cadastrada. Vai por último. */
 const SEM_FRENTE = "Sem frente";
+
+/** A ordem das frentes na tela, com "Sem frente" sempre no fim. */
+function porFrente(a: string, b: string): number {
+  return a === SEM_FRENTE ? 1 : b === SEM_FRENTE ? -1 : compararFrentes(a, b);
+}
 
 const TOM_STATUS = {
   pendente: "warning",
@@ -355,7 +361,7 @@ export function Vagas() {
   );
 
   const frentesDaFila = useMemo(
-    () => [...new Set(pendentes.flatMap((s) => s.frentes))].sort(),
+    () => [...new Set(pendentes.flatMap((s) => s.frentes))].sort(porFrente),
     [pendentes],
   );
   const projetosDisponiveis = useMemo(
@@ -578,7 +584,9 @@ export function Vagas() {
                           />
                           Todas as frentes
                         </CheckboxLabel>
-                        {[...new Set(dados.projetos.flatMap((p) => p.frentes))].sort().map((f) => (
+                        {[...new Set(dados.projetos.flatMap((p) => p.frentes))]
+                          .sort(porFrente)
+                          .map((f) => (
                           <CheckboxLabel key={f}>
                             <input
                               type="radio"
@@ -712,6 +720,7 @@ export function Vagas() {
                       id="filtro-projeto"
                       value={filtroProjeto}
                       onChange={(e) => setFiltroProjeto(e.target.value)}
+                      pesquisavel
                     >
                       <option value={TODOS}>Todos os projetos</option>
                       {projetosDisponiveis.map(([id, nome]) => (
@@ -918,9 +927,10 @@ function GradeDaGestao({
         mapa.set(chave, [...(mapa.get(chave) ?? []), p]);
       }
     }
-    return [...mapa.entries()].sort((a, b) =>
-      a[0] === SEM_FRENTE ? 1 : b[0] === SEM_FRENTE ? -1 : b[1].length - a[1].length,
-    );
+    /* A ordem fixa do núcleo, e não o tamanho de cada grupo: ordenar por
+       quantidade fazia os blocos trocarem de lugar a cada projeto aberto ou
+       fechado, e ninguém decora uma ordem que muda sozinha. */
+    return [...mapa.entries()].sort((a, b) => porFrente(a[0], b[0]));
   }, [agrupar, frente, visiveis]);
 
   if (visiveis.length === 0) {

@@ -107,8 +107,15 @@ export const SelectOption = styled.button<{ $selecionado: boolean }>`
   }
 `;
 
-/** O campo de busca no topo do painel, quando `pesquisavel`. */
+/** O campo de busca no topo do painel, quando `pesquisavel`.
+ *
+ *  `sticky` porque ele mora DENTRO da área que rola: sem isso, rolar a lista
+ *  levava o campo junto para fora da vista, e limpar o filtro exigia voltar
+ *  ao topo primeiro. */
 export const SelectBusca = styled.input`
+  position: sticky;
+  top: 0;
+  z-index: 1;
   width: 100%;
   margin-bottom: ${theme.spacing.xs};
   padding: 0.375rem 0.625rem;

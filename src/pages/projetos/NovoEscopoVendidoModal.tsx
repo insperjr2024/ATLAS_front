@@ -78,9 +78,9 @@ export function NovoEscopoVendidoModal({
     const usados = new Set(
       jaVendidos.map((e) => e.escopo_id).filter((id): id is number => id !== null),
     );
-    return catalogo.filter(
-      (e) => e.frente_id !== null && frenteIds.includes(e.frente_id) && !usados.has(e.id),
-    );
+    return catalogo
+      .filter((e) => e.frente_id !== null && frenteIds.includes(e.frente_id) && !usados.has(e.id))
+      .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   }, [catalogo, frenteIds, jaVendidos]);
 
   const [escolha, setEscolha] = useState<string>(() =>
@@ -186,6 +186,7 @@ export function NovoEscopoVendidoModal({
                 autoFocus
                 value={escolha}
                 onChange={(e) => setEscolha(e.target.value)}
+                pesquisavel
               >
                 {disponiveis.map((e) => (
                   <option key={e.id} value={String(e.id)}>

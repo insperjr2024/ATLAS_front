@@ -1,6 +1,9 @@
 import styled, { css } from "styled-components";
 import { theme } from "@/styles/theme";
 import { ModalFooter as BaseModalFooter } from "./Calendario.styled";
+/* Importado além do reexport logo abaixo: `export { X } from "..."` não cria
+   binding local, e `FiltroFrenteSelect` precisa dele para estender. */
+import { SelectCustom } from "@/components/SelectCustom";
 
 export const DataTable = styled.table`
   width: 100%;
@@ -494,6 +497,82 @@ export const BancaCardScrollWrap = styled.div<{ $scrollable?: boolean }>`
       max-height: 34rem;
       overflow-y: auto;
     `}
+`;
+
+/**
+ * Um bloco de bancas de uma frente dentro da lista.
+ *
+ * O respiro entre os cartões é o mesmo da lista sem agrupamento, então
+ * ligar ou desligar a separação não muda a densidade do card.
+ */
+export const FrenteGrupo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+/** O cabeçalho de cada bloco. Mesma forma do agrupamento por frente do
+ *  painel de alocação em Vagas (`PainelGrupoTitulo`), de propósito: são a
+ *  mesma leitura, em duas telas. */
+export const FrenteGrupoTitulo = styled.h4`
+  margin: ${theme.spacing.xs} 0 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+
+  ${FrenteGrupo}:first-child & {
+    margin-top: 0;
+  }
+`;
+
+/** O título do card com o filtro logo depois dele. Existe para os dois
+ *  andarem juntos à esquerda — sem ela o `space-between` do cabeçalho
+ *  jogaria o filtro para o meio da linha, longe do nome que ele recorta. */
+export const CardHeaderTitulo = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  /* Entre \`sm\` e \`md\` do tema: com \`sm\` o filtro encostava no título e os
+     dois liam como uma coisa só; \`md\` já soltava demais e o filtro deixava
+     de pertencer ao card. */
+  gap: 0.75rem;
+
+  /* O h2 herda \`line-height: 1.5\` do preflight, então a caixa dele é bem
+     mais alta que as letras. Centrando caixa com caixa, o título parecia
+     fora de eixo em relação ao filtro; com \`1\` a caixa encosta nas letras
+     e os dois centram pelo que se vê. */
+  > h2 {
+    line-height: 1;
+  }
+`;
+
+/**
+ * O filtro de frente, no cabeçalho e não acima da lista.
+ *
+ * Sem rótulo de propósito: a opção escolhida já é o nome de uma frente, e
+ * "Frente" ao lado dela só repetiria o que se lê.
+ *
+ * `width: auto` porque o `SelectWrap` é 100% por padrão — no cabeçalho ele
+ * precisa ocupar só o que o nome pede. `display: flex` troca o
+ * `inline-block` do wrap, que trazia junto o espaço de descida da linha e
+ * empurrava o gatilho alguns pixels abaixo do eixo do título.
+ *
+ * O gatilho encolhe de 2.25rem para 1.75rem: na altura cheia ele sozinho
+ * definia a altura do cabeçalho, e este card ficava com a faixa do topo mais
+ * alta que a dos cards vizinhos — que é o que fazia a linha inteira parecer
+ * desalinhada.
+ */
+export const FiltroFrenteSelect = styled(SelectCustom)`
+  display: flex;
+  align-self: center;
+  width: auto;
+  min-width: 11rem;
+
+  button {
+    height: 1.75rem;
+  }
 `;
 
 /** O rodapé do card, separado do título/meta por uma borda, pra ação não

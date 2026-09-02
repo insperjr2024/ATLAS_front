@@ -23,6 +23,32 @@ export function normalizarTexto(texto: string): string {
     .toLowerCase();
 }
 
+/**
+ * A ordem em que as frentes aparecem em toda lista agrupada por frente.
+ *
+ * Escrita à mão porque não é derivável do banco: o cadastro de frente não tem
+ * campo de posição, e ordenar por nome ou por tamanho do grupo dava uma ordem
+ * diferente em cada tela. Esta é a ordem em que a diretoria lê o núcleo.
+ *
+ * A comparação é por PEDAÇO do nome, e não por igualdade, porque o nome
+ * cadastrado nem sempre é o nome curto — a frente de processos está como
+ * "Engenharia de Processos" — e renomear uma frente em Configurações não
+ * pode derrubar a ordenação em silêncio. Frente fora desta lista vai para o
+ * fim, em ordem alfabética.
+ */
+const ORDEM_FRENTES = ["business", "tech", "direito", "processos"];
+
+export function ordemDaFrente(nome: string): number {
+  const normalizado = normalizarTexto(nome);
+  const posicao = ORDEM_FRENTES.findIndex((chave) => normalizado.includes(chave));
+  return posicao === -1 ? ORDEM_FRENTES.length : posicao;
+}
+
+/** Comparador pronto: a ordem fixa primeiro, o resto em ordem alfabética. */
+export function compararFrentes(a: string, b: string): number {
+  return ordemDaFrente(a) - ordemDaFrente(b) || a.localeCompare(b, "pt-BR");
+}
+
 export function frentesDoUsuario(usuariosFrentes: UsuarioFrente[], frentes: Frente[], usuarioId: number): string[] {
   return usuariosFrentes
     .filter((uf) => uf.usuario_id === usuarioId)

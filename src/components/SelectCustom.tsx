@@ -12,6 +12,22 @@ import {
   SelectWrap,
 } from "./SelectCustom.styled";
 
+/**
+ * O texto visível de uma `<option>`.
+ *
+ * A busca comparava `label` direto e só funcionava com rótulo de uma peça
+ * só: `{m.nome} · {ROTULO_POSICAO[m.posicao]}` chega aqui como ARRAY, não
+ * como string, e a comparação devolvia vazio — digitar qualquer letra
+ * escondia a lista inteira.
+ */
+function textoDoNo(no: ReactNode): string {
+  if (no == null || typeof no === "boolean") return "";
+  if (typeof no === "string" || typeof no === "number") return String(no);
+  if (Array.isArray(no)) return no.map(textoDoNo).join("");
+  if (isValidElement(no)) return textoDoNo((no.props as { children?: ReactNode }).children);
+  return "";
+}
+
 interface OptionInfo {
   value: string;
   label: ReactNode;
@@ -148,7 +164,7 @@ export function SelectCustom({
   const termo = normalizarTexto(busca.trim());
   const opcoes = !pesquisavel || !termo
     ? opcoesTodas
-    : opcoesTodas.filter((o) => normalizarTexto(typeof o.label === "string" ? o.label : "").includes(termo));
+    : opcoesTodas.filter((o) => normalizarTexto(textoDoNo(o.label)).includes(termo));
 
   function selecionar(opcao: OptionInfo) {
     if (opcao.disabled) return;

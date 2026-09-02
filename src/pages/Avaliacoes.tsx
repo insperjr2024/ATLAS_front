@@ -190,6 +190,25 @@ export function Avaliacoes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  /* As listas dos filtros, na ordem em que se PROCURA nelas. O estado cru
+     guarda a ordem que o backend devolveu, que não é ordem nenhuma, e o
+     dashboard logo acima depende dessas mesmas listas — por isso a ordenação
+     mora aqui, em cópias, e não no `setUsuarios`/`setEscopos`. */
+  const usuariosOrdenados = useMemo(
+    () => usuarios.slice().sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [usuarios],
+  );
+  const escoposOrdenados = useMemo(
+    () => escopos.slice().sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [escopos],
+  );
+  /* Semestre não é alfabético: a ordem que serve é a do calendário, com o
+     mais recente primeiro — é nele que se filtra quase sempre. */
+  const semestresOrdenados = useMemo(
+    () => semestres.slice().sort((a, b) => b.inicio.localeCompare(a.inicio)),
+    [semestres],
+  );
+
   const historicoFiltrado = useMemo(() => {
     return historico
       .filter((b) => {
@@ -270,33 +289,33 @@ export function Avaliacoes() {
         </PageCardHeader>
         <PageCardContent>
           <FiltersRow>
-            <FieldSelect value={filtroSemestre} onChange={(e) => setFiltroSemestre(e.target.value)} style={{ width: "10rem" }}>
+            <FieldSelect value={filtroSemestre} onChange={(e) => setFiltroSemestre(e.target.value)} style={{ width: "10rem" }} pesquisavel>
               <option value="">Todos os semestres</option>
-              {semestres.map((s) => (
+              {semestresOrdenados.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nome}
                 </option>
               ))}
             </FieldSelect>
-            <FieldSelect value={filtroCoordenador} onChange={(e) => setFiltroCoordenador(e.target.value)} style={{ width: "10rem" }}>
+            <FieldSelect value={filtroCoordenador} onChange={(e) => setFiltroCoordenador(e.target.value)} style={{ width: "10rem" }} pesquisavel>
               <option value="">Todos os coordenadores</option>
-              {usuarios.map((u) => (
+              {usuariosOrdenados.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nome}
                 </option>
               ))}
             </FieldSelect>
-            <FieldSelect value={filtroConsultor} onChange={(e) => setFiltroConsultor(e.target.value)} style={{ width: "10rem" }}>
+            <FieldSelect value={filtroConsultor} onChange={(e) => setFiltroConsultor(e.target.value)} style={{ width: "10rem" }} pesquisavel>
               <option value="">Todos os avaliadores</option>
-              {usuarios.map((u) => (
+              {usuariosOrdenados.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nome}
                 </option>
               ))}
             </FieldSelect>
-            <FieldSelect value={filtroEscopo} onChange={(e) => setFiltroEscopo(e.target.value)} style={{ width: "10rem" }}>
+            <FieldSelect value={filtroEscopo} onChange={(e) => setFiltroEscopo(e.target.value)} style={{ width: "10rem" }} pesquisavel>
               <option value="">Todos os escopos</option>
-              {escopos.map((e) => (
+              {escoposOrdenados.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.nome}
                 </option>
