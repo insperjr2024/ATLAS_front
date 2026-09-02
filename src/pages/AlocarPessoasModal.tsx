@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { alocarUsuario } from "@/lib/bancas";
+import { normalizarTexto } from "@/lib/nucleo";
 import type { Banca, Candidatura, EquipeProjeto } from "@/types/banca";
 import type { UsuarioResumo } from "@/types/auth";
 import {
@@ -13,7 +14,7 @@ import {
   ModalTitle,
 } from "@/styles/modal.styled";
 import { PageBadge, PageButton, PageButtonSm, EmptyText } from "@/styles/page.styled";
-import { FormErrorText } from "./Bancas.styled";
+import { FieldInput, FormErrorText } from "./Bancas.styled";
 import { ListScrollWrap, LIST_MAX_VISIVEIS } from "@/styles/shared.styled";
 import { BancaAcoes, BancaInfo, BancaLinha, BancaMeta, BancaNome } from "./Bancas.styled";
 
@@ -48,6 +49,7 @@ export function AlocarPessoasModal({
 }: Props) {
   const [salvando, setSalvando] = useState<number | null>(null);
   const [erro, setErro] = useState("");
+  const [busca, setBusca] = useState("");
 
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
@@ -71,11 +73,19 @@ export function AlocarPessoasModal({
       carga.set(c.usuario_id, (carga.get(c.usuario_id) ?? 0) + 1);
     }
 
+    // A ordem é por CARGA, de propósito, e não alfabética: a decisão que se
+    // quer favorecer aqui é "quem ainda não pegou banca", e o alfabeto
+    // esconderia isso. Quem procura alguém específico usa a busca.
     return usuarios
       .filter((u) => !jaNaBanca.has(u.id) && !daEquipe.has(u.id))
       .map((u) => ({ usuario: u, bancas: carga.get(u.id) ?? 0 }))
       .sort((a, b) => a.bancas - b.bancas || a.usuario.nome.localeCompare(b.usuario.nome));
   }, [usuarios, candidaturas, equipes, banca.id]);
+
+  const termo = normalizarTexto(busca.trim());
+  const visiveis = termo
+    ? disponiveis.filter((d) => normalizarTexto(d.usuario.nome).includes(termo))
+    : disponiveis;
 
   async function alocar(usuarioId: number) {
     setErro("");
@@ -110,30 +120,41 @@ export function AlocarPessoasModal({
           {disponiveis.length === 0 ? (
             <EmptyText>Todo mundo já está nesta banca ou é da equipe do projeto.</EmptyText>
           ) : (
-            <ListScrollWrap $scrollable={disponiveis.length > LIST_MAX_VISIVEIS}>
-              {disponiveis.map(({ usuario, bancas }) => (
-                <BancaLinha key={usuario.id}>
-                  <BancaInfo>
-                    <BancaNome>{usuario.nome}</BancaNome>
-                    <BancaMeta>
-                      {bancas === 0
-                        ? "nenhuma banca ainda"
-                        : `${bancas} banca${bancas > 1 ? "s" : ""}`}
-                    </BancaMeta>
-                  </BancaInfo>
-                  <BancaAcoes>
-                    {bancas === 0 && <PageBadge $tone="success">Sem carga</PageBadge>}
-                    <PageButtonSm
-                      type="button"
-                      disabled={salvando != null}
-                      onClick={() => alocar(usuario.id)}
-                    >
-                      {salvando === usuario.id ? "Alocando…" : "Alocar"}
-                    </PageButtonSm>
-                  </BancaAcoes>
-                </BancaLinha>
-              ))}
-            </ListScrollWrap>
+            <>
+              <FieldInput
+                type="text"
+                value={busca}
+                placeholder="Buscar por nome…"
+                aria-label="Buscar pessoa"
+                style={{ marginBottom: "0.5rem" }}
+                onChange={(e) => setBusca(e.target.value)}
+              />
+              {visiveis.length === 0 && <EmptyText>Ninguém encontrado para "{busca}".</EmptyText>}
+              <ListScrollWrap $scrollable={visiveis.length > LIST_MAX_VISIVEIS}>
+                {visiveis.map(({ usuario, bancas }) => (
+                  <BancaLinha key={usuario.id}>
+                    <BancaInfo>
+                      <BancaNome>{usuario.nome}</BancaNome>
+                      <BancaMeta>
+                        {bancas === 0
+                          ? "nenhuma banca ainda"
+                          : `${bancas} banca${bancas > 1 ? "s" : ""}`}
+                      </BancaMeta>
+                    </BancaInfo>
+                    <BancaAcoes>
+                      {bancas === 0 && <PageBadge $tone="success">Sem carga</PageBadge>}
+                      <PageButtonSm
+                        type="button"
+                        disabled={salvando != null}
+                        onClick={() => alocar(usuario.id)}
+                      >
+                        {salvando === usuario.id ? "Alocando…" : "Alocar"}
+                      </PageButtonSm>
+                    </BancaAcoes>
+                  </BancaLinha>
+                ))}
+              </ListScrollWrap>
+            </>
           )}
         </ModalBody>
 

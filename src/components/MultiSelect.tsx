@@ -2,11 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
+import { normalizarTexto } from "@/lib/nucleo";
 import {
   LimparSelecao,
   OpcaoMarcavel,
+  SelectBusca,
   SelectPanel,
   SelectTrigger,
+  SelectVazio,
   SelectWrap,
 } from "./MultiSelect.styled";
 
@@ -32,6 +35,10 @@ interface Props {
   className?: string;
   style?: CSSProperties;
   "aria-label"?: string;
+  /** Lista longa (pessoas, sobretudo): mostra um campo de busca no topo do
+   *  painel que filtra as opções pelo rótulo. O que já está marcado continua
+   *  marcado enquanto o filtro esconde — filtrar não desmarca ninguém. */
+  pesquisavel?: boolean;
 }
 
 /**
@@ -56,8 +63,10 @@ export function MultiSelect({
   className,
   style,
   "aria-label": ariaLabel,
+  pesquisavel,
 }: Props) {
   const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
   const [posicao, setPosicao] = useState<{
     top?: number;
     bottom?: number;
@@ -130,6 +139,14 @@ export function MultiSelect({
     return () => document.removeEventListener("keydown", aoTeclar);
   }, [aberto]);
 
+  // Zera a busca a cada abertura, senão o filtro da vez anterior continua
+  // escondendo opção na próxima vez que a lista é aberta. O gatilho é o
+  // único caminho de abertura, então não precisa de efeito para isso.
+  function alternarPainel() {
+    setBusca("");
+    setAberto((v) => !v);
+  }
+
   function alternar(value: string) {
     // Acrescenta no FIM, preservando a ordem em que a pessoa marcou — é a
     // ordem que aparece no gatilho, e reordenar sozinho faria o rótulo mudar
@@ -138,6 +155,12 @@ export function MultiSelect({
       valores.includes(value) ? valores.filter((v) => v !== value) : [...valores, value],
     );
   }
+
+  const termo = normalizarTexto(busca.trim());
+  const visiveis =
+    !pesquisavel || !termo
+      ? opcoes
+      : opcoes.filter((o) => normalizarTexto(o.label).includes(termo));
 
   const marcados = opcoes.filter((o) => valores.includes(o.value));
   const rotulo =
@@ -154,7 +177,7 @@ export function MultiSelect({
         aria-expanded={aberto}
         aria-haspopup="true"
         aria-label={ariaLabel}
-        onClick={() => setAberto((v) => !v)}
+        onClick={alternarPainel}
       >
         <span>{rotulo}</span>
         <ChevronDown size={16} />
@@ -172,7 +195,19 @@ export function MultiSelect({
               maxHeight: posicao.maxHeight,
             }}
           >
-            {opcoes.map((opcao) => {
+            {pesquisavel && (
+              <SelectBusca
+                type="text"
+                autoFocus
+                placeholder="Buscar…"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+              />
+            )}
+            {visiveis.length === 0 && (
+              <SelectVazio>{termo ? "Nenhuma opção encontrada" : "Nenhuma opção disponível"}</SelectVazio>
+            )}
+            {visiveis.map((opcao) => {
               const marcada = valores.includes(opcao.value);
               return (
                 <OpcaoMarcavel key={opcao.value} $marcada={marcada}>

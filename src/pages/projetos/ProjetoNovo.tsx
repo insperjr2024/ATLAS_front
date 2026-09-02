@@ -531,6 +531,7 @@ export function ProjetoNovo() {
                 rotuloVazio="Ninguém marcado"
                 resumo={(n) => `${n} vendedores`}
                 aria-label="Quem vendeu o projeto"
+                pesquisavel
               />
               <EmptyText style={{ fontSize: "0.7rem" }}>
                 Opcional. Quem vendeu enxerga o projeto em modo somente leitura, mesmo

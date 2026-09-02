@@ -15,6 +15,7 @@ import {
   paraDataUtc,
 } from "@/lib/projetos";
 import { consultoresDoNucleo } from "@/lib/nucleo";
+import { ListaMarcavel } from "@/components/ListaMarcavel";
 import type {
   Banca,
   BancaFrente,
@@ -126,7 +127,9 @@ export function BancaFormModal({
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
-  const consultores = consultoresDoNucleo(dados.usuarios);
+  const consultores = consultoresDoNucleo(dados.usuarios).sort((a, b) =>
+    a.nome.localeCompare(b.nome, "pt-BR"),
+  );
 
   useEffect(() => {
     if (editando) return;
@@ -186,13 +189,21 @@ export function BancaFormModal({
     escoposCarregados?.projetoId === projetoId ? escoposCarregados.lista : [];
   const carregandoEscopos = projetoId != null && escoposCarregados?.projetoId !== projetoId;
 
+  /** O catálogo do select de edição, em ordem alfabética — o estado cru
+   *  guarda a ordem que o backend devolveu, que não é ordem nenhuma. */
+  const escoposDoCatalogo = dados.escopos
+    .slice()
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+
   const projetoEscolhido = projetos.find((p) => p.id === projetoId) ?? null;
 
-  const projetosFiltrados = busca.trim()
-    ? projetos.filter((p) =>
-        `${p.nome} ${p.cliente}`.toLowerCase().includes(busca.trim().toLowerCase()),
-      )
-    : projetos;
+  const projetosFiltrados = (
+    busca.trim()
+      ? projetos.filter((p) =>
+          `${p.nome} ${p.cliente}`.toLowerCase().includes(busca.trim().toLowerCase()),
+        )
+      : projetos.slice()
+  ).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
   /** Escopo que já tem banca não pode ser puxado para outra: o backend recusa
    *  (seria apagar em silêncio a data já marcada). */
@@ -414,9 +425,15 @@ export function BancaFormModal({
             {editando && (
               <FieldGroup>
                 <FieldLabel htmlFor="escopo">Escopo</FieldLabel>
-                <FieldSelect id="escopo" value={escopoId} onChange={(e) => setEscopoId(e.target.value)} required>
+                <FieldSelect
+                  id="escopo"
+                  value={escopoId}
+                  onChange={(e) => setEscopoId(e.target.value)}
+                  required
+                  pesquisavel
+                >
                   <option value="">Selecione um escopo</option>
-                  {dados.escopos.map((escopo) => (
+                  {escoposDoCatalogo.map((escopo) => (
                     <option key={escopo.id} value={escopo.id}>
                       {escopo.nome}
                     </option>
@@ -443,19 +460,14 @@ export function BancaFormModal({
 
             <FieldGroup>
               <FieldLabel>Consultores do projeto</FieldLabel>
-              <CheckboxGrid>
-                {consultores.length === 0 && <EmptyText>Nenhum consultor disponível.</EmptyText>}
-                {consultores.map((consultor) => (
-                  <CheckboxLabel key={consultor.id}>
-                    <input
-                      type="checkbox"
-                      checked={consultorIds.includes(consultor.id)}
-                      onChange={() => setConsultorIds((ids) => toggleId(ids, consultor.id))}
-                    />
-                    {consultor.nome}
-                  </CheckboxLabel>
-                ))}
-              </CheckboxGrid>
+              <ListaMarcavel
+                opcoes={consultores}
+                marcados={(id) => consultorIds.includes(id)}
+                onAlternar={(id) => setConsultorIds((ids) => toggleId(ids, id))}
+                vazio="Nenhum consultor disponível."
+                placeholder="Buscar consultor…"
+                aria-label="Buscar consultor"
+              />
             </FieldGroup>
 
             {editando ? (

@@ -192,6 +192,7 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
                   id="edit-responsavel"
                   value={responsavel}
                   onChange={(e) => setResponsavel(e.target.value)}
+                  pesquisavel
                 >
                   {/* O responsável atual sempre aparece, mesmo se já saiu do
                       projeto, senão o select troca de valor sem avisar. */}

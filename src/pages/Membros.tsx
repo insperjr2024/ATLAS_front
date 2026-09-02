@@ -627,6 +627,7 @@ function TransferirDiretoriaModal({
                   value={novoDiretorId}
                   onChange={(e) => setNovoDiretorId(e.target.value)}
                   required
+                  pesquisavel
                 >
                   <option value="">Selecione…</option>
                   {elegiveis.map((m) => (

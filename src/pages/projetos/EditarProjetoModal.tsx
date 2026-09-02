@@ -519,6 +519,7 @@ export function EditarProjetoModal({
                     rotuloVazio="Ninguém marcado"
                     resumo={(n) => `${n} vendedores`}
                     aria-label="Quem vendeu o projeto"
+                    pesquisavel
                   />
                 </FieldGroup>
 

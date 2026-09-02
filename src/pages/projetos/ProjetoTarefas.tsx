@@ -80,9 +80,9 @@ export function ProjetoTarefas() {
 
   // Só quem está de fato alocado neste projeto pode ser responsável por uma
   // tarefa dele, `usuarios` (do useProjeto) é o quadro inteiro da Insper Jr.
-  const membrosDoProjeto = usuarios.filter(
-    (u) => projeto.coordenador_ids.includes(u.id) || projeto.consultor_ids.includes(u.id),
-  );
+  const membrosDoProjeto = usuarios
+    .filter((u) => projeto.coordenador_ids.includes(u.id) || projeto.consultor_ids.includes(u.id))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
   /**
    * Otimista: o card já aparece na coluna nova antes da resposta. Se o PATCH
@@ -262,6 +262,7 @@ function NovaTarefaModal({
                   value={responsavel}
                   onChange={(e) => setResponsavel(e.target.value)}
                   required
+                  pesquisavel
                 >
                   {usuarios.map((u) => (
                     <option key={u.id} value={u.id}>
