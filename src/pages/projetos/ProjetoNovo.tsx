@@ -534,7 +534,7 @@ export function ProjetoNovo() {
               />
               <EmptyText style={{ fontSize: "0.7rem" }}>
                 Opcional. Quem vendeu enxerga o projeto em modo somente leitura, mesmo
-                sem estar na equipe — e não pode avaliar a banca dele.
+                sem estar na equipe. Pode avaliar a banca deste projeto normalmente.
               </EmptyText>
             </FieldGroup>
           </BlocoSecao>

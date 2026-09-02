@@ -259,6 +259,9 @@ function EquipeCard() {
   const fotoUsuario = (id: number) => usuarios.find((u) => u.id === id)?.foto ?? null;
   const coordenadores = projeto.equipe.filter((m) => m.papel === "coordenador");
   const consultores = projeto.equipe.filter((m) => m.papel !== "coordenador");
+  // Quem vendeu, à parte da equipe que executa: vender não ocupa vaga de
+  // consultor nem entra na capacidade. Fica numa seção própria abaixo.
+  const vendedores = projeto.vendedor_ids ?? [];
   // Teto cru — ver o comentário em `ProjetoPage.tsx`.
   const teto = projeto.max_consultores ?? 0;
 
@@ -311,6 +314,19 @@ function EquipeCard() {
             ))
           )}
         </EquipeSecao>
+
+        {/* Só aparece quando alguém vendeu: a maioria dos projetos não tem
+            vendedor registrado, e uma seção "Sem vendedor" fixa seria ruído.
+            Quem vendeu não faz parte do time que entrega. Está aqui como
+            registro comercial, e pode avaliar a banca deste projeto. */}
+        {vendedores.length > 0 && (
+          <EquipeSecao>
+            <EquipeSecaoTitulo>Vendas</EquipeSecaoTitulo>
+            {vendedores.map((id) => (
+              <PessoaDaEquipe key={id} nome={nomeUsuario(id)} foto={fotoUsuario(id)} id={id} />
+            ))}
+          </EquipeSecao>
+        )}
       </PageCardContent>
     </PageCard>
   );
