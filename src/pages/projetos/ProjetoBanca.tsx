@@ -9,7 +9,6 @@ import {
   getBancasDoProjeto,
   getBancasFrentes,
   getEquipesProjeto,
-  getEscopos,
   realizarBanca,
   registrarDescricaoCoordenador,
   ROTULO_STATUS_BANCA,
@@ -29,7 +28,6 @@ import type {
   BancaDetalhes,
   BancaFrente,
   EquipeProjeto,
-  Escopo,
   Frente,
   ResultadoBanca,
   SessaoDeBanca,
@@ -548,7 +546,6 @@ function EditarBancaModal({
 }) {
   const [carregado, setCarregado] = useState<{
     banca: Banca;
-    escopos: Escopo[];
     equipesProjeto: EquipeProjeto[];
     bancasFrentes: BancaFrente[];
   } | null>(null);
@@ -558,12 +555,11 @@ function EditarBancaModal({
     let ativo = true;
     Promise.all([
       getBanca(bancaId, token),
-      getEscopos(token),
       getEquipesProjeto(token),
       getBancasFrentes(token),
     ])
-      .then(([banca, escopos, equipesProjeto, bancasFrentes]) => {
-        if (ativo) setCarregado({ banca, escopos, equipesProjeto, bancasFrentes });
+      .then(([banca, equipesProjeto, bancasFrentes]) => {
+        if (ativo) setCarregado({ banca, equipesProjeto, bancasFrentes });
       })
       .catch((err: unknown) => {
         if (ativo) setErro(err instanceof Error ? err.message : "Erro ao abrir a edição da banca");

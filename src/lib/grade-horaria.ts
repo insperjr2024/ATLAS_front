@@ -23,6 +23,20 @@ export function getGradeDeUsuario(usuarioId: number, token: string) {
   return apiFetch<MinhaGrade>(`/grade-horaria/${usuarioId}`, { token });
 }
 
+/**
+ * Os ids de quem já enviou a grade no semestre ativo. Só quem tem
+ * `pode_gerir_membros`, a mesma régua de `getGradeDeUsuario`.
+ *
+ * Quem enviou uma grade vazia ("não tenho aula") não entra: não deixa
+ * registro, e não há como separar isso de "nunca enviou".
+ */
+export function getGradesPreenchidas(token: string) {
+  return apiFetch<{ semestre_id: number; usuario_ids: number[] }>(
+    "/grade-horaria/preenchidas",
+    { token },
+  );
+}
+
 /** Substitui a grade inteira. Lista vazia limpa, é gravação válida. */
 export function salvarGrade(faixas: FaixaGrade[], token: string) {
   return apiFetch<MinhaGrade>("/grade-horaria", {

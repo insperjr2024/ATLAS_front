@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { RealizarBancaModal } from "./RealizarBancaModal";
 import { AlocarPessoasModal } from "./AlocarPessoasModal";
 import { Desempenho } from "./Desempenho";
-import { Clock, Plus, User, Users, X } from "lucide-react";
+import { Clock, Plus, ShieldCheck, User, Users, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
@@ -24,7 +24,9 @@ import {
   realizarBanca,
   registrarDescricaoCoordenador,
   registrarResultado,
+  resumoDoQueFalta,
   ROTULO_STATUS_BANCA,
+  totalFaltando,
   tomDoStatusBanca,
 } from "@/lib/bancas";
 import { getUsuarios } from "@/lib/usuarios";
@@ -970,6 +972,13 @@ function SecaoBancas({
     const prazo = acao === "avaliar" ? contexto.prazosAvaliacao[banca.id] : undefined;
     const prazoExpirado = !!prazo?.prazoExpirado;
 
+    // ⭐ A composição exigida (§8), que até aqui não aparecia em
+    // lugar nenhum desta tela: o card mostrava só `vagas`, o TETO de
+    // quantos cabem. Quem escala precisa do outro número — quantos
+    // a banca ainda PRECISA, e de qual frente.
+    const faltando = totalFaltando(banca.composicao);
+    const oQueFalta = resumoDoQueFalta(banca.composicao);
+
     /**
      * ⭐ Por que o botão está cinza — e, principalmente, **o que
      * fazer agora**.
@@ -1060,6 +1069,14 @@ function SecaoBancas({
                   {ROTULO_STATUS_BANCA[banca.status]}
                 </PageBadge>
               )}
+              {/* A banca que ainda não fecha a composição, dita em
+                  gente e em frente — "Faltam 2" sozinho manda
+                  procurar quem, e a resposta está aqui do lado. */}
+              {faltando > 0 && !banca.realizado_em && (
+                <PageBadge $tone="warning" title={`Faltam ${oQueFalta}`}>
+                  Faltam {faltando}
+                </PageBadge>
+              )}
             </BancaStatusBadges>
           </BancaNomeLinha>
           <BancaMetaLinha>
@@ -1075,6 +1092,16 @@ function SecaoBancas({
               <Users size={12} />
               {banca.alocados}/{banca.vagas} alocados
             </BancaMetaItem>
+            {/* O mínimo da composição ao lado do teto: são números
+                diferentes e a tela mostrava só o segundo, o que
+                fazia "0/6 alocados" parecer a única régua. */}
+            {banca.piso_minimo > 0 && (
+              <BancaMetaItem title={oQueFalta ? `Faltam ${oQueFalta}` : undefined}>
+                <ShieldCheck size={12} />
+                mínimo {banca.piso_minimo}
+                {oQueFalta ? ` · faltam ${oQueFalta}` : ""}
+              </BancaMetaItem>
+            )}
           </BancaMetaLinha>
         </BancaInfo>
 

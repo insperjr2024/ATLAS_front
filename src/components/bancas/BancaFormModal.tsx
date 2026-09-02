@@ -16,13 +16,7 @@ import {
 } from "@/lib/projetos";
 import { consultoresDoNucleo } from "@/lib/nucleo";
 import { ListaMarcavel } from "@/components/ListaMarcavel";
-import type {
-  Banca,
-  BancaFrente,
-  EquipeProjeto,
-  Escopo,
-  Frente,
-} from "@/types/banca";
+import type { Banca, BancaFrente, EquipeProjeto, Frente } from "@/types/banca";
 import type { EscopoVendido, ProjetoResumo } from "@/types/projeto";
 import type { UsuarioResumo } from "@/types/auth";
 import { EmptyText, PageButton, PageButtonSm } from "@/styles/page.styled";
@@ -31,7 +25,6 @@ import {
   FieldGroup,
   FieldLabel,
   FieldInput,
-  FieldSelect,
   CheckboxGrid,
   CheckboxLabel,
   DateTimeRow,
@@ -63,8 +56,6 @@ import {
  */
 export interface DadosDoFormularioDeBanca {
   usuarios: UsuarioResumo[];
-  /** O catálogo de escopos, para o select de escopo da edição. */
-  escopos: Escopo[];
   frentes: Frente[];
   equipesProjeto: EquipeProjeto[];
   bancasFrentes: BancaFrente[];
@@ -110,7 +101,6 @@ export function BancaFormModal({
   const [escoposMarcados, setEscoposMarcados] = useState<number[]>(
     banca?.projeto_escopo_ids ?? [],
   );
-  const [escopoId, setEscopoId] = useState(banca ? String(banca.escopo_id) : "");
   // Banca sem data abre o formulário com os campos VAZIOS, que é justamente o
   // caso de quem entra aqui para marcá-la.
   const [data, setData] = useState(banca?.data_hora ? toDateInputValue(banca.data_hora) : "");
@@ -187,13 +177,13 @@ export function BancaFormModal({
 
   const escoposDoProjeto =
     escoposCarregados?.projetoId === projetoId ? escoposCarregados.lista : [];
-  const carregandoEscopos = projetoId != null && escoposCarregados?.projetoId !== projetoId;
-
-  /** O catálogo do select de edição, em ordem alfabética — o estado cru
-   *  guarda a ordem que o backend devolveu, que não é ordem nenhuma. */
-  const escoposDoCatalogo = dados.escopos
-    .slice()
-    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  /** Editando, o projeto ainda está sendo descoberto a partir dos escopos da
+   *  banca (o efeito acima). Sem isto o bloco de escopos simplesmente não
+   *  existia até a resposta chegar. */
+  const resolvendoProjeto =
+    editando && projetoId == null && (banca?.projeto_escopo_ids.length ?? 0) > 0;
+  const carregandoEscopos =
+    resolvendoProjeto || (projetoId != null && escoposCarregados?.projetoId !== projetoId);
 
   const projetoEscolhido = projetos.find((p) => p.id === projetoId) ?? null;
 
@@ -206,8 +196,13 @@ export function BancaFormModal({
   ).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
   /** Escopo que já tem banca não pode ser puxado para outra: o backend recusa
-   *  (seria apagar em silêncio a data já marcada). */
-  const escoposLivres = escoposDoProjeto.filter((e) => !e.banca);
+   *  (seria apagar em silêncio a data já marcada).
+   *
+   *  ⚠ Editando, os escopos DESTA banca também contam como disponíveis: eles
+   *  aparecem com `escopo.banca` preenchida (a própria), e tratá-los como
+   *  ocupados escondia a lista inteira — toda banca cujos escopos fossem todos
+   *  os do projeto caía no "todos já têm banca" e não dava para trocar nada. */
+  const escoposSelecionaveis = escoposDoProjeto.filter((e) => !e.banca || ehDestaBanca(e));
 
   const frentesDosEscoposMarcados = [
     ...new Set(
@@ -222,20 +217,47 @@ export function BancaFormModal({
     return lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id];
   }
 
+  /**
+   * Marca/desmarca um escopo e, na edição, faz as frentes acompanharem.
+   *
+   * ⚠ O `syncBancaFrentes` do submit é o ÚLTIMO a gravar e manda a lista de
+   * checkboxes de Frentes. Se ela não acompanhasse os escopos, o recálculo que
+   * o backend faz em `updateBanca` seria desfeito logo em seguida: a frente do
+   * escopo removido voltaria e a do escopo acrescentado sumiria. As frentes
+   * que o usuário marcou à mão e não vêm de escopo nenhum do projeto ficam.
+   */
+  function alternarEscopo(escopoId: number) {
+    const marcados = toggleId(escoposMarcados, escopoId);
+    setEscoposMarcados(marcados);
+    if (!editando) return;
+    const frentesDeEscopo = new Set(escoposDoProjeto.map((e) => e.frente_id));
+    const frentesDosMarcados = escoposDoProjeto
+      .filter((e) => marcados.includes(e.id))
+      .map((e) => e.frente_id);
+    setFrenteIds((ids) => [
+      ...new Set([...ids.filter((id) => !frentesDeEscopo.has(id)), ...frentesDosMarcados]),
+    ]);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!data || !hora) return;
     // Editando, os escopos também são obrigatórios: o backend recusa esvaziar
     // a banca (ela ficaria órfã), e barrar aqui evita o 422 depois do clique.
-    if (editando ? !escopoId : escoposMarcados.length === 0) return;
-    if (editando && escoposMarcados.length === 0) {
-      setErro("A banca precisa cobrir ao menos um escopo.");
+    // A banca LEGADA (nenhum escopo vendido) é a única que pode ser salva sem
+    // nenhum marcado — ela nunca teve vínculo para perder.
+    if (escoposMarcados.length === 0 && (banca?.projeto_escopo_ids.length ?? 1) > 0) {
+      if (editando) setErro("A banca precisa cobrir ao menos um escopo.");
       return;
     }
     setEnviando(true);
     setErro("");
     try {
       const dataHora = new Date(`${data}T${hora}:00`).toISOString();
+      // Ordem do PROJETO, não a de clique: qual escopo é "o primeiro" não pode
+      // depender da ordem em que as caixas foram marcadas.
+      const primeiroMarcado = escoposDoProjeto.find((e) => escoposMarcados.includes(e.id));
+      const escopoDoCatalogo = primeiroMarcado ? primeiroMarcado.escopo_id : undefined;
       const pisoMinimoOverride = ehDiretor
         ? pisoOverride.trim() === ""
           ? null
@@ -246,13 +268,20 @@ export function BancaFormModal({
           banca.id,
           {
             nome_projeto: nomeProjeto.trim(),
-            escopo_id: Number(escopoId),
             data_hora: dataHora,
             // ⭐ A lista SUBSTITUI a atual: o que foi desmarcado sai da banca,
             // e o backend recalcula as frentes dela a partir dos escopos que
             // sobraram. Não confundir com `escopo_id`, que é o rótulo do
             // catálogo.
             projeto_escopo_ids: escoposMarcados,
+            // ⭐ O rótulo legado do catálogo acompanha os escopos marcados, em
+            // vez de ter um campo próprio: ele é o mesmo dado, e escolhido à
+            // parte divergia da banca (a tela de Avaliações e o Dashboard
+            // agrupam por ele). É o catálogo do PRIMEIRO escopo marcado —
+            // a mesma regra da criação, em `marcar_banca_escopo`. Só vai
+            // quando os escopos do projeto estão carregados: sem eles,
+            // mandar `null` apagaria o rótulo sem que ninguém tenha pedido.
+            ...(escopoDoCatalogo !== undefined ? { escopo_id: escopoDoCatalogo } : {}),
             ...(pisoMinimoOverride !== undefined ? { piso_minimo_override: pisoMinimoOverride } : {}),
           },
           token,
@@ -367,7 +396,7 @@ export function BancaFormModal({
               </FieldGroup>
             )}
 
-            {(editando ? projetoId != null : !!projetoEscolhido) && (
+            {(editando ? projetoId != null || resolvendoProjeto : !!projetoEscolhido) && (
               <FieldGroup>
                 <FieldLabel as="span">
                   Escopos que esta banca cobre
@@ -376,8 +405,10 @@ export function BancaFormModal({
                   <EmptyText>Carregando escopos...</EmptyText>
                 ) : escoposDoProjeto.length === 0 ? (
                   <EmptyText>Este projeto ainda não tem escopo vendido.</EmptyText>
-                ) : escoposLivres.length === 0 ? (
-                  <EmptyText>Todos os escopos deste projeto já têm banca marcada.</EmptyText>
+                ) : escoposSelecionaveis.length === 0 ? (
+                  <EmptyText>
+                    Os outros escopos deste projeto já têm banca marcada.
+                  </EmptyText>
                 ) : (
                   <CheckboxGrid>
                     {escoposDoProjeto.map((escopo) => (
@@ -389,7 +420,7 @@ export function BancaFormModal({
                           // isso travaria justamente o que se veio remover.
                           disabled={!!escopo.banca && !ehDestaBanca(escopo)}
                           checked={escoposMarcados.includes(escopo.id)}
-                          onChange={() => setEscoposMarcados((ids) => toggleId(ids, escopo.id))}
+                          onChange={() => alternarEscopo(escopo.id)}
                         />
                         <span>
                           {escopo.nome}
@@ -421,26 +452,6 @@ export function BancaFormModal({
                 <FieldInput id="hora-banca" type="time" value={hora} onChange={(e) => setHora(e.target.value)} required />
               </FieldGroup>
             </DateTimeRow>
-
-            {editando && (
-              <FieldGroup>
-                <FieldLabel htmlFor="escopo">Escopo</FieldLabel>
-                <FieldSelect
-                  id="escopo"
-                  value={escopoId}
-                  onChange={(e) => setEscopoId(e.target.value)}
-                  required
-                  pesquisavel
-                >
-                  <option value="">Selecione um escopo</option>
-                  {escoposDoCatalogo.map((escopo) => (
-                    <option key={escopo.id} value={escopo.id}>
-                      {escopo.nome}
-                    </option>
-                  ))}
-                </FieldSelect>
-              </FieldGroup>
-            )}
 
             {ehDiretor && (
               <FieldGroup>
