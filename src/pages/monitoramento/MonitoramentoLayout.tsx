@@ -5,7 +5,6 @@ import { getFrentes } from "@/lib/bancas";
 import { getEscopos } from "@/lib/escopos";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import type { Escopo, Frente } from "@/types/banca";
-import { pode } from "@/utils/permissoes";
 import { PageStack } from "@/styles/page.styled";
 import {
   PageHeaderRow,
@@ -50,14 +49,12 @@ export function MonitoramentoLayout() {
   const [escopos, setEscopos] = useState<Escopo[]>([]);
   const [minhasFrentes, setMinhasFrentes] = useState<number[]>([]);
 
-  const podeVerTarefasGerais = pode(usuario, "ver_tarefas_gerais");
-  // A fila é DELA: gerente vê o Monitoramento inteiro, mas não decide nada
-  // do que está nesta aba. Mostrar uma lista que a pessoa não pode
-  // responder é só ansiedade.
-  const podeAprovar = pode(usuario, "aprovar_pedidos");
-  const podeVerCronogramasGerais = pode(usuario, "ver_cronogramas_gerais");
-  // Histórico de projetos: diretoria e gerência (o backend usa require_gestao).
-  const podeVerHistorico = pode(usuario, "ver_historico_projetos");
+  const podeVerTarefasGerais = !!usuario?.permissoes.pode_ver_tarefas_gerais;
+  // Mostrar uma fila que a pessoa não pode responder é só ansiedade — a aba
+  // segue a caixa de quem RESPONDE, não a de quem lê o Monitoramento.
+  const podeAprovar = !!usuario?.permissoes.pode_aprovar_pedidos;
+  const podeVerCronogramasGerais = !!usuario?.permissoes.pode_ver_cronogramas_gerais;
+  const podeVerHistorico = !!usuario?.permissoes.pode_ver_historico_projetos;
 
   useEffect(() => {
     if (!token || !usuario) return;

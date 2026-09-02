@@ -22,19 +22,13 @@ export type Acao =
   | "remarcar_banca"
   | "liberar_excecao_choque"
   | "registrar_justificativa_atraso"
-  | "configurar_colunas"
   | "registrar_reuniao"
-  | "filtrar_por_frente"
-  | "ver_tarefas_gerais"
-  | "ver_cronogramas_gerais"
-  | "ver_historico_projetos"
   // Acrescentadas na divisão da diretoria (2026-08-20): eram comparações
   // soltas espalhadas pelas telas, e agora que "diretor" deixou de ser um
   // cargo só, cada uma precisava decidir QUAL diretoria — melhor decidir uma
   // vez aqui do que em 6 arquivos.
   | "acoes_de_pessoas"
-  | "ser_mentor"
-  | "aprovar_pedidos";
+  | "ser_mentor";
 
 /** Os três cargos de diretoria. O que os une é enxergar o portfólio inteiro
  *  — e mais nada. Espelha `DIRETORIA` em `middlewares/authorization.py`. */
@@ -59,21 +53,10 @@ const MATRIZ: Record<Acao, Posicao[]> = {
   apagar_usuario_permanente: [DIR_PROJETOS],
   remarcar_banca: [DIR_PROJETOS],
   liberar_excecao_choque: [DIR_PROJETOS],
+  /** ⚠ Só governa EXCLUIR uma justificativa já registrada (`ProjetoHistorico`),
+   *  que é correção de engano e não rotina. Escrever a justificativa é
+   *  `ehLideranca`, espelhando o `require_lideranca` do backend. */
   registrar_justificativa_atraso: [DIR_PROJETOS],
-  filtrar_por_frente: [DIR_PROJETOS],
-  //: As colunas do kanban são por projeto, mas quem as edita é sempre a
-  //: diretoria, o time move cards, não redesenha o fluxo.
-  configurar_colunas: [DIR_PROJETOS],
-  /** O board macro de tarefas (todos os projetos juntos), o backend usa
-   *  require_diretor, não require_gestao: mais informal que os números
-   *  agregados do resto do Monitoramento, então fica só pra diretoria. */
-  ver_tarefas_gerais: [DIR_PROJETOS],
-  /** O board macro de cronogramas (todos os projetos juntos), mesma trava
-   *  do board de tarefas: o backend usa require_diretor. */
-  ver_cronogramas_gerais: [DIR_PROJETOS],
-  /** A aba Histórico de projetos (portfólio encerrado) — o backend usa
-   *  require_gestao, então diretor e gerente, como o arquivar. */
-  ver_historico_projetos: [DIR_PROJETOS, "gerente"],
 
   // Condução do projeto, o consultor não define cronograma nem move o
   // ciclo de vida do projeto
@@ -96,12 +79,18 @@ const MATRIZ: Record<Acao, Posicao[]> = {
    *  projeto. Espelha `POSICOES_ELEGIVEIS_MENTOR`. */
   ser_mentor: MENTORES_ELEGIVEIS,
 
-  /** A fila de decisões da diretoria no Monitoramento. */
-  aprovar_pedidos: [DIR_PROJETOS],
-
   // Todo mundo (a regra de herança do  já está refletida aqui)
   registrar_reuniao: [DIR_PROJETOS, "gerente", "coordenador", "consultor"],
 
+  // Saíram daqui em 2026-09-02 e viraram caixa (15ª à 19ª):
+  // `configurar_colunas`, `ver_tarefas_gerais`, `ver_cronogramas_gerais`,
+  // `ver_historico_projetos` e `aprovar_pedidos`. Eram leitura pura ou
+  // administração presa a posição dentro de telas cuja entrada já era caixa.
+  //
+  // `filtrar_por_frente` saiu por outro motivo: nunca deveria ter sido uma
+  // matriz. Quem pode filtrar é quem o BACKEND deixa filtrar
+  // (`aplicar_recorte_visao`) — ver `podeFiltrarPorFrente` abaixo.
+  //
   // `ver_dashboard_bancas` saiu daqui em 2026-09-01 e virou a 14ª caixa
   // (`pode_ver_dashboard_bancas`): ler as notas de banca é trabalho que se
   // delega, e delegá-lo exigia promover a pessoa a diretora de projetos.
@@ -138,6 +127,25 @@ export function ehDiretoriaDeProjetos(usuario: Usuario | null | undefined): bool
 export function veTodosOsProjetos(usuario: Usuario | null | undefined): boolean {
   if (!usuario) return false;
   return DIRETORIA.includes(usuario.posicao) || usuario.posicao === "gerente";
+}
+
+/**
+ * Pode usar o `?frente_id=` — o filtro de frente do Monitoramento e da lista
+ * de projetos.
+ *
+ * ⚠ **Espelha `aplicar_recorte_visao` do backend, e não uma matriz.** Lá,
+ * quem filtra é quem enxerga o portfólio inteiro: os três cargos de diretoria
+ * OU quem tem `pode_ver_todos_projetos`. Aqui isto era
+ * `filtrar_por_frente: [diretor_projetos]`, uma matriz que ficou para trás
+ * duas vezes — quando a diretoria virou três cargos, e quando a visão total
+ * virou caixa. O resultado era ver todos os projetos sem conseguir recortá-los.
+ *
+ * O gerente fica de fora de propósito: ele já é forçado nas próprias frentes
+ * pelo backend, e um seletor ali só ofereceria frentes que não são dele.
+ */
+export function podeFiltrarPorFrente(usuario: Usuario | null | undefined): boolean {
+  if (!usuario) return false;
+  return DIRETORIA.includes(usuario.posicao) || usuario.permissoes.pode_ver_todos_projetos;
 }
 
 export function pode(usuario: Usuario | null | undefined, acao: Acao): boolean {
