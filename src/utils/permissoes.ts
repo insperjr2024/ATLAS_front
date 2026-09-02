@@ -34,7 +34,6 @@ export type Acao =
   // vez aqui do que em 6 arquivos.
   | "acoes_de_pessoas"
   | "ser_mentor"
-  | "ver_dashboard_bancas"
   | "aprovar_pedidos";
 
 /** Os três cargos de diretoria. O que os une é enxergar o portfólio inteiro
@@ -97,16 +96,17 @@ const MATRIZ: Record<Acao, Posicao[]> = {
    *  projeto. Espelha `POSICOES_ELEGIVEIS_MENTOR`. */
   ser_mentor: MENTORES_ELEGIVEIS,
 
-  /** O painel de notas de banca (`/avaliacoes`) e os formulários dele. */
-  ver_dashboard_bancas: [DIR_PROJETOS],
-
   /** A fila de decisões da diretoria no Monitoramento. */
   aprovar_pedidos: [DIR_PROJETOS],
 
   // Todo mundo (a regra de herança do  já está refletida aqui)
   registrar_reuniao: [DIR_PROJETOS, "gerente", "coordenador", "consultor"],
 
-  // As 13 ações de `Permissoes` (types/auth.ts) saíram desta matriz: são
+  // `ver_dashboard_bancas` saiu daqui em 2026-09-01 e virou a 14ª caixa
+  // (`pode_ver_dashboard_bancas`): ler as notas de banca é trabalho que se
+  // delega, e delegá-lo exigia promover a pessoa a diretora de projetos.
+  //
+  // As 14 ações de `Permissoes` (types/auth.ts) saíram desta matriz: são
   // editáveis por posição em Configurações (`GET /posicoes-permissoes`).
   // Deixá-las aqui criaria uma segunda fonte de verdade divergindo do
   // backend, foi o que já aconteceu uma vez.
