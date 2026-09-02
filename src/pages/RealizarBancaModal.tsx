@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { nomeUsuario } from "@/lib/nucleo";
 import { toDateInputValue, toTimeInputValue } from "@/lib/bancas";
@@ -16,14 +16,8 @@ import {
 } from "@/styles/modal.styled";
 import { PageButton } from "@/styles/page.styled";
 import { AvisoRegra } from "@/components/AvisoRegra";
-import {
-  CheckboxGrid,
-  CheckboxLabel,
-  FieldGroup,
-  FieldInput,
-  FieldLabel,
-  FormErrorText,
-} from "./Bancas.styled";
+import { ListaMarcavel } from "@/components/ListaMarcavel";
+import { FieldGroup, FieldInput, FieldLabel, FormErrorText } from "./Bancas.styled";
 
 interface Props {
   banca: Banca;
@@ -68,6 +62,16 @@ export function RealizarBancaModal({
   );
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
+
+  /* Quem se inscreveu, por nome: a ordem das candidaturas é a de quem clicou
+     primeiro, que não ajuda ninguém a achar uma pessoa na lista. */
+  const inscritos = useMemo(
+    () =>
+      candidaturas
+        .map((c) => ({ id: c.usuario_id, nome: nomeUsuario(usuarios, c.usuario_id) }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [candidaturas, usuarios],
+  );
 
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
@@ -176,25 +180,21 @@ export function RealizarBancaModal({
               {candidaturas.length === 0 ? (
                 <small style={{ opacity: 0.75 }}>Ninguém se inscreveu nesta banca.</small>
               ) : (
-                <CheckboxGrid>
-                  {candidaturas.map((c) => (
-                    <CheckboxLabel key={c.id}>
-                      <input
-                        type="checkbox"
-                        checked={presentes.has(c.usuario_id)}
-                        onChange={() =>
-                          setPresentes((atual) => {
-                            const proximo = new Set(atual);
-                            if (proximo.has(c.usuario_id)) proximo.delete(c.usuario_id);
-                            else proximo.add(c.usuario_id);
-                            return proximo;
-                          })
-                        }
-                      />
-                      <span>{nomeUsuario(usuarios, c.usuario_id)}</span>
-                    </CheckboxLabel>
-                  ))}
-                </CheckboxGrid>
+                <ListaMarcavel
+                  opcoes={inscritos}
+                  marcados={(id) => presentes.has(id)}
+                  onAlternar={(id) =>
+                    setPresentes((atual) => {
+                      const proximo = new Set(atual);
+                      if (proximo.has(id)) proximo.delete(id);
+                      else proximo.add(id);
+                      return proximo;
+                    })
+                  }
+                  vazio="Ninguém se inscreveu nesta banca."
+                  placeholder="Buscar quem compareceu…"
+                  aria-label="Buscar quem compareceu"
+                />
               )}
             </FieldGroup>
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RealizarBancaModal } from "./RealizarBancaModal";
 import { AlocarPessoasModal } from "./AlocarPessoasModal";
@@ -69,6 +69,7 @@ import type { SolicitacaoTroca } from "@/types/notificacao";
 import type { UsuarioResumo } from "@/types/auth";
 import {
   avaliadoresDaBanca,
+  compararFrentes,
   frentesDaBanca,
   membrosDaBanca,
   nomeEscopo,
@@ -139,6 +140,10 @@ import {
   BancaMetaLinha,
   BancaMetaItem,
   BancaAcoes,
+  FrenteGrupo,
+  FrenteGrupoTitulo,
+  FiltroFrenteSelect,
+  CardHeaderTitulo,
 } from "./Bancas.styled";
 
 type AbaBancas = "meus" | "alocacao" | "avaliacao" | "desempenho" | "calendario";
@@ -155,6 +160,20 @@ function porDataMaisProxima(a: Banca, b: Banca): number {
 /** O que a tela mostra no lugar da data quando a banca ainda não foi marcada.
  *  Constante para as telas não divergirem entre "Sem data", "A marcar" e "—". */
 const SEM_DATA = "Sem data";
+
+/* O filtro de frente das seções de banca. `TODAS_FRENTES` é um valor
+   sentinela do `<select>`, não um nome de frente; `SEM_FRENTE` é grupo de
+   verdade — banca sem frente cadastrada existe e não pode sumir da lista. */
+const TODAS_FRENTES = "todas";
+const SEM_FRENTE = "Sem frente";
+
+/** Os blocos a que uma banca pertence: as frentes dela, ou `SEM_FRENTE`
+ *  quando não tem nenhuma — banca sem frente cadastrada existe e não pode
+ *  sumir da lista por falta de grupo. */
+function frentesOuSemFrente(contexto: Contexto, banca: Banca): string[] {
+  const nomes = frentesDaBanca(contexto.bancasFrentes, contexto.frentes, banca.id);
+  return nomes.length > 0 ? nomes : [SEM_FRENTE];
+}
 
 interface Contexto {
   usuarios: UsuarioResumo[];
@@ -611,6 +630,7 @@ export function Bancas() {
             titulo="Disponíveis para alocação"
             bancas={disponiveisParaAlocacao}
             contexto={contexto}
+            filtrarPorFrente
             acao="alocar"
             usuarioId={usuario.id}
             gerenciar={podeAgendar}
@@ -826,6 +846,7 @@ function SecaoBancas({
   onPedirTroca,
   onConvidar,
   onCancelarTroca,
+  filtrarPorFrente,
   bancaDestacada,
   refDestacada,
 }: {
@@ -854,307 +875,396 @@ function SecaoBancas({
   /** Abre o picker de convite específico, alternativa ao pedido aberto. */
   onConvidar?: (banca: Banca) => void;
   onCancelarTroca?: (solicitacaoId: number) => void;
+  /** Liga o filtro por frente e a separação da lista em blocos de frente.
+   *  Só faz sentido em fila de ESCOLHA — quem procura banca para se alocar
+   *  procura a da frente dele. Nas outras seções a lista é curta e já é
+   *  sobre bancas que a pessoa tem em mãos. */
+  filtrarPorFrente?: boolean;
 }) {
+  const [frenteFiltro, setFrenteFiltro] = useState(TODAS_FRENTES);
+  const idFiltroFrente = `frente-${titulo.replace(/\s+/g, "-").toLowerCase()}`;
+
+  /** Só as frentes que aparecem NESTAS bancas: oferecer o catálogo inteiro
+   *  encheria o filtro de opção que não recorta nada. */
+  const frentesDaLista = useMemo(() => {
+    const nomes = new Set<string>();
+    for (const banca of bancas) {
+      for (const nome of frentesOuSemFrente(contexto, banca)) nomes.add(nome);
+    }
+    return [...nomes].sort((a, b) =>
+      a === SEM_FRENTE ? 1 : b === SEM_FRENTE ? -1 : compararFrentes(a, b),
+    );
+  }, [bancas, contexto]);
+
+  const visiveis = useMemo(() => {
+    if (!filtrarPorFrente || frenteFiltro === TODAS_FRENTES) return bancas;
+    return bancas.filter((banca) =>
+      frentesOuSemFrente(contexto, banca).includes(frenteFiltro),
+    );
+  }, [bancas, contexto, filtrarPorFrente, frenteFiltro]);
+
+  /** Com uma frente escolhida o agrupamento some: seria um bloco só, com um
+   *  cabeçalho repetindo o que o filtro ao lado já diz. */
+  const agrupado = !!filtrarPorFrente && frenteFiltro === TODAS_FRENTES;
+
+  /**
+   * A lista em blocos de frente, cada bloco na ordem de data que já vinha de
+   * fora — agrupar não reordena nada dentro do bloco.
+   *
+   * Banca de duas frentes aparece nos dois blocos, de propósito: quem
+   * procura a banca da frente dele precisa achá-la ali, e não num bloco
+   * combinado que ele não pensaria em abrir. É o mesmo critério do painel de
+   * alocação em Vagas.
+   */
+  const grupos = useMemo((): [string, Banca[]][] => {
+    if (!agrupado) return [[frenteFiltro, visiveis]];
+    const mapa = new Map<string, Banca[]>();
+    for (const banca of visiveis) {
+      for (const chave of frentesOuSemFrente(contexto, banca)) {
+        mapa.set(chave, [...(mapa.get(chave) ?? []), banca]);
+      }
+    }
+    return [...mapa.entries()].sort((a, b) =>
+      a[0] === SEM_FRENTE ? 1 : b[0] === SEM_FRENTE ? -1 : compararFrentes(a[0], b[0]),
+    );
+  }, [agrupado, contexto, frenteFiltro, visiveis]);
+
+  /** O cartão de uma banca. Função nomeada, e não um callback inline,
+   *  porque a lista passou a ser renderizada em grupos: o mesmo cartão é
+   *  usado dentro de cada frente. */
+  function cartaoDe(banca: Banca) {
+    // Banca sem data existe (é o estado `nao_marcada`) e chegava aqui
+    // como "Invalid Date" nos três campos, porque `paraDataUtc(null)`
+    // devolve data inválida em silêncio.
+    const dataHora = banca.data_hora ? paraDataUtc(banca.data_hora) : null;
+    const diaSemana = dataHora
+      ? dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")
+      : "";
+    const mes = dataHora ? dataHora.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") : "";
+    const hora = dataHora
+      ? dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+      : "";
+    const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
+    const podeGerenciar =
+      gerenciar &&
+      usuarioId != null &&
+      podeGerenciarBanca(banca, usuarioId, ehDiretorLista);
+    // Banca legada (sem escopo vendido vinculado) mostra o escopo do
+    // catálogo, singular, como sempre foi. Banca costurada a
+    // escopo(s) do projeto mostra todos os que ela cobre, uma
+    // banca pode juntar mais de um, e o campo antigo só
+    // guardava o primeiro.
+    const nomesEscopos =
+      banca.projeto_escopo_ids.length > 0
+        ? banca.projeto_escopo_ids
+            .map((id) => contexto.escoposVendidos.find((e) => e.id === id)?.nome)
+            .filter((nome): nome is string => !!nome)
+        : [nomeEscopo(contexto.escopos, banca.escopo_id)];
+    const minhaCandidatura =
+      acao === "deslocar" && usuarioId != null
+        ? contexto.candidaturas.find((c) => c.banca_id === banca.id && c.usuario_id === usuarioId)
+        : undefined;
+    const minhaSolicitacaoPendente = minhaCandidatura
+      ? contexto.solicitacoesTroca.find(
+          (s) => s.candidatura_id === minhaCandidatura.id && s.status === "pendente",
+        )
+      : undefined;
+    const prazo = acao === "avaliar" ? contexto.prazosAvaliacao[banca.id] : undefined;
+    const prazoExpirado = !!prazo?.prazoExpirado;
+
+    // ⭐ A composição exigida (§8), que até aqui não aparecia em
+    // lugar nenhum desta tela: o card mostrava só `vagas`, o TETO de
+    // quantos cabem. Quem escala precisa do outro número — quantos
+    // a banca ainda PRECISA, e de qual frente.
+    const faltando = totalFaltando(banca.composicao);
+    const oQueFalta = resumoDoQueFalta(banca.composicao);
+
+    /**
+     * ⭐ Por que o botão está cinza — e, principalmente, **o que
+     * fazer agora**.
+     *
+     * O rótulo já dizia "Lotada" e "Prazo esgotado", que nomeiam o
+     * estado e deixam a pessoa exatamente onde ela estava: sem saber
+     * se é definitivo, se dá para contornar, ou com quem falar. As
+     * três partes de toda mensagem da plataforma são o que está
+     * bloqueado, por quê, e a saída.
+     */
+    const motivoBloqueio = lotada
+      ? `Esta banca já tem ${banca.vagas} avaliadores, que é o máximo. ` +
+        "Peça troca a quem já está alocado, ou volte se alguém se desalocar."
+      : prazoExpirado
+        ? "O prazo de 2 dias corridos para avaliar acabou" +
+          (prazo?.prazoAvaliacao
+            ? ` em ${formatarDataHora(prazo.prazoAvaliacao)}. `
+            : ". ") +
+          "A plataforma não aceita mais o envio — avise a diretoria se esta avaliação ainda precisa entrar."
+        : null;
+
+    // Qualquer clique dentro do rodapé de ações não deve também
+    // disparar o clique do card inteiro (que abre "Ver mais").
+    function pararPropagacao<T extends unknown[]>(fn?: (...args: T) => void) {
+      return (e: React.MouseEvent, ...args: T) => {
+        e.stopPropagation();
+        fn?.(...args);
+      };
+    }
+
+    return (
+      <BancaCard
+        key={banca.id}
+        $destacada={banca.id === bancaDestacada}
+        ref={banca.id === bancaDestacada ? refDestacada : undefined}
+        role="button"
+        tabIndex={0}
+        onClick={() => onVerMais(banca)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") onVerMais(banca);
+        }}
+      >
+        <BancaData>
+          {dataHora ? (
+            <>
+              <BancaDataDiaSemana>{diaSemana}</BancaDataDiaSemana>
+              <BancaDataDia>{dataHora.getDate()}</BancaDataDia>
+              <BancaDataMes>{mes}</BancaDataMes>
+            </>
+          ) : (
+            <BancaSemData title="Banca ainda não marcada">
+              <span>Sem</span>
+              <span>data</span>
+            </BancaSemData>
+          )}
+        </BancaData>
+
+        <BancaInfo>
+          <BancaNomeLinha>
+            <BancaNome>{banca.nome_projeto}</BancaNome>
+            {nomesEscopos.map((nome, i) => (
+              <PageBadge key={`${nome}-${i}`} $tone="muted">
+                {nome}
+              </PageBadge>
+            ))}
+            {/* O selo de ESTADO (Inscrito, vaga(s), prazo) fica à
+                direita, separado do que a banca É (nome, escopo)
+                por alinhamento, não só por ser outra cor de badge. */}
+            <BancaStatusBadges>
+              {acao === "avaliar" && (
+                <PageBadge $tone={prazoExpirado ? "danger" : "warning"}>
+                  {prazoExpirado
+                    ? "Prazo esgotado"
+                    : prazo
+                      ? `Prazo: ${new Date(prazo.prazoAvaliacao).toLocaleDateString("pt-BR")}`
+                      : "Pendente"}
+                </PageBadge>
+              )}
+              {acao === "deslocar" && <PageBadge $tone="default">Inscrito</PageBadge>}
+              {acao === "alocar" &&
+                (lotada ? (
+                  <PageBadge $tone="danger">Lotada</PageBadge>
+                ) : (
+                  <PageBadge $tone="success">{banca.vagas - banca.alocados} vaga(s)</PageBadge>
+                ))}
+              {acao === "nenhuma" && (
+                <PageBadge $tone={tomDoStatusBanca(banca.status)}>
+                  {ROTULO_STATUS_BANCA[banca.status]}
+                </PageBadge>
+              )}
+              {/* A banca que ainda não fecha a composição, dita em
+                  gente e em frente — "Faltam 2" sozinho manda
+                  procurar quem, e a resposta está aqui do lado. */}
+              {faltando > 0 && !banca.realizado_em && (
+                <PageBadge $tone="warning" title={`Faltam ${oQueFalta}`}>
+                  Faltam {faltando}
+                </PageBadge>
+              )}
+            </BancaStatusBadges>
+          </BancaNomeLinha>
+          <BancaMetaLinha>
+            <BancaMetaItem>
+              <Clock size={12} />
+              {hora}
+            </BancaMetaItem>
+            <BancaMetaItem>
+              <User size={12} />
+              {nomeUsuario(contexto.usuarios, banca.coordenador_id)}
+            </BancaMetaItem>
+            <BancaMetaItem>
+              <Users size={12} />
+              {banca.alocados}/{banca.vagas} alocados
+            </BancaMetaItem>
+            {/* O mínimo da composição ao lado do teto: são números
+                diferentes e a tela mostrava só o segundo, o que
+                fazia "0/6 alocados" parecer a única régua. */}
+            {banca.piso_minimo > 0 && (
+              <BancaMetaItem title={oQueFalta ? `Faltam ${oQueFalta}` : undefined}>
+                <ShieldCheck size={12} />
+                mínimo {banca.piso_minimo}
+                {oQueFalta ? ` · faltam ${oQueFalta}` : ""}
+              </BancaMetaItem>
+            )}
+          </BancaMetaLinha>
+        </BancaInfo>
+
+        <BancaCardFooter>
+          <BancaAcoesSecundarias>
+            {podeGerenciar && onEditar && (
+              <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onEditar(banca))}>
+                Editar
+              </PageButtonSm>
+            )}
+            {podeGerenciar && onExcluir && (
+              <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onExcluir(banca))}>
+                Excluir
+              </PageButtonSm>
+            )}
+
+            {/* Escalar à mão: a diretoria não precisa esperar a
+                janela de uma semana do push para preencher uma
+                banca vazia. */}
+            {ehDiretorLista && onAlocarPessoas && !banca.realizado_em && (
+              <PageButtonSm
+                $variant="outline"
+                type="button"
+                onClick={pararPropagacao(() => onAlocarPessoas(banca))}
+              >
+                Alocar pessoas
+              </PageButtonSm>
+            )}
+
+            {/* Ainda não aconteceu: o passo que tira a banca de
+                "atrasada" e alimenta o cálculo.
+                Trava por CARGO (`gerenciar`), não por ser o
+                coordenador daquela banca: o backend usa
+                `require_pode_definir_cronograma`, e usar
+                `podeGerenciarBanca` aqui escondia o botão da
+                própria diretoria, que é justamente quem precisa
+                dele. */}
+            {gerenciar && onRealizar && !banca.realizado_em && banca.data_hora && (
+              <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onRealizar(banca))}>
+                Registrar realização
+              </PageButtonSm>
+            )}
+
+            {/* ⭐ Só quando a banca JÁ aconteceu e continua sem
+                veredito — e só para a diretoria, que é quem a rota
+                aceita (`require_diretor`). O caminho normal é o voto
+                dos avaliadores; este botão existe para o caso que o
+                voto não resolve: ninguém votou e o prazo venceu.
+                Mostrá-lo antes disso convidaria a diretoria a decidir
+                por cima de quem esteve na banca. */}
+            {ehDiretorLista && onRegistrarResultado && banca.realizado_em && !banca.resultado && (
+              <PageButtonSm
+                $variant="outline"
+                type="button"
+                onClick={pararPropagacao(() => onRegistrarResultado(banca))}
+              >
+                Registrar resultado
+              </PageButtonSm>
+            )}
+            {acao === "deslocar" && minhaCandidatura && (
+              <>
+                {minhaSolicitacaoPendente && onCancelarTroca ? (
+                  <PageButtonSm
+                    $variant="outline"
+                    type="button"
+                    onClick={pararPropagacao(() => onCancelarTroca(minhaSolicitacaoPendente.id))}
+                  >
+                    Cancelar troca
+                  </PageButtonSm>
+                ) : (
+                  <>
+                    {onPedirTroca && (
+                      <PageButtonSm
+                        $variant="outline"
+                        type="button"
+                        title="Abre o pedido pra qualquer pessoa elegível: quem confirmar primeiro assume sua vaga."
+                        onClick={pararPropagacao(() => onPedirTroca(banca.id))}
+                      >
+                        Pedir troca
+                      </PageButtonSm>
+                    )}
+                    {onConvidar && (
+                      <PageButtonSm
+                        $variant="outline"
+                        type="button"
+                        title="Convida uma pessoa específica pra assumir sua vaga — só ela pode confirmar."
+                        onClick={pararPropagacao(() => onConvidar(banca))}
+                      >
+                        Convidar alguém
+                      </PageButtonSm>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </BancaAcoesSecundarias>
+
+          {acao !== "nenhuma" && onAcao && (
+            <MotivoDesabilitado motivo={motivoBloqueio}>
+              <PageButtonSm
+                $variant={acao === "deslocar" ? "outline" : "primary"}
+                type="button"
+                disabled={lotada || prazoExpirado}
+                onClick={pararPropagacao(() => onAcao(banca.id))}
+              >
+                {lotada
+                  ? "Lotada"
+                  : prazoExpirado
+                    ? "Prazo esgotado"
+                    : acao === "alocar"
+                      ? "Alocar-se"
+                      : acao === "deslocar"
+                        ? "Desalocar-se"
+                        : "Avaliar"}
+              </PageButtonSm>
+            </MotivoDesabilitado>
+          )}
+        </BancaCardFooter>
+      </BancaCard>
+    );
+  }
+
   return (
     <PageCard>
       <PageCardHeader>
-        <PageCardTitle>{titulo}</PageCardTitle>
-        <PageBadge $tone="muted">{bancas.length}</PageBadge>
+        <CardHeaderTitulo>
+          <PageCardTitle>{titulo}</PageCardTitle>
+          {bancas.length > 0 && filtrarPorFrente && frentesDaLista.length > 1 && (
+            <FiltroFrenteSelect
+              id={idFiltroFrente}
+              value={frenteFiltro}
+              aria-label="Filtrar por frente"
+              onChange={(e) => setFrenteFiltro(e.target.value)}
+            >
+              <option value={TODAS_FRENTES}>Todas as frentes</option>
+              {frentesDaLista.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </FiltroFrenteSelect>
+          )}
+        </CardHeaderTitulo>
+        <PageBadge $tone="muted">{visiveis.length}</PageBadge>
       </PageCardHeader>
       <PageCardContent>
         {bancas.length === 0 && <EmptyText>Nenhuma banca aqui.</EmptyText>}
-        {bancas.length > 0 && (
-          <BancaCardScrollWrap $scrollable={bancas.length > LIST_MAX_VISIVEIS}>
-            {bancas.map((banca) => {
-              // Banca sem data existe (é o estado `nao_marcada`) e chegava aqui
-              // como "Invalid Date" nos três campos, porque `paraDataUtc(null)`
-              // devolve data inválida em silêncio.
-              const dataHora = banca.data_hora ? paraDataUtc(banca.data_hora) : null;
-              const diaSemana = dataHora
-                ? dataHora.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")
-                : "";
-              const mes = dataHora ? dataHora.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") : "";
-              const hora = dataHora
-                ? dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-                : "";
-              const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
-              const podeGerenciar =
-                gerenciar &&
-                usuarioId != null &&
-                podeGerenciarBanca(banca, usuarioId, ehDiretorLista);
-              // Banca legada (sem escopo vendido vinculado) mostra o escopo do
-              // catálogo, singular, como sempre foi. Banca costurada a
-              // escopo(s) do projeto mostra todos os que ela cobre, uma
-              // banca pode juntar mais de um, e o campo antigo só
-              // guardava o primeiro.
-              const nomesEscopos =
-                banca.projeto_escopo_ids.length > 0
-                  ? banca.projeto_escopo_ids
-                      .map((id) => contexto.escoposVendidos.find((e) => e.id === id)?.nome)
-                      .filter((nome): nome is string => !!nome)
-                  : [nomeEscopo(contexto.escopos, banca.escopo_id)];
-              const minhaCandidatura =
-                acao === "deslocar" && usuarioId != null
-                  ? contexto.candidaturas.find((c) => c.banca_id === banca.id && c.usuario_id === usuarioId)
-                  : undefined;
-              const minhaSolicitacaoPendente = minhaCandidatura
-                ? contexto.solicitacoesTroca.find(
-                    (s) => s.candidatura_id === minhaCandidatura.id && s.status === "pendente",
-                  )
-                : undefined;
-              const prazo = acao === "avaliar" ? contexto.prazosAvaliacao[banca.id] : undefined;
-              const prazoExpirado = !!prazo?.prazoExpirado;
-              // ⭐ A composição exigida (§8), que até aqui não aparecia em
-              // lugar nenhum desta tela: o card mostrava só `vagas`, o TETO de
-              // quantos cabem. Quem escala precisa do outro número — quantos
-              // a banca ainda PRECISA, e de qual frente.
-              const faltando = totalFaltando(banca.composicao);
-              const oQueFalta = resumoDoQueFalta(banca.composicao);
-
-              /**
-               * ⭐ Por que o botão está cinza — e, principalmente, **o que
-               * fazer agora**.
-               *
-               * O rótulo já dizia "Lotada" e "Prazo esgotado", que nomeiam o
-               * estado e deixam a pessoa exatamente onde ela estava: sem saber
-               * se é definitivo, se dá para contornar, ou com quem falar. As
-               * três partes de toda mensagem da plataforma são o que está
-               * bloqueado, por quê, e a saída.
-               */
-              const motivoBloqueio = lotada
-                ? `Esta banca já tem ${banca.vagas} avaliadores, que é o máximo. ` +
-                  "Peça troca a quem já está alocado, ou volte se alguém se desalocar."
-                : prazoExpirado
-                  ? "O prazo de 2 dias corridos para avaliar acabou" +
-                    (prazo?.prazoAvaliacao
-                      ? ` em ${formatarDataHora(prazo.prazoAvaliacao)}. `
-                      : ". ") +
-                    "A plataforma não aceita mais o envio — avise a diretoria se esta avaliação ainda precisa entrar."
-                  : null;
-
-              // Qualquer clique dentro do rodapé de ações não deve também
-              // disparar o clique do card inteiro (que abre "Ver mais").
-              function pararPropagacao<T extends unknown[]>(fn?: (...args: T) => void) {
-                return (e: React.MouseEvent, ...args: T) => {
-                  e.stopPropagation();
-                  fn?.(...args);
-                };
-              }
-
-              return (
-                <BancaCard
-                  key={banca.id}
-                  $destacada={banca.id === bancaDestacada}
-                  ref={banca.id === bancaDestacada ? refDestacada : undefined}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => onVerMais(banca)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") onVerMais(banca);
-                  }}
-                >
-                  <BancaData>
-                    {dataHora ? (
-                      <>
-                        <BancaDataDiaSemana>{diaSemana}</BancaDataDiaSemana>
-                        <BancaDataDia>{dataHora.getDate()}</BancaDataDia>
-                        <BancaDataMes>{mes}</BancaDataMes>
-                      </>
-                    ) : (
-                      <BancaSemData title="Banca ainda não marcada">
-                        <span>Sem</span>
-                        <span>data</span>
-                      </BancaSemData>
-                    )}
-                  </BancaData>
-
-                  <BancaInfo>
-                    <BancaNomeLinha>
-                      <BancaNome>{banca.nome_projeto}</BancaNome>
-                      {nomesEscopos.map((nome, i) => (
-                        <PageBadge key={`${nome}-${i}`} $tone="muted">
-                          {nome}
-                        </PageBadge>
-                      ))}
-                      {/* O selo de ESTADO (Inscrito, vaga(s), prazo) fica à
-                          direita, separado do que a banca É (nome, escopo)
-                          por alinhamento, não só por ser outra cor de badge. */}
-                      <BancaStatusBadges>
-                        {acao === "avaliar" && (
-                          <PageBadge $tone={prazoExpirado ? "danger" : "warning"}>
-                            {prazoExpirado
-                              ? "Prazo esgotado"
-                              : prazo
-                                ? `Prazo: ${new Date(prazo.prazoAvaliacao).toLocaleDateString("pt-BR")}`
-                                : "Pendente"}
-                          </PageBadge>
-                        )}
-                        {acao === "deslocar" && <PageBadge $tone="default">Inscrito</PageBadge>}
-                        {acao === "alocar" &&
-                          (lotada ? (
-                            <PageBadge $tone="danger">Lotada</PageBadge>
-                          ) : (
-                            <PageBadge $tone="success">{banca.vagas - banca.alocados} vaga(s)</PageBadge>
-                          ))}
-                        {acao === "nenhuma" && (
-                          <PageBadge $tone={tomDoStatusBanca(banca.status)}>
-                            {ROTULO_STATUS_BANCA[banca.status]}
-                          </PageBadge>
-                        )}
-                        {/* A banca que ainda não fecha a composição, dita em
-                            gente e em frente — "Faltam 2" sozinho manda
-                            procurar quem, e a resposta está aqui do lado. */}
-                        {faltando > 0 && !banca.realizado_em && (
-                          <PageBadge $tone="warning" title={`Faltam ${oQueFalta}`}>
-                            Faltam {faltando}
-                          </PageBadge>
-                        )}
-                      </BancaStatusBadges>
-                    </BancaNomeLinha>
-                    <BancaMetaLinha>
-                      <BancaMetaItem>
-                        <Clock size={12} />
-                        {hora}
-                      </BancaMetaItem>
-                      <BancaMetaItem>
-                        <User size={12} />
-                        {nomeUsuario(contexto.usuarios, banca.coordenador_id)}
-                      </BancaMetaItem>
-                      <BancaMetaItem>
-                        <Users size={12} />
-                        {banca.alocados}/{banca.vagas} alocados
-                      </BancaMetaItem>
-                      {/* O mínimo da composição ao lado do teto: são números
-                          diferentes e a tela mostrava só o segundo, o que
-                          fazia "0/6 alocados" parecer a única régua. */}
-                      {banca.piso_minimo > 0 && (
-                        <BancaMetaItem title={oQueFalta ? `Faltam ${oQueFalta}` : undefined}>
-                          <ShieldCheck size={12} />
-                          mínimo {banca.piso_minimo}
-                          {oQueFalta ? ` · faltam ${oQueFalta}` : ""}
-                        </BancaMetaItem>
-                      )}
-                    </BancaMetaLinha>
-                  </BancaInfo>
-
-                  <BancaCardFooter>
-                    <BancaAcoesSecundarias>
-                      {podeGerenciar && onEditar && (
-                        <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onEditar(banca))}>
-                          Editar
-                        </PageButtonSm>
-                      )}
-                      {podeGerenciar && onExcluir && (
-                        <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onExcluir(banca))}>
-                          Excluir
-                        </PageButtonSm>
-                      )}
-
-                      {/* Escalar à mão: a diretoria não precisa esperar a
-                          janela de uma semana do push para preencher uma
-                          banca vazia. */}
-                      {ehDiretorLista && onAlocarPessoas && !banca.realizado_em && (
-                        <PageButtonSm
-                          $variant="outline"
-                          type="button"
-                          onClick={pararPropagacao(() => onAlocarPessoas(banca))}
-                        >
-                          Alocar pessoas
-                        </PageButtonSm>
-                      )}
-
-                      {/* Ainda não aconteceu: o passo que tira a banca de
-                          "atrasada" e alimenta o cálculo.
-                          Trava por CARGO (`gerenciar`), não por ser o
-                          coordenador daquela banca: o backend usa
-                          `require_pode_definir_cronograma`, e usar
-                          `podeGerenciarBanca` aqui escondia o botão da
-                          própria diretoria, que é justamente quem precisa
-                          dele. */}
-                      {gerenciar && onRealizar && !banca.realizado_em && banca.data_hora && (
-                        <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onRealizar(banca))}>
-                          Registrar realização
-                        </PageButtonSm>
-                      )}
-
-                      {/* ⭐ Só quando a banca JÁ aconteceu e continua sem
-                          veredito — e só para a diretoria, que é quem a rota
-                          aceita (`require_diretor`). O caminho normal é o voto
-                          dos avaliadores; este botão existe para o caso que o
-                          voto não resolve: ninguém votou e o prazo venceu.
-                          Mostrá-lo antes disso convidaria a diretoria a decidir
-                          por cima de quem esteve na banca. */}
-                      {ehDiretorLista && onRegistrarResultado && banca.realizado_em && !banca.resultado && (
-                        <PageButtonSm
-                          $variant="outline"
-                          type="button"
-                          onClick={pararPropagacao(() => onRegistrarResultado(banca))}
-                        >
-                          Registrar resultado
-                        </PageButtonSm>
-                      )}
-                      {acao === "deslocar" && minhaCandidatura && (
-                        <>
-                          {minhaSolicitacaoPendente && onCancelarTroca ? (
-                            <PageButtonSm
-                              $variant="outline"
-                              type="button"
-                              onClick={pararPropagacao(() => onCancelarTroca(minhaSolicitacaoPendente.id))}
-                            >
-                              Cancelar troca
-                            </PageButtonSm>
-                          ) : (
-                            <>
-                              {onPedirTroca && (
-                                <PageButtonSm
-                                  $variant="outline"
-                                  type="button"
-                                  title="Abre o pedido pra qualquer pessoa elegível: quem confirmar primeiro assume sua vaga."
-                                  onClick={pararPropagacao(() => onPedirTroca(banca.id))}
-                                >
-                                  Pedir troca
-                                </PageButtonSm>
-                              )}
-                              {onConvidar && (
-                                <PageButtonSm
-                                  $variant="outline"
-                                  type="button"
-                                  title="Convida uma pessoa específica pra assumir sua vaga — só ela pode confirmar."
-                                  onClick={pararPropagacao(() => onConvidar(banca))}
-                                >
-                                  Convidar alguém
-                                </PageButtonSm>
-                              )}
-                            </>
-                          )}
-                        </>
-                      )}
-                    </BancaAcoesSecundarias>
-
-                    {acao !== "nenhuma" && onAcao && (
-                      <MotivoDesabilitado motivo={motivoBloqueio}>
-                        <PageButtonSm
-                          $variant={acao === "deslocar" ? "outline" : "primary"}
-                          type="button"
-                          disabled={lotada || prazoExpirado}
-                          onClick={pararPropagacao(() => onAcao(banca.id))}
-                        >
-                          {lotada
-                            ? "Lotada"
-                            : prazoExpirado
-                              ? "Prazo esgotado"
-                              : acao === "alocar"
-                                ? "Alocar-se"
-                                : acao === "deslocar"
-                                  ? "Desalocar-se"
-                                  : "Avaliar"}
-                        </PageButtonSm>
-                      </MotivoDesabilitado>
-                    )}
-                  </BancaCardFooter>
-                </BancaCard>
-              );
-            })}
+        {bancas.length > 0 && visiveis.length === 0 && (
+          <EmptyText>Nenhuma banca desta frente.</EmptyText>
+        )}
+        {visiveis.length > 0 && (
+          <BancaCardScrollWrap $scrollable={visiveis.length > LIST_MAX_VISIVEIS}>
+            {grupos.map(([nomeGrupo, doGrupo]) => (
+              <FrenteGrupo key={nomeGrupo}>
+                {/* O cabeçalho some com uma frente escolhida: repetiria o filtro. */}
+                {agrupado && (
+                  <FrenteGrupoTitulo>
+                    {nomeGrupo} · {doGrupo.length}
+                  </FrenteGrupoTitulo>
+                )}
+                {doGrupo.map(cartaoDe)}
+              </FrenteGrupo>
+            ))}
           </BancaCardScrollWrap>
         )}
       </PageCardContent>
@@ -1509,6 +1619,7 @@ function ConvidarTrocaModal({
                 value={usuarioEscolhidoId}
                 onChange={(e) => setUsuarioEscolhidoId(Number(e.target.value))}
                 autoFocus
+                pesquisavel
               >
                 <option value="">Escolha quem convidar</option>
                 {elegiveis.map((u) => (
@@ -1706,6 +1817,7 @@ function AvaliarModal({
                 <FieldSelect
                   id="bloco1-escopo"
                   value={escopoSelecionado}
+                  pesquisavel
                   onChange={(e) =>
                     setEscopoSelecionado(e.target.value === OUTRO ? OUTRO : Number(e.target.value))
                   }

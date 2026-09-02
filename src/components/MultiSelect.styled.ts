@@ -5,7 +5,13 @@ import { theme } from "@/styles/theme";
    campos ficam LADO A LADO na mesma barra de filtros, e uma borda ou altura
    própria aqui faria a linha parecer desalinhada. O que muda entre um e outro
    é só o miolo do painel, que é o que este arquivo acrescenta. */
-export { SelectWrap, SelectTrigger, SelectPanel } from "./SelectCustom.styled";
+export {
+  SelectWrap,
+  SelectTrigger,
+  SelectPanel,
+  SelectBusca,
+  SelectVazio,
+} from "./SelectCustom.styled";
 
 /**
  * Uma opção marcável do painel.
