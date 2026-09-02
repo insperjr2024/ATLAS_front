@@ -13,7 +13,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 
-import { SINAL_URGENCIA } from "@/lib/tarefas";
+import { SINAL_URGENCIA, rotuloResponsaveis } from "@/lib/tarefas";
 import { tonsDaColuna, type ColunaTarefa, type TonsColuna } from "@/lib/colunas-tarefa";
 import type { Tarefa } from "@/types/tarefa";
 import { StatusPilula } from "@/pages/projetos/Projetos.styled";
@@ -226,7 +226,9 @@ function CardArrastavel({
         )}
       </CardTopo>
       <CardMeta>
-        <span>{nomeUsuario(tarefa.responsavel_id)}</span>
+        <span title={tarefa.responsavel_ids.map(nomeUsuario).join(", ")}>
+          {rotuloResponsaveis(tarefa.responsavel_ids.map(nomeUsuario))}
+        </span>
       </CardMeta>
     </Card>
   );

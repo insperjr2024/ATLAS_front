@@ -15,7 +15,7 @@ export function getTarefas(projetoId: number, token: string) {
 
 export interface CreateTarefaPayload {
   titulo: string;
-  responsavel_id: number;
+  responsavel_ids: number[];
   prazo: string;
   projeto_escopo_id?: number | null;
   /** Vazio = a primeira coluna do board. */
@@ -72,7 +72,7 @@ export function deleteComentario(comentarioId: number, token: string) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Editar o CONTEÚDO da tarefa (título, responsável, prazo) é da diretoria
+ * Editar o CONTEÚDO da tarefa (título, responsáveis, prazo) é da diretoria
  * e de quem criou.
  *
  * Mover no kanban NÃO passa por aqui: o  dá isso aos quatro perfis, e
@@ -86,6 +86,19 @@ export function podeEditarTarefa(
 ): boolean {
   if (!usuario) return false;
   return ehDiretoriaDeProjetos(usuario) || tarefa.criado_por === usuario.id;
+}
+
+/**
+ * "Fulano", "Fulano e Beltrano", "Fulano +2" — o rótulo curto de vários
+ * responsáveis para o card. Só o primeiro nome de cada um, senão estoura a
+ * largura do card com três pessoas.
+ */
+export function rotuloResponsaveis(nomes: string[]): string {
+  const primeiros = nomes.map((n) => n.trim().split(/\s+/)[0]).filter(Boolean);
+  if (primeiros.length === 0) return "Sem responsável";
+  if (primeiros.length === 1) return primeiros[0];
+  if (primeiros.length === 2) return `${primeiros[0]} e ${primeiros[1]}`;
+  return `${primeiros[0]} +${primeiros.length - 1}`;
 }
 
 /** O símbolo e a cor de cada nível, glifo junto da cor, nunca cor sozinha. */

@@ -373,8 +373,8 @@ export interface TarefaAgregada {
   projeto_id: number;
   projeto_nome: string;
   cliente: string;
-  responsavel_id: number;
-  responsavel_nome: string;
+  responsavel_ids: number[];
+  responsavel_nomes: string[];
   prazo: string;
   grupo_coluna: string;
   coluna_nome: string;

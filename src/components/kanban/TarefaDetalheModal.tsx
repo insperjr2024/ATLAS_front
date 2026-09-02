@@ -3,6 +3,7 @@ import { Send, Trash2, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { formatarData, formatarDataHora } from "@/lib/projetos";
+import { MultiSelect } from "@/components/MultiSelect";
 import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   createComentario,
@@ -21,7 +22,6 @@ import {
   FieldGroup,
   FieldInput,
   FieldLabel,
-  FieldSelect,
   FieldTextarea,
   FormErrorText,
   ModalOverlay,
@@ -52,8 +52,10 @@ interface Props {
   /** Quadro inteiro, usado só pra resolver nome (ex.: um responsável que já
    *  saiu do projeto ainda precisa aparecer com o nome certo, não "Usuário 7"). */
   usuarios: UsuarioResumo[];
-  /** Só quem está alocado neste projeto, são as opções do select. */
+  /** Só quem está alocado neste projeto, são as opções do seletor. */
   usuariosAtribuiveis: UsuarioResumo[];
+  /** Consultores atuais do projeto, para o atalho "Todos os consultores". */
+  consultorIds: number[];
   onClose: () => void;
   /** Recarrega o board depois de editar ou excluir. */
   onMudou: () => Promise<void>;
@@ -66,7 +68,7 @@ interface Props {
  * criou, e a conversa. Editar é da diretoria e de quem criou (o backend
  * revalida); comentar é de quem enxerga o projeto.
  */
-export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiveis, onClose, onMudou }: Props) {
+export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiveis, consultorIds, onClose, onMudou }: Props) {
   const { usuario, token } = useAuth();
   const [comentarios, setComentarios] = useState<ComentarioTarefa[]>([]);
   const [novo, setNovo] = useState("");
@@ -76,11 +78,22 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
   const [titulo, setTitulo] = useState(tarefa.titulo);
-  const [responsavel, setResponsavel] = useState(String(tarefa.responsavel_id));
+  const [responsavelIds, setResponsavelIds] = useState<number[]>(tarefa.responsavel_ids);
   const [prazo, setPrazo] = useState(tarefa.prazo.slice(0, 10));
 
   const podeEditar = podeEditarTarefa(usuario, tarefa);
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
+  // Opções do seletor: quem está atribuível AGORA, mais qualquer responsável
+  // atual que já tenha saído do projeto (senão sumiria da lista sem aviso).
+  const opcoesResponsavel = [
+    ...usuariosAtribuiveis.filter((u) => u.ativo),
+    ...tarefa.responsavel_ids
+      .filter((id) => !usuariosAtribuiveis.some((u) => u.id === id))
+      .map((id) => ({ id, nome: nomeUsuario(id) })),
+  ];
+  const idsConsultores = consultorIds.filter((id) =>
+    usuariosAtribuiveis.some((u) => u.id === id),
+  );
   const coluna = colunas.find((c) => c.id === tarefa.coluna_id);
   const sinal = SINAL_URGENCIA[tarefa.urgencia];
 
@@ -128,12 +141,16 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
   async function salvarEdicao(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
+    if (responsavelIds.length === 0) {
+      setErro("Escolha ao menos um responsável.");
+      return;
+    }
     setOcupado(true);
     setErro("");
     try {
       await updateTarefa(
         tarefa.id,
-        { titulo: titulo.trim(), responsavel_id: Number(responsavel), prazo },
+        { titulo: titulo.trim(), responsavel_ids: responsavelIds, prazo },
         token,
       );
       await onMudou();
@@ -187,25 +204,25 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
                 />
               </FieldGroup>
               <FieldGroup>
-                <FieldLabel htmlFor="edit-responsavel">Responsável</FieldLabel>
-                <FieldSelect
-                  id="edit-responsavel"
-                  value={responsavel}
-                  onChange={(e) => setResponsavel(e.target.value)}
-                >
-                  {/* O responsável atual sempre aparece, mesmo se já saiu do
-                      projeto, senão o select troca de valor sem avisar. */}
-                  {!usuariosAtribuiveis.some((u) => u.id === tarefa.responsavel_id) && (
-                    <option value={tarefa.responsavel_id}>{nomeUsuario(tarefa.responsavel_id)}</option>
-                  )}
-                  {usuariosAtribuiveis
-                    .filter((u) => u.ativo)
-                    .map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nome}
-                      </option>
-                    ))}
-                </FieldSelect>
+                <FieldLabel>Responsáveis</FieldLabel>
+                <MultiSelect
+                  valores={responsavelIds.map(String)}
+                  onChange={(v) => setResponsavelIds(v.map(Number))}
+                  opcoes={opcoesResponsavel.map((u) => ({ value: String(u.id), label: u.nome }))}
+                  rotuloVazio="Escolher pessoas…"
+                  resumo={(n) => `${n} responsáveis`}
+                  aria-label="Responsáveis pela tarefa"
+                />
+                {idsConsultores.length > 0 && (
+                  <PageButtonSm
+                    type="button"
+                    $variant="outline"
+                    onClick={() => setResponsavelIds(idsConsultores)}
+                    style={{ marginTop: "0.4rem", alignSelf: "flex-start" }}
+                  >
+                    Todos os consultores
+                  </PageButtonSm>
+                )}
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel htmlFor="edit-prazo">Prazo</FieldLabel>
@@ -221,8 +238,12 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
           ) : (
             <DetalheGrid>
               <DetalheItem>
-                <DetalheRotulo>Responsável</DetalheRotulo>
-                <DetalheValor>{nomeUsuario(tarefa.responsavel_id)}</DetalheValor>
+                <DetalheRotulo>
+                  {tarefa.responsavel_ids.length > 1 ? "Responsáveis" : "Responsável"}
+                </DetalheRotulo>
+                <DetalheValor>
+                  {tarefa.responsavel_ids.map(nomeUsuario).join(", ")}
+                </DetalheValor>
               </DetalheItem>
               <DetalheItem>
                 <DetalheRotulo>Prazo</DetalheRotulo>

@@ -3,7 +3,9 @@ export interface Tarefa {
   projeto_id: number;
   projeto_escopo_id: number | null;
   titulo: string;
-  responsavel_id: number;
+  /** Um ou vários. "Todos do projeto" no formulário = todos os consultores
+   *  atuais, gravados como lista (snapshot). Sempre ao menos um. */
+  responsavel_ids: number[];
   prazo: string;
   /** A coluna do kanban, configurável pela diretoria, não mais um ENUM. */
   coluna_id: number;

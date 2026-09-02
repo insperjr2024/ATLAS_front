@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getTarefasGerais, type TarefasGerais } from "@/lib/monitoramento";
 import { CORES_SUGERIDAS, tonsDaColuna } from "@/lib/colunas-tarefa";
-import { SINAL_URGENCIA } from "@/lib/tarefas";
+import { SINAL_URGENCIA, rotuloResponsaveis } from "@/lib/tarefas";
 import { formatarData } from "@/lib/projetos";
 import {
   PageStack,
@@ -288,7 +288,9 @@ export function TarefasGeraisAba() {
                             )}
                           </CardTopo>
                           <CardMeta>
-                            <span>{tarefa.responsavel_nome}</span>
+                            <span title={tarefa.responsavel_nomes.join(", ")}>
+                              {rotuloResponsaveis(tarefa.responsavel_nomes)}
+                            </span>
                             {" · "}
                             <span>{formatarData(tarefa.prazo)}</span>
                           </CardMeta>
