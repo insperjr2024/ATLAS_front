@@ -12,6 +12,7 @@ import {
   aceitaInscricao,
   desalocar,
   getBancas,
+  getBancaDetalhes,
   getBancasFrentes,
   getCandidaturas,
   getBancasParaAvaliar,
@@ -42,6 +43,7 @@ import {
 } from "@/lib/avaliacoes";
 import { CalendarioBancas } from "@/components/bancas/CalendarioBancas";
 import { BancaFormModal } from "@/components/bancas/BancaFormModal";
+import { AvaliadoresAgrupados } from "@/components/bancas/AvaliadoresAgrupados";
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
 import { VotoBanca } from "@/components/VotoBanca";
 import { AlertModal } from "@/components/AlertModal";
@@ -57,6 +59,7 @@ import { formatarDataHora, paraDataUtc } from "@/lib/projetos";
 import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import type {
   Banca,
+  BancaDetalhes,
   BancaFrente,
   Candidatura,
   EquipeProjeto,
@@ -94,6 +97,7 @@ import {
   DetailRow,
   DetailTerm,
   DetailValue,
+  AvaliadoresSecao,
   DescricaoSecao,
   FormStack,
   FieldGroup,
@@ -1407,6 +1411,32 @@ function VerMaisModal({
   ehDiretor?: boolean;
   onDescricaoEnviada?: () => void;
 }) {
+  // A ficha completa — avaliadores com categoria e frente resolvidas, mais a
+  // composição por frente. A lista `Banca` não carrega nada disso; buscar o
+  // detalhe aqui é o mesmo caminho da aba Banca do projeto, sem reconstruir a
+  // regra no cliente. Enquanto não chega, cai na lista corrida de nomes.
+  //
+  // O efeito roda sempre (o modal fica montado com `banca` nula) e a chave é
+  // `banca?.id`, não o objeto, que muda de referência a cada render do pai.
+  // Guardo o detalhe COM o id de origem em vez de limpá-lo ao trocar de banca:
+  // um `setDetalhe(null)` síncrono no efeito dispara render em cascata (a
+  // regra `set-state-in-effect`); comparar o id no render resolve igual.
+  const [detalhe, setDetalhe] = useState<BancaDetalhes | null>(null);
+  const bancaId = banca?.id ?? null;
+  useEffect(() => {
+    if (bancaId == null || !token) return;
+    let ativo = true;
+    getBancaDetalhes(bancaId, token)
+      .then((d) => {
+        if (ativo) setDetalhe(d);
+      })
+      .catch(() => undefined);
+    return () => {
+      ativo = false;
+    };
+  }, [bancaId, token]);
+  const detalheDaBanca = detalhe && detalhe.id === bancaId ? detalhe : null;
+
   if (!banca) return null;
 
   const podeGerenciar = podeGerenciarBanca(banca, usuarioId, ehDiretor);
@@ -1456,11 +1486,30 @@ function VerMaisModal({
               <DetailTerm>Membros</DetailTerm>
               <DetailValue>{membrosDaBanca(banca.equipe_ids, banca.coordenador_id, contexto.usuarios).join(", ") || "—"}</DetailValue>
             </DetailRow>
-            <DetailRow>
-              <DetailTerm>Avaliadores</DetailTerm>
-              <DetailValue>{avaliadoresDaBanca(contexto.candidaturas, contexto.usuarios, banca.id).join(", ") || "—"}</DetailValue>
-            </DetailRow>
           </DetailList>
+
+          {/* Avaliadores separados por (liderança | membro) × frente, com o
+              "1/2 · falta 1" de cada bloco — a mesma leitura da aba Banca do
+              projeto. Enquanto o detalhe não chega, a lista corrida de nomes. */}
+          <AvaliadoresSecao>
+            <DetailTerm>Avaliadores</DetailTerm>
+            {detalheDaBanca ? (
+              detalheDaBanca.avaliadores.length === 0 ? (
+                <DetailValue style={{ textAlign: "left" }}>—</DetailValue>
+              ) : (
+                <AvaliadoresAgrupados
+                  avaliadores={detalheDaBanca.avaliadores}
+                  frentesDaBanca={detalheDaBanca.frentes_da_banca}
+                  composicao={detalheDaBanca.composicao}
+                  realizadoEm={detalheDaBanca.realizado_em}
+                />
+              )
+            ) : (
+              <DetailValue style={{ textAlign: "left" }}>
+                {avaliadoresDaBanca(contexto.candidaturas, contexto.usuarios, banca.id).join(", ") || "—"}
+              </DetailValue>
+            )}
+          </AvaliadoresSecao>
 
           {banca.realizado_em && (ehCoordenador || banca.descricao_coordenador) && (
             <DescricaoSecao>

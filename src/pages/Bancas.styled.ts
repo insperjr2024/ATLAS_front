@@ -77,6 +77,16 @@ export const DetailValue = styled.dd`
   text-align: right;
 `;
 
+/** A lista de avaliadores agrupados no "ver mais" — uma coluna de blocos
+ *  (liderança/membro × frente), não um par rótulo→valor como as linhas do
+ *  `DetailRow`. Ganha respiro do bloco de detalhes acima. */
+export const AvaliadoresSecao = styled.div`
+  margin-top: ${theme.spacing.md};
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
 /** Separa a seção da descrição do coordenador do bloco de detalhes acima —
  *  sem isto os dois grudam, sem hierarquia visual nenhuma. */
 export const DescricaoSecao = styled.div`
