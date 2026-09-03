@@ -10,7 +10,7 @@ import {
   uploadAnexoProposta,
 } from "@/lib/projetos";
 import type { CalendariosDaFrente } from "@/lib/projetos";
-import { getUsuarios } from "@/lib/usuarios";
+import { getUsuarios, podeSerVendedor } from "@/lib/usuarios";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import { getEscopos } from "@/lib/escopos";
 import { montarEquipePayload, validarEquipe, type EquipeSelecionada } from "@/components/membros/MemberPicker";
@@ -526,15 +526,16 @@ export function ProjetoNovo() {
                 valores={vendedorIds.map(String)}
                 onChange={(ids) => setVendedorIds(ids.map(Number))}
                 opcoes={usuarios
-                  .filter((u) => u.ativo)
+                  .filter((u) => u.ativo && (podeSerVendedor(u) || vendedorIds.includes(u.id)))
                   .map((u) => ({ value: String(u.id), label: u.nome }))}
                 rotuloVazio="Ninguém marcado"
                 resumo={(n) => `${n} vendedores`}
                 aria-label="Quem vendeu o projeto"
               />
               <EmptyText style={{ fontSize: "0.7rem" }}>
-                Opcional. Quem vendeu enxerga o projeto em modo somente leitura, mesmo
-                sem estar na equipe. Pode avaliar a banca deste projeto normalmente.
+                Opcional. Aparecem os coordenadores de vendas e os consultores marcados
+                como BDR. Quem vendeu enxerga o projeto em modo somente leitura, mesmo
+                sem estar na equipe, e pode avaliar a banca deste projeto normalmente.
               </EmptyText>
             </FieldGroup>
           </BlocoSecao>

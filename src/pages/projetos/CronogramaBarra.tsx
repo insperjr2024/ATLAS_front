@@ -281,7 +281,7 @@ export function CronogramaBarra({
             <InfoDica rotulo="Sobre os modos de marcação">
               Reunião inicial, banca e entrega pertencem a um <strong>escopo</strong> específico,
               e cada um tem a própria janela de dias vendidos. Os botões deles aparecem quando
-              você escolhe um escopo ali em cima. Kickoff e reunião geral são do projeto inteiro
+              você escolhe um escopo ali em cima. Kickoff e reunião semanal são do projeto inteiro
               e valem sempre.
             </InfoDica>
           </BarraRotuloZona>

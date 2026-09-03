@@ -69,7 +69,7 @@ export function MarcarReuniaoModal({
     }
   }
 
-  const titulo = tipo === "inicial" ? "Reunião inicial do escopo" : "Reunião geral";
+  const titulo = tipo === "inicial" ? "Reunião inicial do escopo" : "Reunião semanal";
 
   return (
     <ModalOverlay onClick={onCancelar}>

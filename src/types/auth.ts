@@ -123,6 +123,10 @@ export interface UsuarioResumo {
    *  `coordenador`: não muda acesso, só tira a pessoa da contagem de
    *  capacidade de coordenadores no Monitoramento. */
   coordenador_vendas: boolean;
+  /** BDR: consultor que também prospecta e fecha projeto. Só relevante
+   *  quando `posicao` é `consultor`. Não muda acesso, só faz a pessoa
+   *  aparecer na lista "quem vendeu o projeto" do cadastro. */
+  bdr: boolean;
   /** 1º a 8º semestre da graduação, `null` pra quem não é aluno em curso
    *  (diretoria, gerência já formada etc). */
   semestre_graduacao: number | null;

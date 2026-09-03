@@ -1064,6 +1064,7 @@ function MembroModal({
     membro.semestre_graduacao ? String(membro.semestre_graduacao) : "",
   );
   const [coordenadorVendas, setCoordenadorVendas] = useState(membro.coordenador_vendas);
+  const [bdr, setBdr] = useState(membro.bdr);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -1108,6 +1109,9 @@ function MembroModal({
           // Só coordenador tem essa marca. Fora disso manda `false` para não
           // deixar a flag pendurada se a pessoa deixou de ser coordenador.
           coordenador_vendas: posicao === "coordenador" ? coordenadorVendas : false,
+          // Mesma ideia da marca de coordenador: só o consultor tem BDR, e
+          // fora disso manda `false` para a flag não ficar pendurada.
+          bdr: posicao === "consultor" ? bdr : false,
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
@@ -1155,6 +1159,7 @@ function MembroModal({
                   <DetailValue>
                     {ROTULO_POSICAO[membro.posicao] ?? membro.posicao}
                     {membro.posicao === "coordenador" && membro.coordenador_vendas && " · vendas"}
+                    {membro.posicao === "consultor" && membro.bdr && " · BDR"}
                   </DetailValue>
                 </DetailRow>
                 <DetailRow>
@@ -1278,6 +1283,25 @@ function MembroModal({
                   </FieldGroup>
                 )}
 
+                {/* BDR: consultor que também prospecta. Não muda acesso, só o
+                    habilita a aparecer como vendedor no cadastro de projeto. */}
+                {posicao === "consultor" && (
+                  <FieldGroup>
+                    <ToggleRow>
+                      <input
+                        type="checkbox"
+                        checked={bdr}
+                        onChange={(e) => setBdr(e.target.checked)}
+                      />
+                      BDR (também vende projeto)
+                    </ToggleRow>
+                    <EmptyText style={{ fontSize: "0.7rem" }}>
+                      Mesmo acesso dos outros consultores. Passa a aparecer na lista
+                      "quem vendeu o projeto" do cadastro, junto dos coordenadores de vendas.
+                    </EmptyText>
+                  </FieldGroup>
+                )}
+
                 <FieldGroup>
                   <FieldLabel htmlFor="semestre-membro">Semestre da graduação</FieldLabel>
                   <FieldSelect
@@ -1347,6 +1371,7 @@ function MembroModal({
                   setPosicao(membro.posicao);
                   setStatus(membro.status);
                   setCoordenadorVendas(membro.coordenador_vendas);
+                  setBdr(membro.bdr);
                   setFrenteIds(
                     contexto.usuariosFrentes.filter((uf) => uf.usuario_id === membro.id).map((uf) => uf.frente_id),
                   );

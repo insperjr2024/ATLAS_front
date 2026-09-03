@@ -17,6 +17,7 @@ import {
   type UpdateEscopoProjetoPayload,
 } from "@/lib/projetos";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
+import { podeSerVendedor } from "@/lib/usuarios";
 import { getEscopos } from "@/lib/escopos";
 import {
   MemberPicker,
@@ -575,11 +576,16 @@ export function EditarProjetoModal({
                   <MultiSelect
                     valores={vendedorIds.map(String)}
                     onChange={(ids) => setVendedorIds(ids.map(Number))}
-                    opcoes={ativos.map((u) => ({ value: String(u.id), label: u.nome }))}
+                    opcoes={ativos
+                      .filter((u) => podeSerVendedor(u) || vendedorIds.includes(u.id))
+                      .map((u) => ({ value: String(u.id), label: u.nome }))}
                     rotuloVazio="Ninguém marcado"
                     resumo={(n) => `${n} vendedores`}
                     aria-label="Quem vendeu o projeto"
                   />
+                  <EmptyText style={{ fontSize: "0.7rem" }}>
+                    Aparecem os coordenadores de vendas e os consultores marcados como BDR.
+                  </EmptyText>
                 </FieldGroup>
 
                 {/* Mesma leitura de quando o projeto nasceu: trocar alguém pode

@@ -121,7 +121,7 @@ import { useProjeto } from "./ProjetoPage";
 const MODOS = [
   { valor: "kickoff", rotulo: "Kickoff", escopo: false },
   { valor: "reuniao_inicial", rotulo: "Reunião inicial", escopo: true },
-  { valor: "reuniao_geral", rotulo: "Reunião geral", escopo: false },
+  { valor: "reuniao_geral", rotulo: "Reunião semanal", escopo: false },
   { valor: "banca", rotulo: "Banca", escopo: true },
   // UMA entrega só: entrega do escopo **é** a entrega ao cliente daquele
   // escopo. Havia aqui um modo "Entrega ao cliente" separado, do
@@ -745,7 +745,7 @@ export function ProjetoCronograma() {
         tipo: inicial ? "reuniao_inicial" : "reuniao_geral",
         rotulo: ROTULOS_MARCO[inicial ? "reuniao_inicial" : "reuniao_geral"],
         titulo: [
-          inicial ? `Reunião inicial, ${daquele?.nome ?? "escopo"}` : "Reunião geral",
+          inicial ? `Reunião inicial, ${daquele?.nome ?? "escopo"}` : "Reunião semanal",
           r.observacoes,
         ]
           .filter(Boolean)
