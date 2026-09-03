@@ -281,7 +281,7 @@ export function ComposicaoBancaCard() {
 
             {selecionada && !selecionada.configurada && (
               <EmptyText style={{ fontSize: "0.7rem", marginTop: "0.5rem" }}>
-                Esta combinação ainda não foi configurada — os números abaixo são o padrão
+                Esta combinação ainda não foi configurada: os campos mostram o padrão
                 herdado do piso de cada frente. Salvar torna-os próprios dela.
               </EmptyText>
             )}
@@ -351,7 +351,7 @@ export function ComposicaoBancaCard() {
                     ninguém quer fazer de cabeça. */}
                 <EmptyText style={{ fontSize: "0.75rem", marginTop: "0.75rem" }}>
                   Esta banca passa a exigir{" "}
-                  <PageBadge $tone="default">{minimoDigitado} pessoas</PageBadge> no mínimo —
+                  <PageBadge $tone="default">{minimoDigitado} pessoas</PageBadge> no mínimo,
                   membros e liderança somados, porque a liderança é uma vaga a mais.
                   Acima disso, até o teto de vagas, entra gente de qualquer frente.
                 </EmptyText>
