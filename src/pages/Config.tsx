@@ -11,6 +11,7 @@ import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
 import { ComposicaoBancaCard } from "./config/ComposicaoBancaCard";
 import { GestaoSemestralCard } from "./config/GestaoSemestralCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
+import { AlertModal } from "@/components/AlertModal";
 import type { Escopo, Frente } from "@/types/banca";
 import type { Permissoes, PosicaoPermissao } from "@/types/auth";
 import { ROTULO_POSICAO } from "@/utils/permissoes";
@@ -766,6 +767,11 @@ function ModalPosicaoPermissao({
   const [permissoes, setPermissoes] = useState(permissoesDe(posicao));
   /** A caixa que está esperando confirmação para ser desmarcada. */
   const [campoPendente, setCampoPendente] = useState<CampoPermissao | null>(null);
+  /** A recusa do servidor por ser a última porta. Aviso próprio, e não o
+   *  texto de erro do rodapé: quem chegou aqui já passou por uma confirmação
+   *  dizendo que isso poderia acontecer, e precisa entender que NADA foi
+   *  salvo — um texto pequeno embaixo do formulário some no meio da lista. */
+  const [recusaUltimaPorta, setRecusaUltimaPorta] = useState(false);
   const [busca, setBusca] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
@@ -813,6 +819,8 @@ function ModalPosicaoPermissao({
          assim faria a tela mostrar um estado que não existe no servidor. */
       if (codigoDoErro(err) === CODIGO_ULTIMO_ADMINISTRADOR) {
         setPermissoes((atual) => ({ ...atual, pode_administrar_permissoes: true }));
+        setRecusaUltimaPorta(true);
+        return;
       }
       setErro(err instanceof Error ? err.message : "Erro ao salvar permissões");
     } finally {
@@ -821,70 +829,75 @@ function ModalPosicaoPermissao({
   }
 
   return (
-    <ModalOverlay onClick={onClose} role="presentation">
-      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog">
-        <ModalHeader>
-          <ModalTitle>Editar permissões, {ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</ModalTitle>
-          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
-            <X size={18} />
-          </ModalClose>
-        </ModalHeader>
-        <FormStack onSubmit={handleSubmit}>
-          <ModalBody>
-            <FieldGroup>
-              <FieldLabel htmlFor="busca-permissao">Permissões na plataforma</FieldLabel>
-              <FieldInput
-                id="busca-permissao"
-                type="text"
-                value={busca}
-                placeholder="Buscar por nome ou pelo que a permissão abre..."
-                autoComplete="off"
-                onChange={(e) => setBusca(e.target.value)}
-              />
-              {visiveis.length === 0 && (
-                <EmptyText style={{ fontSize: "0.75rem" }}>
-                  Nenhuma permissão encontrada para "{busca}".
-                </EmptyText>
-              )}
-              {marcadasEscondidas > 0 && (
-                <EmptyText style={{ fontSize: "0.7rem" }}>
-                  {marcadasEscondidas} permissão(ões) marcada(s) fora deste filtro continuam
-                  marcadas ao salvar.
-                </EmptyText>
-              )}
-              <PermissoesGrid>
-                {visiveis.map((p) => (
-                  <PermissaoItem key={p.campo}>
-                    <input
-                      type="checkbox"
-                      checked={permissoes[p.campo]}
-                      onChange={() =>
-                        p.campo === "pode_administrar_permissoes" && permissoes[p.campo]
-                          ? setCampoPendente(p.campo)
-                          : togglePermissao(p.campo)
-                      }
-                    />
-                    <PermissaoTexto>
-                      <PermissaoTitulo>{p.titulo}</PermissaoTitulo>
-                      <PermissaoDesc>{p.descricao}</PermissaoDesc>
-                    </PermissaoTexto>
-                  </PermissaoItem>
-                ))}
-              </PermissoesGrid>
-            </FieldGroup>
+    /* Os avisos são IRMÃOS do overlay, não filhos. Aninhados, todo clique
+       dentro deles subia até o `onClick={onClose}` do overlay de fora e
+       fechava a tela inteira — inclusive o clique em "Cancelar". */
+    <>
+      <ModalOverlay onClick={onClose} role="presentation">
+        <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog">
+          <ModalHeader>
+            <ModalTitle>Editar permissões, {ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</ModalTitle>
+            <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+              <X size={18} />
+            </ModalClose>
+          </ModalHeader>
+          <FormStack onSubmit={handleSubmit}>
+            <ModalBody>
+              <FieldGroup>
+                <FieldLabel htmlFor="busca-permissao">Permissões na plataforma</FieldLabel>
+                <FieldInput
+                  id="busca-permissao"
+                  type="text"
+                  value={busca}
+                  placeholder="Buscar por nome ou pelo que a permissão abre..."
+                  autoComplete="off"
+                  onChange={(e) => setBusca(e.target.value)}
+                />
+                {visiveis.length === 0 && (
+                  <EmptyText style={{ fontSize: "0.75rem" }}>
+                    Nenhuma permissão encontrada para "{busca}".
+                  </EmptyText>
+                )}
+                {marcadasEscondidas > 0 && (
+                  <EmptyText style={{ fontSize: "0.7rem" }}>
+                    {marcadasEscondidas} permissão(ões) marcada(s) fora deste filtro continuam
+                    marcadas ao salvar.
+                  </EmptyText>
+                )}
+                <PermissoesGrid>
+                  {visiveis.map((p) => (
+                    <PermissaoItem key={p.campo}>
+                      <input
+                        type="checkbox"
+                        checked={permissoes[p.campo]}
+                        onChange={() =>
+                          p.campo === "pode_administrar_permissoes" && permissoes[p.campo]
+                            ? setCampoPendente(p.campo)
+                            : togglePermissao(p.campo)
+                        }
+                      />
+                      <PermissaoTexto>
+                        <PermissaoTitulo>{p.titulo}</PermissaoTitulo>
+                        <PermissaoDesc>{p.descricao}</PermissaoDesc>
+                      </PermissaoTexto>
+                    </PermissaoItem>
+                  ))}
+                </PermissoesGrid>
+              </FieldGroup>
 
-            {erro && <FormErrorText>{erro}</FormErrorText>}
-          </ModalBody>
-          <ModalFooter>
-            <PageButton $variant="outline" type="button" onClick={onClose}>
-              Cancelar
-            </PageButton>
-            <PageButton type="submit" disabled={salvando}>
-              {salvando ? "Salvando..." : "Salvar"}
-            </PageButton>
-          </ModalFooter>
-        </FormStack>
-      </WideModalContent>
+              {erro && <FormErrorText>{erro}</FormErrorText>}
+            </ModalBody>
+            <ModalFooter>
+              <PageButton $variant="outline" type="button" onClick={onClose}>
+                Cancelar
+              </PageButton>
+              <PageButton type="submit" disabled={salvando}>
+                {salvando ? "Salvando..." : "Salvar"}
+              </PageButton>
+            </ModalFooter>
+          </FormStack>
+        </WideModalContent>
+      </ModalOverlay>
 
       {desligandoAdministracao && (
         <ConfirmarModal
@@ -915,6 +928,30 @@ function ModalPosicaoPermissao({
           }}
         />
       )}
-    </ModalOverlay>
+
+      {recusaUltimaPorta && (
+        <AlertModal
+          titulo="Não deu para tirar esta permissão"
+          mensagem={
+            <>
+              Nenhum outro cargo com gente ativa tem a permissão{" "}
+              <strong>Editar as permissões das posições</strong>. Tirando-a de{" "}
+              <strong>{ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</strong>, a
+              plataforma ficaria sem ninguém capaz de abrir esta tela, e não haveria como
+              desfazer por aqui.
+              <br />
+              <br />
+              <strong>Nada foi salvo</strong>, nem as outras caixas que você tenha mudado
+              agora. A permissão continua marcada.
+              <br />
+              <br />
+              Para seguir: dê esta permissão a outro cargo que tenha alguém ativo e só
+              então tire desta posição.
+            </>
+          }
+          onFechar={() => setRecusaUltimaPorta(false)}
+        />
+      )}
+    </>
   );
 }
