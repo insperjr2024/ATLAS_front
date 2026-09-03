@@ -1407,6 +1407,23 @@ function VerMaisModal({
   ehDiretor?: boolean;
   onDescricaoEnviada?: () => void;
 }) {
+  // Trava a rolagem do fundo enquanto o modal está aberto — sem isto a roda do
+  // mouse sobre o véu arrasta a página atrás. `overflowY` no `<html>` e não no
+  // `<body>`: `index.css` põe `overflow-x: clip` no `<html>`, o que faz dele o
+  // container de rolagem da viewport — um `overflow` no `<body>` não teria
+  // efeito nenhum. Mesmo motivo do `BancaFormModal`. O efeito roda sempre (o
+  // modal fica montado com `banca` nula), então o guard faz a trava valer só
+  // com ele aberto.
+  useEffect(() => {
+    if (!banca) return;
+    const raiz = document.documentElement;
+    const overflowAnterior = raiz.style.overflowY;
+    raiz.style.overflowY = "hidden";
+    return () => {
+      raiz.style.overflowY = overflowAnterior;
+    };
+  }, [banca]);
+
   if (!banca) return null;
 
   const podeGerenciar = podeGerenciarBanca(banca, usuarioId, ehDiretor);
