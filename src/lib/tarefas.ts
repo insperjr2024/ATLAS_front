@@ -20,10 +20,14 @@ export interface CreateTarefaPayload {
   projeto_escopo_id?: number | null;
   /** Vazio = a primeira coluna do board. */
   coluna_id?: number | null;
+  /** "conjunta" (padrão) = um card, todos os responsáveis. "individual" = um
+   *  card por pessoa, mesmo grupo. Só faz diferença com 2+ responsáveis. */
+  atribuicao?: "conjunta" | "individual";
 }
 
+/** Devolve uma lista: 1 card na conjunta, N na "cada um faz a sua parte". */
 export function createTarefa(projetoId: number, dados: CreateTarefaPayload, token: string) {
-  return apiFetch<Tarefa>(`/projetos/${projetoId}/tarefas`, {
+  return apiFetch<Tarefa[]>(`/projetos/${projetoId}/tarefas`, {
     method: "POST",
     token,
     body: JSON.stringify(dados),

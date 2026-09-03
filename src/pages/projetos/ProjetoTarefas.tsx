@@ -176,6 +176,11 @@ export function ProjetoTarefas() {
           usuarios={usuarios}
           usuariosAtribuiveis={membrosDoProjeto}
           consultorIds={projeto.consultor_ids}
+          irmasDoGrupo={
+            aberta.grupo_id == null
+              ? []
+              : tarefas.filter((t) => t.grupo_id === aberta.grupo_id && t.id !== aberta.id)
+          }
           onClose={() => setAberta(null)}
           onMudou={carregar}
         />
@@ -215,6 +220,7 @@ function NovaTarefaModal({
 }) {
   const [titulo, setTitulo] = useState("");
   const [responsavelIds, setResponsavelIds] = useState<number[]>([]);
+  const [atribuicao, setAtribuicao] = useState<"conjunta" | "individual">("conjunta");
   const [prazo, setPrazo] = useState(() => new Date().toISOString().slice(0, 10));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
@@ -233,7 +239,12 @@ function NovaTarefaModal({
     try {
       await createTarefa(
         projetoId,
-        { titulo: titulo.trim(), responsavel_ids: responsavelIds, prazo },
+        {
+          titulo: titulo.trim(),
+          responsavel_ids: responsavelIds,
+          prazo,
+          atribuicao: responsavelIds.length > 1 ? atribuicao : "conjunta",
+        },
         token,
       );
       onCriada();
@@ -287,6 +298,33 @@ function NovaTarefaModal({
                   </PageButtonSm>
                 )}
               </FieldGroup>
+
+              {responsavelIds.length > 1 && (
+                <FieldGroup>
+                  <FieldLabel as="span">Como dividir</FieldLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.85rem" }}>
+                    <label style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                      <input
+                        type="radio"
+                        name="atribuicao"
+                        checked={atribuicao === "conjunta"}
+                        onChange={() => setAtribuicao("conjunta")}
+                      />
+                      Conjunta: um card, todos fazem juntos
+                    </label>
+                    <label style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                      <input
+                        type="radio"
+                        name="atribuicao"
+                        checked={atribuicao === "individual"}
+                        onChange={() => setAtribuicao("individual")}
+                      />
+                      Cada um faz a sua parte: um card por pessoa
+                    </label>
+                  </div>
+                </FieldGroup>
+              )}
+
               <FieldGroup>
                 <FieldLabel htmlFor="tarefa-prazo">Prazo</FieldLabel>
                 <FieldInput

@@ -6,6 +6,9 @@ export interface Tarefa {
   /** Um ou vários. "Todos do projeto" no formulário = todos os consultores
    *  atuais, gravados como lista (snapshot). Sempre ao menos um. */
   responsavel_ids: number[];
+  /** `null` = tarefa comum. Preenchido = uma parte de "cada um faz a sua":
+   *  as outras partes têm o mesmo valor, e cada card anda no kanban sozinho. */
+  grupo_id: number | null;
   prazo: string;
   /** A coluna do kanban, configurável pela diretoria, não mais um ENUM. */
   coluna_id: number;

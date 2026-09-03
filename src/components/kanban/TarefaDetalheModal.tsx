@@ -22,6 +22,7 @@ import {
   FieldGroup,
   FieldInput,
   FieldLabel,
+  FieldSelect,
   FieldTextarea,
   FormErrorText,
   ModalOverlay,
@@ -56,6 +57,9 @@ interface Props {
   usuariosAtribuiveis: UsuarioResumo[];
   /** Consultores atuais do projeto, para o atalho "Todos os consultores". */
   consultorIds: number[];
+  /** As outras partes da mesma tarefa dividida (mesmo `grupo_id`), sem esta.
+   *  Vazio/ausente quando a tarefa não foi dividida. */
+  irmasDoGrupo?: Tarefa[];
   onClose: () => void;
   /** Recarrega o board depois de editar ou excluir. */
   onMudou: () => Promise<void>;
@@ -68,7 +72,7 @@ interface Props {
  * criou, e a conversa. Editar é da diretoria e de quem criou (o backend
  * revalida); comentar é de quem enxerga o projeto.
  */
-export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiveis, consultorIds, onClose, onMudou }: Props) {
+export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiveis, consultorIds, irmasDoGrupo = [], onClose, onMudou }: Props) {
   const { usuario, token } = useAuth();
   const [comentarios, setComentarios] = useState<ComentarioTarefa[]>([]);
   const [novo, setNovo] = useState("");
@@ -95,7 +99,13 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
     usuariosAtribuiveis.some((u) => u.id === id),
   );
   const coluna = colunas.find((c) => c.id === tarefa.coluna_id);
+  const nomeColuna = (id: number) => colunas.find((c) => c.id === id)?.nome ?? "—";
   const sinal = SINAL_URGENCIA[tarefa.urgencia];
+
+  // Parte de uma tarefa dividida ("cada um faz a sua parte"): o card só tem
+  // um responsável e não dá para virar conjunta, então o seletor aqui é de
+  // uma pessoa só, e o backend recusa lista com tamanho diferente de 1.
+  const ehParte = tarefa.grupo_id != null;
 
   async function carregarComentarios() {
     if (!token) return;
@@ -203,27 +213,46 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
                   required
                 />
               </FieldGroup>
-              <FieldGroup>
-                <FieldLabel>Responsáveis</FieldLabel>
-                <MultiSelect
-                  valores={responsavelIds.map(String)}
-                  onChange={(v) => setResponsavelIds(v.map(Number))}
-                  opcoes={opcoesResponsavel.map((u) => ({ value: String(u.id), label: u.nome }))}
-                  rotuloVazio="Escolher pessoas…"
-                  resumo={(n) => `${n} responsáveis`}
-                  aria-label="Responsáveis pela tarefa"
-                />
-                {idsConsultores.length > 0 && (
-                  <PageButtonSm
-                    type="button"
-                    $variant="outline"
-                    onClick={() => setResponsavelIds(idsConsultores)}
-                    style={{ marginTop: "0.4rem", alignSelf: "flex-start" }}
+              {ehParte ? (
+                <FieldGroup>
+                  <FieldLabel htmlFor="edit-responsavel">Responsável por esta parte</FieldLabel>
+                  <FieldSelect
+                    id="edit-responsavel"
+                    value={String(responsavelIds[0] ?? "")}
+                    onChange={(e) => setResponsavelIds([Number(e.target.value)])}
+                    pesquisavel
+                    aria-label="Responsável por esta parte"
                   >
-                    Todos os consultores
-                  </PageButtonSm>
-                )}
-              </FieldGroup>
+                    {opcoesResponsavel.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.nome}
+                      </option>
+                    ))}
+                  </FieldSelect>
+                </FieldGroup>
+              ) : (
+                <FieldGroup>
+                  <FieldLabel>Responsáveis</FieldLabel>
+                  <MultiSelect
+                    valores={responsavelIds.map(String)}
+                    onChange={(v) => setResponsavelIds(v.map(Number))}
+                    opcoes={opcoesResponsavel.map((u) => ({ value: String(u.id), label: u.nome }))}
+                    rotuloVazio="Escolher pessoas…"
+                    resumo={(n) => `${n} responsáveis`}
+                    aria-label="Responsáveis pela tarefa"
+                  />
+                  {idsConsultores.length > 0 && (
+                    <PageButtonSm
+                      type="button"
+                      $variant="outline"
+                      onClick={() => setResponsavelIds(idsConsultores)}
+                      style={{ marginTop: "0.4rem", alignSelf: "flex-start" }}
+                    >
+                      Todos os consultores
+                    </PageButtonSm>
+                  )}
+                </FieldGroup>
+              )}
               <FieldGroup>
                 <FieldLabel htmlFor="edit-prazo">Prazo</FieldLabel>
                 <FieldInput
@@ -253,6 +282,18 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
                 <DetalheRotulo>Coluna</DetalheRotulo>
                 <DetalheValor>{coluna?.nome ?? "—"}</DetalheValor>
               </DetalheItem>
+              {ehParte && irmasDoGrupo.length > 0 && (
+                <DetalheItem style={{ gridColumn: "1 / -1" }}>
+                  <DetalheRotulo>Outras partes desta tarefa</DetalheRotulo>
+                  <DetalheValor>
+                    {irmasDoGrupo.map((irma) => (
+                      <div key={irma.id}>
+                        {irma.responsavel_ids.map(nomeUsuario).join(", ")} — {nomeColuna(irma.coluna_id)}
+                      </div>
+                    ))}
+                  </DetalheValor>
+                </DetalheItem>
+              )}
               <DetalheItem>
                 <DetalheRotulo>Criada por</DetalheRotulo>
                 <DetalheValor>{nomeUsuario(tarefa.criado_por)}</DetalheValor>
