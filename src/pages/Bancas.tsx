@@ -1437,6 +1437,22 @@ function VerMaisModal({
   }, [bancaId, token]);
   const detalheDaBanca = detalhe && detalhe.id === bancaId ? detalhe : null;
 
+  // Trava a rolagem do fundo enquanto o modal está aberto — sem isto a roda do
+  // mouse sobre o véu arrasta a página atrás. `overflowY` no `<html>` e não no
+  // `<body>`: `index.css` põe `overflow-x: clip` no `<html>`, o que faz dele o
+  // container de rolagem da viewport — um `overflow` no `<body>` não teria
+  // efeito nenhum. Mesmo motivo do `BancaFormModal`. Chave `bancaId` (não o
+  // objeto `banca`): sem isso, todo render do pai desfazia e refazia a trava.
+  useEffect(() => {
+    if (bancaId == null) return;
+    const raiz = document.documentElement;
+    const overflowAnterior = raiz.style.overflowY;
+    raiz.style.overflowY = "hidden";
+    return () => {
+      raiz.style.overflowY = overflowAnterior;
+    };
+  }, [bancaId]);
+
   if (!banca) return null;
 
   const podeGerenciar = podeGerenciarBanca(banca, usuarioId, ehDiretor);
