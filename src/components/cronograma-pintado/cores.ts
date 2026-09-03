@@ -165,7 +165,7 @@ export const ROTULOS_MARCO: Record<TipoMarco, string> = {
   kickoff: "Kickoff",
   reuniao_alinhamento: "Reunião",
   visita_presencial: "Visita",
-  reuniao_geral: "Reunião",
+  reuniao_geral: "Semanal",
   // Curto de propósito: na visão de mês a célula não cabe "Reunião inicial",
   // e é a largada do escopo que interessa distinguir da reunião de rotina.
   reuniao_inicial: "Largada",
