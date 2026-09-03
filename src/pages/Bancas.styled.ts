@@ -77,6 +77,16 @@ export const DetailValue = styled.dd`
   text-align: right;
 `;
 
+/** A lista de avaliadores agrupados no "ver mais" — uma coluna de blocos
+ *  (liderança/membro × frente), não um par rótulo→valor como as linhas do
+ *  `DetailRow`. Ganha respiro do bloco de detalhes acima. */
+export const AvaliadoresSecao = styled.div`
+  margin-top: ${theme.spacing.md};
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
 /** Separa a seção da descrição do coordenador do bloco de detalhes acima —
  *  sem isto os dois grudam, sem hierarquia visual nenhuma. */
 export const DescricaoSecao = styled.div`
@@ -817,6 +827,10 @@ export const FormModalBody = styled(BaseModalBody)`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Sem isto, rolar até o fim do corpo "encadeia" para a página atrás e ela
+     rola junto (o modal é filho de um overlay \`position: fixed\`, que não
+     segura a rolagem por si só). */
+  overscroll-behavior: contain;
 
   /*
    * A linha das três listas de marcar deste formulário — escopos, consultores

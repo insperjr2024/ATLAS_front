@@ -33,6 +33,10 @@ export const ListaNomes = styled.ul`
   color: ${theme.colors.foreground};
 `;
 
+/* Os styled `Grupo*` da lista de avaliadores agrupados moraram aqui até
+   virarem `components/bancas/AvaliadoresAgrupados.styled` — o mesmo bloco
+   passou a ser usado no "ver mais" da página /bancas. */
+
 /**
  * A linha de uma TENTATIVA. A borda esquerda carrega o veredito — é o canal
  * que sobrevive a uma lista de três ou quatro sessões empilhadas.

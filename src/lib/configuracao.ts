@@ -49,10 +49,9 @@ export interface CombinacaoComposicao {
 export interface RegraDaFrente {
   frente_id: number;
   frente_nome: string;
+  /** Só piso: não há mais teto por frente (2026-09-03). */
   min_membros: number;
-  max_membros: number;
   min_lideranca: number;
-  max_lideranca: number;
   configurada: boolean;
 }
 

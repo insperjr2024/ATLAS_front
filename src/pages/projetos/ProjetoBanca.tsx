@@ -21,6 +21,7 @@ import { createAvaliacao, getFormularioAtivo, submeterAvaliacao } from "@/lib/av
 import { formatarDataHora } from "@/lib/projetos";
 import { VotoBanca } from "@/components/VotoBanca";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
+import { AvaliadoresAgrupados } from "@/components/bancas/AvaliadoresAgrupados";
 import type {
   AvaliacaoDaBanca,
   AvaliadorDaBanca,
@@ -383,25 +384,24 @@ function FichaDaBanca({
               <CampoValor>—</CampoValor>
             )}
           </Campo>
-          <Campo>
-            <CampoRotulo>Avaliadores escalados</CampoRotulo>
-            {banca.avaliadores.length ? (
-              <ListaNomes>
-                {banca.avaliadores.map((a) => (
-                  <li key={a.usuario_id}>
-                    {a.nome}
-                    {/* Escalado e compareceu são coisas diferentes: só quem
-                        esteve lá entra na conta dos votos. */}
-                    {banca.realizado_em && !a.presente && " · faltou"}
-                    {a.ja_votou && " · votou"}
-                  </li>
-                ))}
-              </ListaNomes>
-            ) : (
-              <CampoValor>ninguém escalado</CampoValor>
-            )}
-          </Campo>
         </Colunas>
+
+        {/* Avaliadores separados por (liderança | membro) × frente da banca.
+            O piso de cada bloco tem de ser gente DAQUELA frente; completar
+            acima dele, até o teto da banca, é "tanto faz a frente". */}
+        <Campo style={{ marginTop: "0.75rem" }}>
+          <CampoRotulo>Avaliadores escalados</CampoRotulo>
+          {banca.avaliadores.length === 0 ? (
+            <CampoValor>ninguém escalado</CampoValor>
+          ) : (
+            <AvaliadoresAgrupados
+              avaliadores={banca.avaliadores}
+              frentesDaBanca={banca.frentes_da_banca}
+              composicao={banca.composicao}
+              realizadoEm={banca.realizado_em}
+            />
+          )}
+        </Campo>
 
         <SecaoTitulo>Apuração</SecaoTitulo>
         <Placar>

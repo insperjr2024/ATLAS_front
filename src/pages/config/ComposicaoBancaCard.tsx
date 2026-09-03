@@ -32,12 +32,11 @@ import {
   ResumoCombinacao,
 } from "../Config.styled";
 
-/** Os quatro números editáveis de uma frente, como texto (é o que o input dá). */
+/** O piso editável de uma frente, como texto (é o que o input dá). Não há
+ *  teto por frente (2026-09-03), só mínimos. */
 type Rascunho = Record<number, {
   min_membros: string;
-  max_membros: string;
   min_lideranca: string;
-  max_lideranca: string;
 }>;
 
 /**
@@ -117,9 +116,7 @@ export function ComposicaoBancaCard() {
               f.frente_id,
               {
                 min_membros: String(f.min_membros),
-                max_membros: String(f.max_membros),
                 min_lideranca: String(f.min_lideranca),
-                max_lideranca: String(f.max_lideranca),
               },
             ]),
           ),
@@ -152,12 +149,10 @@ export function ComposicaoBancaCard() {
     const frentes = regra.frentes.map((f) => ({
       frente_id: f.frente_id,
       min_membros: Number(rascunho[f.frente_id].min_membros),
-      max_membros: Number(rascunho[f.frente_id].max_membros),
       min_lideranca: Number(rascunho[f.frente_id].min_lideranca),
-      max_lideranca: Number(rascunho[f.frente_id].max_lideranca),
     }));
     if (frentes.some((f) => Object.values(f).some((v) => !Number.isInteger(v)))) {
-      setErro("Preencha os quatro números de cada frente.");
+      setErro("Preencha os dois números de cada frente.");
       return;
     }
     const numeroTeto = Number(teto);
@@ -321,24 +316,20 @@ export function ComposicaoBancaCard() {
                   )}
                 </FieldGroup>
 
-                <TableScrollWrap $min="34rem">
+                <TableScrollWrap $min="22rem">
                   <DataTable>
                     <TableHead>
                       <TableRow>
                         <TableHeadCell>Frente</TableHeadCell>
                         <TableHeadCell>Mín. membros</TableHeadCell>
-                        <TableHeadCell>Máx. membros</TableHeadCell>
                         <TableHeadCell>Mín. liderança</TableHeadCell>
-                        <TableHeadCell>Máx. liderança</TableHeadCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {regra.frentes.map((f) => (
                         <TableRow key={f.frente_id}>
                           <TableCell>{f.frente_nome}</TableCell>
-                          {(
-                            ["min_membros", "max_membros", "min_lideranca", "max_lideranca"] as const
-                          ).map((campo) => (
+                          {(["min_membros", "min_lideranca"] as const).map((campo) => (
                             <TableCell key={campo}>
                               <FieldInput
                                 type="number"
@@ -356,16 +347,17 @@ export function ComposicaoBancaCard() {
                 </TableScrollWrap>
 
                 {/* O número que a diretoria está de fato decidindo. Some do
-                    formulário sem isto: são até 16 campos, e o efeito deles é
-                    uma soma que ninguém quer fazer de cabeça. */}
+                    formulário sem isto: o efeito dos campos é uma soma que
+                    ninguém quer fazer de cabeça. */}
                 <EmptyText style={{ fontSize: "0.75rem", marginTop: "0.75rem" }}>
                   Esta banca passa a exigir{" "}
                   <PageBadge $tone="default">{minimoDigitado} pessoas</PageBadge> no mínimo,
                   membros e liderança somados, porque a liderança é uma vaga a mais.
+                  Acima disso, até o teto de vagas, entra gente de qualquer frente.
                 </EmptyText>
                 <EmptyText style={{ fontSize: "0.7rem", marginTop: "0.5rem" }}>
-                  Liderança é o gerente da frente ou alguém da diretoria; coordenador não conta.
-                  A equipe do próprio projeto nunca entra na contagem.
+                  Liderança é o gerente ou o coordenador da frente, ou alguém da diretoria
+                  (que cobre qualquer uma). A equipe do próprio projeto nunca entra na contagem.
                 </EmptyText>
               </div>
             )}
