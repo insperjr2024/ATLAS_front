@@ -189,6 +189,12 @@ export default function App() {
                   mesma trava antes. */}
               <Route element={<AdminRoute permissao="pode_administrar_configuracoes" />}>
                 <Route path="/config" element={<Config />} />
+              </Route>
+              {/* Calendários base saiu da caixa de Configurações em
+                  2026-09-02: mexer no calendário do Insper muda o cálculo de
+                  dias úteis de todo projeto, e não tem relação com editar o
+                  catálogo de escopos e frentes. */}
+              <Route element={<AdminRoute permissao="pode_gerir_calendarios_base" />}>
                 <Route path="/calendarios-base" element={<CalendariosBase />} />
               </Route>
               <Route element={<AdminRoute permissao="pode_gerir_membros" />}>

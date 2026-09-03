@@ -5,6 +5,17 @@ export function getUsuarios(token: string) {
   return apiFetch<UsuarioResumo[]>("/usuarios", { token });
 }
 
+/**
+ * Quem aparece na lista "quem vendeu o projeto" do cadastro: os
+ * coordenadores de vendas e os consultores com a marca BDR. Para incluir
+ * outra pessoa, a diretoria marca ela como BDR no cadastro do membro. Quem
+ * já está gravado como vendedor num projeto continua listado mesmo sem se
+ * encaixar (os formulários somam os ids atuais a esta lista).
+ */
+export function podeSerVendedor(u: Pick<UsuarioResumo, "coordenador_vendas" | "bdr">): boolean {
+  return u.coordenador_vendas || u.bdr;
+}
+
 export interface UpdateUsuarioPayload {
   nome?: string;
   email_insper?: string;
@@ -20,6 +31,9 @@ export interface UpdateUsuarioPayload {
   /** Marca o coordenador como comercial (de vendas). Não mexe em acesso, só
    *  o tira da contagem de capacidade de coordenadores. */
   coordenador_vendas?: boolean;
+  /** Marca o consultor como BDR (prospecta e fecha projeto). Não mexe em
+   *  acesso, só o habilita na lista "quem vendeu o projeto". */
+  bdr?: boolean;
   /** 1º a 8º semestre da graduação, ou `null` pra limpar. */
   semestre_graduacao?: number | null;
 }

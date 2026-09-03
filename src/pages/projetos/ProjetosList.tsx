@@ -33,7 +33,7 @@ import { tonsDaColuna } from "@/lib/colunas-tarefa";
 import type { UsuarioResumo } from "@/types/auth";
 import type { Frente } from "@/types/banca";
 import type { ProjetoResumo, StatusProjeto } from "@/types/projeto";
-import { pode, rotuloProjetos } from "@/utils/permissoes";
+import { pode, podeFiltrarPorFrente, rotuloProjetos } from "@/utils/permissoes";
 import {
   PageStack,
   PageButton,
@@ -166,7 +166,7 @@ export function ProjetosList() {
   const [erroMassa, setErroMassa] = useState("");
   const [confirmandoExclusaoMassa, setConfirmandoExclusaoMassa] = useState(false);
 
-  const podeFiltrar = pode(usuario, "filtrar_por_frente");
+  const podeFiltrar = podeFiltrarPorFrente(usuario);
   const podeCriar = !!usuario?.permissoes.pode_criar_projeto;
   const podeArrastarKanban = pode(usuario, "mover_projeto_kanban");
   const podeArquivar = pode(usuario, "arquivar_projeto");

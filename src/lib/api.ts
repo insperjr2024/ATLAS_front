@@ -147,3 +147,10 @@ export const CODIGO_BANCA_ABAIXO_DO_MINIMO = "banca_abaixo_do_minimo";
  *  precisa PEDIR a exceção, e a diretoria, decidindo um pedido de banca fora
  *  da janela (§13), pode conceder as duas coisas no mesmo ato. */
 export const CODIGO_CHOQUE_DE_HORARIO = "choque_de_horario";
+
+/** Tirar a última porta da tela de permissões: recusado.
+ *
+ *  Reage no modal de editar permissões, que precisa DESFAZER o checkbox
+ *  local — o backend não gravou, e deixar a caixa desmarcada na tela
+ *  mostraria um estado que não existe no servidor. */
+export const CODIGO_ULTIMO_ADMINISTRADOR = "ultimo_administrador_de_permissoes";

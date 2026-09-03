@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Columns3, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { pode } from "@/utils/permissoes";
 import { createTarefa, getTarefas, updateTarefa } from "@/lib/tarefas";
 import type { Tarefa } from "@/types/tarefa";
 import { getColunas, type ColunaTarefa } from "@/lib/colunas-tarefa";
@@ -128,8 +127,8 @@ export function ProjetoTarefas() {
             {vencidas > 0 && ` · ${vencidas} vencida${vencidas > 1 ? "s" : ""}`}
           </PageCardTitle>
           <HeaderAcoes>
-            {/* Configurar o board é da diretoria, e só deste projeto. */}
-            {pode(usuario, "configurar_colunas") && (
+            {/* Redesenhar o board, e só deste projeto. */}
+            {usuario?.permissoes.pode_configurar_colunas && (
               <PageButtonSm
                 type="button"
                 $variant="outline"

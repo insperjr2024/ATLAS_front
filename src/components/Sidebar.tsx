@@ -166,7 +166,7 @@ const navItems: NavItemConfig[] = [
     label: "Calendários base",
     path: "/calendarios-base",
     grupo: "sistema",
-    visible: (c) => c.pode_administrar_configuracoes,
+    visible: (c) => c.pode_gerir_calendarios_base,
   },
   {
     icon: Settings,

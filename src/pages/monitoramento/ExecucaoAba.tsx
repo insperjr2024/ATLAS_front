@@ -19,10 +19,12 @@ import {
 import { EstadoVazio } from "@/components/EstadoVazio";
 import {
   BarraFiltros,
+  BotaoAlternativa,
   CelulaDias,
   ConteudoCarregando,
   DataTable,
   FaixaResumo,
+  GrupoBotoes,
   ItemAtencao,
   LinkProjeto,
   ListaAtencaoGrid,
@@ -94,6 +96,12 @@ export function ExecucaoAba() {
      normaliza para a segunda, então o front não precisa saber onde a semana
      começa, e não corre o risco de discordar dele. */
   const [referencia, setReferencia] = useState<string | null>(null);
+  /* Qual lado do card de projetos está aberto. Abre em "sem" porque é o que
+     pede ação: quem entra no Monitoramento quer saber o que está parado, não
+     conferir quem está indo bem. O "com" existe para a pergunta seguinte —
+     "e o resto, está andando?" — que antes só era respondível varrendo a
+     tabela de sete colunas linha a linha. */
+  const [recorte, setRecorte] = useState<"sem" | "com">("sem");
 
   async function carregar() {
     if (!token) return;
@@ -137,10 +145,30 @@ export function ExecucaoAba() {
     () => tarefasOrdenadas.filter((t) => t.sem_tarefas || t.sem_tarefas_ativas),
     [tarefasOrdenadas],
   );
+  /* O complemento exato do de cima: os dois recortes somados são sempre a
+     população inteira da tabela, nunca um projeto nos dois nem em nenhum.
+     Por isso a condição é a NEGAÇÃO da outra, e não uma regra própria
+     ("ativas > 0") que pareceria igual e sairia do lugar no dia em que o
+     backend mudasse de ideia sobre o que conta como quadro zerado. */
+  const comTarefa = useMemo(
+    () => tarefasOrdenadas.filter((t) => !t.sem_tarefas && !t.sem_tarefas_ativas),
+    [tarefasOrdenadas],
+  );
+  const listaDoRecorte = recorte === "sem" ? semTarefa : comTarefa;
   // Ordenada por severidade logo acima, então cortar esconde a cauda e não o
   // que pede ação. Fica antes dos `return` de erro e carregando, hook depois
   // deles seria condicional.
-  const listaSemTarefa = usePaginacao(semTarefa);
+  const listaProjetos = usePaginacao(listaDoRecorte);
+
+  /* Trocar de lado volta para a primeira página. A página é derivada (o
+     `Math.min` de `usePaginacao` só corrige quando a lista nova é MENOR), então
+     alternando na página 3 de uma lista longa para outra igualmente longa a
+     pessoa cairia no meio da lista nova, sem ter rolado até lá, e leria o
+     começo dela como se não existisse. */
+  function trocarRecorte(qual: "sem" | "com") {
+    setRecorte(qual);
+    listaProjetos.irPara(0);
+  }
   // As duas tabelas da aba passam de 50 linhas com o núcleo cheio. Rolagem
   // interna dava ~5 telas dentro do card, capturando a roda do mouse; página
   // resolve sem aninhar rolagem.
@@ -220,34 +248,104 @@ export function ExecucaoAba() {
         </ResumoItem>
       </FaixaResumo>
 
-      {semTarefa.length > 0 && (
+      {/* UM card com dois lados, não dois cards empilhados: os recortes são
+          complementares e a pessoa alterna entre eles para responder a mesma
+          pergunta ("como está a execução?"). Dois cards colocariam um deles
+          fora da tela e fariam rolar para comparar. O card só some quando não
+          há projeto nenhum — aí a tabela abaixo já explica o porquê. */}
+      {dados.tarefas.length > 0 && (
         <PageCard>
           <PageCardHeader>
-            <PageCardTitle>Projetos sem tarefa atribuída ({semTarefa.length})</PageCardTitle>
+            <PageCardTitle>
+              {recorte === "sem"
+                ? `Projetos sem tarefa atribuída (${semTarefa.length})`
+                : `Projetos com tarefa atribuída (${comTarefa.length})`}
+            </PageCardTitle>
+            {/* Os números vão NO botão: sem eles, ver quantos estão do outro
+                lado exigiria clicar para descobrir, e o par de contagens é
+                metade da informação (11 parados de 19 é uma leitura bem
+                diferente de 11 de 200). */}
+            <GrupoBotoes role="group" aria-label="Recorte dos projetos">
+              <BotaoAlternativa
+                type="button"
+                $ativo={recorte === "sem"}
+                aria-pressed={recorte === "sem"}
+                onClick={() => trocarRecorte("sem")}
+              >
+                Sem tarefa ({semTarefa.length})
+              </BotaoAlternativa>
+              <BotaoAlternativa
+                type="button"
+                $ativo={recorte === "com"}
+                aria-pressed={recorte === "com"}
+                onClick={() => trocarRecorte("com")}
+              >
+                Com tarefa ({comTarefa.length})
+              </BotaoAlternativa>
+            </GrupoBotoes>
           </PageCardHeader>
           <PageCardContent>
-            <ConteudoPaginado estado={listaSemTarefa}>
-              <ListaAtencaoGrid>
-                {listaSemTarefa.visiveis.map((linha) => (
-                  <ItemAtencao key={linha.projeto_id} $nivel={nivelSemTarefa(linha)}>
-                    <strong>
-                      <LinkProjeto to={`/projetos/${linha.projeto_id}/tarefas`} state={VOLTAR_PARA_AQUI}>
-                        {linha.projeto_nome}
-                      </LinkProjeto>{" "}
-                      {/* Mesmos tons da coluna "Ativas" da tabela abaixo, para as
-                          duas leituras da mesma situação não se contradizerem. */}
-                      {linha.sem_tarefas ? (
-                        <Pilula $tom="alerta">Nunca recebeu tarefa</Pilula>
-                      ) : (
-                        <Pilula $tom="atencao">Quadro zerado</Pilula>
-                      )}
-                    </strong>
-                    <span>{motivoSemTarefa(linha)}</span>
-                  </ItemAtencao>
-                ))}
-              </ListaAtencaoGrid>
-            </ConteudoPaginado>
-            <Paginacao estado={listaSemTarefa} />
+            {listaDoRecorte.length === 0 ? (
+              /* Lado vazio é notícia, não defeito: nenhum projeto parado é o
+                 objetivo da tela. O texto aponta o outro botão, senão a pessoa
+                 lê "nenhum" achando que o filtro de frente escondeu tudo. */
+              recorte === "sem" ? (
+                <EstadoVazio
+                  causa="vazio"
+                  titulo="Nenhum projeto sem tarefa atribuída"
+                  motivo="Todos os projetos desta visão têm tarefa ativa no quadro. Veja como estão em “Com tarefa”, aqui em cima."
+                />
+              ) : (
+                <EstadoVazio
+                  causa="vazio"
+                  titulo="Nenhum projeto com tarefa ativa"
+                  motivo="Todos os projetos desta visão estão parados — eles aparecem em “Sem tarefa”, aqui em cima."
+                />
+              )
+            ) : (
+              <>
+                <ConteudoPaginado estado={listaProjetos}>
+                  <ListaAtencaoGrid>
+                    {listaProjetos.visiveis.map((linha) => (
+                      <ItemAtencao
+                        key={linha.projeto_id}
+                        $nivel={recorte === "sem" ? nivelSemTarefa(linha) : nivelComTarefa(linha)}
+                      >
+                        <strong>
+                          <LinkProjeto
+                            to={`/projetos/${linha.projeto_id}/tarefas`}
+                            state={VOLTAR_PARA_AQUI}
+                          >
+                            {linha.projeto_nome}
+                          </LinkProjeto>{" "}
+                          {/* Mesmos tons da coluna "Ativas" da tabela abaixo, para as
+                              duas leituras da mesma situação não se contradizerem. */}
+                          {recorte === "sem" ? (
+                            linha.sem_tarefas ? (
+                              <Pilula $tom="alerta">Nunca recebeu tarefa</Pilula>
+                            ) : (
+                              <Pilula $tom="atencao">Quadro zerado</Pilula>
+                            )
+                          ) : linha.vencidas > 0 ? (
+                            <Pilula $tom="alerta">
+                              {linha.vencidas} vencida{linha.vencidas === 1 ? "" : "s"}
+                            </Pilula>
+                          ) : (
+                            <Pilula $tom="neutro">
+                              {linha.ativas} ativa{linha.ativas === 1 ? "" : "s"}
+                            </Pilula>
+                          )}
+                        </strong>
+                        <span>
+                          {recorte === "sem" ? motivoSemTarefa(linha) : resumoComTarefa(linha)}
+                        </span>
+                      </ItemAtencao>
+                    ))}
+                  </ListaAtencaoGrid>
+                </ConteudoPaginado>
+                <Paginacao estado={listaProjetos} />
+              </>
+            )}
           </PageCardContent>
         </PageCard>
       )}
@@ -507,6 +605,37 @@ function nivelSemTarefa(linha: LinhaTarefas): NivelSeveridade {
   if (linha.dias_uteis_sem_tarefa >= 10) return "critica";
   if (linha.dias_uteis_sem_tarefa >= 5) return "media";
   return "leve";
+}
+
+/** O ponto do item no recorte "com tarefa": só sobe por tarefa VENCIDA, pela
+ *  mesma régua de dias úteis da tabela. Quem tem o quadro andando fica no
+ *  degrau mais baixo. */
+function nivelComTarefa(linha: LinhaTarefas): NivelSeveridade {
+  if (linha.vencidas === 0) return "leve";
+  if (linha.atraso_maximo_dias_uteis >= 10) return "critica";
+  if (linha.atraso_maximo_dias_uteis >= 5) return "media";
+  return "leve";
+}
+
+/** A frase do item no recorte "com tarefa": se a semana teve distribuição e,
+ *  quando houver, os números que a pílula não dá (o pior atraso e há quantos
+ *  dias úteis não entra tarefa nova). */
+function resumoComTarefa(linha: LinhaTarefas): string {
+  const partes = [
+    linha.distribuiu_na_semana ? "distribuiu na semana" : "não distribuiu na semana",
+  ];
+  if (linha.vencidas > 0) {
+    const dias = linha.atraso_maximo_dias_uteis;
+    partes.push(`maior atraso de ${dias}${plural(dias)} úteis`);
+  }
+  /* Só a partir de 5 (uma semana de trabalho): abaixo disso é ritmo normal, e
+     anunciar "sem tarefa nova há 2 dias úteis" em todo item treina a pessoa a
+     ignorar a linha justamente onde ela diz 14. */
+  if (linha.dias_uteis_sem_tarefa !== null && linha.dias_uteis_sem_tarefa >= 5) {
+    const dias = linha.dias_uteis_sem_tarefa;
+    partes.push(`sem tarefa nova há ${dias}${plural(dias)} úteis`);
+  }
+  return partes.join(" · ");
 }
 
 /**

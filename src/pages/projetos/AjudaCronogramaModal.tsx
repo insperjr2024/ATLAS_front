@@ -88,7 +88,7 @@ export function AjudaCronogramaModal({ onFechar }: Props) {
               <PassoTitulo>2. Ligue o botão do que quer marcar</PassoTitulo>
               <PassoTexto>
                 <strong>Kickoff</strong>, <strong>Reunião inicial</strong>,{" "}
-                <strong>Reunião geral</strong>, <strong>Banca</strong> ou{" "}
+                <strong>Reunião semanal</strong>, <strong>Banca</strong> ou{" "}
                 <strong>Entrega</strong>. O botão acende, e é isso que diz que o próximo
                 clique no calendário vale para ele.
               </PassoTexto>

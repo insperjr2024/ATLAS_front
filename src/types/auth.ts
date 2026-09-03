@@ -36,11 +36,38 @@ export interface Permissoes {
   /** Editar os formulários de Avaliação de Desempenho, mais sensível que
    *  administrar, porque muda o que todo mundo é avaliado. */
   pode_editar_formularios_desempenho: boolean;
-  /** Administrar Configurações e Calendários base, inclusive editar as
-   *  permissões de todas as posições, a mais sensível: quem tem essa caixa
-   *  pode conceder (ou tirar) qualquer permissão de qualquer posição,
-   *  inclusive a própria. */
+  /** O catálogo de Configurações: escopos, frentes, combinações e semestres.
+   *
+   *  ⚠ Já foi maior. Editar as permissões e mexer nos calendários base saíram
+   *  daqui em 2026-09-02 (`pode_administrar_permissoes` e
+   *  `pode_gerir_calendarios_base`): eram três trabalhos de riscos bem
+   *  diferentes debaixo de uma caixa só. */
   pode_administrar_configuracoes: boolean;
+  /** ⭐ Editar as permissões de todas as posições — inclusive a própria. A
+   *  mais sensível de todas: quem a tem pode conceder ou tirar qualquer
+   *  caixa de qualquer posição. A auto-escalada ainda exige já tê-la. */
+  pode_administrar_permissoes: boolean;
+  /** Calendários base: dias não letivos, importação do PDF do Insper e o
+   *  nome dos calendários de cada frente. */
+  pode_gerir_calendarios_base: boolean;
+  /** A aba Histórico do Monitoramento: o portfólio encerrado. Leitura pura;
+   *  era `require_gestao` (diretoria de projetos + gerente) por posição. */
+  pode_ver_historico_projetos: boolean;
+  /** O board macro de tarefas, todos os projetos juntos. Leitura pura. */
+  pode_ver_tarefas_gerais: boolean;
+  /** O board macro de cronogramas. Leitura pura. */
+  pode_ver_cronogramas_gerais: boolean;
+  /** Criar, renomear, reordenar e apagar coluna do kanban. Criar e mover
+   *  tarefa já eram caixa; só o redesenho da coluna seguia por posição. */
+  pode_configurar_colunas: boolean;
+  /** Responder a fila de Aprovações: pedido de dias de ajuste, exceção de
+   *  choque e banca fora da janela.
+   *
+   *  ⚠ Não cobre as seis linhas da fila. "Atrasos sem justificativa" é
+   *  escrito por quem conduz o projeto, e "solicitações de entrada" são
+   *  respondidas por quem o coordena — as duas aparecem lá como cobrança,
+   *  não como decisão da diretoria. */
+  pode_aprovar_pedidos: boolean;
   /** O Dashboard Bancas (`/avaliacoes`): notas por pergunta, histórico de
    *  bancas e os formulários de banca. Era travada em `diretor_projetos` pela
    *  matriz de `utils/permissoes.ts`, fora desta interface — delegar a leitura
@@ -123,6 +150,10 @@ export interface UsuarioResumo {
    *  `coordenador`: não muda acesso, só tira a pessoa da contagem de
    *  capacidade de coordenadores no Monitoramento. */
   coordenador_vendas: boolean;
+  /** BDR: consultor que também prospecta e fecha projeto. Só relevante
+   *  quando `posicao` é `consultor`. Não muda acesso, só faz a pessoa
+   *  aparecer na lista "quem vendeu o projeto" do cadastro. */
+  bdr: boolean;
   /** 1º a 8º semestre da graduação, `null` pra quem não é aluno em curso
    *  (diretoria, gerência já formada etc). */
   semestre_graduacao: number | null;
