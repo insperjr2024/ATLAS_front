@@ -6,6 +6,7 @@ import type { Tarefa } from "@/types/tarefa";
 import { getColunas, type ColunaTarefa } from "@/lib/colunas-tarefa";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TarefaDetalheModal } from "@/components/kanban/TarefaDetalheModal";
+import { MultiSelect } from "@/components/MultiSelect";
 import {
   PageStack,
   PageCard,
@@ -23,7 +24,6 @@ import {
   FieldGroup,
   FieldInput,
   FieldLabel,
-  FieldSelect,
   FormErrorText,
   ModalOverlay,
   ModalHeader,
@@ -174,6 +174,12 @@ export function ProjetoTarefas() {
           colunas={colunas}
           usuarios={usuarios}
           usuariosAtribuiveis={membrosDoProjeto}
+          consultorIds={projeto.consultor_ids}
+          irmasDoGrupo={
+            aberta.grupo_id == null
+              ? []
+              : tarefas.filter((t) => t.grupo_id === aberta.grupo_id && t.id !== aberta.id)
+          }
           onClose={() => setAberta(null)}
           onMudou={carregar}
         />
@@ -183,6 +189,7 @@ export function ProjetoTarefas() {
         <NovaTarefaModal
           projetoId={projeto.id}
           usuarios={membrosDoProjeto.filter((u) => u.ativo)}
+          consultorIds={projeto.consultor_ids}
           token={token}
           onClose={() => setCriando(false)}
           onCriada={async () => {
@@ -198,30 +205,45 @@ export function ProjetoTarefas() {
 function NovaTarefaModal({
   projetoId,
   usuarios,
+  consultorIds,
   token,
   onClose,
   onCriada,
 }: {
   projetoId: number;
   usuarios: { id: number; nome: string }[];
+  consultorIds: number[];
   token: string;
   onClose: () => void;
   onCriada: () => void;
 }) {
   const [titulo, setTitulo] = useState("");
-  const [responsavel, setResponsavel] = useState(String(usuarios[0]?.id ?? ""));
+  const [responsavelIds, setResponsavelIds] = useState<number[]>([]);
+  const [atribuicao, setAtribuicao] = useState<"conjunta" | "individual">("conjunta");
   const [prazo, setPrazo] = useState(() => new Date().toISOString().slice(0, 10));
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
+  // Só os consultores que estão de fato na lista atribuível.
+  const idsConsultores = consultorIds.filter((id) => usuarios.some((u) => u.id === id));
+
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
+    if (responsavelIds.length === 0) {
+      setErro("Escolha ao menos um responsável.");
+      return;
+    }
     setSalvando(true);
     setErro("");
     try {
       await createTarefa(
         projetoId,
-        { titulo: titulo.trim(), responsavel_id: Number(responsavel), prazo },
+        {
+          titulo: titulo.trim(),
+          responsavel_ids: responsavelIds,
+          prazo,
+          atribuicao: responsavelIds.length > 1 ? atribuicao : "conjunta",
+        },
         token,
       );
       onCriada();
@@ -255,21 +277,53 @@ function NovaTarefaModal({
                 />
               </FieldGroup>
               <FieldGroup>
-                <FieldLabel htmlFor="tarefa-responsavel">Responsável</FieldLabel>
-                <FieldSelect
-                  id="tarefa-responsavel"
-                  value={responsavel}
-                  onChange={(e) => setResponsavel(e.target.value)}
-                  required
-                  pesquisavel
-                >
-                  {usuarios.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nome}
-                    </option>
-                  ))}
-                </FieldSelect>
+                <FieldLabel>Responsáveis</FieldLabel>
+                <MultiSelect
+                  valores={responsavelIds.map(String)}
+                  onChange={(v) => setResponsavelIds(v.map(Number))}
+                  opcoes={usuarios.map((u) => ({ value: String(u.id), label: u.nome }))}
+                  rotuloVazio="Escolher pessoas…"
+                  resumo={(n) => `${n} responsáveis`}
+                  aria-label="Responsáveis pela tarefa"
+                />
+                {idsConsultores.length > 0 && (
+                  <PageButtonSm
+                    type="button"
+                    $variant="outline"
+                    onClick={() => setResponsavelIds(idsConsultores)}
+                    style={{ marginTop: "0.4rem", alignSelf: "flex-start" }}
+                  >
+                    Todos os consultores
+                  </PageButtonSm>
+                )}
               </FieldGroup>
+
+              {responsavelIds.length > 1 && (
+                <FieldGroup>
+                  <FieldLabel as="span">Como dividir</FieldLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.85rem" }}>
+                    <label style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                      <input
+                        type="radio"
+                        name="atribuicao"
+                        checked={atribuicao === "conjunta"}
+                        onChange={() => setAtribuicao("conjunta")}
+                      />
+                      Conjunta: um card, todos fazem juntos
+                    </label>
+                    <label style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                      <input
+                        type="radio"
+                        name="atribuicao"
+                        checked={atribuicao === "individual"}
+                        onChange={() => setAtribuicao("individual")}
+                      />
+                      Cada um faz a sua parte: um card por pessoa
+                    </label>
+                  </div>
+                </FieldGroup>
+              )}
+
               <FieldGroup>
                 <FieldLabel htmlFor="tarefa-prazo">Prazo</FieldLabel>
                 <FieldInput

@@ -289,6 +289,23 @@ export const SinalUrgencia = styled.span<{ $cor: string }>`
   cursor: help;
 `;
 
+/**
+ * "parte · 1/3" — o card faz parte de uma tarefa dividida ("cada um faz a
+ * sua parte"). O número é quantas partes já chegaram numa coluna que
+ * encerra, para a pessoa ver de relance quanto do grupo falta sem abrir o
+ * detalhe. Só aparece em card com `grupo_id`.
+ */
+export const GrupoTag = styled.span`
+  align-self: flex-start;
+  padding: 0.05rem 0.4rem;
+  border-radius: ${theme.borderRadius.full};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.secondary};
+  font-size: ${theme.fontSize.xs};
+  font-variant-numeric: tabular-nums;
+  color: ${theme.colors.mutedForeground};
+`;
+
 export const ColunaVazia = styled.p`
   margin: 0;
   padding: ${theme.spacing.sm} 0;

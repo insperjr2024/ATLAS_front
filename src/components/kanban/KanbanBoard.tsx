@@ -13,7 +13,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 
-import { SINAL_URGENCIA } from "@/lib/tarefas";
+import { SINAL_URGENCIA, rotuloResponsaveis } from "@/lib/tarefas";
 import { tonsDaColuna, type ColunaTarefa, type TonsColuna } from "@/lib/colunas-tarefa";
 import type { Tarefa } from "@/types/tarefa";
 import { StatusPilula } from "@/pages/projetos/Projetos.styled";
@@ -29,9 +29,14 @@ import {
   ColunaVazia,
   Contador,
   ContadorVencidas,
+  GrupoTag,
   Ponto,
   SinalUrgencia,
 } from "./Kanban.styled";
+
+/** `grupo_id` -> {feitas, total}: quantas partes de uma tarefa dividida já
+ *  estão numa coluna que encerra, e quantas partes o grupo tem no total. */
+type ProgressoGrupo = Map<number, { feitas: number; total: number }>;
 
 interface KanbanBoardProps {
   /** Vêm da API, a diretoria configura em /config. */
@@ -67,6 +72,21 @@ export function KanbanBoard({
     for (const coluna of colunas) mapa.set(coluna.id, tonsDaColuna(coluna.cor));
     return mapa;
   }, [colunas]);
+
+  // Uma passada por todas as tarefas: para cada grupo, quantas partes existem
+  // e quantas já pousaram numa coluna `encerra_tarefa`.
+  const progressoGrupo = useMemo<ProgressoGrupo>(() => {
+    const encerra = new Set(colunas.filter((c) => c.encerra_tarefa).map((c) => c.id));
+    const mapa: ProgressoGrupo = new Map();
+    for (const t of tarefas) {
+      if (t.grupo_id == null) continue;
+      const atual = mapa.get(t.grupo_id) ?? { feitas: 0, total: 0 };
+      atual.total += 1;
+      if (encerra.has(t.coluna_id)) atual.feitas += 1;
+      mapa.set(t.grupo_id, atual);
+    }
+    return mapa;
+  }, [tarefas, colunas]);
 
   const sensores = useSensors(
     // A distância mínima evita que um clique (no botão de excluir, por
@@ -109,6 +129,7 @@ export function KanbanBoard({
             tons={tons.get(coluna.id)!}
             tarefas={tarefas.filter((t) => t.coluna_id === coluna.id)}
             nomeUsuario={nomeUsuario}
+            progressoGrupo={progressoGrupo}
             onAbrir={onAbrir}
           />
         ))}
@@ -131,12 +152,14 @@ function ColunaDrop({
   tons,
   tarefas,
   nomeUsuario,
+  progressoGrupo,
   onAbrir,
 }: {
   coluna: ColunaTarefa;
   tons: TonsColuna;
   tarefas: Tarefa[];
   nomeUsuario: (id: number) => string;
+  progressoGrupo: ProgressoGrupo;
   onAbrir: (tarefa: Tarefa) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: coluna.id });
@@ -171,6 +194,7 @@ function ColunaDrop({
           tarefa={tarefa}
           tons={tons}
           nomeUsuario={nomeUsuario}
+          progresso={tarefa.grupo_id != null ? progressoGrupo.get(tarefa.grupo_id) : undefined}
           onAbrir={onAbrir}
         />
       ))}
@@ -182,11 +206,13 @@ function CardArrastavel({
   tarefa,
   tons,
   nomeUsuario,
+  progresso,
   onAbrir,
 }: {
   tarefa: Tarefa;
   tons: TonsColuna;
   nomeUsuario: (id: number) => string;
+  progresso?: { feitas: number; total: number };
   onAbrir: (tarefa: Tarefa) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: tarefa.id });
@@ -226,8 +252,15 @@ function CardArrastavel({
         )}
       </CardTopo>
       <CardMeta>
-        <span>{nomeUsuario(tarefa.responsavel_id)}</span>
+        <span title={tarefa.responsavel_ids.map(nomeUsuario).join(", ")}>
+          {rotuloResponsaveis(tarefa.responsavel_ids.map(nomeUsuario))}
+        </span>
       </CardMeta>
+      {progresso && (
+        <GrupoTag title="Esta tarefa foi dividida: uma parte por pessoa">
+          parte · {progresso.feitas}/{progresso.total}
+        </GrupoTag>
+      )}
     </Card>
   );
 }
