@@ -1,3 +1,5 @@
+import type { Posicao } from "./auth";
+
 /**
  * Os 4 estados da banca (, ).
  *
@@ -54,15 +56,17 @@ export interface BancaBase {
   composicao: ComposicaoDaFrente[];
 }
 
-/** Uma linha da composição da banca — a regra da frente e a contagem dela. */
+/**
+ * Uma linha da composição da banca — o PISO daquela frente e a contagem dela.
+ *
+ * ⚠ Só piso: não há mais teto por frente (2026-09-03). Completar acima do
+ * piso é "tanto faz a frente", e o único teto é o total da banca (`vagas`).
+ */
 export interface ComposicaoDaFrente {
   frente_id: number;
   frente_nome: string;
   min_membros: number;
-  /** 99 (`SEM_TETO` no backend) quando a combinação não tem teto configurado. */
-  max_membros: number;
   min_lideranca: number;
-  max_lideranca: number;
   /** Já sem quem ocupa a cota de liderança: ela é vaga A MAIS, não sai daqui. */
   membros: number;
   liderancas: number;
@@ -118,6 +122,15 @@ export interface BancaDetalhes {
   /** Plural: uma banca pode cobrir vários escopos do projeto de uma sentada. */
   escopos: string[];
   frentes: string[];
+  /** As mesmas frentes com id — a ficha agrupa os avaliadores por frente da
+   *  banca (liderança/membro de cada uma) e precisa casar `frente_ids` de
+   *  cada pessoa. Vazio na banca legada, sem frente vinculada. */
+  frentes_da_banca: { id: number; nome: string }[];
+  /** ⭐ O que a combinação de frentes exige e o que a banca tem hoje, aberto
+   *  por frente (mín./máx. de membro e de liderança). É o que deixa a ficha
+   *  dizer "Membros · Business 2/3" e marcar frente lotada. Mesmo shape do
+   *  `Banca.composicao`. Vazio na banca legada. */
+  composicao: ComposicaoDaFrente[];
   coordenador: string;
   /** Para a tela saber se o usuário logado é ele — comparar por nome quebra
    *  em homônimos e em qualquer diferença de grafia. */
@@ -152,6 +165,16 @@ export interface AvaliadorDaBanca {
   usuario_id: number;
   nome: string;
   presente: boolean;
+  /** A posição da pessoa hoje. */
+  posicao: Posicao;
+  /** ⭐ Categoria da EXIBIÇÃO (liderança x membro): gerente, coordenador e
+   *  diretoria são liderança. É mais grosso que a contagem por frente do
+   *  backend — a ficha quer dizer "é gestão", a contagem quer saber se a
+   *  cota daquela frente foi coberta. */
+  eh_lideranca: boolean;
+  /** As frentes a que a pessoa está vinculada. A ficha cruza com
+   *  `BancaDetalhes.frentes_da_banca` para agrupar por frente. */
+  frente_ids: number[];
   /** O rascunho ou envio dele nesta sessão — `null` se ainda não abriu. */
   avaliacao_id: number | null;
   ja_votou: boolean;

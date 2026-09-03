@@ -4,6 +4,7 @@ import { AlertTriangle, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   aceitaInscricao,
+  agruparAvaliadores,
   deleteBanca,
   getBanca,
   getBancasDoProjeto,
@@ -74,6 +75,11 @@ import {
   CampoValor,
   Colunas,
   Comentario,
+  GrupoAvaliadores,
+  GrupoCabecalho,
+  GrupoCota,
+  GrupoRotulo,
+  GrupoVazio,
   Lista,
   ListaNomes,
   MeuVoto,
@@ -383,25 +389,57 @@ function FichaDaBanca({
               <CampoValor>—</CampoValor>
             )}
           </Campo>
-          <Campo>
-            <CampoRotulo>Avaliadores escalados</CampoRotulo>
-            {banca.avaliadores.length ? (
-              <ListaNomes>
-                {banca.avaliadores.map((a) => (
-                  <li key={a.usuario_id}>
-                    {a.nome}
-                    {/* Escalado e compareceu são coisas diferentes: só quem
-                        esteve lá entra na conta dos votos. */}
-                    {banca.realizado_em && !a.presente && " · faltou"}
-                    {a.ja_votou && " · votou"}
-                  </li>
-                ))}
-              </ListaNomes>
-            ) : (
-              <CampoValor>ninguém escalado</CampoValor>
-            )}
-          </Campo>
         </Colunas>
+
+        {/* Avaliadores separados por (liderança | membro) × frente da banca.
+            O piso de cada bloco tem de ser gente DAQUELA frente; completar
+            acima dele, até o teto da banca, é "tanto faz a frente". */}
+        <Campo style={{ marginTop: "0.75rem" }}>
+          <CampoRotulo>Avaliadores escalados</CampoRotulo>
+          {banca.avaliadores.length === 0 ? (
+            <CampoValor>ninguém escalado</CampoValor>
+          ) : (
+            agruparAvaliadores(
+              banca.avaliadores,
+              banca.frentes_da_banca,
+              banca.composicao,
+            ).map((g) => {
+              const estado = g.cota
+                ? g.cota.faltando > 0
+                  ? "falta"
+                  : "ok"
+                : "ok";
+              return (
+                <GrupoAvaliadores key={g.chave}>
+                  <GrupoCabecalho>
+                    <GrupoRotulo>{g.rotulo}</GrupoRotulo>
+                    {g.cota && (
+                      <GrupoCota $estado={estado}>
+                        {g.cota.atual}/{g.cota.min}
+                        {g.cota.faltando > 0 && ` · falta ${g.cota.faltando}`}
+                      </GrupoCota>
+                    )}
+                  </GrupoCabecalho>
+                  {g.avaliadores.length === 0 ? (
+                    <GrupoVazio>ninguém</GrupoVazio>
+                  ) : (
+                    <ListaNomes>
+                      {g.avaliadores.map((a) => (
+                        <li key={a.usuario_id}>
+                          {a.nome}
+                          {/* Escalado e compareceu são coisas diferentes: só
+                              quem esteve lá entra na conta dos votos. */}
+                          {banca.realizado_em && !a.presente && " · faltou"}
+                          {a.ja_votou && " · votou"}
+                        </li>
+                      ))}
+                    </ListaNomes>
+                  )}
+                </GrupoAvaliadores>
+              );
+            })
+          )}
+        </Campo>
 
         <SecaoTitulo>Apuração</SecaoTitulo>
         <Placar>

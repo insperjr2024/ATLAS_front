@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api";
 import { paraDataUtc } from "@/lib/projetos";
 import type {
+  AvaliadorDaBanca,
   Banca,
   BancaDetalhes,
   ComposicaoDaFrente,
@@ -327,6 +328,107 @@ export function resumoDoQueFalta(composicao: ComposicaoDaFrente[] | undefined): 
       return partes.join(" · ");
     })
     .join(" · ");
+}
+
+/* ------------------------------------------------------------------ */
+/* Agrupamento dos avaliadores na ficha da banca                       */
+/* ------------------------------------------------------------------ */
+
+export interface CotaDoGrupo {
+  atual: number;
+  /** O piso DAQUELA frente — quem completa acima disso pode ser de qualquer
+   *  frente, então não existe "máximo por grupo". */
+  min: number;
+  faltando: number;
+}
+
+export interface GrupoDeAvaliadores {
+  chave: string;
+  rotulo: string;
+  categoria: "lideranca" | "membro";
+  /** `null` no bloco "Outras frentes". */
+  frente_id: number | null;
+  avaliadores: AvaliadorDaBanca[];
+  /** Só nas frentes da banca (o bloco "Outras frentes" não tem piso). */
+  cota: CotaDoGrupo | null;
+}
+
+/**
+ * Os avaliadores escalados separados por (liderança | membro) × frente da
+ * banca, com o bloco "Outras frentes" para quem avalia sem ser de nenhuma
+ * delas. É o que deixa a ficha mostrar o que ainda falta para o piso.
+ *
+ * ⚠ A CATEGORIA (`eh_lideranca`) e as FRENTES de cada pessoa vêm do backend
+ * já resolvidas — refazer isso aqui era o jeito de a ficha divergir da
+ * contagem. O piso (`min_membros`/`min_lideranca`) vem de `composicao`, a
+ * mesma que a tela de alocação usa. O teto é da banca INTEIRA (`vagas`), não
+ * de cada frente — completar acima do piso é "tanto faz a frente".
+ *
+ * Numa banca de uma frente só, o rótulo não repete o nome dela ("Lideranças"
+ * em vez de "Lideranças · Business"). Alguém vinculado a duas frentes da
+ * banca aparece nos dois blocos — está cobrindo as duas.
+ */
+export function agruparAvaliadores(
+  avaliadores: AvaliadorDaBanca[],
+  frentesDaBanca: { id: number; nome: string }[],
+  composicao: ComposicaoDaFrente[] | undefined,
+): GrupoDeAvaliadores[] {
+  const comp = new Map((composicao ?? []).map((c) => [c.frente_id, c]));
+  const idsDaBanca = new Set(frentesDaBanca.map((f) => f.id));
+  const umaFrenteSo = frentesDaBanca.length <= 1;
+  const grupos: GrupoDeAvaliadores[] = [];
+
+  const cotaDe = (
+    c: ComposicaoDaFrente | undefined,
+    categoria: "lideranca" | "membro",
+  ): CotaDoGrupo | null => {
+    if (!c) return null;
+    const atual = categoria === "lideranca" ? c.liderancas : c.membros;
+    const min = categoria === "lideranca" ? c.min_lideranca : c.min_membros;
+    return { atual, min, faltando: Math.max(0, min - atual) };
+  };
+
+  for (const f of frentesDaBanca) {
+    const c = comp.get(f.id);
+    for (const categoria of ["lideranca", "membro"] as const) {
+      grupos.push({
+        chave: `${categoria}-${f.id}`,
+        rotulo:
+          (categoria === "lideranca" ? "Lideranças" : "Membros") +
+          (umaFrenteSo ? "" : ` · ${f.nome}`),
+        categoria,
+        frente_id: f.id,
+        avaliadores: avaliadores.filter(
+          (a) =>
+            a.eh_lideranca === (categoria === "lideranca") && a.frente_ids.includes(f.id),
+        ),
+        cota: cotaDe(c, categoria),
+      });
+    }
+  }
+
+  const forasDaBanca = (a: AvaliadorDaBanca) =>
+    !a.frente_ids.some((id) => idsDaBanca.has(id));
+  for (const categoria of ["lideranca", "membro"] as const) {
+    const lista = avaliadores.filter(
+      (a) => a.eh_lideranca === (categoria === "lideranca") && forasDaBanca(a),
+    );
+    if (lista.length === 0) continue;
+    grupos.push({
+      chave: `${categoria}-outras`,
+      rotulo:
+        (categoria === "lideranca" ? "Lideranças" : "Membros") +
+        (frentesDaBanca.length === 0 ? "" : " · outras frentes"),
+      categoria,
+      frente_id: null,
+      avaliadores: lista,
+      cota: null,
+    });
+  }
+
+  // Blocos sem ninguém E sem cota não dizem nada — sai. Os com cota ficam
+  // (é o "0/1 liderança, falta 1" que a pessoa que escala precisa ver).
+  return grupos.filter((g) => g.avaliadores.length > 0 || g.cota !== null);
 }
 
 /**

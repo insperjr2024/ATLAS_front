@@ -157,8 +157,13 @@ export function BancaFormModal({
    */
   useEffect(() => {
     const focoAnterior = document.activeElement as HTMLElement | null;
-    const overflowAnterior = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Trava no `<html>`, não no `<body>`: `index.css` põe `overflow-x: clip`
+    // no `<html>`, o que o torna a fonte de overflow da viewport — um
+    // `overflow` no `<body>` não tem efeito nenhum na rolagem da página.
+    // Só o eixo Y, para o `clip` do X seguir valendo.
+    const raiz = document.documentElement;
+    const overflowAnterior = raiz.style.overflowY;
+    raiz.style.overflowY = "hidden";
     primeiroCampoRef.current?.focus();
 
     function aoTeclar(e: KeyboardEvent) {
@@ -185,7 +190,7 @@ export function BancaFormModal({
     window.addEventListener("keydown", aoTeclar);
     return () => {
       window.removeEventListener("keydown", aoTeclar);
-      document.body.style.overflow = overflowAnterior;
+      raiz.style.overflowY = overflowAnterior;
       focoAnterior?.focus?.();
     };
   }, []);

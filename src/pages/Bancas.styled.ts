@@ -817,6 +817,10 @@ export const FormModalBody = styled(BaseModalBody)`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Sem isto, rolar até o fim do corpo "encadeia" para a página atrás e ela
+     rola junto (o modal é filho de um overlay \`position: fixed\`, que não
+     segura a rolagem por si só). */
+  overscroll-behavior: contain;
 
   /*
    * A linha das três listas de marcar deste formulário — escopos, consultores

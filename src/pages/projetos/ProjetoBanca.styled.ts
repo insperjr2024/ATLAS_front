@@ -33,6 +33,52 @@ export const ListaNomes = styled.ul`
   color: ${theme.colors.foreground};
 `;
 
+/* ---- Avaliadores agrupados por (liderança|membro) × frente ---- */
+
+export const GrupoAvaliadores = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+
+  & + & {
+    margin-top: 0.5rem;
+  }
+`;
+
+export const GrupoCabecalho = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+`;
+
+export const GrupoRotulo = styled.span`
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
+`;
+
+/**
+ * "2/3" ao lado do rótulo do grupo. `$estado` pinta: falta gente
+ * (destructive), lotado (warning) ou completo (mutedForeground).
+ */
+export const GrupoCota = styled.span<{ $estado: "falta" | "lotado" | "ok" }>`
+  font-size: ${theme.fontSize.xs};
+  font-variant-numeric: tabular-nums;
+  color: ${({ $estado }) =>
+    $estado === "falta"
+      ? theme.colors.destructive
+      : $estado === "lotado"
+        ? theme.colors.warning
+        : theme.colors.mutedForeground};
+`;
+
+export const GrupoVazio = styled.span`
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  padding-left: 1rem;
+`;
+
 /**
  * A linha de uma TENTATIVA. A borda esquerda carrega o veredito — é o canal
  * que sobrevive a uma lista de três ou quatro sessões empilhadas.
