@@ -145,13 +145,13 @@ const PERMISSOES = [
     campo: "pode_ver_dashboard_bancas" as const,
     titulo: "Ver o Dashboard Bancas",
     descricao:
-      "Abrir o Dashboard Bancas: notas por pergunta, histórico de bancas e a edição dos formulários de banca. Não é o formulário da Avaliação de Desempenho, que tem caixa própria acima.",
+      "Abrir o Dashboard Bancas: notas por pergunta, histórico de bancas e a edição dos formulários de banca. Não inclui os formulários da Avaliação de Desempenho, que são outra permissão.",
   },
   {
     campo: "pode_administrar_configuracoes" as const,
     titulo: "Administrar Configurações",
     descricao:
-      "O catálogo desta tela: frentes, escopos, combinações e semestres. Editar permissões e mexer nos calendários base têm caixa própria, logo abaixo.",
+      "O catálogo desta tela: frentes, escopos, combinações e semestres. Editar permissões e mexer nos calendários base são outras permissões, à parte desta.",
   },
   {
     campo: "pode_administrar_permissoes" as const,
@@ -187,7 +187,7 @@ const PERMISSOES = [
     campo: "pode_configurar_colunas" as const,
     titulo: "Configurar as colunas do kanban",
     descricao:
-      "Criar, renomear, reordenar e apagar coluna do quadro de tarefas de um projeto. Criar e mover tarefa são as caixas de cima; esta é redesenhar o fluxo.",
+      "Criar, renomear, reordenar e apagar coluna do quadro de tarefas de um projeto. Diferente de criar e mover tarefa, que são outras permissões: esta redesenha o fluxo do quadro.",
   },
   {
     campo: "pode_aprovar_pedidos" as const,
@@ -199,7 +199,7 @@ const PERMISSOES = [
     campo: "pode_ver_todos_projetos" as const,
     titulo: "Ver todos os projetos, de qualquer frente",
     descricao:
-      "A única caixa que muda QUAIS projetos aparecem, as outras de cima só abrem funcionalidade, sem tocar nisso. Sem esta caixa, coordenador e consultor sempre ficam limitados ao que já estão alocados, mesmo com todo o resto marcado.",
+      "A única permissão que muda QUAIS projetos aparecem; as outras só abrem funcionalidade, sem tocar nisso. Sem esta, coordenador e consultor sempre ficam limitados aos projetos em que já estão alocados, mesmo com todo o resto marcado.",
   },
 ];
 
@@ -727,7 +727,7 @@ function ModalFrente({
                   próprio. */}
               <EmptyText style={{ fontSize: "0.7rem" }}>
                 Vale nas combinações de frentes que ninguém configurou ainda. Onde há
-                regra própria, quem manda é ela — ver "Composição por combinação de
+                regra própria, quem manda é ela, definida em "Composição por combinação de
                 frentes".
               </EmptyText>
             </FieldGroup>
