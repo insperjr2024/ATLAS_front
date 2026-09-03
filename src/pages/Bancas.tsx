@@ -949,6 +949,10 @@ function SecaoBancas({
       ? dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
       : "";
     const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
+    // Independe da `acao`: a seção "Com alocação máxima" mostra o selo de
+    // ESTADO (`acao === "nenhuma"`), e "Aberta para inscrições" numa banca
+    // cheia se contradiz. Aqui a inscrição está fechada de fato.
+    const alocacaoCompleta = banca.alocados >= banca.vagas;
     const podeGerenciar =
       gerenciar &&
       usuarioId != null &&
@@ -1068,11 +1072,14 @@ function SecaoBancas({
                 ) : (
                   <PageBadge $tone="success">{banca.vagas - banca.alocados} vaga(s)</PageBadge>
                 ))}
-              {acao === "nenhuma" && (
-                <PageBadge $tone={tomDoStatusBanca(banca.status)}>
-                  {ROTULO_STATUS_BANCA[banca.status]}
-                </PageBadge>
-              )}
+              {acao === "nenhuma" &&
+                (alocacaoCompleta && banca.status === "aberta" ? (
+                  <PageBadge $tone="default">Lotada</PageBadge>
+                ) : (
+                  <PageBadge $tone={tomDoStatusBanca(banca.status)}>
+                    {ROTULO_STATUS_BANCA[banca.status]}
+                  </PageBadge>
+                ))}
               {/* A banca que ainda não fecha a composição, dita em
                   gente e em frente — "Faltam 2" sozinho manda
                   procurar quem, e a resposta está aqui do lado. */}
