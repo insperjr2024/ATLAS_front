@@ -70,39 +70,27 @@ export function createAvaliacao(
   });
 }
 
-/** O que a apuração devolve junto com o envio — a conta dos votos até agora. */
-export type Apuracao = {
-  /** "aprovada" | "nao_aprovada" | null (ainda sem veredito) */
-  resultado: string | null;
-  aprovacoes: number;
-  reprovacoes: number;
-  /** Tamanho do eleitorado: quantos votos a banca espera. */
-  esperados: number;
-  /** "maioria" | "empate" | "sem_votos" | "aguardando" */
-  motivo: string;
-};
-
 /**
- * Envia a avaliação COM o voto que decide a banca (§8).
+ * Envia a avaliação — notas e feedback pedagógico (§8).
  *
- * ⭐ Rota própria (`POST .../submeter`), não mais o `PATCH` genérico: o voto é
- * obrigatório e o backend apura na hora — por isso a resposta traz a contagem,
- * para a tela dizer "3 de 4 votaram" sem recarregar.
+ * ⭐ Rota própria (`POST .../submeter`), não o `PATCH` genérico: submeter tem
+ * pré-condições (banca realizada, dentro do prazo, não reenviar).
+ *
+ * ⚠ Não decide mais a banca. Quem aprova é diretoria + gerente da frente —
+ * ver `registrarAprovacaoBanca` em `lib/bancas.ts`.
  */
 export function submeterAvaliacao(
   avaliacaoId: number,
-  votoAprovacao: boolean,
   comentarioFeedback: string | null,
   token: string,
 ) {
   const comentario = comentarioFeedback?.trim();
-  return apiFetch<{ id: number; status: string; voto_aprovacao: boolean; apuracao: Apuracao }>(
+  return apiFetch<{ id: number; status: string; comentario_feedback: string | null }>(
     `/avaliacoes/${avaliacaoId}/submeter`,
     {
       method: "POST",
       token,
       body: JSON.stringify({
-        voto_aprovacao: votoAprovacao,
         comentario_feedback: comentario || null,
       }),
     },

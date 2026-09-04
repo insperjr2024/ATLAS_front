@@ -138,19 +138,21 @@ export interface BancaDetalhes {
   /** Já sem o coordenador, que tem linha própria na ficha. */
   membros: string[];
   /** ⭐ Objetos, não nomes: a aba precisa do id para saber quem é o usuário
-   *  logado e se ele já votou nesta tentativa. */
+   *  logado e se ele já enviou a avaliação nesta tentativa. */
   avaliadores: AvaliadorDaBanca[];
   descricao_coordenador: string | null;
   /** `null` nas bancas legadas, sem escopo vendido vinculado. */
   projeto_id: number | null;
   /** ⭐ Cada TENTATIVA (§9) — a 1ª que reprovou continua aqui depois da 2ª. */
   sessoes: SessaoDeBanca[];
-  /** ⭐ Quem votou o quê, e o que escreveu. Só avaliações SUBMETIDAS. */
+  /** ⭐ As notas e o feedback de quem avaliou — pedagógico, não decide a
+   *  banca. Só avaliações SUBMETIDAS. */
   avaliacoes: AvaliacaoDaBanca[];
-  /** A conta dos votos da sessão em curso — leitura, não decide nada. */
-  apuracao: ApuracaoDaBanca;
-  /** Média das notas por critério. Outra dimensão que o voto: mede QUÃO BEM,
-   *  não se pode ir ao cliente. `null` quando ninguém preencheu notas. */
+  /** ⭐ Quem aprova a banca é diretoria + gerente da frente, não os
+   *  avaliadores (§5.5, §8). */
+  aprovacao: AprovacaoDaBanca;
+  /** Média das notas por critério. Outra dimensão que a aprovação: mede QUÃO
+   *  BEM, não se pode ir ao cliente. `null` quando ninguém preencheu notas. */
   nota_final: number | null;
 }
 
@@ -158,8 +160,7 @@ export interface BancaDetalhes {
  * Um avaliador escalado, com o estado dele NESTA tentativa.
  *
  * `presente` vem de `candidatura.confirmado`, marcado ao registrar a
- * realização — escalado e compareceu são coisas diferentes, e só quem
- * compareceu vota.
+ * realização — escalado e compareceu são coisas diferentes.
  */
 export interface AvaliadorDaBanca {
   usuario_id: number;
@@ -182,8 +183,7 @@ export interface AvaliadorDaBanca {
   coordenador_vendas: boolean;
   /** O rascunho ou envio dele nesta sessão — `null` se ainda não abriu. */
   avaliacao_id: number | null;
-  ja_votou: boolean;
-  voto_aprovacao: boolean | null;
+  ja_enviou: boolean;
   comentario_feedback: string | null;
 }
 
@@ -207,29 +207,57 @@ export interface NotaDoCriterio {
   resposta_texto: string | null;
 }
 
-/** O voto de um avaliador numa tentativa, com o que ele respondeu. */
+/** A avaliação de um avaliador numa tentativa — notas e feedback pedagógico. */
 export interface AvaliacaoDaBanca {
   id: number;
   avaliador: string;
   avaliador_id: number;
-  /** A tentativa a que este voto pertence. */
+  /** A tentativa a que esta avaliação pertence. */
   sessao: number;
-  /** `true` = aprovo. `null` nas avaliações anteriores ao voto existir. */
-  voto_aprovacao: boolean | null;
   comentario_feedback: string | null;
   submetida_em: string | null;
   /** ⭐ Critério a critério — é o que a aba abre ao clicar no nome. */
   notas: NotaDoCriterio[];
 }
 
-export interface ApuracaoDaBanca {
-  sessao: number;
-  aprovacoes: number;
-  reprovacoes: number;
-  /** Tamanho do eleitorado: quantos votos a banca espera. */
-  esperados: number;
-  /** "maioria" | "empate" | "sem_votos" | "aguardando" */
-  motivo: string;
+/** A assinatura da diretoria de projetos — vale para a banca inteira. */
+export interface AprovacaoDiretoria {
+  aprovado: boolean;
+  usuario_nome: string | null;
+  em: string | null;
+  nota: string | null;
+}
+
+/** A assinatura do gerente de UMA frente da banca — uma por frente. */
+export interface AprovacaoGerente {
+  frente_id: number;
+  frente_nome: string;
+  /** `null` = esta frente ainda não teve seu gerente decidindo. */
+  aprovado: boolean | null;
+  usuario_nome: string | null;
+  em: string | null;
+  nota: string | null;
+  /**
+   * ⭐ Quem PODE dar esta assinatura: os gerentes vinculados à frente, ou,
+   * quando ninguém está vinculado ainda, todo gerente ativo do sistema (para
+   * a tela indicar a quem pedir o cadastro em vez de destravar sozinha).
+   * Pode vir vazio só se não houver gerente nenhum cadastrado em lugar
+   * nenhum.
+   */
+  possiveis_gerentes: string[];
+}
+
+/**
+ * Quem aprova a banca é diretoria de projetos OU gerente de qualquer frente
+ * dela (§5.5, §8): qualquer um decide sozinho, sem esperar os demais.
+ */
+export interface AprovacaoDaBanca {
+  resultado: ResultadoBanca | null;
+  /** `null` = a diretoria ainda não decidiu. */
+  aprovacao_diretoria: AprovacaoDiretoria | null;
+  /** Vazio quando nenhuma frente da banca tem gerente cadastrado — nesse
+   *  caso só a diretoria decide. */
+  aprovacao_gerente: AprovacaoGerente[];
 }
 
 export interface Candidatura {
@@ -345,12 +373,10 @@ export interface Avaliacao {
   banca_id: number;
   avaliador_id: number;
   formulario_id: number;
-  /** ⭐ A tentativa a que este voto pertence (§9). `banca_id` é o mesmo na 1ª e
-   *  na 2ª banca; é a sessão que as separa. Opcional porque as avaliações
-   *  anteriores à coluna não a trazem — o padrão é 1. */
+  /** ⭐ A tentativa a que esta avaliação pertence (§9). `banca_id` é o mesmo
+   *  na 1ª e na 2ª banca; é a sessão que as separa. Opcional porque as
+   *  avaliações anteriores à coluna não a trazem — o padrão é 1. */
   sessao?: number;
-  /** ⭐ `true` = aprovo. É a maioria destes votos que decide a banca (§8). */
-  voto_aprovacao?: boolean | null;
   status: "rascunho" | "submetida";
   comentario_feedback: string | null;
   submetida_em: string | null;
@@ -393,4 +419,6 @@ export interface HistoricoBanca {
    *  lados da mesma banca (ver `descricao_coordenador` em `Banca`). */
   descricao_coordenador: string | null;
   descricao_coordenador_enviada_em: string | null;
+  /** `null` = aconteceu, mas ainda espera diretoria ou gerente decidir. */
+  resultado: ResultadoBanca | null;
 }

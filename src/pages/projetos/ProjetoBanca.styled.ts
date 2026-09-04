@@ -137,31 +137,6 @@ export const Comentario = styled.blockquote`
   white-space: pre-wrap;
 `;
 
-/**
- * A conta dos votos em curso. Fundo `muted` porque é contexto, não veredito —
- * o veredito tem badge própria no cabeçalho.
- */
-export const Placar = styled.div`
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  border-radius: ${theme.borderRadius.md};
-  background: ${theme.colors.muted};
-  font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.foreground};
-`;
-
-export const PlacarNumero = styled.strong<{ $tom: "aprova" | "reprova" | "neutro" }>`
-  color: ${({ $tom }) =>
-    $tom === "aprova"
-      ? theme.colors.success
-      : $tom === "reprova"
-        ? theme.colors.destructive
-        : theme.colors.foreground};
-`;
-
 export const SecaoTitulo = styled.h3`
   margin: ${theme.spacing.md} 0 ${theme.spacing.sm};
   font-size: ${theme.fontSize.sm};

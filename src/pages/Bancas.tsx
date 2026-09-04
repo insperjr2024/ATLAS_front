@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { RealizarBancaModal } from "./RealizarBancaModal";
 import { AlocarPessoasModal } from "./AlocarPessoasModal";
 import { Desempenho } from "./Desempenho";
@@ -19,17 +19,20 @@ import {
   getEquipesProjeto,
   getEscopos,
   getEscoposVendidos,
+  getBancasEsperandoAprovacao,
   getFrentes,
   podeGerenciarBanca,
   pushAlocacao,
+  quemPodeAprovar,
   realizarBanca,
+  registrarAprovacaoBanca,
   registrarDescricaoCoordenador,
-  registrarResultado,
   resumoDoQueFalta,
   ROTULO_STATUS_BANCA,
   totalFaltando,
   tomDoStatusBanca,
 } from "@/lib/bancas";
+import type { BancaEsperandoAprovacao } from "@/lib/bancas";
 import { getUsuarios } from "@/lib/usuarios";
 import {
   createAvaliacao,
@@ -44,8 +47,15 @@ import {
 import { CalendarioBancas } from "@/components/bancas/CalendarioBancas";
 import { BancaFormModal } from "@/components/bancas/BancaFormModal";
 import { AvaliadoresAgrupados } from "@/components/bancas/AvaliadoresAgrupados";
+import { AprovacaoLinha, FormDecisao } from "@/pages/monitoramento/AprovacaoLinha";
+import {
+  AprovacaoMeta,
+  AtrasoTitulo,
+  LinkProjeto,
+  ListaSimples,
+  Pilula,
+} from "@/pages/monitoramento/Monitoramento.styled";
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
-import { VotoBanca } from "@/components/VotoBanca";
 import { AlertModal } from "@/components/AlertModal";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { DescricaoQuote } from "@/styles/shared.styled";
@@ -67,6 +77,7 @@ import type {
   EscopoVendidoResumo,
   Frente,
   FormularioAtivo,
+  ResultadoBanca,
 } from "@/types/banca";
 import type { SolicitacaoTroca } from "@/types/notificacao";
 import type { UsuarioResumo } from "@/types/auth";
@@ -150,7 +161,7 @@ import {
   CardHeaderTitulo,
 } from "./Bancas.styled";
 
-type AbaBancas = "meus" | "alocacao" | "avaliacao" | "desempenho" | "calendario";
+type AbaBancas = "meus" | "alocacao" | "avaliacao" | "aprovacao" | "desempenho" | "calendario";
 
 function porDataMaisProxima(a: Banca, b: Banca): number {
   // ⚠ Banca SEM data vai para o fim, e isto não é detalhe: `data_hora` é nula
@@ -224,12 +235,22 @@ export function Bancas() {
   const [criarAberto, setCriarAberto] = useState(false);
   const [bancaRealizar, setBancaRealizar] = useState<Banca | null>(null);
   const [bancaAlocar, setBancaAlocar] = useState<Banca | null>(null);
-  /** ⭐ A banca cujo resultado a diretoria vai registrar à mão (§8). */
+  /** ⭐ A banca que a diretoria ou o gerente da frente vai aprovar/reprovar
+   *  (§5.5, §8) — o atalho de fora do projeto. */
   const [bancaResultado, setBancaResultado] = useState<Banca | null>(null);
+  /** A fila "Esperando aprovação" — bancas realizadas sem veredito. */
+  const [esperandoAprovacao, setEsperandoAprovacao] = useState<BancaEsperandoAprovacao[]>([]);
   // `?aba=calendario` é o link do botão "Bancas" em /calendario — sem ler
   // a query aqui, quem clicasse lá sempre caía na aba padrão (alocação) e
   // precisava trocar de aba à mão.
-  const ABAS_VALIDAS: AbaBancas[] = ["meus", "alocacao", "avaliacao", "desempenho", "calendario"];
+  const ABAS_VALIDAS: AbaBancas[] = [
+    "meus",
+    "alocacao",
+    "avaliacao",
+    "aprovacao",
+    "desempenho",
+    "calendario",
+  ];
   const abaDaQuery = searchParams.get("aba") as AbaBancas | null;
   const [aba, setAba] = useState<AbaBancas>(
     abaDaQuery && ABAS_VALIDAS.includes(abaDaQuery) ? abaDaQuery : "alocacao",
@@ -243,13 +264,17 @@ export function Bancas() {
 
   const podeAgendar = !!usuario?.permissoes.pode_definir_cronograma;
   const ehDiretor = ehDiretoriaDeProjetos(usuario);
+  /** ⭐ Quem decide a aprovação da banca (§5.5, §8) — diretoria de projetos ou
+   *  gerente de frente. Grosso de propósito: o backend recusa quem não for
+   *  gerente da frente DESTA banca especificamente. */
+  const podeAprovar = ehDiretor || usuario?.posicao === "gerente";
 
   async function recarregar() {
     if (!token || !usuario) return;
     setCarregando(true);
     setErro("");
     try {
-      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca] =
+      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca, esperandoAprovacaoResp] =
         await Promise.all([
           getBancas(token),
           getCandidaturas(token),
@@ -263,6 +288,9 @@ export function Bancas() {
           getEquipesProjeto(token),
           getFormularioAtivo(token).catch(() => null),
           getSolicitacoesTroca(token),
+          // Só quem decide (diretoria ou gerente) tem acesso à rota —
+          // pedir para os outros só devolveria 403 à toa.
+          podeAprovar ? getBancasEsperandoAprovacao(token) : Promise.resolve([]),
         ]);
       setBancas(bancasResp);
       setCandidaturas(candidaturasResp);
@@ -311,6 +339,7 @@ export function Bancas() {
         ),
       });
       setFormulario(formularioAtivo);
+      setEsperandoAprovacao(esperandoAprovacaoResp);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar bancas");
     } finally {
@@ -322,6 +351,19 @@ export function Bancas() {
     recarregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, usuario]);
+
+  /**
+   * ⭐ Atualiza só o que a decisão de aprovação mudou, sem recarregar a
+   * página inteira (`recarregar()` refaz TODAS as listas — pesado e visível
+   * para uma mudança que o próprio backend já devolveu pronta).
+   *
+   * `situacao` é a resposta de `registrarAprovacaoBanca`, a fonte da verdade
+   * do que ficou registrado — não um palpite local.
+   */
+  function handleAprovacaoDecidida(bancaId: number, resultado: ResultadoBanca | null) {
+    setBancas((atual) => atual.map((b) => (b.id === bancaId ? { ...b, resultado } : b)));
+    setEsperandoAprovacao((atual) => atual.filter((b) => b.banca_id !== bancaId));
+  }
 
   if (erro) {
     return (
@@ -572,6 +614,14 @@ export function Bancas() {
           Avaliação
           <TabCount>{paraAvaliar.length + realizadasSemAvaliador.length}</TabCount>
         </TabButton>
+        {/* ⭐ Diretoria de projetos e gerente de frente — quem decide a banca
+            hoje (§5.5, §8), não mais os avaliadores. */}
+        {podeAprovar && (
+          <TabButton type="button" $ativa={aba === "aprovacao"} onClick={() => setAba("aprovacao")}>
+            Esperando aprovação
+            <TabCount>{esperandoAprovacao.length}</TabCount>
+          </TabButton>
+        )}
         <TabButton type="button" $ativa={aba === "desempenho"} onClick={() => setAba("desempenho")}>
           Desempenho
         </TabButton>
@@ -604,6 +654,7 @@ export function Bancas() {
           onAlocarPessoas={setBancaAlocar}
           ehDiretorLista={ehDiretor}
           onRegistrarResultado={setBancaResultado}
+          podeAprovarLista={podeAprovar}
         />
       )}
 
@@ -622,6 +673,7 @@ export function Bancas() {
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
             onRegistrarResultado={setBancaResultado}
+          podeAprovarLista={podeAprovar}
             onAcao={handleDesalocar}
             onPedirTroca={handlePedirTroca}
             onConvidar={setBancaConvidar}
@@ -643,6 +695,7 @@ export function Bancas() {
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
             onRegistrarResultado={setBancaResultado}
+          podeAprovarLista={podeAprovar}
             onVerMais={setBancaDetalhe}
           />
           <SecaoBancas
@@ -658,6 +711,7 @@ export function Bancas() {
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
             onRegistrarResultado={setBancaResultado}
+          podeAprovarLista={podeAprovar}
             onVerMais={setBancaDetalhe}
           />
           <SecaoTrocas
@@ -684,6 +738,7 @@ export function Bancas() {
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
             onRegistrarResultado={setBancaResultado}
+          podeAprovarLista={podeAprovar}
             onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
             onVerMais={setBancaDetalhe}
           />
@@ -693,8 +748,8 @@ export function Bancas() {
               pendente só lista quem é avaliador. Sem esta seção elas existiam
               no banco e a tela inteira as ignorava.
 
-              Quem chega aqui registra o resultado pela própria seção — só a
-              diretoria, já que sem avaliador não há votação de onde apurar. */}
+              A decisão (diretoria + gerente da frente) acontece pela própria
+              seção, ou na aba "Esperando aprovação" ao lado. */}
           {realizadasSemAvaliador.length > 0 && (
             <SecaoBancas
               bancaDestacada={bancaDestacada}
@@ -707,6 +762,7 @@ export function Bancas() {
               gerenciar={podeAgendar}
               ehDiretorLista={ehDiretor}
               onRegistrarResultado={setBancaResultado}
+          podeAprovarLista={podeAprovar}
               onVerMais={setBancaDetalhe}
             />
           )}
@@ -714,6 +770,14 @@ export function Bancas() {
               não mostrar a mesma banca avaliada em dois lugares diferentes.
               Esta aba fica só com o que pede ação; o retrospecto mora lá. */}
         </SectionGroup>
+      )}
+
+      {aba === "aprovacao" && podeAprovar && (
+        <SecaoEsperandoAprovacao
+          itens={esperandoAprovacao}
+          token={token}
+          onDecidiu={handleAprovacaoDecidida}
+        />
       )}
 
       {aba === "desempenho" && <Desempenho embutido />}
@@ -727,6 +791,7 @@ export function Bancas() {
         onEditar={setBancaEditar}
         onExcluir={handleExcluir}
         onRegistrarResultado={setBancaResultado}
+          podeAprovarLista={podeAprovar}
         ehDiretor={!!ehDiretor}
         onDescricaoEnviada={recarregar}
       />
@@ -753,13 +818,13 @@ export function Bancas() {
       )}
 
       {bancaResultado && token && (
-        <RegistrarResultadoModal
+        <AprovarBancaModal
           banca={bancaResultado}
           token={token}
           onFechar={() => setBancaResultado(null)}
-          onRegistrou={() => {
+          onRegistrou={(resultado) => {
+            handleAprovacaoDecidida(bancaResultado.id, resultado);
             setBancaResultado(null);
-            recarregar();
           }}
         />
       )}
@@ -847,6 +912,7 @@ function SecaoBancas({
   onAlocarPessoas,
   onRegistrarResultado,
   ehDiretorLista,
+  podeAprovarLista,
   onPedirTroca,
   onConvidar,
   onCancelarTroca,
@@ -871,10 +937,13 @@ function SecaoBancas({
   onRealizar?: (banca: Banca) => void;
   /** Abre a alocação manual, só faz sentido enquanto a banca não aconteceu. */
   onAlocarPessoas?: (banca: Banca) => void;
-  /** Abre o registro de resultado, só faz sentido em banca já realizada. */
+  /** Abre a decisão de aprovação, só faz sentido em banca já realizada. */
   onRegistrarResultado?: (banca: Banca) => void;
   /** Alocar OUTRA pessoa é ação de diretoria, diferente de gerenciar. */
   ehDiretorLista?: boolean;
+  /** ⭐ Quem decide a aprovação (§5.5, §8): diretoria de projetos OU gerente
+   *  de frente — diferente de `ehDiretorLista`, que é só diretoria. */
+  podeAprovarLista?: boolean;
   onPedirTroca?: (bancaId: number) => void;
   /** Abre o picker de convite específico, alternativa ao pedido aberto. */
   onConvidar?: (banca: Banca) => void;
@@ -1005,7 +1074,7 @@ function SecaoBancas({
           (prazo?.prazoAvaliacao
             ? ` em ${formatarDataHora(prazo.prazoAvaliacao)}. `
             : ". ") +
-          "A plataforma não aceita mais o envio — avise a diretoria se esta avaliação ainda precisa entrar."
+          "A plataforma não aceita mais o envio. Avise a diretoria se esta avaliação ainda precisa entrar."
         : null;
 
     // Qualquer clique dentro do rodapé de ações não deve também
@@ -1157,19 +1226,16 @@ function SecaoBancas({
             )}
 
             {/* ⭐ Só quando a banca JÁ aconteceu e continua sem
-                veredito — e só para a diretoria, que é quem a rota
-                aceita (`require_diretor`). O caminho normal é o voto
-                dos avaliadores; este botão existe para o caso que o
-                voto não resolve: ninguém votou e o prazo venceu.
-                Mostrá-lo antes disso convidaria a diretoria a decidir
-                por cima de quem esteve na banca. */}
-            {ehDiretorLista && onRegistrarResultado && banca.realizado_em && !banca.resultado && (
+                veredito — e só para quem decide (diretoria de
+                projetos ou gerente de frente). O backend recusa quem
+                não for gerente da frente DESTA banca. */}
+            {podeAprovarLista && onRegistrarResultado && banca.realizado_em && !banca.resultado && (
               <PageButtonSm
                 $variant="outline"
                 type="button"
                 onClick={pararPropagacao(() => onRegistrarResultado(banca))}
               >
-                Registrar resultado
+                Aprovar banca
               </PageButtonSm>
             )}
             {acao === "deslocar" && minhaCandidatura && (
@@ -1198,7 +1264,7 @@ function SecaoBancas({
                       <PageButtonSm
                         $variant="outline"
                         type="button"
-                        title="Convida uma pessoa específica pra assumir sua vaga — só ela pode confirmar."
+                        title="Convida uma pessoa específica pra assumir sua vaga; só ela pode confirmar."
                         onClick={pararPropagacao(() => onConvidar(banca))}
                       >
                         Convidar alguém
@@ -1277,6 +1343,129 @@ function SecaoBancas({
               </FrenteGrupo>
             ))}
           </BancaCardScrollWrap>
+        )}
+      </PageCardContent>
+    </PageCard>
+  );
+}
+
+/**
+ * "Esperando aprovação" — bancas realizadas que ainda não têm decisão
+ * (diretoria de projetos ou gerente da frente, §5.5, §8).
+ *
+ * Qualquer um decide sozinho: diretoria de projetos ou o gerente de qualquer
+ * frente da banca aprova ou reprova, sem esperar mais ninguém. Não há mais
+ * prazo aberto tipo "ainda dá para esperar": a decisão é sempre possível
+ * assim que a banca aconteceu, por isso toda linha já oferece Aprovar e
+ * Reprovar direto, sem passo intermediário.
+ */
+function SecaoEsperandoAprovacao({
+  itens,
+  token,
+  onDecidiu,
+}: {
+  itens: BancaEsperandoAprovacao[];
+  token: string | null;
+  /** Atualiza o estado local com o resultado que o backend acabou de gravar
+   *  — sem recarregar a página inteira. */
+  onDecidiu: (bancaId: number, resultado: ResultadoBanca | null) => void;
+}) {
+  const [decidindo, setDecidindo] = useState<{ bancaId: number; aprovado: boolean } | null>(null);
+
+  return (
+    <PageCard id="fila-esperando-aprovacao">
+      <PageCardHeader>
+        <PageCardTitle>Esperando aprovação{itens.length > 0 && ` (${itens.length})`}</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
+        {itens.length === 0 ? (
+          <EmptyText>Toda banca realizada já tem resultado registrado.</EmptyText>
+        ) : (
+          <ListaSimples>
+            {itens.map((item) => {
+              const escopos = item.escopos.join(", ") || "nenhum escopo vinculado";
+
+              return (
+                <AprovacaoLinha
+                  key={item.banca_id}
+                  desde={item.realizado_em}
+                  titulo={
+                    <AtrasoTitulo>
+                      {item.projeto_id ? (
+                        <LinkProjeto to={`/projetos/${item.projeto_id}/banca`}>
+                          {item.projeto_nome}
+                        </LinkProjeto>
+                      ) : (
+                        <strong>{item.projeto_nome || "Banca"}</strong>
+                      )}
+                      <Pilula $tom="atencao">aguardando decisão</Pilula>
+                    </AtrasoTitulo>
+                  }
+                  acoes={
+                    decidindo?.bancaId === item.banca_id ? (
+                      <FormDecisao
+                        rotuloConfirmar={decidindo.aprovado ? "Confirmar aprovação" : "Confirmar reprovação"}
+                        exigeTexto={false}
+                        aviso={
+                          <EmptyText>
+                            Sua decisão sozinha já fecha o resultado da banca, sem esperar mais
+                            ninguém.
+                          </EmptyText>
+                        }
+                        onCancelar={() => setDecidindo(null)}
+                        onConfirmar={async () => {
+                          if (!token) return;
+                          const resposta = await registrarAprovacaoBanca(
+                            item.banca_id,
+                            decidindo.aprovado,
+                            null,
+                            token,
+                          );
+                          setDecidindo(null);
+                          onDecidiu(item.banca_id, resposta.resultado);
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <PageButtonSm
+                          type="button"
+                          onClick={() => setDecidindo({ bancaId: item.banca_id, aprovado: true })}
+                        >
+                          Aprovar
+                        </PageButtonSm>
+                        <PageButtonSm
+                          type="button"
+                          $variant="ghost"
+                          onClick={() => setDecidindo({ bancaId: item.banca_id, aprovado: false })}
+                        >
+                          Reprovar
+                        </PageButtonSm>
+                        {item.projeto_id && (
+                          <PageButtonSm as={Link} to={`/projetos/${item.projeto_id}/banca`} $variant="outline">
+                            Ver a banca
+                          </PageButtonSm>
+                        )}
+                      </>
+                    )
+                  }
+                >
+                  <AprovacaoMeta>
+                    <span>
+                      escopo: <strong>{escopos}</strong>
+                    </span>
+                    <span>
+                      realizada em <strong>{formatarDataHora(item.realizado_em)}</strong>
+                    </span>
+                  </AprovacaoMeta>
+                  <AprovacaoMeta>
+                    <span>
+                      pode aprovar: <strong>{quemPodeAprovar(item)}</strong>
+                    </span>
+                  </AprovacaoMeta>
+                </AprovacaoLinha>
+              );
+            })}
+          </ListaSimples>
         )}
       </PageCardContent>
     </PageCard>
@@ -1393,6 +1582,7 @@ function VerMaisModal({
   onExcluir,
   onRegistrarResultado,
   ehDiretor,
+  podeAprovarLista,
   onDescricaoEnviada,
 }: {
   banca: Banca | null;
@@ -1403,19 +1593,21 @@ function VerMaisModal({
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
   /**
-   * ⭐ Override da diretoria sobre o resultado (§8) — e o ÚNICO lugar de onde
-   * ele é sempre alcançável.
+   * ⭐ A aprovação (§5.5, §8) — e o ÚNICO lugar de onde ela é sempre
+   * alcançável.
    *
    * ⚠ O botão existe nos cards das listas, mas nenhuma delas contém a banca em
    * que ele é necessário: "Alocação" só mostra banca `aberta`/`atrasada`,
    * "Avaliação" exige candidatura própria e "Meus projetos" exige ser do
-   * grupo. Uma banca REALIZADA e sem veredito, de um projeto que o diretor não
-   * coordena, não aparecia em nenhuma — justamente a que a fila "Bancas sem
-   * resultado" manda ele resolver. Daqui ela é alcançável pela aba Calendário
-   * e por qualquer card.
+   * grupo. Uma banca REALIZADA e sem veredito, de um projeto que quem decide
+   * não coordena, não aparecia em nenhuma — justamente a que "Esperando
+   * aprovação" manda resolver. Daqui ela é alcançável pela aba Calendário e
+   * por qualquer card.
    */
   onRegistrarResultado?: (banca: Banca) => void;
   ehDiretor?: boolean;
+  /** ⭐ Diretoria OU gerente de frente — diferente de `ehDiretor` acima. */
+  podeAprovarLista?: boolean;
   onDescricaoEnviada?: () => void;
 }) {
   // A ficha completa — avaliadores com categoria e frente resolvidas, mais a
@@ -1546,9 +1738,9 @@ function VerMaisModal({
           )}
         </ModalBody>
         <ModalFooter>
-          {ehDiretor && onRegistrarResultado && banca.realizado_em && !banca.resultado && (
+          {podeAprovarLista && onRegistrarResultado && banca.realizado_em && !banca.resultado && (
             <PageButton type="button" onClick={() => onRegistrarResultado(banca)}>
-              Registrar resultado
+              Aprovar banca
             </PageButton>
           )}
           {podeGerenciar && onEditar && (
@@ -1772,10 +1964,6 @@ function AvaliarModal({
   );
   const [respostasTexto, setRespostasTexto] = useState<Record<number, string>>({});
   const [comentario, setComentario] = useState("");
-  // ⭐ O voto que decide a banca (§8) — nasce nulo de propósito: não há default
-  // seguro entre aprovar e reprovar, e um pré-selecionado seria enviado por
-  // inércia por quem só quer fechar o formulário.
-  const [voto, setVoto] = useState<boolean | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -1785,10 +1973,6 @@ function AvaliarModal({
     const faltando = perguntasNota.some((p) => notas[p.id] == null);
     if (faltando) {
       setErro("Selecione uma nota de 1 a 5 para todos os critérios.");
-      return;
-    }
-    if (voto === null) {
-      setErro("Diga se você aprova ou não este escopo — é o seu voto que decide a banca.");
       return;
     }
     setEnviando(true);
@@ -1829,7 +2013,7 @@ function AvaliarModal({
           );
         }
       }
-      await submeterAvaliacao(avaliacao.id, voto, comentario.trim() || null, token);
+      await submeterAvaliacao(avaliacao.id, comentario.trim() || null, token);
       onEnviada();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao enviar avaliação");
@@ -1942,9 +2126,6 @@ function AvaliarModal({
                 <FieldLabel htmlFor="comentario">Comentário (opcional)</FieldLabel>
                 <FieldTextarea id="comentario" value={comentario} onChange={(e) => setComentario(e.target.value)} />
               </FieldGroup>
-              {/* Por último, e depois do comentário: o voto é a conclusão de
-                  tudo que foi respondido acima, não a primeira impressão. */}
-              <VotoBanca value={voto} onChange={setVoto} disabled={enviando} />
               {erro && <FormErrorText>{erro}</FormErrorText>}
             </ModalBody>
             <ModalFooterSplit>
@@ -1963,19 +2144,12 @@ function AvaliarModal({
 }
 
 /**
- * ⭐ Override da diretoria sobre o resultado da banca (§8).
- *
- * ⚠ **Não é o caminho normal, e a tela precisa dizer isso.** Quem decide é a
- * maioria dos avaliadores que estiveram na banca; a apuração grava sozinha
- * assim que os votos entram. Este modal existe para o único caso que o voto
- * não resolve — a banca aconteceu, o prazo de 2 dias venceu e ninguém votou.
- * Sem ele o veredito nunca sairia e a entrega ao cliente ficaria travada para
- * sempre (§5.5), que é exatamente o beco em que as bancas antigas estão.
- *
- * O aviso no corpo não é decoração: sem ele, a diretoria usaria este botão
- * como atalho e o voto viraria enfeite.
+ * Quem decide é a diretoria de projetos ou o gerente da frente desta banca
+ * (§5.5, §8): qualquer um decide sozinho, sem esperar o outro. Este botão é
+ * o atalho de fora do projeto; a ficha completa fica na aba Banca do projeto
+ * e em "Esperando aprovação".
  */
-function RegistrarResultadoModal({
+function AprovarBancaModal({
   banca,
   token,
   onFechar,
@@ -1984,25 +2158,21 @@ function RegistrarResultadoModal({
   banca: Banca;
   token: string;
   onFechar: () => void;
-  onRegistrou: () => void;
+  /** Recebe o resultado que o backend acabou de gravar, para o chamador
+   *  atualizar o estado local sem recarregar a página. */
+  onRegistrou: (resultado: ResultadoBanca | null) => void;
 }) {
-  const [resultado, setResultado] = useState<"aprovada" | "nao_aprovada" | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
-  async function handleConfirmar() {
-    if (!resultado) {
-      setErro("Escolha o resultado da banca.");
-      return;
-    }
+  async function decidir(aprovado: boolean) {
     setSalvando(true);
     setErro("");
     try {
-      await registrarResultado(banca.id, resultado, token);
-      onRegistrou();
+      const resposta = await registrarAprovacaoBanca(banca.id, aprovado, null, token);
+      onRegistrou(resposta.resultado);
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao registrar o resultado");
-    } finally {
+      setErro(err instanceof Error ? err.message : "Erro ao registrar a decisão");
       setSalvando(false);
     }
   }
@@ -2011,26 +2181,27 @@ function RegistrarResultadoModal({
     <ModalOverlay onClick={onFechar} role="presentation">
       <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="resultado-titulo">
         <ModalHeader>
-          <ModalTitle id="resultado-titulo">Registrar resultado — {banca.nome_projeto}</ModalTitle>
+          <ModalTitle id="resultado-titulo">Aprovar banca de {banca.nome_projeto}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onFechar}>
             <X size={18} />
           </ModalClose>
         </ModalHeader>
         <ModalBody>
           <p>
-            O resultado normalmente sai do <strong>voto dos avaliadores</strong> que estiveram na
-            banca. Use este registro apenas quando o prazo de avaliação venceu e ninguém votou — é
-            o resultado que libera a entrega ao cliente.
+            Diretoria de projetos e o gerente da frente desta banca podem decidir, e qualquer um
+            decide sozinho: sua decisão já fecha o resultado, sem esperar mais ninguém.
           </p>
-          <VotoBanca value={resultado === null ? null : resultado === "aprovada"} onChange={(v) => setResultado(v ? "aprovada" : "nao_aprovada")} disabled={salvando} />
           {erro && <FormErrorText>{erro}</FormErrorText>}
         </ModalBody>
         <ModalFooterSplit>
-          <PageButton $variant="outline" type="button" onClick={onFechar}>
+          <PageButton $variant="outline" type="button" onClick={onFechar} disabled={salvando}>
             Cancelar
           </PageButton>
-          <PageButton type="button" onClick={handleConfirmar} disabled={salvando}>
-            {salvando ? "Registrando..." : "Registrar resultado"}
+          <PageButton $variant="outline" type="button" onClick={() => decidir(false)} disabled={salvando}>
+            {salvando ? "Salvando..." : "Reprovar"}
+          </PageButton>
+          <PageButton type="button" onClick={() => decidir(true)} disabled={salvando}>
+            {salvando ? "Salvando..." : "Aprovar"}
           </PageButton>
         </ModalFooterSplit>
       </NarrowModalContent>

@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/api";
 import type { TomSituacao } from "@/lib/situacoes-carga";
 import type { StatusProjeto } from "@/types/projeto";
 import type { CronogramaResposta } from "@/types/cronograma";
+import type { AprovacaoDiretoria, AprovacaoGerente, ResultadoBanca } from "@/types/banca";
 
 /* Os tipos espelham `use_cases/monitoramento/monitoramento.py`. */
 
@@ -680,7 +681,10 @@ export interface AprovacaoEntrada {
   criado_em: string;
 }
 
-/** §5.5: a banca aconteceu e ninguém registrou aprovada/não aprovada. */
+/**
+ * §5.5: a banca aconteceu e ainda espera diretoria + gerente da frente
+ * (`use_cases/banca/aprovar_banca.py`).
+ */
 export interface AprovacaoBancaSemResultado {
   banca_id: number;
   projeto_id: number;
@@ -690,22 +694,9 @@ export interface AprovacaoBancaSemResultado {
   /** Todos os escopos que esta banca cobre: a decisão destrava a entrega de cada um. */
   escopos: { projeto_escopo_id: number; nome: string }[];
   realizado_em: string;
-  prazo_avaliacao_em: string;
-  /** Passou o prazo de 2 dias sem a urna fechar. */
-  prazo_vencido: boolean;
-  /**
-   * ⭐ A urna. Sem ela, duas situações que exigem respostas OPOSTAS ficavam
-   * idênticas na tela: "ninguém votou e o prazo venceu" (a diretoria decide
-   * no lugar deles) e "falta um voto e o prazo corre" (cobra, não decide).
-   */
-  apuracao: {
-    recebidos: number;
-    esperados: number;
-    aprovacoes: number;
-    reprovacoes: number;
-    /** "maioria" | "empate" | "sem_votos" | "aguardando" */
-    motivo: string;
-  };
+  resultado: ResultadoBanca | null;
+  aprovacao_diretoria: AprovacaoDiretoria | null;
+  aprovacao_gerente: AprovacaoGerente[];
 }
 
 /** §8: um pedido para marcar banca em horário já ocupado. */
