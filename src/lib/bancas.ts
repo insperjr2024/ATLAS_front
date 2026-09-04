@@ -1,6 +1,9 @@
 import { apiFetch } from "@/lib/api";
 import { paraDataUtc } from "@/lib/projetos";
 import type {
+  AprovacaoDaBanca,
+  AprovacaoDiretoria,
+  AprovacaoGerente,
   AvaliadorDaBanca,
   Banca,
   BancaDetalhes,
@@ -12,6 +15,7 @@ import type {
   Escopo,
   EscopoVendidoResumo,
   Frente,
+  ResultadoBanca,
   StatusBanca,
 } from "@/types/banca";
 
@@ -39,21 +43,87 @@ export function realizarBanca(
 }
 
 /**
- * Aprovada ou não aprovada.
+ * ⭐ Aprova ou reprova a banca (§5.5, §8) — diretoria de projetos e gerente
+ * da(s) frente(s) da banca, não mais o voto dos avaliadores.
  *
- * É este resultado que libera a entrega ao cliente. Enquanto ele não
- * existe, o escopo não pode ser entregue, a trava vive no backend.
+ * O papel de quem está chamando (diretoria, ou gerente de qual frente) é
+ * resolvido pelo BACKEND a partir do usuário logado — não é escolhido aqui.
+ * Os dois precisam aprovar para fechar "aprovada"; uma reprovação de
+ * qualquer um dos dois já fecha "não aprovada" na hora.
  */
-export function registrarResultado(
+export function registrarAprovacaoBanca(
   bancaId: number,
-  resultado: "aprovada" | "nao_aprovada",
+  aprovado: boolean,
+  nota: string | null,
   token: string,
 ) {
-  return apiFetch(`/bancas/${bancaId}/resultado`, {
-    method: "PATCH",
+  // ⭐ Devolve a situação inteira (resultado + as duas assinaturas) para a
+  // tela atualizar o card na hora, sem precisar recarregar tudo de novo.
+  return apiFetch<{ banca_id: number } & AprovacaoDaBanca>(`/bancas/${bancaId}/aprovacao`, {
+    method: "POST",
     token,
-    body: JSON.stringify({ resultado }),
+    body: JSON.stringify({ aprovado, nota }),
   });
+}
+
+/** Uma banca realizada esperando diretoria + gerente da frente decidirem. */
+export interface BancaEsperandoAprovacao {
+  banca_id: number;
+  projeto_id: number | null;
+  projeto_nome: string;
+  escopos: string[];
+  realizado_em: string;
+  resultado: ResultadoBanca | null;
+  aprovacao_diretoria: AprovacaoDiretoria | null;
+  aprovacao_gerente: AprovacaoGerente[];
+}
+
+/**
+ * A fila "Esperando aprovação" da aba Bancas — diretoria vê tudo, gerente só
+ * as bancas com frente dele (§3).
+ */
+export function getBancasEsperandoAprovacao(token: string) {
+  return apiFetch<BancaEsperandoAprovacao[]>("/bancas/esperando-aprovacao", { token });
+}
+
+/**
+ * ⭐ Quem PODE aprovar esta banca, em texto pronto para a tela — diretoria de
+ * projetos e o gerente de cada frente, qualquer um decide sozinho (§5.5, §8).
+ * Só faz sentido para uma banca ainda sem `resultado`; use `quemDecidiu` para
+ * a que já foi fechada.
+ */
+export function quemPodeAprovar(situacao: { aprovacao_gerente: AprovacaoGerente[] }): string {
+  const opcoes = ["diretoria de projetos"];
+  for (const g of situacao.aprovacao_gerente) {
+    opcoes.push(
+      g.possiveis_gerentes.length > 0
+        ? `gerente de ${g.frente_nome} (${g.possiveis_gerentes.join(" ou ")})`
+        : `gerente de ${g.frente_nome} (nenhum cadastrado ainda)`,
+    );
+  }
+  return opcoes.join(", ");
+}
+
+/**
+ * Quem de fato decidiu uma banca já fechada — `null` enquanto ela ainda
+ * espera. Só um dos registros (diretoria ou algum gerente) tem `aprovado`
+ * preenchido: é o primeiro que decidiu, e foi ele quem fechou o resultado.
+ */
+export function quemDecidiu(situacao: {
+  aprovacao_diretoria: AprovacaoDiretoria | null;
+  aprovacao_gerente: AprovacaoGerente[];
+}): { nome: string; papel: string } | null {
+  if (situacao.aprovacao_diretoria?.aprovado != null) {
+    return {
+      nome: situacao.aprovacao_diretoria.usuario_nome ?? "diretoria",
+      papel: "diretoria de projetos",
+    };
+  }
+  const gerente = situacao.aprovacao_gerente.find((g) => g.aprovado != null);
+  if (gerente) {
+    return { nome: gerente.usuario_nome ?? "gerente", papel: `gerente de ${gerente.frente_nome}` };
+  }
+  return null;
 }
 
 

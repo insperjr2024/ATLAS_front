@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { registrarResultado } from "@/lib/bancas";
+import { quemPodeAprovar, registrarAprovacaoBanca } from "@/lib/bancas";
 import { formatarData } from "@/lib/projetos";
 import type { AprovacaoBancaSemResultado } from "@/lib/monitoramento";
 import {
@@ -22,22 +21,13 @@ import {
 import { AprovacaoLinha, FormDecisao } from "./AprovacaoLinha";
 
 /**
- * §5.5: a banca aconteceu e ninguém registrou o veredito.
+ * §5.5: a banca aconteceu e ainda espera uma decisão (diretoria de projetos
+ * ou gerente da frente, `use_cases/banca/aprovar_banca.py`).
  *
- * ⭐ **É o bloqueio mais duro do sistema.** Sem veredito a entrega ao cliente
- * não libera: o escopo fica parado. O caminho normal é o voto dos avaliadores,
- * que apura sozinho — o que cai aqui é o que o voto não resolveu.
- *
- * ⭐ **A urna é o contexto que faltava.** A linha dizia "projeto — escopo,
- * realizada em 22/07", e duas situações que exigem respostas OPOSTAS ficavam
- * idênticas: *ninguém votou e o prazo venceu* (a diretoria decide no lugar
- * deles) e *falta um voto e o prazo corre* (a diretoria cobra, não decide).
- *
- * ⚠ **O botão de veredito não existe enquanto o prazo corre.** Registrar o
- * resultado é a rota de EXCEÇÃO — botão à mão é botão usado, e usá-lo com a
- * votação aberta é atropelar os avaliadores. Enquanto `prazo_vencido` é
- * falso, a linha mostra quantos votos faltam e até quando, e só oferece o
- * caminho de ir cobrar.
+ * Qualquer um decide sozinho: diretoria ou o gerente de qualquer frente da
+ * banca aprova ou reprova, sem esperar mais ninguém. Não há "prazo aberto,
+ * ainda dá para esperar": a decisão é sempre possível assim que a banca
+ * aconteceu, por isso toda linha já oferece Aprovar e Reprovar direto.
  */
 export function BancasSemResultadoCard({
   itens,
@@ -47,7 +37,7 @@ export function BancasSemResultadoCard({
   onDecidiu: () => void;
 }) {
   const { token } = useAuth();
-  const [decidindo, setDecidindo] = useState<{ id: number; aprovada: boolean } | null>(null);
+  const [decidindo, setDecidindo] = useState<{ bancaId: number; aprovado: boolean } | null>(null);
 
   return (
     <PageCard id="fila-bancas">
@@ -56,33 +46,13 @@ export function BancasSemResultadoCard({
       </PageCardHeader>
       <PageCardContent>
         {itens.length === 0 ? (
-          <EmptyText>Toda banca realizada já tem o veredito registrado.</EmptyText>
+          <EmptyText>Toda banca realizada já tem resultado registrado.</EmptyText>
         ) : (
-          <>
-            <ListaSimples>
+          <ListaSimples>
             {itens.map((b) => {
-              const { recebidos, esperados, aprovacoes, reprovacoes, motivo } = b.apuracao;
               const escopos = b.escopos?.length
                 ? b.escopos.map((e) => e.nome).join(", ")
                 : b.escopo_nome;
-
-              // A pílula diz por que ainda não há veredito — não repete a data.
-              const pilula =
-                motivo === "empate" ? (
-                  <Pilula $tom="atencao">
-                    empate {aprovacoes}×{reprovacoes}
-                  </Pilula>
-                ) : motivo === "sem_votos" ? (
-                  <Pilula $tom="alerta">ninguém votou</Pilula>
-                ) : motivo === "maioria" ? (
-                  <Pilula $tom="ok">
-                    maioria {aprovacoes}×{reprovacoes}
-                  </Pilula>
-                ) : (
-                  <Pilula $tom="neutro">
-                    {recebidos} de {esperados} votaram
-                  </Pilula>
-                );
 
               return (
                 <AprovacaoLinha
@@ -91,88 +61,68 @@ export function BancasSemResultadoCard({
                   titulo={
                     <AtrasoTitulo>
                       <LinkProjeto to={`/projetos/${b.projeto_id}/banca`}>
-                        {b.projeto_nome} — {escopos}
+                        {b.projeto_nome}
                       </LinkProjeto>
-                      {pilula}
+                      <Pilula $tom="atencao">aguardando decisão</Pilula>
                     </AtrasoTitulo>
                   }
                   acoes={
-                    decidindo?.id === b.banca_id ? (
+                    decidindo?.bancaId === b.banca_id ? (
                       <FormDecisao
                         rotuloConfirmar={
-                          decidindo.aprovada ? "Confirmar aprovada" : "Confirmar não aprovada"
+                          decidindo.aprovado ? "Confirmar aprovação" : "Confirmar reprovação"
                         }
                         exigeTexto={false}
                         aviso={
                           <EmptyText>
-                            Isto registra o veredito <strong>no lugar dos avaliadores</strong> e
-                            {decidindo.aprovada ? " libera" : " mantém travada"} a entrega ao
-                            cliente.
+                            Sua decisão sozinha já fecha o resultado da banca, sem esperar mais
+                            ninguém.
                           </EmptyText>
                         }
                         onCancelar={() => setDecidindo(null)}
                         onConfirmar={async () => {
                           if (!token) return;
-                          await registrarResultado(
-                            b.banca_id,
-                            decidindo.aprovada ? "aprovada" : "nao_aprovada",
-                            token,
-                          );
+                          await registrarAprovacaoBanca(b.banca_id, decidindo.aprovado, null, token);
                           setDecidindo(null);
                           onDecidiu();
                         }}
                       />
-                    ) : b.prazo_vencido ? (
+                    ) : (
                       <>
                         <PageButtonSm
                           type="button"
-                          $variant="outline"
-                          onClick={() => setDecidindo({ id: b.banca_id, aprovada: true })}
+                          onClick={() => setDecidindo({ bancaId: b.banca_id, aprovado: true })}
                         >
-                          Aprovada
+                          Aprovar
                         </PageButtonSm>
                         <PageButtonSm
                           type="button"
                           $variant="ghost"
-                          onClick={() => setDecidindo({ id: b.banca_id, aprovada: false })}
+                          onClick={() => setDecidindo({ bancaId: b.banca_id, aprovado: false })}
                         >
-                          Não aprovada
+                          Reprovar
                         </PageButtonSm>
                       </>
-                    ) : (
-                      // Prazo aberto: os avaliadores ainda podem votar.
-                      <PageButtonSm
-                        as={Link}
-                        to={`/projetos/${b.projeto_id}/banca`}
-                        $variant="outline"
-                      >
-                        Ver a banca
-                      </PageButtonSm>
                     )
                   }
                 >
                   <AprovacaoMeta>
                     <span>
+                      escopo: <strong>{escopos}</strong>
+                    </span>
+                    <span>
                       realizada em <strong>{formatarData(b.realizado_em)}</strong>
                     </span>
+                  </AprovacaoMeta>
+                  <AprovacaoMeta>
                     <span>
-                      <strong>{recebidos}</strong> de <strong>{esperados}</strong> votaram
-                    </span>
-                    <span>
-                      {b.prazo_vencido ? (
-                        <>
-                          prazo venceu em <em>{formatarData(b.prazo_avaliacao_em)}</em>
-                        </>
-                      ) : (
-                        <>prazo até {formatarData(b.prazo_avaliacao_em)}</>
-                      )}
+                      pode aprovar: <strong>{quemPodeAprovar(b)}</strong>
                     </span>
                   </AprovacaoMeta>
                 </AprovacaoLinha>
               );
-              })}
-            </ListaSimples>
-          </>
+            })}
+          </ListaSimples>
         )}
       </PageCardContent>
     </PageCard>

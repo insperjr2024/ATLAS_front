@@ -9,7 +9,10 @@ import {
   getBancasDoProjeto,
   getBancasFrentes,
   getEquipesProjeto,
+  quemDecidiu,
+  quemPodeAprovar,
   realizarBanca,
+  registrarAprovacaoBanca,
   registrarDescricaoCoordenador,
   ROTULO_STATUS_BANCA,
   tomDoStatusBanca,
@@ -19,10 +22,10 @@ import { BancaFormModal } from "@/components/bancas/BancaFormModal";
 import { CODIGO_BANCA_ABAIXO_DO_MINIMO, codigoDoErro } from "@/lib/api";
 import { createAvaliacao, getFormularioAtivo, submeterAvaliacao } from "@/lib/avaliacoes";
 import { formatarDataHora } from "@/lib/projetos";
-import { VotoBanca } from "@/components/VotoBanca";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { AvaliadoresAgrupados } from "@/components/bancas/AvaliadoresAgrupados";
 import type {
+  AprovacaoDaBanca,
   AvaliacaoDaBanca,
   AvaliadorDaBanca,
   Banca,
@@ -78,8 +81,6 @@ import {
   Lista,
   ListaNomes,
   MeuVoto,
-  Placar,
-  PlacarNumero,
   Presenca,
   SecaoTitulo,
   Tentativa,
@@ -89,7 +90,6 @@ import {
   Voto,
   VotoAutor,
   VotoBotao,
-  VotoRotulo,
   VotoTopo,
 } from "./ProjetoBanca.styled";
 import { useProjeto } from "./ProjetoPage";
@@ -113,31 +113,13 @@ function tomDaTentativa(s: SessaoDeBanca): "aprovada" | "reprovada" | "pendente"
 }
 
 /**
- * Por que a banca ainda não tem veredito — em texto, não em código.
- *
- * `motivo` vem da apuração (`utils/apuracao_banca.py`) e distingue casos que
- * exigem ações opostas: esperar o último voto não é o mesmo que ninguém ter
- * votado. Mostrar "sem resultado" nos dois deixaria quem lê sem saber se
- * precisa agir.
- */
-function explicarPendencia(motivo: string, esperados: number, recebidos: number): string {
-  if (motivo === "aguardando") {
-    return `Aguardando o voto dos avaliadores — ${recebidos} de ${esperados} já votaram.`;
-  }
-  if (motivo === "sem_votos") {
-    return "O prazo de avaliação passou e ninguém votou. A diretoria pode registrar o resultado manualmente na tela de Bancas.";
-  }
-  return "Ainda sem veredito.";
-}
-
-/**
  * ⭐ A aba **Banca** do projeto — ver e AGIR sobre a banca num lugar só.
  *
  * ⚠ **O que ela resolve.** As informações da banca existiam espalhadas: a data
  * no cronograma, o resultado escondido num cadeado da Visão geral, os votos em
  * lugar nenhum, e a ficha completa só na tela `/bancas`, que é organizada por
- * ALOCAÇÃO — quem procurava "como foi a banca deste projeto" tinha de caçar a
- * banca certa numa lista de todas as bancas do semestre. Pior: para votar, o
+ * ALOCAÇÃO: quem procurava "como foi a banca deste projeto" tinha de caçar a
+ * banca certa numa lista de todas as bancas do semestre. Pior: para avaliar, o
  * avaliador precisava sair do projeto e encontrá-la lá.
  *
  * ⭐ **Mostra as TENTATIVAS, não só a atual.** Uma banca reprovada e remarcada
@@ -162,6 +144,20 @@ export function ProjetoBanca() {
       setCarregando(false);
     }
   }, [token, projeto.id]);
+
+  /**
+   * ⭐ Atualiza só a banca decidida, sem recarregar a ficha inteira do
+   * projeto — `registrarAprovacaoBanca` já devolve a situação pronta
+   * (resultado + as duas assinaturas), então não há por que buscar de novo.
+   */
+  const handleAprovacaoDecidida = useCallback(
+    (bancaId: number, situacao: AprovacaoDaBanca) => {
+      setBancas((atual) =>
+        atual.map((b) => (b.id === bancaId ? { ...b, resultado: situacao.resultado, aprovacao: situacao } : b)),
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     carregar();
@@ -204,6 +200,7 @@ export function ProjetoBanca() {
           frentes={frentes}
           somenteLeitura={somenteLeitura}
           onMudou={carregar}
+          onAprovacaoDecidida={handleAprovacaoDecidida}
         />
       ))}
     </PageStack>
@@ -217,6 +214,7 @@ function FichaDaBanca({
   frentes,
   somenteLeitura,
   onMudou,
+  onAprovacaoDecidida,
 }: {
   banca: BancaDetalhes;
   projetoId: number;
@@ -224,12 +222,12 @@ function FichaDaBanca({
   frentes: Frente[];
   somenteLeitura: boolean;
   onMudou: () => Promise<void>;
+  onAprovacaoDecidida: (bancaId: number, situacao: AprovacaoDaBanca) => void;
 }) {
   const { usuario, token } = useAuth();
   const [realizando, setRealizando] = useState(false);
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
-  const recebidos = banca.apuracao.aprovacoes + banca.apuracao.reprovacoes;
 
   // Quem marca a banca também registra que ela aconteceu — a MESMA permissão
   // que o backend cobra em `POST /bancas/{id}/realizar`
@@ -281,8 +279,8 @@ function FichaDaBanca({
         >
           {rotuloDoResultado(banca.resultado)}
         </PageBadge>
-        {/* ⭐ A banca aconteceu — o passo que abre a votação. Sem ele, ninguém
-            consegue avaliar: o backend recusa voto em banca não realizada. */}
+        {/* A banca aconteceu: o passo que abre a avaliação. Sem ele, ninguém
+            consegue avaliar, pois o backend recusa em banca não realizada. */}
         {podeRegistrar && !banca.realizado_em && banca.data_hora && (
           <PageButtonSm type="button" onClick={() => setRealizando(true)}>
             Registrar realização
@@ -325,8 +323,8 @@ function FichaDaBanca({
               que uma nova banca aconteça e aprove.{" "}
               <Link to={`/projetos/${projetoId}/cronograma`}>
                 Marque a próxima banca no Cronograma
-              </Link>{" "}
-              — a tentativa reprovada fica registrada abaixo.
+              </Link>
+              {". "}A tentativa reprovada fica registrada abaixo.
             </span>
           </AvisoReprovada>
         )}
@@ -348,15 +346,15 @@ function FichaDaBanca({
           </Campo>
           <Campo>
             <CampoRotulo>Nota final</CampoRotulo>
-            {/* ⚠ Nota e voto medem coisas diferentes: a nota diz QUÃO BEM o
-                trabalho foi feito, o voto diz se ele pode ir ao cliente. */}
+            {/* Nota e aprovação medem coisas diferentes: a nota diz QUÃO BEM
+                o trabalho foi feito; a aprovação diz se ele pode ir ao cliente. */}
             <CampoValor>
               {banca.nota_final !== null ? banca.nota_final.toFixed(1) : "sem notas"}
             </CampoValor>
           </Campo>
         </Colunas>
 
-        {/* ⭐ O voto de quem está lendo, sem sair do projeto. */}
+        {/* A avaliação de quem está lendo, sem sair do projeto. */}
         {eu && (
           <MeuVotoBloco
             banca={banca}
@@ -403,24 +401,12 @@ function FichaDaBanca({
           )}
         </Campo>
 
-        <SecaoTitulo>Apuração</SecaoTitulo>
-        <Placar>
-          <span>
-            <PlacarNumero $tom="aprova">{banca.apuracao.aprovacoes}</PlacarNumero> a favor ·{" "}
-            <PlacarNumero $tom="reprova">{banca.apuracao.reprovacoes}</PlacarNumero> contra
-          </span>
-          <span>
-            <PlacarNumero $tom="neutro">
-              {recebidos}/{banca.apuracao.esperados}
-            </PlacarNumero>{" "}
-            votos recebidos
-          </span>
-        </Placar>
-        {!banca.resultado && (
-          <Ajuda>
-            {explicarPendencia(banca.apuracao.motivo, banca.apuracao.esperados, recebidos)}
-          </Ajuda>
-        )}
+        <SecaoTitulo>Aprovação</SecaoTitulo>
+        <AprovacaoBloco
+          banca={banca}
+          token={token}
+          onDecidiu={(situacao) => onAprovacaoDecidida(banca.id, situacao)}
+        />
 
         {banca.sessoes.length > 1 && (
           <>
@@ -610,17 +596,12 @@ function EditarBancaModal({
 }
 
 /**
- * ⭐ O voto do usuário logado, dado de dentro do projeto.
+ * ⭐ O feedback do usuário logado, dado de dentro do projeto.
  *
- * ⚠ **Voto e comentário, sem as notas por critério.** O formulário completo
- * (Bloco 1, notas de 1 a 5 por critério, escopo avaliado) continua em
- * `/bancas` — ele é longo e existe para alimentar a NOTA da banca. O que decide
- * o resultado, e o que faltava perto de onde a banca é vista, é o VOTO. Quem
- * quiser dar notas usa o link para a tela de Bancas.
- *
- * O backend aceita os dois caminhos: a avaliação é criada, as notas são
- * opcionais e o voto entra pela rota de submissão, que é quem dispara a
- * apuração.
+ * ⚠ **Comentário, sem as notas por critério.** O formulário completo (Bloco
+ * 1, notas de 1 a 5 por critério, escopo avaliado) continua em `/bancas`.
+ * Quem aprova a banca é diretoria + gerente da frente (ver `AprovacaoBloco`
+ * abaixo), não o avaliador — esta avaliação é só pedagógica.
  */
 function MeuVotoBloco({
   banca,
@@ -633,25 +614,20 @@ function MeuVotoBloco({
   token: string | null;
   onEnviou: () => Promise<void>;
 }) {
-  const [voto, setVoto] = useState<boolean | null>(null);
   const [comentario, setComentario] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
-  if (eu.ja_votou) {
+  if (eu.ja_enviou) {
     return (
       <MeuVoto>
-        <SecaoTitulo>Seu voto</SecaoTitulo>
-        <Voto $aprova={eu.voto_aprovacao}>
-          <VotoTopo>
-            <VotoAutor>Você</VotoAutor>
-            <VotoRotulo $aprova={eu.voto_aprovacao}>
-              {eu.voto_aprovacao ? "aprovou" : "não aprovou"}
-            </VotoRotulo>
-          </VotoTopo>
-          {eu.comentario_feedback && <Comentario>{eu.comentario_feedback}</Comentario>}
-        </Voto>
-        <Ajuda>Voto enviado — ele não pode mais ser alterado.</Ajuda>
+        <SecaoTitulo>Sua avaliação</SecaoTitulo>
+        {eu.comentario_feedback ? (
+          <Comentario>{eu.comentario_feedback}</Comentario>
+        ) : (
+          <Ajuda>Enviada sem comentário.</Ajuda>
+        )}
+        <Ajuda>Avaliação enviada. Ela não pode mais ser alterada.</Ajuda>
       </MeuVoto>
     );
   }
@@ -659,9 +635,9 @@ function MeuVotoBloco({
   if (!banca.realizado_em) {
     return (
       <MeuVoto>
-        <SecaoTitulo>Seu voto</SecaoTitulo>
+        <SecaoTitulo>Sua avaliação</SecaoTitulo>
         <Ajuda>
-          Você está escalado para esta banca. A votação abre quando alguém registrar que ela
+          Você está escalado para esta banca. A avaliação abre quando alguém registrar que ela
           aconteceu.
         </Ajuda>
       </MeuVoto>
@@ -670,10 +646,6 @@ function MeuVotoBloco({
 
   async function enviar() {
     if (!token) return;
-    if (voto === null) {
-      setErro("Diga se você aprova ou não este escopo — é o seu voto que decide a banca.");
-      return;
-    }
     setEnviando(true);
     setErro("");
     try {
@@ -688,10 +660,10 @@ function MeuVotoBloco({
         );
         avaliacaoId = criada.id;
       }
-      await submeterAvaliacao(avaliacaoId, voto, comentario.trim() || null, token);
+      await submeterAvaliacao(avaliacaoId, comentario.trim() || null, token);
       await onEnviou();
     } catch (err) {
-      setErro(err instanceof Error ? err.message : "Não foi possível enviar o voto");
+      setErro(err instanceof Error ? err.message : "Não foi possível enviar a avaliação");
     } finally {
       setEnviando(false);
     }
@@ -699,8 +671,7 @@ function MeuVotoBloco({
 
   return (
     <MeuVoto>
-      <SecaoTitulo>Seu voto</SecaoTitulo>
-      <VotoBanca value={voto} onChange={setVoto} disabled={enviando} />
+      <SecaoTitulo>Sua avaliação</SecaoTitulo>
       <FieldGroup>
         <FieldLabel htmlFor={`comentario-${banca.id}`}>Comentário (opcional)</FieldLabel>
         <FieldTextarea
@@ -714,7 +685,7 @@ function MeuVotoBloco({
       {erro && <FormErrorText>{erro}</FormErrorText>}
       <AcoesLinha>
         <PageButton type="button" disabled={enviando} onClick={enviar}>
-          {enviando ? "Enviando..." : "Enviar voto"}
+          {enviando ? "Enviando..." : "Enviar avaliação"}
         </PageButton>
         <Ajuda>
           Para dar as notas por critério, use o formulário completo na tela de{" "}
@@ -726,11 +697,90 @@ function MeuVotoBloco({
 }
 
 /**
- * ⭐ "A banca aconteceu" — o passo que abre a votação.
+ * ⭐ A decisão de diretoria de projetos OU gerente da frente (§5.5, §8) — o
+ * que substitui o voto dos avaliadores.
  *
- * ⚠ A lista de presença não é formalidade: `candidatura.confirmado` é o
- * ELEITORADO da apuração (§8). Quem foi escalado e faltou não deve voto, e
- * contá-lo como abstenção puniria o projeto pela ausência de outra pessoa.
+ * ⭐ **Qualquer um decide sozinho.** Não é preciso diretoria e gerente
+ * concordarem: o primeiro que aprovar ou reprovar já fecha o resultado.
+ *
+ * ⚠ **O recorte de "pode decidir" aqui é grosso de propósito.** O botão
+ * aparece para quem é diretoria de projetos ou tem posição de gerente; se a
+ * pessoa não for gerente responsável por NENHUMA frente desta banca
+ * específica, o backend recusa com uma mensagem clara.
+ */
+function AprovacaoBloco({
+  banca,
+  token,
+  onDecidiu,
+}: {
+  banca: BancaDetalhes;
+  token: string | null;
+  /** Recebe a situação que o backend acabou de gravar (resultado + as
+   *  assinaturas), para o chamador atualizar o estado local sem recarregar. */
+  onDecidiu: (situacao: AprovacaoDaBanca) => void;
+}) {
+  const { usuario } = useAuth();
+  const [decidindo, setDecidindo] = useState<"aprovar" | "reprovar" | null>(null);
+
+  const { aprovacao } = banca;
+  const decidido = quemDecidiu(aprovacao);
+  const podeDecidir =
+    !banca.resultado &&
+    !!banca.realizado_em &&
+    (ehDiretoriaDeProjetos(usuario) || usuario?.posicao === "gerente");
+
+  // Erros aparecem dentro do próprio `ConfirmarModal` (ele os captura e
+  // mostra sem fechar) — não precisa de um segundo estado de erro aqui.
+  async function confirmar(aprovado: boolean) {
+    if (!token) return;
+    const situacao = await registrarAprovacaoBanca(banca.id, aprovado, null, token);
+    setDecidindo(null);
+    onDecidiu(situacao);
+  }
+
+  return (
+    <>
+      {decidido ? (
+        <Ajuda>
+          {banca.resultado === "aprovada" ? "Aprovada" : "Não aprovada"} por {decidido.nome}, {decidido.papel}.
+        </Ajuda>
+      ) : !banca.realizado_em ? (
+        <Ajuda>A decisão abre quando alguém registrar que a banca aconteceu.</Ajuda>
+      ) : (
+        <Ajuda>Pode aprovar: {quemPodeAprovar(aprovacao)}.</Ajuda>
+      )}
+
+      {podeDecidir && (
+        <AcoesLinha>
+          <PageButtonSm type="button" onClick={() => setDecidindo("aprovar")}>
+            Aprovar banca
+          </PageButtonSm>
+          <PageButtonSm $variant="outline" type="button" onClick={() => setDecidindo("reprovar")}>
+            Reprovar banca
+          </PageButtonSm>
+        </AcoesLinha>
+      )}
+
+      {decidindo && (
+        <ConfirmarModal
+          titulo={decidindo === "aprovar" ? "Aprovar banca" : "Reprovar banca"}
+          rotuloConfirmar={decidindo === "aprovar" ? "Aprovar" : "Reprovar"}
+          rotuloProcessando="Salvando…"
+          mensagem="Sua decisão sozinha já fecha o resultado da banca, sem esperar mais ninguém."
+          onCancelar={() => setDecidindo(null)}
+          onConfirmar={() => confirmar(decidindo === "aprovar")}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * "A banca aconteceu" — o passo que abre a avaliação.
+ *
+ * A lista de presença registra `candidatura.confirmado`: quem foi escalado e
+ * faltou fica marcado como ausente, e a ficha da banca mostra a diferença
+ * entre "escalado" e "compareceu".
  */
 function RegistrarRealizacaoModal({
   banca,
@@ -784,8 +834,7 @@ function RegistrarRealizacaoModal({
         </ModalHeader>
         <ModalBody>
           <Ajuda>
-            Marque quem esteve presente. Só quem compareceu vota — é esta lista que forma o
-            eleitorado da apuração.
+            Marque quem esteve presente. Isso registra a presença de cada avaliador escalado.
           </Ajuda>
           {banca.avaliadores.length === 0 ? (
             <EmptyText>Nenhum avaliador escalado nesta banca.</EmptyText>
@@ -835,14 +884,12 @@ function RegistrarRealizacaoModal({
 /**
  * ⭐ Uma avaliação na lista — o nome ABRE o que a pessoa respondeu.
  *
- * ⚠ O voto sem a avaliação que o justifica é um oráculo: "Gabi não aprovou" não
- * diz ao grupo o que arrumar. As notas por critério e o comentário existiam no
- * banco desde sempre e não apareciam em tela nenhuma fora do formulário de quem
- * escreveu.
+ * As notas por critério e o comentário existiam no banco desde sempre e não
+ * apareciam em tela nenhuma fora do formulário de quem escreveu.
  *
  * Fechado por padrão, e não expandido: numa banca de cinco avaliadores com dez
  * critérios cada, tudo aberto vira uma parede de números que esconde o que
- * importa primeiro — quem votou o quê.
+ * importa primeiro — quem avaliou.
  */
 function AvaliacaoLinha({ avaliacao }: { avaliacao: AvaliacaoDaBanca }) {
   const [aberta, setAberta] = useState(false);
@@ -851,13 +898,6 @@ function AvaliacaoLinha({ avaliacao }: { avaliacao: AvaliacaoDaBanca }) {
   const conteudo = (
     <VotoTopo>
       <VotoAutor>{avaliacao.avaliador}</VotoAutor>
-      <VotoRotulo $aprova={avaliacao.voto_aprovacao}>
-        {avaliacao.voto_aprovacao === true
-          ? "aprovou"
-          : avaliacao.voto_aprovacao === false
-            ? "não aprovou"
-            : "sem voto registrado"}
-      </VotoRotulo>
       {avaliacao.submetida_em && (
         <TentativaMeta>{formatarDataHora(avaliacao.submetida_em)}</TentativaMeta>
       )}
@@ -868,7 +908,7 @@ function AvaliacaoLinha({ avaliacao }: { avaliacao: AvaliacaoDaBanca }) {
   );
 
   return (
-    <Voto $aprova={avaliacao.voto_aprovacao}>
+    <Voto $aprova={null}>
       {/* Sem detalhe não vira botão: um clique que não faz nada é pior que
           nenhum clique. */}
       {temDetalhe ? (

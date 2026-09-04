@@ -54,10 +54,10 @@ export function AvaliadoresAgrupados({
                   <li key={a.usuario_id}>
                     {a.nome}
                     {a.coordenador_vendas && " · vendas"}
-                    {/* Escalado e compareceu são coisas diferentes: só quem
-                        esteve lá entra na conta dos votos. */}
+                    {/* Escalado e compareceu são coisas diferentes: quem
+                        faltou não avalia a banca. */}
                     {realizadoEm && !a.presente && " · faltou"}
-                    {a.ja_votou && " · votou"}
+                    {a.ja_enviou && " · avaliou"}
                   </li>
                 ))}
               </ListaNomes>

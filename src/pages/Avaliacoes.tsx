@@ -42,6 +42,7 @@ import {
   PageCardHeader,
   PageCardTitle,
   PageCardContent,
+  PageBadge,
   PageButton,
   PageButtonSm,
   PageLoadingBlock,
@@ -114,6 +115,20 @@ function formatNota(nota: number | null | undefined): string {
   return nota.toFixed(1);
 }
 
+/** "aprovada" | "nao_aprovada" | `null` (aconteceu, ainda esperando decisão
+ *  de diretoria ou gerente da frente — ver `use_cases/banca/aprovar_banca.py`). */
+function rotuloResultado(resultado: HistoricoBanca["resultado"]): string {
+  if (resultado === "aprovada") return "Aprovada";
+  if (resultado === "nao_aprovada") return "Não aprovada";
+  return "Aguardando decisão";
+}
+
+function tomResultado(resultado: HistoricoBanca["resultado"]): "success" | "danger" | "muted" {
+  if (resultado === "aprovada") return "success";
+  if (resultado === "nao_aprovada") return "danger";
+  return "muted";
+}
+
 interface PerguntaEditavel {
   texto: string;
   tipo_resposta: "nota" | "texto";
@@ -141,6 +156,7 @@ export function Avaliacoes() {
   const [filtroCoordenador, setFiltroCoordenador] = useState("");
   const [filtroConsultor, setFiltroConsultor] = useState("");
   const [filtroEscopo, setFiltroEscopo] = useState("");
+  const [filtroResultado, setFiltroResultado] = useState("");
 
   const [bancaDetalhe, setBancaDetalhe] = useState<HistoricoBanca | null>(null);
   const [editarFormulario, setEditarFormulario] = useState(false);
@@ -215,6 +231,9 @@ export function Avaliacoes() {
         if (filtroSemestre && String(b.semestre_id) !== filtroSemestre) return false;
         if (filtroCoordenador && String(b.coordenador_id) !== filtroCoordenador) return false;
         if (filtroEscopo && String(b.escopo_id) !== filtroEscopo) return false;
+        if (filtroResultado === "sem_resultado" ? b.resultado !== null : filtroResultado && b.resultado !== filtroResultado) {
+          return false;
+        }
         if (filtroConsultor) {
           const avaliou = avaliacoes.some(
             (a) => a.banca_id === b.id && a.avaliador_id === Number(filtroConsultor) && a.status === "submetida",
@@ -224,7 +243,7 @@ export function Avaliacoes() {
         return true;
       })
       .sort((a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
-  }, [historico, filtroSemestre, filtroCoordenador, filtroConsultor, filtroEscopo, avaliacoes]);
+  }, [historico, filtroSemestre, filtroCoordenador, filtroConsultor, filtroEscopo, filtroResultado, avaliacoes]);
 
   /* Coordenador e escopo saem de OUTRAS listas (o histórico traz só o id), e
      é o nome exibido que precisa ordenar — por isso as colunas dependem
@@ -237,6 +256,10 @@ export function Avaliacoes() {
       escopo: { valor: (b) => nomeEscopo(escopos, b.escopo_id), inicial: "asc" },
       semestre: { valor: (b) => b.semestre_nome, inicial: "desc" },
       nota: { valor: (b) => b.nota_final, inicial: "desc" },
+      resultado: {
+        valor: (b) => (b.resultado === "aprovada" ? 2 : b.resultado === "nao_aprovada" ? 0 : 1),
+        inicial: "desc",
+      },
     }),
     [usuarios, escopos],
   );
@@ -321,6 +344,16 @@ export function Avaliacoes() {
                 </option>
               ))}
             </FieldSelect>
+            <FieldSelect
+              value={filtroResultado}
+              onChange={(e) => setFiltroResultado(e.target.value)}
+              style={{ width: "10rem" }}
+            >
+              <option value="">Todos os resultados</option>
+              <option value="aprovada">Aprovada</option>
+              <option value="nao_aprovada">Não aprovada</option>
+              <option value="sem_resultado">Aguardando decisão</option>
+            </FieldSelect>
           </FiltersRow>
 
           {historicoFiltrado.length === 0 && <EmptyText>Nenhuma banca encontrada com os filtros selecionados.</EmptyText>}
@@ -347,6 +380,9 @@ export function Avaliacoes() {
                   <Th coluna="nota" ordem={ordem} onOrdenar={ordenarPor}>
                     Nota
                   </Th>
+                  <Th coluna="resultado" ordem={ordem} onOrdenar={ordenarPor}>
+                    Resultado
+                  </Th>
                   <TableHeadCell />
                 </TableRow>
               </TableHead>
@@ -366,6 +402,11 @@ export function Avaliacoes() {
                     <TableCell>{nomeEscopo(escopos, banca.escopo_id)}</TableCell>
                     <TableCell>{banca.semestre_nome ?? "—"}</TableCell>
                     <NotaCell>{formatNota(banca.nota_final)}</NotaCell>
+                    <TableCell>
+                      <PageBadge $tone={tomResultado(banca.resultado)}>
+                        {rotuloResultado(banca.resultado)}
+                      </PageBadge>
+                    </TableCell>
                     <ActionsCell>
                       <PageButtonSm $variant="outline" type="button" onClick={() => setBancaDetalhe(banca)}>
                         Ver avaliações
