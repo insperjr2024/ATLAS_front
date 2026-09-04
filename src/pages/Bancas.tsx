@@ -448,8 +448,17 @@ export function Bancas() {
 
   async function handleAlocar(bancaId: number) {
     if (!token) return;
-    await alocar(bancaId, token);
-    recarregar();
+    // Sem o try/catch a recusa do backend — "esta vaga está reservada para
+    // completar a composição", "banca lotada" — rejeitava a promise em
+    // silêncio: nenhum aviso, o botão parecia não ter feito nada. Mesmo
+    // modal de erro dos handlers de troca.
+    setAvisoErro("");
+    try {
+      await alocar(bancaId, token);
+      recarregar();
+    } catch (err) {
+      setAvisoErro(err instanceof Error ? err.message : "Não foi possível se alocar");
+    }
   }
 
   /** ⭐ Roda na hora o mesmo rodízio do agendador das 6h (§8).
@@ -482,8 +491,13 @@ export function Bancas() {
   async function handleDesalocar(bancaId: number) {
     const candidatura = candidaturaDe(bancaId);
     if (!token || !candidatura) return;
-    await desalocar(candidatura.id, token);
-    recarregar();
+    setAvisoErro("");
+    try {
+      await desalocar(candidatura.id, token);
+      recarregar();
+    } catch (err) {
+      setAvisoErro(err instanceof Error ? err.message : "Não foi possível se desalocar");
+    }
   }
 
   async function handlePedirTroca(bancaId: number) {
