@@ -216,6 +216,12 @@ export function Bancas() {
 
   const { usuario, token } = useAuth();
   const [bancas, setBancas] = useState<Banca[]>([]);
+  /** Cache banca_id → BancaDetalhes, pré-buscado em background assim que
+   *  `bancas` chega, pra "ver mais" abrir instantâneo em vez de esperar os
+   *  ~10s do fetch on-open contra o Supabase remoto. Se a banca não estiver
+   *  aqui (ainda buscando, ou fora do universo pré-buscado), `VerMaisModal`
+   *  cai no fetch on-open de sempre — e alimenta o cache quando resolve. */
+  const [detalhesCache, setDetalhesCache] = useState<Record<number, BancaDetalhes>>({});
 
   // Depois que as bancas chegam, e não na montagem: no primeiro render a lista
   // ainda está vazia e não existe elemento para rolar até.
@@ -351,6 +357,45 @@ export function Bancas() {
     recarregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, usuario]);
+
+  // ⭐ Pré-busca em background os detalhes (avaliadores agrupados) de toda
+  // banca da aba Alocação (status "aberta"/"atrasada" — ver
+  // `aceitaInscricao`, a aba padrão da tela): sem isto, o "ver mais" só
+  // buscava ao abrir, e a demora do Supabase remoto (~10s) fazia o clique
+  // parecer travado. `aceitaInscricao(b.status)` sozinho é a união exata das
+  // três seções da aba (já alocado + disponíveis + lotadas), sem repetir
+  // `candidaturaDe`/`ehDoProprioGrupo` aqui.
+  //
+  // Concorrência limitada (4 por vez): sem isso, dezenas de bancas disparam
+  // dezenas de requests simultâneos contra o mesmo banco lento, piorando a
+  // lentidão pra todo mundo — inclusive o `recarregar()` acima. Best-effort:
+  // o que falhar aqui cai no fetch on-open do `VerMaisModal` de qualquer jeito.
+  useEffect(() => {
+    if (!token) return;
+    const alvo = bancas.filter((b) => aceitaInscricao(b.status) && !(b.id in detalhesCache));
+    if (alvo.length === 0) return;
+    let cancelado = false;
+    let indice = 0;
+    async function worker() {
+      while (!cancelado) {
+        const i = indice++;
+        if (i >= alvo.length) return;
+        try {
+          const detalhe = await getBancaDetalhes(alvo[i].id, token as string);
+          if (!cancelado) {
+            setDetalhesCache((atual) => ({ ...atual, [detalhe.id]: detalhe }));
+          }
+        } catch {
+          // silencioso: fallback é o fetch on-open de sempre.
+        }
+      }
+    }
+    void Promise.all(Array.from({ length: 4 }, worker));
+    return () => {
+      cancelado = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bancas, token]);
 
   /**
    * ⭐ Atualiza só o que a decisão de aprovação mudou, sem recarregar a
@@ -801,6 +846,8 @@ export function Bancas() {
         contexto={contexto}
         usuarioId={usuario.id}
         token={token}
+        detalhesCache={detalhesCache}
+        onDetalheCarregado={(d) => setDetalhesCache((atual) => ({ ...atual, [d.id]: d }))}
         onClose={() => setBancaDetalhe(null)}
         onEditar={setBancaEditar}
         onExcluir={handleExcluir}
@@ -1591,6 +1638,8 @@ function VerMaisModal({
   contexto,
   usuarioId,
   token,
+  detalhesCache,
+  onDetalheCarregado,
   onClose,
   onEditar,
   onExcluir,
@@ -1603,6 +1652,14 @@ function VerMaisModal({
   contexto: Contexto;
   usuarioId: number;
   token: string | null;
+  /** banca_id → detalhe já pré-buscado pelo pai (ver o efeito de prefetch em
+   *  `Bancas()`); se presente, abre a lista de avaliadores na hora, sem
+   *  esperar o fetch. */
+  detalhesCache: Record<number, BancaDetalhes>;
+  /** Alimenta o cache do pai quando o fetch on-open (fallback, banca fora do
+   *  universo pré-buscado) resolve, pra reabrir a mesma banca depois vir do
+   *  cache também. */
+  onDetalheCarregado?: (detalhe: BancaDetalhes) => void;
   onClose: () => void;
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
@@ -1634,21 +1691,30 @@ function VerMaisModal({
   // Guardo o detalhe COM o id de origem em vez de limpá-lo ao trocar de banca:
   // um `setDetalhe(null)` síncrono no efeito dispara render em cascata (a
   // regra `set-state-in-effect`); comparar o id no render resolve igual.
-  const [detalhe, setDetalhe] = useState<BancaDetalhes | null>(null);
+  const [detalheFetched, setDetalheFetched] = useState<BancaDetalhes | null>(null);
   const bancaId = banca?.id ?? null;
+  const doCache = bancaId != null ? detalhesCache[bancaId] : undefined;
   useEffect(() => {
-    if (bancaId == null || !token) return;
+    // Já veio do prefetch em background — nada a buscar, abre instantâneo.
+    if (bancaId == null || !token || doCache) return;
     let ativo = true;
     getBancaDetalhes(bancaId, token)
       .then((d) => {
-        if (ativo) setDetalhe(d);
+        if (ativo) {
+          setDetalheFetched(d);
+          onDetalheCarregado?.(d);
+        }
       })
       .catch(() => undefined);
     return () => {
       ativo = false;
     };
-  }, [bancaId, token]);
-  const detalheDaBanca = detalhe && detalhe.id === bancaId ? detalhe : null;
+    // `doCache` na dependência: se o prefetch terminar enquanto o modal já
+    // está aberto esperando, este efeito reroda, vê o cache preenchido e o
+    // cleanup acima descarta o fetch em andamento.
+  }, [bancaId, token, doCache, onDetalheCarregado]);
+  const detalheDaBanca =
+    doCache ?? (detalheFetched && detalheFetched.id === bancaId ? detalheFetched : null);
 
   // Trava a rolagem do fundo enquanto o modal está aberto — sem isto a roda do
   // mouse sobre o véu arrasta a página atrás. `overflowY` no `<html>` e não no
