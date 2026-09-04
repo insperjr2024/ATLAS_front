@@ -176,11 +176,17 @@ export interface AvaliadorDaBanca {
   /** As frentes a que a pessoa está vinculada. A ficha cruza com
    *  `BancaDetalhes.frentes_da_banca` para agrupar por frente. */
   frente_ids: number[];
-  /** Coordenador de vendas: entra na ficha entre as lideranças, mas o backend
-   *  o trata como "liderança SEM frente" — não fecha o piso de liderança de
-   *  nenhuma frente. `agruparAvaliadores` o joga no bloco "outras frentes" e
-   *  a ficha marca o nome com "· vendas". */
+  /** Coordenador de vendas: só para o "· vendas" no nome. Quem decide se a
+   *  pessoa cai no bloco "outras frentes" é `lideranca_sem_frente`, abaixo —
+   *  mais largo, cobre vendas E diretoria. */
   coordenador_vendas: boolean;
+  /** ⭐ Liderança SEM frente (2026-09-04): coordenador de vendas OU
+   *  diretoria (qualquer tipo — projetos, pessoas, geral). Nenhum dos dois
+   *  fecha o piso de liderança de frente nenhuma no backend, então
+   *  `agruparAvaliadores` os joga no bloco "outras frentes" mesmo vinculados
+   *  a uma frente da banca — senão o nome apareceria ali e a cota "2/3" não
+   *  contaria a pessoa, a mesma divergência que este campo existe pra evitar. */
+  lideranca_sem_frente: boolean;
   /** O rascunho ou envio dele nesta sessão — `null` se ainda não abriu. */
   avaliacao_id: number | null;
   ja_enviou: boolean;

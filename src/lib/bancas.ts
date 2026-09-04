@@ -438,9 +438,10 @@ export interface GrupoDeAvaliadores {
  * em vez de "Lideranças · Business"). Alguém vinculado a duas frentes da
  * banca aparece nos dois blocos — está cobrindo as duas.
  *
- * ⚠ Coordenador de vendas é "liderança SEM frente": o backend não o conta no
- * piso de liderança de nenhuma frente, então ele cai sempre no bloco
- * "Lideranças · outras frentes", mesmo vinculado a uma frente da banca.
+ * ⚠ Coordenador de vendas e TODA a diretoria são "liderança SEM frente"
+ * (`a.lideranca_sem_frente`): o backend não os conta no piso de liderança de
+ * nenhuma frente, então caem sempre no bloco "Lideranças · outras frentes",
+ * mesmo vinculados a uma frente da banca.
  */
 export function agruparAvaliadores(
   avaliadores: AvaliadorDaBanca[],
@@ -475,7 +476,7 @@ export function agruparAvaliadores(
         avaliadores: avaliadores.filter(
           (a) =>
             a.eh_lideranca === (categoria === "lideranca") &&
-            !a.coordenador_vendas &&
+            !a.lideranca_sem_frente &&
             a.frente_ids.includes(f.id),
         ),
         cota: cotaDe(c, categoria),
@@ -484,7 +485,7 @@ export function agruparAvaliadores(
   }
 
   const forasDaBanca = (a: AvaliadorDaBanca) =>
-    a.coordenador_vendas || !a.frente_ids.some((id) => idsDaBanca.has(id));
+    a.lideranca_sem_frente || !a.frente_ids.some((id) => idsDaBanca.has(id));
   for (const categoria of ["lideranca", "membro"] as const) {
     const lista = avaliadores.filter(
       (a) => a.eh_lideranca === (categoria === "lideranca") && forasDaBanca(a),
