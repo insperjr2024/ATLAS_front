@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { RealizarBancaModal } from "./RealizarBancaModal";
 import { AlocarPessoasModal } from "./AlocarPessoasModal";
 import { Desempenho } from "./Desempenho";
 import { Clock, Plus, ShieldCheck, User, Users, X } from "lucide-react";
@@ -8,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   alocar,
+  cancelarBanca,
   deleteBanca,
   aceitaInscricao,
   desalocar,
@@ -24,7 +24,6 @@ import {
   podeGerenciarBanca,
   pushAlocacao,
   quemPodeAprovar,
-  realizarBanca,
   registrarAprovacaoBanca,
   registrarDescricaoCoordenador,
   resumoDoQueFalta,
@@ -239,7 +238,9 @@ export function Bancas() {
   const [bancaAvaliar, setBancaAvaliar] = useState<Banca | null>(null);
   const [bancaEditar, setBancaEditar] = useState<Banca | null>(null);
   const [criarAberto, setCriarAberto] = useState(false);
-  const [bancaRealizar, setBancaRealizar] = useState<Banca | null>(null);
+  /** ⭐ A saída pra "isto não vai acontecer" (2026-09-04, a pedido) —
+   *  gerência e diretoria de projetos, ver `podeCancelar` abaixo. */
+  const [bancaCancelar, setBancaCancelar] = useState<Banca | null>(null);
   const [bancaAlocar, setBancaAlocar] = useState<Banca | null>(null);
   /** ⭐ A banca que a diretoria ou o gerente da frente vai aprovar/reprovar
    *  (§5.5, §8) — o atalho de fora do projeto. */
@@ -476,10 +477,12 @@ export function Bancas() {
    * registrada como realizada com zero alocados não cai em nenhuma das quatro:
    * ela existe no banco, vem no `GET /bancas`, e a interface inteira a ignora.
    *
-   * Some sem nenhuma pista de que existiu, e é a diretoria que produz esse
-   * estado, o `forcar` do `RealizarBancaModal` é justamente o que deixa
-   * registrar abaixo do mínimo. Listar aqui é o mínimo para a banca continuar
-   * encontrável.
+   * Some sem nenhuma pista de que existiu. Desde que "Registrar realização"
+   * saiu (2026-09-04) isto ficou mais comum, não menos: a finalização
+   * automática sempre força a realização (`forcar=True`, ver
+   * `finalizacao_automatica.py` no backend) — não há mais humano na tela
+   * decidindo se vale a pena abaixo do mínimo. Listar aqui é o mínimo para a
+   * banca continuar encontrável.
    */
   const realizadasSemAvaliador = bancas
     .filter(
@@ -602,15 +605,11 @@ export function Bancas() {
     recarregar();
   }
 
-  async function handleRealizar(dados: {
-    realizado_em: string;
-    presentes: number[];
-    forcar: boolean;
-  }) {
-    if (!token || !bancaRealizar) return;
+  async function handleCancelar() {
+    if (!token || !bancaCancelar) return;
     // O erro sobe para o modal mostrar; ele só fecha se deu certo.
-    await realizarBanca(bancaRealizar.id, dados, token);
-    setBancaRealizar(null);
+    await cancelarBanca(bancaCancelar.id, token);
+    setBancaCancelar(null);
     await recarregar();
   }
 
@@ -709,7 +708,7 @@ export function Bancas() {
           onVerMais={setBancaDetalhe}
           onEditar={setBancaEditar}
           onExcluir={handleExcluir}
-          onRealizar={setBancaRealizar}
+          onCancelar={setBancaCancelar}
           onAlocarPessoas={setBancaAlocar}
           ehDiretorLista={ehDiretor}
           onRegistrarResultado={setBancaResultado}
@@ -728,7 +727,7 @@ export function Bancas() {
             acao="deslocar"
             usuarioId={usuario.id}
             gerenciar={podeAgendar}
-            onRealizar={setBancaRealizar}
+            onCancelar={setBancaCancelar}
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
             onRegistrarResultado={setBancaResultado}
@@ -750,7 +749,7 @@ export function Bancas() {
             usuarioId={usuario.id}
             gerenciar={podeAgendar}
             onAcao={handleAlocar}
-            onRealizar={setBancaRealizar}
+            onCancelar={setBancaCancelar}
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
             onRegistrarResultado={setBancaResultado}
@@ -766,7 +765,7 @@ export function Bancas() {
             acao="nenhuma"
             usuarioId={usuario.id}
             gerenciar={podeAgendar}
-            onRealizar={setBancaRealizar}
+            onCancelar={setBancaCancelar}
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
             onRegistrarResultado={setBancaResultado}
@@ -793,7 +792,7 @@ export function Bancas() {
             contexto={contexto}
             acao="avaliar"
             gerenciar={podeAgendar}
-            onRealizar={setBancaRealizar}
+            onCancelar={setBancaCancelar}
             onAlocarPessoas={setBancaAlocar}
             ehDiretorLista={ehDiretor}
             onRegistrarResultado={setBancaResultado}
@@ -867,14 +866,14 @@ export function Bancas() {
         />
       )}
 
-      {bancaRealizar && usuario && (
-        <RealizarBancaModal
-          banca={bancaRealizar}
-          candidaturas={candidaturas.filter((c) => c.banca_id === bancaRealizar.id)}
-          usuarios={contexto?.usuarios ?? []}
-          ehDiretor={!!ehDiretor}
-          onCancelar={() => setBancaRealizar(null)}
-          onConfirmar={handleRealizar}
+      {bancaCancelar && token && (
+        <ConfirmarModal
+          titulo="Cancelar banca"
+          mensagem={`Cancelar a banca de "${bancaCancelar.nome_projeto}"? Ela não vai acontecer, e não abrirá sozinha a avaliação de banca nem a de desempenho de finalização. Só é possível cancelar antes de a banca acontecer.`}
+          rotuloConfirmar="Cancelar banca"
+          rotuloProcessando="Cancelando…"
+          onCancelar={() => setBancaCancelar(null)}
+          onConfirmar={handleCancelar}
         />
       )}
 
@@ -969,7 +968,7 @@ function SecaoBancas({
   gerenciar,
   onEditar,
   onExcluir,
-  onRealizar,
+  onCancelar,
   onAlocarPessoas,
   onRegistrarResultado,
   ehDiretorLista,
@@ -994,8 +993,10 @@ function SecaoBancas({
   gerenciar?: boolean;
   onEditar?: (banca: Banca) => void;
   onExcluir?: (banca: Banca) => void;
-  /** Abre o registro de realização, só faz sentido em banca já com data. */
-  onRealizar?: (banca: Banca) => void;
+  /** ⭐ Abre a confirmação de cancelamento (2026-09-04, a pedido) — a única
+   *  saída manual que resta desde que "Registrar realização" saiu. Só faz
+   *  sentido em banca que ainda não aconteceu nem foi cancelada. */
+  onCancelar?: (banca: Banca) => void;
   /** Abre a alocação manual, só faz sentido enquanto a banca não aconteceu. */
   onAlocarPessoas?: (banca: Banca) => void;
   /** Abre a decisão de aprovação, só faz sentido em banca já realizada. */
@@ -1272,17 +1273,19 @@ function SecaoBancas({
               </PageButtonSm>
             )}
 
-            {/* Ainda não aconteceu: o passo que tira a banca de
-                "atrasada" e alimenta o cálculo.
-                Trava por CARGO (`gerenciar`), não por ser o
-                coordenador daquela banca: o backend usa
-                `require_pode_definir_cronograma`, e usar
-                `podeGerenciarBanca` aqui escondia o botão da
-                própria diretoria, que é justamente quem precisa
-                dele. */}
-            {gerenciar && onRealizar && !banca.realizado_em && banca.data_hora && (
-              <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onRealizar(banca))}>
-                Registrar realização
+            {/* ⭐ A saída pra "isto não vai acontecer" (2026-09-04, a
+                pedido). Não existe mais "Registrar realização":
+                `data_hora` passar sozinho já marca a banca como
+                realizada e dispara as avaliações. Cancelar é a única
+                ação manual que resta, e é gestão de calendário, não
+                condução do projeto — por isso `podeAprovarLista`
+                (diretoria de projetos OU gerente de frente, a mesma
+                régua do backend em `require_gestao`), e não
+                `gerenciar` (`pode_definir_cronograma`, que a
+                coordenação também tem). */}
+            {podeAprovarLista && onCancelar && !banca.realizado_em && banca.status !== "cancelada" && (
+              <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onCancelar(banca))}>
+                Cancelar banca
               </PageButtonSm>
             )}
 

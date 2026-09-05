@@ -20,25 +20,17 @@ import type {
 } from "@/types/banca";
 
 /**
- * Marca que a banca ACONTECEU, o passo que separa "a data passou" de "foi
- * feita". Sem ele a banca fica `atrasada` para sempre e o  conta isso
- * como atraso do projeto.
- *
- * `presentes` é a lista de quem compareceu; o backend confirma essas
- * candidaturas e desmarca o resto.
- *
- * `forcar` registra mesmo abaixo do mínimo de alocados, o backend só aceita
- * de diretor (a exceção de composição é da diretoria).
+ * ⭐ A única saída manual que resta (2026-09-04, a pedido). Não existe mais
+ * "Registrar realização": `data_hora` passar sozinho já marca a banca como
+ * realizada e dispara a avaliação de banca e a de desempenho de finalização
+ * (rotina automática do backend). Cancelar é o único jeito de tirar uma
+ * banca desse trilho — reservado a gerência e diretoria de projetos
+ * (`require_gestao`), e só antes de a banca acontecer.
  */
-export function realizarBanca(
-  bancaId: number,
-  dados: { realizado_em?: string | null; presentes?: number[]; forcar?: boolean },
-  token: string,
-) {
-  return apiFetch(`/bancas/${bancaId}/realizar`, {
+export function cancelarBanca(bancaId: number, token: string) {
+  return apiFetch<{ id: number; cancelada_em: string }>(`/bancas/${bancaId}/cancelar`, {
     method: "POST",
     token,
-    body: JSON.stringify(dados),
   });
 }
 
@@ -524,13 +516,17 @@ export const ROTULO_STATUS_BANCA: Record<StatusBanca, string> = {
   aberta: "Aberta para inscrições",
   realizada: "Realizada",
   atrasada: "Atrasada",
+  cancelada: "Cancelada",
 };
 
-/** Vermelho só para `atrasada`, é o estado que precisa gritar na tela. */
+/** Vermelho só para `atrasada`, é o estado que precisa gritar na tela.
+ *  `cancelada` fica em `muted`, igual `nao_marcada`: não é um problema
+ *  pendente (como `atrasada`), é uma decisão já tomada — não sobrou nada
+ *  para fazer nela. */
 export function tomDoStatusBanca(status: StatusBanca): "default" | "success" | "muted" | "danger" {
   if (status === "atrasada") return "danger";
   if (status === "realizada") return "success";
-  if (status === "nao_marcada") return "muted";
+  if (status === "nao_marcada" || status === "cancelada") return "muted";
   return "default";
 }
 

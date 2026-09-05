@@ -53,9 +53,13 @@ const COLUNAS_PRESENCA: Colunas<LinhaPresenca> = {
 /**
  * Presença por membro, o controle da diretoria.
  *
- * O dado já era gravado e nunca lido: `Registrar realização` marca
- * `candidatura.confirmado` para quem compareceu, e até aqui nenhuma tela
- * consumia isso. Esta é a leitura.
+ * ⚠ Desde que "Registrar realização" saiu (2026-09-04), `confirmado` não
+ * distingue mais quem faltou de verdade: a finalização automática marca
+ * `presentes` = todo mundo que se candidatou (backend,
+ * `finalizacao_automatica.py`), porque não sobrou humano na tela para
+ * apontar ausência. `faltas` só volta a significar falta de verdade em
+ * banca que ainda tem gente marcando presença à mão — e não sobra mais
+ * nenhuma tela que faça isso.
  *
  * A conta só olha bancas JÁ REALIZADAS: numa banca futura ninguém faltou —
  * misturar as duas faria todo mundo parecer ausente por estar inscrito no que

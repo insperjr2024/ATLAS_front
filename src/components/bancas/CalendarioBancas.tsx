@@ -66,6 +66,7 @@ const COR_STATUS: Record<StatusBanca, string> = {
   realizada: theme.colors.success,
   aberta: theme.colors.info,
   nao_marcada: theme.colors.mutedForeground,
+  cancelada: theme.colors.mutedForeground,
 };
 
 const ROTULO_CURTO: Record<StatusBanca, string> = {
@@ -73,6 +74,7 @@ const ROTULO_CURTO: Record<StatusBanca, string> = {
   realizada: "Realizada",
   aberta: "Aberta",
   nao_marcada: "Não marcada",
+  cancelada: "Cancelada",
 };
 
 /** `2026-08-12T14:00` → `14:00`, sem passar pelo fuso. */

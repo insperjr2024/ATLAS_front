@@ -24,6 +24,7 @@ const ROTULO_STATUS: Record<BancaDetalhes["status"], string> = {
   aberta: "Marcada",
   realizada: "Realizada",
   atrasada: "Atrasada",
+  cancelada: "Cancelada",
 };
 
 const ROTULO_RESULTADO: Record<NonNullable<BancaDetalhes["resultado"]>, string> = {

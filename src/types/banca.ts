@@ -1,13 +1,19 @@
 import type { Posicao } from "./auth";
 
 /**
- * Os 4 estados da banca (, ).
+ * Os 5 estados da banca.
  *
  * `atrasada`, venceu e não aconteceu, é o estado que não existia antes da
  * F5 e que destrava o monitoramento. Uma banca `atrasada` **ainda aceita
  * inscrição**: quem fecha é a realização, não o calendário.
+ *
+ * `cancelada` é a única saída manual que resta (2026-09-04): não existe mais
+ * "Registrar realização" — `data_hora` passar sozinho já marca a banca como
+ * realizada e dispara as avaliações. Cancelar (gerência/diretoria de
+ * projetos) é o único jeito de tirar uma banca desse trilho, e só antes de
+ * ela acontecer.
  */
-export type StatusBanca = "nao_marcada" | "aberta" | "realizada" | "atrasada";
+export type StatusBanca = "nao_marcada" | "aberta" | "realizada" | "atrasada" | "cancelada";
 
 export type ResultadoBanca = "aprovada" | "nao_aprovada";
 
@@ -95,6 +101,10 @@ export interface Banca extends BancaBase {
    *  Vazio nas bancas legadas, que não têm escopo vendido. */
   projeto_escopo_ids: number[];
   realizado_em: string | null;
+  /** ⭐ Preenchido só pela ação manual de cancelar (`POST /bancas/{id}/cancelar`,
+   *  gerência/diretoria de projetos). Nulo em toda banca que ainda pode
+   *  acontecer — inclusive as automáticas, que nunca passam por aqui. */
+  cancelada_em: string | null;
   resultado: ResultadoBanca | null;
   /** O relato do coordenador do projeto sobre a banca, texto livre, no
    *  lugar do formulário de avaliação (ele não é avaliador da própria
@@ -117,6 +127,8 @@ export interface BancaDetalhes {
   nome_projeto: string;
   data_hora: string | null;
   realizado_em: string | null;
+  /** ⭐ Preenchido só pela ação manual de cancelar — ver `BancaBase.cancelada_em`. */
+  cancelada_em: string | null;
   resultado: ResultadoBanca | null;
   status: StatusBanca;
   /** Plural: uma banca pode cobrir vários escopos do projeto de uma sentada. */
