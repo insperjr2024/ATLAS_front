@@ -4,6 +4,7 @@ import { AlertTriangle, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   aceitaInscricao,
+  cancelarBanca,
   deleteBanca,
   getBanca,
   getBancasDoProjeto,
@@ -11,7 +12,6 @@ import {
   getEquipesProjeto,
   quemDecidiu,
   quemPodeAprovar,
-  realizarBanca,
   registrarAprovacaoBanca,
   registrarDescricaoCoordenador,
   ROTULO_STATUS_BANCA,
@@ -19,7 +19,6 @@ import {
 } from "@/lib/bancas";
 import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import { BancaFormModal } from "@/components/bancas/BancaFormModal";
-import { CODIGO_BANCA_ABAIXO_DO_MINIMO, codigoDoErro } from "@/lib/api";
 import { createAvaliacao, getFormularioAtivo, submeterAvaliacao } from "@/lib/avaliacoes";
 import { formatarDataHora } from "@/lib/projetos";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
@@ -81,7 +80,6 @@ import {
   Lista,
   ListaNomes,
   MeuVoto,
-  Presenca,
   SecaoTitulo,
   Tentativa,
   TentativaMeta,
@@ -225,15 +223,22 @@ function FichaDaBanca({
   onAprovacaoDecidida: (bancaId: number, situacao: AprovacaoDaBanca) => void;
 }) {
   const { usuario, token } = useAuth();
-  const [realizando, setRealizando] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
   const [editando, setEditando] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
 
-  // Quem marca a banca também registra que ela aconteceu — a MESMA permissão
-  // que o backend cobra em `POST /bancas/{id}/realizar`
-  // (`require_pode_definir_cronograma`) e que o Cronograma já lê para decidir
-  // quem pode marcar.
   const podeRegistrar = !!usuario?.permissoes.pode_definir_cronograma;
+  /**
+   * ⭐ Cancelar a banca (2026-09-04, a pedido). Não existe mais "Registrar
+   * realização": `data_hora` passar sozinho já marca a banca como realizada
+   * e dispara as avaliações — cancelar é a única saída manual que resta.
+   * Reservada a gerência e diretoria de projetos, a MESMA permissão que o
+   * backend cobra em `POST /bancas/{id}/cancelar` (`require_gestao`), e não
+   * a de quem conduz o projeto (`podeRegistrar` acima): tirar a banca da
+   * rotina automática é decisão de gestão do calendário, não do dia a dia
+   * do projeto.
+   */
+  const podeCancelar = ehDiretoriaDeProjetos(usuario) || usuario?.posicao === "gerente";
   /**
    * Editar a banca sem sair do projeto.
    *
@@ -279,11 +284,12 @@ function FichaDaBanca({
         >
           {rotuloDoResultado(banca.resultado)}
         </PageBadge>
-        {/* A banca aconteceu: o passo que abre a avaliação. Sem ele, ninguém
-            consegue avaliar, pois o backend recusa em banca não realizada. */}
-        {podeRegistrar && !banca.realizado_em && banca.data_hora && (
-          <PageButtonSm type="button" onClick={() => setRealizando(true)}>
-            Registrar realização
+        {/* A saída pra "isto não vai acontecer" — só antes de a banca
+            acontecer de fato, e só quem decide calendário (não a
+            coordenação, que é quem normalmente mexe nesta ficha). */}
+        {podeCancelar && !banca.realizado_em && !banca.cancelada_em && (
+          <PageButtonSm $variant="outline" type="button" onClick={() => setCancelando(true)}>
+            Cancelar banca
           </PageButtonSm>
         )}
         {/* ⚠ Os dois num filho SÓ do cabeçalho, e não lado a lado soltos: o
@@ -340,6 +346,14 @@ function FichaDaBanca({
               {banca.realizado_em ? formatarDataHora(banca.realizado_em) : "ainda não aconteceu"}
             </CampoValor>
           </Campo>
+          {/* Só aparece na banca cancelada — não é um campo vazio de sempre,
+              é a exceção. */}
+          {banca.cancelada_em && (
+            <Campo>
+              <CampoRotulo>Cancelada em</CampoRotulo>
+              <CampoValor>{formatarDataHora(banca.cancelada_em)}</CampoValor>
+            </Campo>
+          )}
           <Campo>
             <CampoRotulo>Frentes</CampoRotulo>
             <CampoValor>{banca.frentes.join(", ") || "—"}</CampoValor>
@@ -456,13 +470,16 @@ function FichaDaBanca({
         <RelatoDaCoordenacao banca={banca} token={token} onSalvou={onMudou} />
       </PageCardContent>
 
-      {realizando && token && (
-        <RegistrarRealizacaoModal
-          banca={banca}
-          token={token}
-          onFechar={() => setRealizando(false)}
-          onRegistrou={async () => {
-            setRealizando(false);
+      {cancelando && token && (
+        <ConfirmarModal
+          titulo="Cancelar banca"
+          mensagem={`Cancelar a banca "${nomeDaBanca}"? Ela não vai acontecer, e não abrirá sozinha a avaliação de banca nem a de desempenho de finalização. Só é possível cancelar antes de a banca acontecer.`}
+          rotuloConfirmar="Cancelar banca"
+          rotuloProcessando="Cancelando…"
+          onCancelar={() => setCancelando(false)}
+          onConfirmar={async () => {
+            await cancelarBanca(banca.id, token);
+            setCancelando(false);
             await onMudou();
           }}
         />
@@ -772,112 +789,6 @@ function AprovacaoBloco({
         />
       )}
     </>
-  );
-}
-
-/**
- * "A banca aconteceu" — o passo que abre a avaliação.
- *
- * A lista de presença registra `candidatura.confirmado`: quem foi escalado e
- * faltou fica marcado como ausente, e a ficha da banca mostra a diferença
- * entre "escalado" e "compareceu".
- */
-function RegistrarRealizacaoModal({
-  banca,
-  token,
-  onFechar,
-  onRegistrou,
-}: {
-  banca: BancaDetalhes;
-  token: string;
-  onFechar: () => void;
-  onRegistrou: () => Promise<void>;
-}) {
-  // Todos marcados por padrão: o caso comum é a banca acontecer com quem foi
-  // escalado, e a exceção é a falta.
-  const [presentes, setPresentes] = useState<number[]>(
-    banca.avaliadores.map((a) => a.usuario_id),
-  );
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState("");
-  const [recusaDeComposicao, setRecusaDeComposicao] = useState(false);
-
-  async function confirmar(forcar = false) {
-    setSalvando(true);
-    setErro("");
-    try {
-      await realizarBanca(banca.id, { presentes, forcar }, token);
-      await onRegistrou();
-    } catch (err) {
-      const mensagem = err instanceof Error ? err.message : "Não foi possível registrar";
-      setErro(mensagem);
-      // ⭐ Pelo CÓDIGO da recusa, não por palavras na mensagem.
-      //
-      // Este `includes` procurava "mínimo" ou "composição", e o texto atual do
-      // backend ("Esta banca tem 0 de 2 pessoas alocadas...") não tem nenhuma
-      // das duas — o botão de forçar da diretoria nunca aparecia. Quem decide
-      // continua sendo a rota; o que mudou é como a tela pergunta.
-      setRecusaDeComposicao(codigoDoErro(err) === CODIGO_BANCA_ABAIXO_DO_MINIMO);
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  return (
-    <ModalOverlay onClick={onFechar} role="presentation">
-      <ModalContent onClick={(e) => e.stopPropagation()}>
-        <ModalHeader>
-          <ModalTitle>Registrar que a banca aconteceu</ModalTitle>
-          <ModalClose type="button" aria-label="Fechar" onClick={onFechar}>
-            ×
-          </ModalClose>
-        </ModalHeader>
-        <ModalBody>
-          <Ajuda>
-            Marque quem esteve presente. Isso registra a presença de cada avaliador escalado.
-          </Ajuda>
-          {banca.avaliadores.length === 0 ? (
-            <EmptyText>Nenhum avaliador escalado nesta banca.</EmptyText>
-          ) : (
-            banca.avaliadores.map((a) => (
-              <Presenca key={a.usuario_id}>
-                <input
-                  type="checkbox"
-                  checked={presentes.includes(a.usuario_id)}
-                  onChange={(e) =>
-                    setPresentes((atuais) =>
-                      e.target.checked
-                        ? [...atuais, a.usuario_id]
-                        : atuais.filter((id) => id !== a.usuario_id),
-                    )
-                  }
-                />
-                {a.nome}
-              </Presenca>
-            ))
-          )}
-          {erro && <FormErrorText>{erro}</FormErrorText>}
-          <AcoesLinha>
-            <PageButton type="button" disabled={salvando} onClick={() => confirmar(false)}>
-              {salvando ? "Registrando..." : "Confirmar"}
-            </PageButton>
-            {recusaDeComposicao && (
-              <PageButton
-                type="button"
-                $variant="outline"
-                disabled={salvando}
-                onClick={() => confirmar(true)}
-              >
-                Registrar assim mesmo
-              </PageButton>
-            )}
-            <PageButton type="button" $variant="ghost" onClick={onFechar}>
-              Cancelar
-            </PageButton>
-          </AcoesLinha>
-        </ModalBody>
-      </ModalContent>
-    </ModalOverlay>
   );
 }
 

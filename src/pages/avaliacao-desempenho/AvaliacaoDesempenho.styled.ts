@@ -121,6 +121,11 @@ export const FilaList = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.sm};
+  /* ⭐ 2026-09-05, corrigido a pedido: PageCardContent não é flex (só
+     padding), então nada separava esta lista do que vem depois dela no
+     card — o botão "Enviar avaliações" encostava direto na última linha,
+     0px de vão (confirmado medindo o DOM). */
+  margin-bottom: ${theme.spacing.md};
 `;
 
 export const FilaItem = styled.button<{ $clicavel?: boolean }>`

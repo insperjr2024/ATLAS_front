@@ -208,12 +208,18 @@ export function ProjetosList() {
 
   // Só a contagem, pro botão "Vagas abertas" — a lista completa (com
   // impedimento, coordenador, etc.) só é buscada dentro de /vagas.
+  //
+  // ⚠ `vagas_disponiveis`, nunca `projetos.length` (2026-09-05, corrigido a
+  // pedido): `projetos` traz todo projeto aberto, cheio ou não, e de
+  // qualquer frente — contar o array dizia "20 vagas" quando a soma real,
+  // só das frentes do usuário, era 4. `vagas_disponiveis` já vem somado e
+  // recortado do backend.
   useEffect(() => {
     if (!token) return;
     let ativo = true;
     getProjetosComVaga(token)
       .then((r) => {
-        if (ativo) setVagasAbertas(r.projetos.length);
+        if (ativo) setVagasAbertas(r.vagas_disponiveis);
       })
       .catch(() => {
         // Contagem é só um adorno do botão — sem ela, o botão continua

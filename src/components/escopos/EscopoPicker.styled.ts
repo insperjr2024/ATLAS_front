@@ -14,8 +14,17 @@ export const EscopoLinha = styled.div`
   gap: ${theme.spacing.sm};
   align-items: center;
 
+  /* ⭐ 6 colunas, não 5 (2026-09-05, corrigido a pedido): mover | nome |
+     frente | calendário | dias | remover. O calendário entrou na linha
+     depois que esta grade já tinha 5 trilhas fixas para 5 campos — sem
+     trilha própria, ele caía na sobra de "dias" (6rem, curto demais pra um
+     rótulo de calendário) e empurrava "dias" para a sobra de "remover"
+     (2rem, ilegível pra um número). Nome e frente ficavam gigantes porque
+     eram as únicas trilhas em fr, e o grid dava a elas todo o espaço livre
+     que sobrava das outras trilhas fixas demais. */
   @media (min-width: ${theme.breakpoints.md}px) {
-    grid-template-columns: 1.75rem minmax(0, 2fr) minmax(0, 1fr) 6rem 2rem;
+    grid-template-columns:
+      1.75rem minmax(0, 1.5fr) minmax(0, 0.85fr) minmax(0, 1.15fr) 4.75rem 2rem;
   }
 `;
 

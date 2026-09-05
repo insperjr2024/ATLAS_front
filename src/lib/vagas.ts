@@ -55,6 +55,15 @@ export interface ListaVagas {
    * , não as frentes que por acaso apareceram na lista.
    */
   filtra_por_frente: boolean;
+  /**
+   * ⭐ A SOMA de vagas de verdade — não `projetos.length` (2026-09-05,
+   * corrigido a pedido: 20 projetos na lista chegou a significar só 5 vagas
+   * reais, porque a maioria estava cheia). Pra quem pede (`pode_solicitar`),
+   * já vem recortada pelas frentes do próprio usuário — projeto de frente
+   * que não é a dele (nem sinérgico com ela) não entra na conta. É este
+   * campo que o selo "N vagas abertas" deve usar, nunca `projetos.length`.
+   */
+  vagas_disponiveis: number;
 }
 
 export interface MembroDoProjeto {

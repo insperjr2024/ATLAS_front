@@ -64,7 +64,7 @@ import {
 
 const TIPOS: { valor: DesempenhoTipo; titulo: string; descricao: string }[] = [
   { valor: "periodico", titulo: "Avaliação periódica", descricao: "Check-in ao longo do projeto." },
-  { valor: "finalizacao", titulo: "Avaliação de finalização", descricao: "Balanço final, feito quando o projeto termina." },
+  { valor: "finalizacao", titulo: "Avaliação de finalização", descricao: "Balanço final, feito quando o projeto ou um escopo dele termina." },
 ];
 
 const ROTULO_PAPEL: Record<"coordenador" | "consultor", string> = {
@@ -511,9 +511,15 @@ export function AvaliacaoDesempenho() {
       {passo === "fila" && tipoEscolhido && (
         <PageCard>
           <PageCardHeader>
-            <PageCardTitle>
-              Suas avaliações, {TIPOS.find((t) => t.valor === tipoEscolhido)?.titulo}
-            </PageCardTitle>
+            <PageCardTitle>Suas avaliações</PageCardTitle>
+            {/* ⭐ 2026-09-05, corrigido a pedido: era "Suas avaliações, Avaliação
+                de finalização" tudo junto, na mesma linha e no mesmo peso —
+                virava uma frase só, difícil de separar de relance. Um badge,
+                como o resto da ficha já usa pra status, separa visualmente o
+                TIPO do título sem inventar um padrão novo. */}
+            <PageBadge $tone="default">
+              {TIPOS.find((t) => t.valor === tipoEscolhido)?.titulo}
+            </PageBadge>
           </PageCardHeader>
           <PageCardContent>
             <VoltarLink type="button" onClick={() => setPasso("escolha")}>

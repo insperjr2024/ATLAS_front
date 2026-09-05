@@ -391,7 +391,10 @@ export const PastaCardTitulo = styled.span`
 export const ProjetoChipsRow = styled.div<{ $expandido?: boolean }>`
   display: flex;
   flex-wrap: wrap;
-  gap: ${theme.spacing.xs};
+  /* sm, não xs: o contorno de "rodada" (2026-09-05) soma 2px de cada lado
+     do chip, e com o gap antigo (4px) dois chips com rodada quase se
+     tocavam. */
+  gap: ${theme.spacing.sm};
   max-height: ${(p) => (p.$expandido ? "none" : "11rem")};
   overflow-y: ${(p) => (p.$expandido ? "visible" : "auto")};
   padding: ${theme.spacing.sm};
@@ -399,7 +402,7 @@ export const ProjetoChipsRow = styled.div<{ $expandido?: boolean }>`
   border-radius: ${theme.borderRadius.md};
 `;
 
-export const ProjetoChip = styled.button<{ $selecionado: boolean }>`
+export const ProjetoChip = styled.button<{ $selecionado: boolean; $corRodada?: string }>`
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
@@ -412,6 +415,12 @@ export const ProjetoChip = styled.button<{ $selecionado: boolean }>`
   font-weight: ${theme.fontWeight.medium};
   cursor: pointer;
   transition: background 0.12s ease, border-color 0.12s ease;
+  /* ⭐ Anel de fora, não a borda: a borda já fala "selecionado" (vermelho) ou
+     não (cinza) — reaproveitá-la para "quantas rodadas" faria as duas
+     informações brigarem pela mesma linha. O anel continua visível em cima
+     do vermelho do chip marcado, que é exatamente o pedido: marcar todos
+     não pode apagar quem já rodou antes. */
+  box-shadow: ${({ $corRodada }) => ($corRodada ? `0 0 0 2px ${$corRodada}` : "none")};
 
   &:hover {
     border-color: ${theme.colors.primary};
@@ -464,6 +473,34 @@ export const SeletorContagem = styled.span`
   font-size: ${theme.fontSize.xs};
   color: ${theme.colors.mutedForeground};
   white-space: nowrap;
+`;
+
+/** ⭐ A legenda do contorno de rodadas (2026-09-05) — só existe uma entrada
+ *  por número que TEM projeto de verdade, nunca uma tabela fixa. Uma linha
+ *  só, texto pequeno: é contexto pra quem olha o seletor, não o assunto
+ *  principal da tela. */
+export const RodadaLegendaRow = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.sm};
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+`;
+
+export const RodadaLegendaItem = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+`;
+
+export const RodadaLegendaBolinha = styled.span<{ $cor: string }>`
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${({ $cor }) => $cor};
+  flex-shrink: 0;
 `;
 
 /**
