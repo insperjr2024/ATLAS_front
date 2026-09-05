@@ -869,7 +869,11 @@ export function Bancas() {
       {bancaCancelar && token && (
         <ConfirmarModal
           titulo="Cancelar banca"
-          mensagem={`Cancelar a banca de "${bancaCancelar.nome_projeto}"? Ela não vai acontecer, e não abrirá sozinha a avaliação de banca nem a de desempenho de finalização. Só é possível cancelar antes de a banca acontecer.`}
+          mensagem={
+            bancaCancelar.realizado_em
+              ? `Cancelar a banca de "${bancaCancelar.nome_projeto}"? Ela já tinha sido marcada como realizada, mas isto desfaz: volta a "não aconteceu", e a avaliação de desempenho de finalização que abriu sozinha é fechada (ou apagada, se ninguém ainda respondeu nada). Use só pra imprevisto de última hora — se ela realmente aconteceu, isto não é o botão certo.`
+              : `Cancelar a banca de "${bancaCancelar.nome_projeto}"? Ela não vai acontecer, e não abrirá sozinha a avaliação de banca nem a de desempenho de finalização.`
+          }
           rotuloConfirmar="Cancelar banca"
           rotuloProcessando="Cancelando…"
           onCancelar={() => setBancaCancelar(null)}
@@ -1282,8 +1286,13 @@ function SecaoBancas({
                 (diretoria de projetos OU gerente de frente, a mesma
                 régua do backend em `require_gestao`), e não
                 `gerenciar` (`pode_definir_cronograma`, que a
-                coordenação também tem). */}
-            {podeAprovarLista && onCancelar && !banca.realizado_em && banca.status !== "cancelada" && (
+                coordenação também tem).
+
+                ⭐ 2026-09-05: continua disponível mesmo já realizada —
+                o imprevisto de última hora também se desfaz por aqui,
+                inclusive a avaliação de desempenho que abriu sozinha.
+                Só some depois de cancelada de fato. */}
+            {podeAprovarLista && onCancelar && banca.status !== "cancelada" && (
               <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onCancelar(banca))}>
                 Cancelar banca
               </PageButtonSm>

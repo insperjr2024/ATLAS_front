@@ -284,10 +284,13 @@ function FichaDaBanca({
         >
           {rotuloDoResultado(banca.resultado)}
         </PageBadge>
-        {/* A saída pra "isto não vai acontecer" — só antes de a banca
-            acontecer de fato, e só quem decide calendário (não a
-            coordenação, que é quem normalmente mexe nesta ficha). */}
-        {podeCancelar && !banca.realizado_em && !banca.cancelada_em && (
+        {/* A saída pra "isto não vai acontecer" — só quem decide calendário
+            (não a coordenação, que é quem normalmente mexe nesta ficha).
+            ⭐ 2026-09-05: continua disponível mesmo já realizada — o
+            imprevisto de última hora (deu problema, não rolou de verdade,
+            mas o relógio já tinha marcado sozinho) também se desfaz por
+            aqui. Só some depois de cancelada de fato. */}
+        {podeCancelar && !banca.cancelada_em && (
           <PageButtonSm $variant="outline" type="button" onClick={() => setCancelando(true)}>
             Cancelar banca
           </PageButtonSm>
@@ -473,7 +476,11 @@ function FichaDaBanca({
       {cancelando && token && (
         <ConfirmarModal
           titulo="Cancelar banca"
-          mensagem={`Cancelar a banca "${nomeDaBanca}"? Ela não vai acontecer, e não abrirá sozinha a avaliação de banca nem a de desempenho de finalização. Só é possível cancelar antes de a banca acontecer.`}
+          mensagem={
+            banca.realizado_em
+              ? `Cancelar a banca "${nomeDaBanca}"? Ela já tinha sido marcada como realizada, mas isto desfaz: volta a "não aconteceu", e a avaliação de desempenho de finalização que abriu sozinha é fechada (ou apagada, se ninguém ainda respondeu nada). Use só pra imprevisto de última hora — se ela realmente aconteceu, isto não é o botão certo.`
+              : `Cancelar a banca "${nomeDaBanca}"? Ela não vai acontecer, e não abrirá sozinha a avaliação de banca nem a de desempenho de finalização.`
+          }
           rotuloConfirmar="Cancelar banca"
           rotuloProcessando="Cancelando…"
           onCancelar={() => setCancelando(false)}
