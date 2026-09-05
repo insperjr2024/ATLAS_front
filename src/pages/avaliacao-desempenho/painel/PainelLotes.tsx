@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -46,6 +46,9 @@ import {
   ProjetoChip,
   ProjetoChipsRow,
   ChipMarca,
+  RodadaLegendaBolinha,
+  RodadaLegendaItem,
+  RodadaLegendaRow,
   SeletorBarra,
   SeletorBusca,
   SeletorContagem,
@@ -64,6 +67,46 @@ function agoraDatetimeLocal(): string {
 
 function formatarData(iso: string): string {
   return paraDataUtc(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+/**
+ * ⭐ As cores do contorno "quantas rodadas esse projeto já teve" (2026-09-05,
+ * a pedido). Só entram nesta lista quando alguém realmente tem aquele
+ * número de rodadas — não existe uma cor pré-reservada pra "rodada 7" que
+ * nunca aconteceu. `success`/`warning`/`info` são as 3 cores nomeadas do
+ * tema fora do vermelho (que já é a seleção); as duas últimas são um
+ * extra caso um projeto raro chegue à 4ª ou 5ª rodada, e o `%` faz o
+ * ciclo recomeçar se isso um dia não bastar, em vez de estourar.
+ */
+const CORES_RODADA = [
+  "hsl(142, 71%, 45%)", // success
+  "hsl(38, 92%, 50%)", // warning
+  "hsl(199, 89%, 48%)", // info
+  "hsl(271, 76%, 53%)", // roxo
+  "hsl(330, 65%, 55%)", // rosa
+];
+
+/** Quantos lotes JÁ FECHADOS cobriram cada projeto — a "rodada" é isso: uma
+ *  avaliação de desempenho que esse projeto já passou, de qualquer tipo. */
+function contarRodadasPorProjeto(lotes: DesempenhoLote[]): Map<number, number> {
+  const contagem = new Map<number, number>();
+  for (const lote of lotes) {
+    if (lote.aberto) continue;
+    for (const pid of lote.projeto_ids) {
+      contagem.set(pid, (contagem.get(pid) ?? 0) + 1);
+    }
+  }
+  return contagem;
+}
+
+/** Uma cor por número de rodada QUE REALMENTE EXISTE, gerada na hora — não
+ *  uma tabela fixa de 1 a N. Projeto sem rodada nenhuma não entra aqui, e o
+ *  chip dele fica sem contorno extra. */
+function gerarCoresPorRodada(rodadasPorProjeto: Map<number, number>): Map<number, string> {
+  const distintas = [...new Set(rodadasPorProjeto.values())]
+    .filter((n) => n > 0)
+    .sort((a, b) => a - b);
+  return new Map(distintas.map((n, i) => [n, CORES_RODADA[i % CORES_RODADA.length]]));
 }
 
 function statusLote(lote: DesempenhoLote): { rotulo: string; tone: "success" | "muted" | "warning" } {
@@ -126,6 +169,13 @@ export function PainelLotes() {
   const [projetoIds, setProjetoIds] = useState<number[]>([]);
   const [buscaProjeto, setBuscaProjeto] = useState("");
   const [projetosExpandido, setProjetosExpandido] = useState(false);
+  // ⭐ 2026-09-05, a pedido: o botão "Expandir" clicava e nada parecia
+  // acontecer — porque de fato não acontecia nada quando a lista de chips já
+  // cabia inteira nos 11rem da caixa. `scrollHeight` mede o conteúdo por
+  // inteiro (não encolhe com o corte do `max-height`), então dá pra saber
+  // ANTES de expandir se há algo escondido pra revelar.
+  const chipsRowRef = useRef<HTMLDivElement>(null);
+  const [precisaExpandirProjetos, setPrecisaExpandirProjetos] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erroForm, setErroForm] = useState("");
 
@@ -168,11 +218,36 @@ export function PainelLotes() {
     return finalizados;
   }, [projetos, lotes]);
 
+  // ⭐ 2026-09-05, a pedido: contorno colorido no chip de cada projeto,
+  // indicando quantas rodadas de avaliação (qualquer tipo, já fechadas) ele
+  // já teve — pra quem monta uma periódica nova enxergar de relance quem já
+  // rodou antes, sem abrir cada lote passado um por um.
+  const rodadasPorProjeto = useMemo(() => contarRodadasPorProjeto(lotes), [lotes]);
+  const coresPorRodada = useMemo(
+    () => gerarCoresPorRodada(rodadasPorProjeto),
+    [rodadasPorProjeto],
+  );
+  function corDaRodada(projetoId: number): string | undefined {
+    const rodadas = rodadasPorProjeto.get(projetoId);
+    return rodadas ? coresPorRodada.get(rodadas) : undefined;
+  }
+
   const projetosVisiveis = useMemo(() => {
     const alvo = buscaProjeto.trim().toLowerCase();
     if (!alvo) return projetos;
     return projetos.filter((p) => `${p.nome} ${p.cliente}`.toLowerCase().includes(alvo));
   }, [projetos, buscaProjeto]);
+
+  // Mede contra os 11rem fixos da caixa colapsada (`ProjetoChipsRow`), não
+  // contra `clientHeight`: expandido, o `clientHeight` cresce junto com o
+  // conteúdo e a comparação sempre daria "cabe", mesmo quando expandir foi
+  // exatamente o que revelou o resto da lista.
+  useEffect(() => {
+    const el = chipsRowRef.current;
+    if (!el) return;
+    const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    setPrecisaExpandirProjetos(el.scrollHeight > 11 * remPx + 1);
+  }, [projetosVisiveis]);
 
   function toggleProjeto(id: number) {
     setProjetoIds((atual) => (atual.includes(id) ? atual.filter((p) => p !== id) : [...atual, id]));
@@ -392,25 +467,43 @@ export function PainelLotes() {
                 <SeletorContagem>
                   {projetoIds.length} de {projetos.length} escolhidos
                 </SeletorContagem>
-                <PageButtonSm
-                  type="button"
-                  $variant="outline"
-                  onClick={() => setProjetosExpandido((v) => !v)}
-                >
-                  {projetosExpandido ? (
-                    <>
-                      <ChevronUp size={14} />
-                      Recolher
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown size={14} />
-                      Expandir
-                    </>
-                  )}
-                </PageButtonSm>
+                {/* ⭐ Só aparece quando há algo de fato escondido pelos
+                    11rem da caixa (ou já expandida, pra sempre dar como
+                    recolher) — antes ficava sempre visível e, com poucos
+                    projetos, clicar não mudava nada na tela. */}
+                {(precisaExpandirProjetos || projetosExpandido) && (
+                  <PageButtonSm
+                    type="button"
+                    $variant="outline"
+                    onClick={() => setProjetosExpandido((v) => !v)}
+                  >
+                    {projetosExpandido ? (
+                      <>
+                        <ChevronUp size={14} />
+                        Recolher
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown size={14} />
+                        Expandir
+                      </>
+                    )}
+                  </PageButtonSm>
+                )}
               </SeletorBarra>
-              <ProjetoChipsRow $expandido={projetosExpandido}>
+              {/* ⭐ Só aparece quem tem rodada de verdade — sem lote fechado
+                  nenhum ainda, a legenda não teria sentido nenhum. */}
+              {coresPorRodada.size > 0 && (
+                <RodadaLegendaRow>
+                  {[...coresPorRodada.entries()].map(([rodadas, cor]) => (
+                    <RodadaLegendaItem key={rodadas}>
+                      <RodadaLegendaBolinha $cor={cor} />
+                      {rodadas} {rodadas === 1 ? "rodada" : "rodadas"}
+                    </RodadaLegendaItem>
+                  ))}
+                </RodadaLegendaRow>
+              )}
+              <ProjetoChipsRow ref={chipsRowRef} $expandido={projetosExpandido}>
                 {projetosVisiveis.length === 0 ? (
                   <EmptyText>Nenhum projeto encontrado.</EmptyText>
                 ) : (
@@ -421,6 +514,7 @@ export function PainelLotes() {
                         key={p.id}
                         type="button"
                         $selecionado={selecionado}
+                        $corRodada={corDaRodada(p.id)}
                         aria-pressed={selecionado}
                         onClick={() => toggleProjeto(p.id)}
                       >
@@ -545,6 +639,7 @@ export function PainelLotes() {
                               key={p.id}
                               type="button"
                               $selecionado={editProjetoIds.includes(p.id)}
+                              $corRodada={corDaRodada(p.id)}
                               onClick={() => toggleEditProjeto(p.id)}
                             >
                               {p.nome}
