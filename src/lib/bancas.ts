@@ -435,9 +435,10 @@ export interface GrupoDeAvaliadores {
  * mesma que a tela de alocação usa. O teto é da banca INTEIRA (`vagas`), não
  * de cada frente — completar acima do piso é "tanto faz a frente".
  *
- * Numa banca de uma frente só, o rótulo não repete o nome dela ("Lideranças"
- * em vez de "Lideranças · Business"). Alguém vinculado a duas frentes da
- * banca aparece nos dois blocos — está cobrindo as duas.
+ * O rótulo sempre traz o nome da frente ("Lideranças · Business"), inclusive
+ * na banca de uma frente só (2026-09-07): reforça de qual frente é a cota
+ * que está faltando. Alguém vinculado a duas frentes da banca aparece nos
+ * dois blocos — está cobrindo as duas.
  *
  * ⚠ Coordenador de vendas e TODA a diretoria são "liderança SEM frente"
  * (`a.lideranca_sem_frente`): o backend não os conta no piso de liderança de
@@ -451,7 +452,6 @@ export function agruparAvaliadores(
 ): GrupoDeAvaliadores[] {
   const comp = new Map((composicao ?? []).map((c) => [c.frente_id, c]));
   const idsDaBanca = new Set(frentesDaBanca.map((f) => f.id));
-  const umaFrenteSo = frentesDaBanca.length <= 1;
   const grupos: GrupoDeAvaliadores[] = [];
 
   const cotaDe = (
@@ -486,9 +486,10 @@ export function agruparAvaliadores(
       );
       grupos.push({
         chave: `${categoria}-${f.id}`,
-        rotulo:
-          (categoria === "lideranca" ? "Lideranças" : "Membros") +
-          (umaFrenteSo ? "" : ` · ${f.nome}`),
+        // ⭐ Sempre com o nome da frente, mesmo na banca de uma frente só
+        // (2026-09-07, a pedido): reforça DE QUAL frente é a cota que
+        // falta, igual já aparece nos sinérgicos.
+        rotulo: `${categoria === "lideranca" ? "Lideranças" : "Membros"} · ${f.nome}`,
         categoria,
         frente_id: f.id,
         avaliadores:
