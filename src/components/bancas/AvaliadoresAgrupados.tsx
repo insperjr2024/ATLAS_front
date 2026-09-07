@@ -54,6 +54,12 @@ export function AvaliadoresAgrupados({
                   <li key={a.usuario_id}>
                     {a.nome}
                     {a.coordenador_vendas && " · vendas"}
+                    {/* ⭐ 2026-09-05: liderança que sobra além do mínimo
+                        exigido também conta pro piso de membros — ver
+                        `agruparAvaliadores`. Sem a marca, a mesma pessoa
+                        aparecendo em "Liderança" E "Membros" pareceria
+                        duplicidade, não a regra explicada. */}
+                    {a.cobrindoPiso && " · liderança cobrindo o piso de membro"}
                     {/* Escalado e compareceu são coisas diferentes: quem
                         faltou não avalia a banca. */}
                     {realizadoEm && !a.presente && " · faltou"}
