@@ -268,6 +268,32 @@ export function Bancas() {
   const [distribuindo, setDistribuindo] = useState(false);
   /** O que a distribuição fez — dito em números, não em "pronto!". */
   const [resultadoPush, setResultadoPush] = useState("");
+  /** ⭐ 2026-09-05, a pedido: confirmação antes de rodar de verdade — um
+   *  clique sem querer não pode sair alocando gente sem ninguém ter visto
+   *  o que ia acontecer. */
+  const [confirmandoDistribuicao, setConfirmandoDistribuicao] = useState(false);
+
+  /**
+   * ⭐ Prévia de quem o "Distribuir agora" provavelmente vai mexer — mesma
+   * janela (7 dias) e o mesmo gate de fundo do backend
+   * (`PushAlocacaoAutomaticaUseCase`): só entra banca com `piso_minimo` (o
+   * TOTAL, já somado com a regra de composição) ainda não batido. Não é uma
+   * cópia do rodízio inteiro — a escolha de QUEM é sorteado (pool de
+   * liderança disponível, empate por rodízio) só existe no backend — só
+   * de QUAIS bancas seriam tocadas e o que falta em cada uma, o suficiente
+   * pra confirmar sem clicar às cegas.
+   */
+  const bancasParaDistribuir = useMemo(() => {
+    const agora = new Date();
+    const limite = new Date(agora.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return bancas
+      .filter((b) => {
+        if (!b.data_hora || b.status === "cancelada") return false;
+        const dh = new Date(b.data_hora);
+        return dh >= agora && dh <= limite && b.piso_minimo > b.alocados;
+      })
+      .sort((a, b) => new Date(a.data_hora!).getTime() - new Date(b.data_hora!).getTime());
+  }, [bancas]);
 
   const podeAgendar = !!usuario?.permissoes.pode_definir_cronograma;
   const ehDiretor = ehDiretoriaDeProjetos(usuario);
@@ -642,7 +668,7 @@ export function Bancas() {
               type="button"
               $variant="outline"
               disabled={distribuindo}
-              onClick={handleDistribuirAgora}
+              onClick={() => setConfirmandoDistribuicao(true)}
             >
               <Users size={16} />
               {distribuindo ? "Distribuindo…" : "Distribuir agora"}
@@ -866,10 +892,51 @@ export function Bancas() {
         />
       )}
 
+      {confirmandoDistribuicao && (
+        <ConfirmarModal
+          titulo="Distribuir agora"
+          mensagem={
+            bancasParaDistribuir.length === 0 ? (
+              "Nenhuma banca dos próximos 7 dias parece precisar de gente agora — pode rodar mesmo assim, não deve alocar ninguém."
+            ) : (
+              <>
+                <p style={{ margin: "0 0 0.5rem" }}>
+                  Vai tentar preencher, por rodízio, {bancasParaDistribuir.length}{" "}
+                  {bancasParaDistribuir.length === 1 ? "banca" : "bancas"} dos próximos 7 dias:
+                </p>
+                <ul style={{ margin: "0 0 0.5rem", paddingLeft: "1.25rem" }}>
+                  {bancasParaDistribuir.map((b) => (
+                    <li key={b.id}>
+                      <strong>{b.nome_projeto}</strong> — {formatarDataHora(b.data_hora)} — falta{" "}
+                      {resumoDoQueFalta(b.composicao) || `${b.piso_minimo - b.alocados} vaga(s)`}
+                    </li>
+                  ))}
+                </ul>
+                <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.8 }}>
+                  O sorteio pode não conseguir cobrir tudo — se não houver ninguém disponível
+                  daquela frente ou liderança, a vaga fica em aberto mesmo assim.
+                </p>
+              </>
+            )
+          }
+          rotuloConfirmar="Distribuir agora"
+          rotuloProcessando="Distribuindo…"
+          onCancelar={() => setConfirmandoDistribuicao(false)}
+          onConfirmar={async () => {
+            await handleDistribuirAgora();
+            setConfirmandoDistribuicao(false);
+          }}
+        />
+      )}
+
       {bancaCancelar && token && (
         <ConfirmarModal
           titulo="Cancelar banca"
-          mensagem={`Cancelar a banca de "${bancaCancelar.nome_projeto}"? Ela não vai acontecer, e não abrirá sozinha a avaliação de banca nem a de desempenho de finalização. Só é possível cancelar antes de a banca acontecer.`}
+          mensagem={
+            bancaCancelar.realizado_em
+              ? `Cancelar a banca de "${bancaCancelar.nome_projeto}"? Ela já tinha sido marcada como realizada, mas isto desfaz: volta a "não aconteceu", e a avaliação de desempenho de finalização que abriu sozinha é fechada (ou apagada, se ninguém ainda respondeu nada). Use só pra imprevisto de última hora — se ela realmente aconteceu, isto não é o botão certo.`
+              : `Cancelar a banca de "${bancaCancelar.nome_projeto}"? Ela não vai acontecer, e não abrirá sozinha a avaliação de banca nem a de desempenho de finalização.`
+          }
           rotuloConfirmar="Cancelar banca"
           rotuloProcessando="Cancelando…"
           onCancelar={() => setBancaCancelar(null)}
@@ -1282,8 +1349,13 @@ function SecaoBancas({
                 (diretoria de projetos OU gerente de frente, a mesma
                 régua do backend em `require_gestao`), e não
                 `gerenciar` (`pode_definir_cronograma`, que a
-                coordenação também tem). */}
-            {podeAprovarLista && onCancelar && !banca.realizado_em && banca.status !== "cancelada" && (
+                coordenação também tem).
+
+                ⭐ 2026-09-05: continua disponível mesmo já realizada —
+                o imprevisto de última hora também se desfaz por aqui,
+                inclusive a avaliação de desempenho que abriu sozinha.
+                Só some depois de cancelada de fato. */}
+            {podeAprovarLista && onCancelar && banca.status !== "cancelada" && (
               <PageButtonSm $variant="outline" type="button" onClick={pararPropagacao(() => onCancelar(banca))}>
                 Cancelar banca
               </PageButtonSm>

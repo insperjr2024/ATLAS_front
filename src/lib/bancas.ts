@@ -410,7 +410,16 @@ export interface GrupoDeAvaliadores {
   categoria: "lideranca" | "membro";
   /** `null` no bloco "Outras frentes". */
   frente_id: number | null;
-  avaliadores: AvaliadorDaBanca[];
+  avaliadores: (AvaliadorDaBanca & {
+    /** ⭐ 2026-09-05, a pedido: esta pessoa é liderança, mas sobra além do
+     *  `min_lideranca` da frente — o backend já a soma no `membros` da
+     *  cota (ver `ComposicaoBancaChecker.contar`, "liderança é vaga a
+     *  mais"), então ela precisa aparecer aqui também, senão o número da
+     *  cota some sozinho: a lista teria menos gente do que a cota diz. Só
+     *  existe no grupo "membro"; a mesma pessoa continua listada inteira
+     *  no grupo "lideranca" da mesma frente. */
+    cobrindoPiso?: boolean;
+  })[];
   /** Só nas frentes da banca (o bloco "Outras frentes" não tem piso). */
   cota: CotaDoGrupo | null;
 }
@@ -426,9 +435,10 @@ export interface GrupoDeAvaliadores {
  * mesma que a tela de alocação usa. O teto é da banca INTEIRA (`vagas`), não
  * de cada frente — completar acima do piso é "tanto faz a frente".
  *
- * Numa banca de uma frente só, o rótulo não repete o nome dela ("Lideranças"
- * em vez de "Lideranças · Business"). Alguém vinculado a duas frentes da
- * banca aparece nos dois blocos — está cobrindo as duas.
+ * O rótulo sempre traz o nome da frente ("Lideranças · Business"), inclusive
+ * na banca de uma frente só (2026-09-07): reforça de qual frente é a cota
+ * que está faltando. Alguém vinculado a duas frentes da banca aparece nos
+ * dois blocos — está cobrindo as duas.
  *
  * ⚠ Coordenador de vendas e TODA a diretoria são "liderança SEM frente"
  * (`a.lideranca_sem_frente`): o backend não os conta no piso de liderança de
@@ -442,7 +452,6 @@ export function agruparAvaliadores(
 ): GrupoDeAvaliadores[] {
   const comp = new Map((composicao ?? []).map((c) => [c.frente_id, c]));
   const idsDaBanca = new Set(frentesDaBanca.map((f) => f.id));
-  const umaFrenteSo = frentesDaBanca.length <= 1;
   const grupos: GrupoDeAvaliadores[] = [];
 
   const cotaDe = (
@@ -457,20 +466,36 @@ export function agruparAvaliadores(
 
   for (const f of frentesDaBanca) {
     const c = comp.get(f.id);
+    const presentesDaFrente = avaliadores.filter(
+      (a) => !a.lideranca_sem_frente && a.frente_ids.includes(f.id),
+    );
+    // ⭐ Espelha `ComposicaoBancaChecker.contar` (backend): só os primeiros
+    // `min_lideranca` líderes "ocupam a cota" — o resto sobra e conta como
+    // membro também (2026-09-01, mantido a pedido em 2026-09-05, mas agora
+    // aparecendo nas duas listas em vez de só no número). A ordem de quem é
+    // "o mínimo" e quem é "extra" é arbitrária pro backend (ele só soma);
+    // aqui a escolha é por nome, só pra ser estável de um load pro outro.
+    const lideresDaFrente = presentesDaFrente
+      .filter((a) => a.eh_lideranca)
+      .sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
+    const lideresExtras = lideresDaFrente.slice(c?.min_lideranca ?? 0);
+
     for (const categoria of ["lideranca", "membro"] as const) {
+      const naFrente = presentesDaFrente.filter(
+        (a) => a.eh_lideranca === (categoria === "lideranca"),
+      );
       grupos.push({
         chave: `${categoria}-${f.id}`,
-        rotulo:
-          (categoria === "lideranca" ? "Lideranças" : "Membros") +
-          (umaFrenteSo ? "" : ` · ${f.nome}`),
+        // ⭐ Sempre com o nome da frente, mesmo na banca de uma frente só
+        // (2026-09-07, a pedido): reforça DE QUAL frente é a cota que
+        // falta, igual já aparece nos sinérgicos.
+        rotulo: `${categoria === "lideranca" ? "Lideranças" : "Membros"} · ${f.nome}`,
         categoria,
         frente_id: f.id,
-        avaliadores: avaliadores.filter(
-          (a) =>
-            a.eh_lideranca === (categoria === "lideranca") &&
-            !a.lideranca_sem_frente &&
-            a.frente_ids.includes(f.id),
-        ),
+        avaliadores:
+          categoria === "membro"
+            ? [...naFrente, ...lideresExtras.map((a) => ({ ...a, cobrindoPiso: true }))]
+            : naFrente,
         cota: cotaDe(c, categoria),
       });
     }
