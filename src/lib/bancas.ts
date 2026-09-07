@@ -411,13 +411,12 @@ export interface GrupoDeAvaliadores {
   /** `null` no bloco "Outras frentes". */
   frente_id: number | null;
   avaliadores: (AvaliadorDaBanca & {
-    /** ⭐ 2026-09-05, a pedido: esta pessoa é liderança, mas sobra além do
-     *  `min_lideranca` da frente — o backend já a soma no `membros` da
-     *  cota (ver `ComposicaoBancaChecker.contar`, "liderança é vaga a
-     *  mais"), então ela precisa aparecer aqui também, senão o número da
-     *  cota some sozinho: a lista teria menos gente do que a cota diz. Só
-     *  existe no grupo "membro"; a mesma pessoa continua listada inteira
-     *  no grupo "lideranca" da mesma frente. */
+    /** ⭐ Esta pessoa é liderança da frente, sobra além do `min_lideranca`,
+     *  E está cobrindo um buraco real no piso de MEMBRO daquela frente
+     *  (2026-09-07: só entra na lista de membro quando falta membro de
+     *  verdade — ver `ComposicaoBancaChecker.contar` no backend). Aparece
+     *  no grupo "membro" com essa marca, e continua listada inteira no
+     *  grupo "lideranca" da mesma frente. */
     cobrindoPiso?: boolean;
   })[];
   /** Só nas frentes da banca (o bloco "Outras frentes" não tem piso). */
@@ -469,21 +468,23 @@ export function agruparAvaliadores(
     const presentesDaFrente = avaliadores.filter(
       (a) => !a.lideranca_sem_frente && a.frente_ids.includes(f.id),
     );
-    // ⭐ Espelha `ComposicaoBancaChecker.contar` (backend): só os primeiros
-    // `min_lideranca` líderes "ocupam a cota" — o resto sobra e conta como
-    // membro também (2026-09-01, mantido a pedido em 2026-09-05, mas agora
-    // aparecendo nas duas listas em vez de só no número). A ordem de quem é
-    // "o mínimo" e quem é "extra" é arbitrária pro backend (ele só soma);
-    // aqui a escolha é por nome, só pra ser estável de um load pro outro.
+    // ⭐ Espelha `ComposicaoBancaChecker.contar` (backend): a liderança que
+    // sobra além do `min_lideranca` só entra na lista de "Membros" — e no
+    // número — até o tanto que FALTA de membro na frente (2026-09-07). Se os
+    // não-líderes já batem o `min_membros`, o líder excedente aparece só em
+    // "Lideranças". A escolha de QUEM é "o excedente que cobre" é arbitrária
+    // pro backend (ele só soma); aqui é por nome, pra ser estável entre loads.
+    const naoLideres = presentesDaFrente.filter((a) => !a.eh_lideranca);
     const lideresDaFrente = presentesDaFrente
       .filter((a) => a.eh_lideranca)
       .sort((x, y) => x.nome.localeCompare(y.nome, "pt-BR"));
-    const lideresExtras = lideresDaFrente.slice(c?.min_lideranca ?? 0);
+    const minLid = c?.min_lideranca ?? 0;
+    const excedentes = Math.max(0, lideresDaFrente.length - minLid);
+    const buracoDeMembro = Math.max(0, (c?.min_membros ?? 0) - naoLideres.length);
+    const qtdCobrindo = Math.min(excedentes, buracoDeMembro);
+    const lideresCobrindo = lideresDaFrente.slice(minLid, minLid + qtdCobrindo);
 
     for (const categoria of ["lideranca", "membro"] as const) {
-      const naFrente = presentesDaFrente.filter(
-        (a) => a.eh_lideranca === (categoria === "lideranca"),
-      );
       grupos.push({
         chave: `${categoria}-${f.id}`,
         // ⭐ Sempre com o nome da frente, mesmo na banca de uma frente só
@@ -494,8 +495,8 @@ export function agruparAvaliadores(
         frente_id: f.id,
         avaliadores:
           categoria === "membro"
-            ? [...naFrente, ...lideresExtras.map((a) => ({ ...a, cobrindoPiso: true }))]
-            : naFrente,
+            ? [...naoLideres, ...lideresCobrindo.map((a) => ({ ...a, cobrindoPiso: true }))]
+            : lideresDaFrente,
         cota: cotaDe(c, categoria),
       });
     }
