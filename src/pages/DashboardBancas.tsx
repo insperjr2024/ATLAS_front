@@ -258,13 +258,18 @@ export function DashboardBancas({
    * encurta o prazo de quem avalia.
    */
   const avaliacoesVencendo = useMemo(() => {
+    // ⚠ Chave `banca:avaliador` dos DOIS lados. A versão anterior montava o
+    // Set com `banca:avaliador:sessao` mas consultava com `banca:usuario` —
+    // nunca casava, e TODO candidato contava como pendente (uma banca 100%
+    // avaliada aparecia como "12 não avaliaram"). O dashboard não tem a
+    // sessão corrente por banca (o tipo `Banca` não traz), então aqui é
+    // "enviou alguma avaliação desta banca = feito"; a distinção de sessão
+    // do §9 fica só no backend (`calcular_avaliacoes_pendentes`), que a tela
+    // de cobrança e o lembrete usam.
     const submetidas = new Set(
-      // ⚠ A sessão entra na chave (§9): sem ela, quem avaliou a banca que
-      // reprovou conta como "já enviou" na segunda e some da cobrança. Mesma
-      // chave que `calcular_avaliacoes_pendentes` usa no backend.
       avaliacoes
         .filter((a) => a.status === "submetida")
-        .map((a) => `${a.banca_id}:${a.avaliador_id}:${a.sessao ?? 1}`),
+        .map((a) => `${a.banca_id}:${a.avaliador_id}`),
     );
 
     return bancasSemestre
@@ -641,7 +646,12 @@ export function DashboardBancas({
         </PageCard>
       </TopGrid>
 
-      <PresencaBancas usuarios={usuarios} candidaturas={candidaturas} bancas={bancasSemestre} />
+      <PresencaBancas
+        usuarios={usuarios}
+        candidaturas={candidaturas}
+        bancas={bancasSemestre}
+        avaliacoes={avaliacoes}
+      />
 
     </>
   );
