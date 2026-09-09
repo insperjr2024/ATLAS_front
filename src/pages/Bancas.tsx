@@ -2343,7 +2343,7 @@ function AvaliarModal({
                   })}
                   {perguntasGerais.length > 0 && (
                     <FrenteGrupo>
-                      <FrenteGrupoTitulo>Avaliação geral</FrenteGrupoTitulo>
+                      <FrenteGrupoTitulo>Todos os escopos</FrenteGrupoTitulo>
                       {renderBlocoDeCriterios(perguntasGerais)}
                     </FrenteGrupo>
                   )}
