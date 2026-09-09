@@ -12,6 +12,14 @@ export function getFormularioAtivo(token: string) {
   return apiFetch<FormularioAtivo>("/formularios/ativo", { token });
 }
 
+/** O ponto de partida do EDITOR: a versão ativa se tiver conteúdo, senão a
+ *  última versão que tem. Assim "Publicar nova versão" nunca parte de uma
+ *  tela em branco e apaga o que já estava salvo. Ver a rota
+ *  `/formularios/para-editar` no backend. */
+export function getFormularioParaEditar(token: string) {
+  return apiFetch<FormularioAtivo>("/formularios/para-editar", { token });
+}
+
 export function createNovaVersaoFormulario(perguntas: PerguntaNovaVersao[], token: string) {
   return apiFetch<FormularioAtivo>("/formularios/nova-versao", {
     method: "POST",

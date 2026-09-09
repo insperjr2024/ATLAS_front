@@ -7,6 +7,7 @@ import {
   getAvaliacoes,
   getAvaliacoesNotas,
   getFormularioAtivo,
+  getFormularioParaEditar,
   getNotasPorPergunta,
   isPerguntaNota,
 } from "@/lib/avaliacoes";
@@ -133,6 +134,16 @@ interface PerguntaEditavel {
   texto: string;
   tipo_resposta: "nota" | "texto";
   escopo_id: number | null;
+}
+
+/** As perguntas de um formulário na forma que o editor manipula: ordenadas
+ *  por `ordem` e sem os campos que o editor não mexe (id, ordem — a ordem
+ *  vira a posição na lista). */
+function paraEditaveis(formulario: FormularioAtivo | null): PerguntaEditavel[] {
+  return (formulario?.perguntas ?? [])
+    .slice()
+    .sort((a, b) => a.ordem - b.ordem)
+    .map((p) => ({ texto: p.texto, tipo_resposta: p.tipo_resposta, escopo_id: p.escopo_id }));
 }
 
 export function Avaliacoes() {
@@ -633,14 +644,39 @@ function EditarFormularioModal({
   onSalvo: (formulario: FormularioAtivo) => void;
 }) {
   const [perguntas, setPerguntas] = useState<PerguntaEditavel[]>(() =>
-    (formulario?.perguntas ?? [])
-      .slice()
-      .sort((a, b) => a.ordem - b.ordem)
-      .map((p) => ({ texto: p.texto, tipo_resposta: p.tipo_resposta, escopo_id: p.escopo_id })),
+    paraEditaveis(formulario),
   );
+  // ⚠ O seed do editor NÃO é a versão ativa direto: se ela estiver vazia
+  // (alguém publicou uma versão curta e desativou a boa — sem merge), o
+  // editor abriria em branco e republicar apagaria tudo. `/para-editar`
+  // devolve a última versão COM conteúdo. Enquanto ela não chega, mostra o
+  // que veio no prop.
+  const [carregandoBase, setCarregandoBase] = useState(true);
+  const [baseCount, setBaseCount] = useState(formulario?.perguntas.length ?? 0);
+  const [confirmandoReducao, setConfirmandoReducao] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [previsualizando, setPrevisualizando] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    getFormularioParaEditar(token)
+      .then((base) => {
+        if (!vivo) return;
+        setPerguntas(paraEditaveis(base));
+        setBaseCount(base.perguntas.length);
+      })
+      .catch(() => {
+        /* sem base recuperável: fica com o seed do prop */
+      })
+      .finally(() => {
+        if (vivo) setCarregandoBase(false);
+      });
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const gruposPorFrente = useMemo(() => agruparPorFrente(escopos, frentes), [escopos, frentes]);
 
@@ -651,10 +687,14 @@ function EditarFormularioModal({
   }
 
   function adicionar(escopoId: number | null) {
+    setConfirmandoReducao(false);
+    setErro("");
     setPerguntas((lista) => [...lista, { texto: "", tipo_resposta: "nota", escopo_id: escopoId }]);
   }
 
   function remover(index: number) {
+    setConfirmandoReducao(false);
+    setErro("");
     setPerguntas((lista) => lista.filter((_, i) => i !== index));
   }
 
@@ -681,6 +721,18 @@ function EditarFormularioModal({
     const validas = perguntas.filter((p) => p.texto.trim());
     if (validas.length === 0) {
       setErro("Adicione ao menos uma pergunta.");
+      return;
+    }
+    // ⚠ "Publicar nova versão" REESCREVE o formulário inteiro (sem merge).
+    // Se a nova lista tem menos perguntas que a atual, alguém pode estar
+    // publicando por cima do que outra pessoa acabou de salvar. Um segundo
+    // clique confirma.
+    if (validas.length < baseCount && !confirmandoReducao) {
+      setConfirmandoReducao(true);
+      setErro(
+        `A versão atual tem ${baseCount} perguntas; esta teria ${validas.length}. ` +
+          `Publicar vai REMOVER ${baseCount - validas.length}. Clique em "Publicar" de novo para confirmar.`,
+      );
       return;
     }
     setSalvando(true);
@@ -847,8 +899,17 @@ function EditarFormularioModal({
             <PageButton $variant="outline" type="button" onClick={onClose}>
               Cancelar
             </PageButton>
-            <PageButton type="submit" disabled={salvando || previsualizando}>
-              {salvando ? "Salvando..." : "Publicar nova versão"}
+            <PageButton
+              type="submit"
+              disabled={salvando || previsualizando || carregandoBase}
+            >
+              {salvando
+                ? "Salvando..."
+                : carregandoBase
+                  ? "Carregando..."
+                  : confirmandoReducao
+                    ? "Publicar mesmo assim"
+                    : "Publicar nova versão"}
             </PageButton>
           </ModalFooter>
         </FormStack>
