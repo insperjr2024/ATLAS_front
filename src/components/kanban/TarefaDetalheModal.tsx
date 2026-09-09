@@ -57,6 +57,9 @@ interface Props {
   usuariosAtribuiveis: UsuarioResumo[];
   /** Consultores atuais do projeto, para o atalho "Todos os consultores". */
   consultorIds: number[];
+  /** Coordenação atual do projeto (`projeto.coordenador_ids`): quem, junto da
+   *  diretoria, pode editar e excluir a tarefa. */
+  coordenadorIds: number[];
   /** As outras partes da mesma tarefa dividida (mesmo `grupo_id`), sem esta.
    *  Vazio/ausente quando a tarefa não foi dividida. */
   irmasDoGrupo?: Tarefa[];
@@ -69,10 +72,10 @@ interface Props {
  * O detalhe da tarefa: o que o card não mostra.
  *
  * O card na tela tem só nome e responsável, aqui ficam as datas, quem
- * criou, e a conversa. Editar é da diretoria e de quem criou (o backend
- * revalida); comentar é de quem enxerga o projeto.
+ * criou, e a conversa. Editar e excluir é da coordenação do projeto e da
+ * diretoria (o backend revalida); comentar é de quem enxerga o projeto.
  */
-export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiveis, consultorIds, irmasDoGrupo = [], onClose, onMudou }: Props) {
+export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiveis, consultorIds, coordenadorIds, irmasDoGrupo = [], onClose, onMudou }: Props) {
   const { usuario, token } = useAuth();
   const [comentarios, setComentarios] = useState<ComentarioTarefa[]>([]);
   const [novo, setNovo] = useState("");
@@ -85,7 +88,7 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
   const [responsavelIds, setResponsavelIds] = useState<number[]>(tarefa.responsavel_ids);
   const [prazo, setPrazo] = useState(tarefa.prazo.slice(0, 10));
 
-  const podeEditar = podeEditarTarefa(usuario, tarefa);
+  const podeEditar = podeEditarTarefa(usuario, tarefa, coordenadorIds);
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
   // Opções do seletor: quem está atribuível AGORA, mais qualquer responsável
   // atual que já tenha saído do projeto (senão sumiria da lista sem aviso).
@@ -380,8 +383,8 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
             // Quem não pode editar vê o motivo, em vez de um botão ausente
             // e inexplicado.
             <EmptyText style={{ fontSize: "0.7rem" }}>
-              Só a diretoria e quem criou a tarefa podem editá-la. Mover no kanban e comentar
-              seguem liberados.
+              Só a coordenação do projeto e a diretoria editam ou excluem uma tarefa.
+              Comentar segue liberado, e mover no kanban também quando você é responsável.
             </EmptyText>
           )}
         </ModalFooter>

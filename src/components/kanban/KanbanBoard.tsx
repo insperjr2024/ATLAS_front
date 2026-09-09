@@ -46,6 +46,9 @@ interface KanbanBoardProps {
   onMover: (tarefaId: number, colunaId: number) => void;
   /** Clicar no card abre o detalhe: datas, autoria e comentários. */
   onAbrir: (tarefa: Tarefa) => void;
+  /** Quais cards a pessoa pode arrastar. Coordenação/diretoria: todos; o
+   *  consultor: só as tarefas em que é responsável. Ausente = todos. */
+  podeMoverTarefa?: (tarefa: Tarefa) => boolean;
 }
 
 /**
@@ -62,8 +65,11 @@ export function KanbanBoard({
   nomeUsuario,
   onMover,
   onAbrir,
+  podeMoverTarefa,
 }: KanbanBoardProps) {
   const [arrastando, setArrastando] = useState<Tarefa | null>(null);
+  const podeMover = (tarefa: Tarefa) =>
+    podeMoverTarefa ? podeMoverTarefa(tarefa) : true;
 
   // Os tons saem de UMA cor por coluna; memo porque a conversão hex→HSL roda
   // por card a cada render.
@@ -106,6 +112,7 @@ export function KanbanBoard({
     const colunaId = Number(destino);
     const tarefa = tarefas.find((t) => t.id === Number(evento.active.id));
     if (!tarefa || tarefa.coluna_id === colunaId) return;
+    if (!podeMover(tarefa)) return;
     onMover(tarefa.id, colunaId);
   }
 
@@ -131,6 +138,7 @@ export function KanbanBoard({
             nomeUsuario={nomeUsuario}
             progressoGrupo={progressoGrupo}
             onAbrir={onAbrir}
+            podeMover={podeMover}
           />
         ))}
       </Board>
@@ -154,6 +162,7 @@ function ColunaDrop({
   nomeUsuario,
   progressoGrupo,
   onAbrir,
+  podeMover,
 }: {
   coluna: ColunaTarefa;
   tons: TonsColuna;
@@ -161,6 +170,7 @@ function ColunaDrop({
   nomeUsuario: (id: number) => string;
   progressoGrupo: ProgressoGrupo;
   onAbrir: (tarefa: Tarefa) => void;
+  podeMover: (tarefa: Tarefa) => boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: coluna.id });
   const vencidas = tarefas.filter((t) => t.vencida).length;
@@ -196,6 +206,7 @@ function ColunaDrop({
           nomeUsuario={nomeUsuario}
           progresso={tarefa.grupo_id != null ? progressoGrupo.get(tarefa.grupo_id) : undefined}
           onAbrir={onAbrir}
+          arrastavel={podeMover(tarefa)}
         />
       ))}
     </Coluna>
@@ -208,14 +219,21 @@ function CardArrastavel({
   nomeUsuario,
   progresso,
   onAbrir,
+  arrastavel,
 }: {
   tarefa: Tarefa;
   tons: TonsColuna;
   nomeUsuario: (id: number) => string;
   progresso?: { feitas: number; total: number };
   onAbrir: (tarefa: Tarefa) => void;
+  /** `false` = o consultor não é responsável por esta tarefa: abre para ver,
+   *  não arrasta. */
+  arrastavel: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: tarefa.id });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: tarefa.id,
+    disabled: !arrastavel,
+  });
   const sinal = SINAL_URGENCIA[tarefa.urgencia];
 
   return (
@@ -229,7 +247,11 @@ function CardArrastavel({
       // Depois do spread de propósito: `attributes` do dnd-kit já traz
       // role/tabIndex, e espalhar por último sobrescreveria os nossos.
       role="button"
-      title="Clique para ver detalhes e comentários"
+      title={
+        arrastavel
+          ? "Clique para ver detalhes e comentários"
+          : "Clique para ver — só a coordenação e quem é responsável movem esta tarefa"
+      }
       // O clique abre o detalhe; o arrasto só começa depois de 5px de
       // movimento (activationConstraint), então os dois gestos convivem.
       onClick={() => onAbrir(tarefa)}

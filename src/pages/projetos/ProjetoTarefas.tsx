@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Columns3, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { createTarefa, getTarefas, updateTarefa } from "@/lib/tarefas";
+import { createTarefa, getTarefas, podeMoverTarefa, updateTarefa } from "@/lib/tarefas";
 import type { Tarefa } from "@/types/tarefa";
 import { getColunas, type ColunaTarefa } from "@/lib/colunas-tarefa";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
@@ -76,6 +76,10 @@ export function ProjetoTarefas() {
   }, [carregar]);
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
+
+  // Coordenação e diretoria movem qualquer tarefa; o consultor só as em que
+  // é responsável (2026-09-09). O backend revalida.
+  const podeMover = (t: Tarefa) => podeMoverTarefa(usuario, t, projeto.coordenador_ids);
 
   // Só quem está de fato alocado neste projeto pode ser responsável por uma
   // tarefa dele, `usuarios` (do useProjeto) é o quadro inteiro da Insper Jr.
@@ -159,6 +163,7 @@ export function ProjetoTarefas() {
               nomeUsuario={nomeUsuario}
               onMover={mover}
               onAbrir={setAberta}
+              podeMoverTarefa={podeMover}
             />
           )}
         </PageCardContent>
@@ -175,6 +180,7 @@ export function ProjetoTarefas() {
           usuarios={usuarios}
           usuariosAtribuiveis={membrosDoProjeto}
           consultorIds={projeto.consultor_ids}
+          coordenadorIds={projeto.coordenador_ids}
           irmasDoGrupo={
             aberta.grupo_id == null
               ? []
