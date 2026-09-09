@@ -540,6 +540,32 @@ export const FrenteGrupoTitulo = styled.h4`
   }
 `;
 
+/** Um bloco de critérios por escopo no formulário de avaliação de banca
+ *  (banca de mais de um escopo). Diferente do `FrenteGrupo` compacto do
+ *  painel de alocação: aqui os escopos são seções de peso próprio, então
+ *  cada uma respira e a fronteira entre elas é visível — sem isso a pessoa
+ *  não percebe onde o escopo A termina e o B começa e mistura as notas. */
+export const EscopoAvaliacaoBloco = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+
+  & + & {
+    margin-top: ${theme.spacing.lg};
+    padding-top: ${theme.spacing.lg};
+    border-top: 2px solid ${theme.colors.border};
+  }
+`;
+
+export const EscopoAvaliacaoTitulo = styled.h4`
+  margin: 0;
+  font-size: ${theme.fontSize.base};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.foreground};
+  padding-left: ${theme.spacing.sm};
+  border-left: 3px solid ${theme.colors.primary};
+`;
+
 /** O título do card com o filtro logo depois dele. Existe para os dois
  *  andarem juntos à esquerda — sem ela o `space-between` do cabeçalho
  *  jogaria o filtro para o meio da linha, longe do nome que ele recorta. */

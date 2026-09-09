@@ -158,6 +158,8 @@ import {
   BancaAcoes,
   FrenteGrupo,
   FrenteGrupoTitulo,
+  EscopoAvaliacaoBloco,
+  EscopoAvaliacaoTitulo,
   FiltroFrenteSelect,
   CardHeaderTitulo,
 } from "./Bancas.styled";
@@ -1201,7 +1203,7 @@ function SecaoBancas({
       ? `Esta banca já tem ${banca.vagas} avaliadores, que é o máximo. ` +
         "Peça troca a quem já está alocado, ou volte se alguém se desalocar."
       : prazoExpirado
-        ? "O prazo de 2 dias corridos para avaliar acabou" +
+        ? "O prazo de 7 dias corridos para avaliar acabou" +
           (prazo?.prazoAvaliacao
             ? ` em ${formatarDataHora(prazo.prazoAvaliacao)}. `
             : ". ") +
@@ -2329,8 +2331,10 @@ function AvaliarModal({
                   {escoposDaBanca.map((escopoId) => {
                     const doEscopo = perguntasDoEscopo(escopoId);
                     return (
-                      <FrenteGrupo key={escopoId}>
-                        <FrenteGrupoTitulo>{nomeEscopo(escopos, escopoId)}</FrenteGrupoTitulo>
+                      <EscopoAvaliacaoBloco key={escopoId}>
+                        <EscopoAvaliacaoTitulo>
+                          {nomeEscopo(escopos, escopoId)}
+                        </EscopoAvaliacaoTitulo>
                         {doEscopo.length > 0 ? (
                           renderBlocoDeCriterios(doEscopo)
                         ) : (
@@ -2338,14 +2342,14 @@ function AvaliarModal({
                             Sem critérios configurados para este escopo no formulário ativo.
                           </ModalSubtitulo>
                         )}
-                      </FrenteGrupo>
+                      </EscopoAvaliacaoBloco>
                     );
                   })}
                   {perguntasGerais.length > 0 && (
-                    <FrenteGrupo>
-                      <FrenteGrupoTitulo>Todos os escopos</FrenteGrupoTitulo>
+                    <EscopoAvaliacaoBloco>
+                      <EscopoAvaliacaoTitulo>Todos os escopos</EscopoAvaliacaoTitulo>
                       {renderBlocoDeCriterios(perguntasGerais)}
-                    </FrenteGrupo>
+                    </EscopoAvaliacaoBloco>
                   )}
                 </>
               ) : (

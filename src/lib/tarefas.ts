@@ -76,20 +76,36 @@ export function deleteComentario(comentarioId: number, token: string) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Editar o CONTEÚDO da tarefa (título, responsáveis, prazo) é da diretoria
- * e de quem criou.
+ * Editar o CONTEÚDO (título, responsáveis, prazo) e EXCLUIR a tarefa: a
+ * coordenação do projeto e a diretoria de projetos (2026-09-09). O consultor
+ * não mexe — nem no que ele mesmo criou.
  *
- * Mover no kanban NÃO passa por aqui: o  dá isso aos quatro perfis, e
- * travar o arrasto quebraria o board como ferramenta de equipe. O backend
- * aplica exatamente a mesma separação, aqui é só para a tela não oferecer
- * um botão que vai voltar 403.
+ * `coordenadorIds` = `projeto.coordenador_ids`. O backend aplica a mesma
+ * régua; aqui é só para a tela não oferecer um botão que volta 403.
  */
 export function podeEditarTarefa(
   usuario: Usuario | null | undefined,
-  tarefa: Tarefa,
+  _tarefa: Tarefa,
+  coordenadorIds: number[],
 ): boolean {
   if (!usuario) return false;
-  return ehDiretoriaDeProjetos(usuario) || tarefa.criado_por === usuario.id;
+  return ehDiretoriaDeProjetos(usuario) || coordenadorIds.includes(usuario.id);
+}
+
+/**
+ * Mover no kanban: coordenação e diretoria movem qualquer tarefa; o consultor
+ * move só as em que está como responsável (2026-09-09).
+ */
+export function podeMoverTarefa(
+  usuario: Usuario | null | undefined,
+  tarefa: Tarefa,
+  coordenadorIds: number[],
+): boolean {
+  if (!usuario) return false;
+  return (
+    podeEditarTarefa(usuario, tarefa, coordenadorIds) ||
+    tarefa.responsavel_ids.includes(usuario.id)
+  );
 }
 
 /**
