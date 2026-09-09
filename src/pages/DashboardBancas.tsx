@@ -646,7 +646,12 @@ export function DashboardBancas({
         </PageCard>
       </TopGrid>
 
-      <PresencaBancas usuarios={usuarios} candidaturas={candidaturas} bancas={bancasSemestre} />
+      <PresencaBancas
+        usuarios={usuarios}
+        candidaturas={candidaturas}
+        bancas={bancasSemestre}
+        avaliacoes={avaliacoes}
+      />
 
     </>
   );

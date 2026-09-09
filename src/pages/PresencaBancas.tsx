@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Banca, Candidatura } from "@/types/banca";
+import type { Avaliacao, Banca, Candidatura } from "@/types/banca";
 import type { UsuarioResumo } from "@/types/auth";
 import {
   PageCard,
@@ -29,6 +29,9 @@ interface Props {
   usuarios: UsuarioResumo[];
   candidaturas: Candidatura[];
   bancas: Banca[];
+  /** Avaliações de banca — presença só conta quando a pessoa também enviou
+   *  a sua (2026-09-09, a pedido). */
+  avaliacoes: Avaliacao[];
 }
 
 interface LinhaPresenca {
@@ -53,28 +56,35 @@ const COLUNAS_PRESENCA: Colunas<LinhaPresenca> = {
 /**
  * Presença por membro, o controle da diretoria.
  *
- * ⚠ Desde que "Registrar realização" saiu (2026-09-04), `confirmado` não
- * distingue mais quem faltou de verdade: a finalização automática marca
+ * ⚠ Presença = compareceu **E** enviou a avaliação da banca (2026-09-09, a
+ * pedido). Desde que "Registrar realização" saiu (2026-09-04), `confirmado`
+ * sozinho não distingue mais nada: a finalização automática marca
  * `presentes` = todo mundo que se candidatou (backend,
  * `finalizacao_automatica.py`), porque não sobrou humano na tela para
- * apontar ausência. `faltas` só volta a significar falta de verdade em
- * banca que ainda tem gente marcando presença à mão — e não sobra mais
- * nenhuma tela que faça isso.
+ * apontar ausência. Amarrar à avaliação enviada devolve sentido à coluna —
+ * quem esteve na banca de verdade deixou nota.
  *
  * A conta só olha bancas JÁ REALIZADAS: numa banca futura ninguém faltou —
  * misturar as duas faria todo mundo parecer ausente por estar inscrito no que
  * ainda vai acontecer.
  */
-export function PresencaBancas({ usuarios, candidaturas, bancas }: Props) {
+export function PresencaBancas({ usuarios, candidaturas, bancas, avaliacoes }: Props) {
   const linhas = useMemo(() => {
     const realizadas = new Set(bancas.filter((b) => b.realizado_em).map((b) => b.id));
+    // `banca:avaliador` de quem enviou a avaliação — a outra metade da
+    // presença.
+    const avaliou = new Set(
+      avaliacoes
+        .filter((a) => a.status === "submetida")
+        .map((a) => `${a.banca_id}:${a.avaliador_id}`),
+    );
 
     const porUsuario = new Map<number, { inscrito: number; presente: number; futuras: number }>();
     for (const c of candidaturas) {
       const atual = porUsuario.get(c.usuario_id) ?? { inscrito: 0, presente: 0, futuras: 0 };
       if (realizadas.has(c.banca_id)) {
         atual.inscrito += 1;
-        if (c.confirmado) atual.presente += 1;
+        if (c.confirmado && avaliou.has(`${c.banca_id}:${c.usuario_id}`)) atual.presente += 1;
       } else {
         atual.futuras += 1;
       }
@@ -95,7 +105,7 @@ export function PresencaBancas({ usuarios, candidaturas, bancas }: Props) {
       })
       // Quem tem mais falta primeiro: é quem a diretoria precisa olhar.
       .sort((a, b) => b.faltas - a.faltas || a.usuario.nome.localeCompare(b.usuario.nome));
-  }, [usuarios, candidaturas, bancas]);
+  }, [usuarios, candidaturas, bancas, avaliacoes]);
 
   const semNenhuma = linhas.every((l) => l.inscrito === 0 && l.futuras === 0);
   // Sem coluna inicial: a lista já abre por quem tem mais falta, que é a
@@ -116,6 +126,9 @@ export function PresencaBancas({ usuarios, candidaturas, bancas }: Props) {
         <PageCardTitle>Presença por membro</PageCardTitle>
       </PageCardHeader>
       <PageCardContent>
+        <EmptyText style={{ marginBottom: "0.75rem", fontSize: "0.75rem" }}>
+          Só conta como presença quem compareceu à banca <strong>e</strong> enviou a avaliação dela.
+        </EmptyText>
         {semNenhuma ? (
           <EmptyText>Ninguém se inscreveu em bancas ainda.</EmptyText>
         ) : (
