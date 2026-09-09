@@ -3,7 +3,10 @@
 // banca, outra feature).
 
 export type DesempenhoTipo = "periodico" | "finalizacao";
-export type DesempenhoPapel = "consultor" | "coordenador";
+// ⭐ "escopo" (2026-09-09) não é papel de pessoa — é o formulário "Avaliação
+// do Escopo", auto-avaliação que cada participante do projeto responde uma
+// vez na finalização. Só existe como (finalizacao, escopo).
+export type DesempenhoPapel = "consultor" | "coordenador" | "escopo";
 export type DesempenhoOverrideManual = "aberto" | "fechado" | null;
 export type DesempenhoTipoResposta = "nota" | "texto";
 

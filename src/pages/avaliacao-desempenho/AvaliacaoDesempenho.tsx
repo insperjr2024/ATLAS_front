@@ -4,7 +4,7 @@ import { getFormulario } from "@/lib/desempenho-formularios";
 import { finalizarDesempenho, getMinhaFila, submitAvaliacao } from "@/lib/desempenho-avaliacoes";
 import { getProjetos } from "@/lib/projetos";
 import { NotaButtons, NotaButtonsGroup } from "@/components/desempenho/NotaButtons";
-import type { DesempenhoFilaItem, DesempenhoFormulario, DesempenhoNotaInput, DesempenhoTipo } from "@/types/desempenho";
+import type { DesempenhoFilaItem, DesempenhoFormulario, DesempenhoNotaInput, DesempenhoPapel, DesempenhoTipo } from "@/types/desempenho";
 import type { ProjetoResumo } from "@/types/projeto";
 import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import {
@@ -67,9 +67,10 @@ const TIPOS: { valor: DesempenhoTipo; titulo: string; descricao: string }[] = [
   { valor: "finalizacao", titulo: "Avaliação de finalização", descricao: "Balanço final, feito quando o projeto ou um escopo dele termina." },
 ];
 
-const ROTULO_PAPEL: Record<"coordenador" | "consultor", string> = {
+const ROTULO_PAPEL: Record<DesempenhoPapel, string> = {
   coordenador: "Coordenador(a)",
   consultor: "Consultor(a)",
+  escopo: "Avaliação do Escopo",
 };
 
 const INTRO_FORMULARIO =
@@ -78,9 +79,10 @@ const INTRO_FORMULARIO =
   "Cada critério deve ser avaliado utilizando a escala de 1 a 5, considerando o desempenho observado ao " +
   "longo do período avaliado.";
 
-function escalaParaPapel(papel: "coordenador" | "consultor") {
-  const singular = papel === "coordenador" ? "coordenador" : "consultor";
-  const plural = papel === "coordenador" ? "coordenadores" : "consultores";
+function escalaParaPapel(papel: DesempenhoPapel) {
+  // "escopo" não é papel de pessoa: a escala fala do escopo, não de alguém.
+  const singular = papel === "coordenador" ? "coordenador" : papel === "consultor" ? "consultor" : "escopo";
+  const plural = papel === "coordenador" ? "coordenadores" : papel === "consultor" ? "consultores" : "escopos";
   return [
     {
       nota: 1,
@@ -245,6 +247,21 @@ export function AvaliacaoDesempenho() {
 
   function projetosDaPessoa(item: DesempenhoFilaItem): string {
     return item.projeto_ids.map((id) => nomesProjeto.get(id)).filter(Boolean).join(", ") || "—";
+  }
+
+  /** O que aparece como "nome" do item na fila: pra Avaliação do Escopo é o
+   *  próprio rótulo, não o nome de quem responde (o `avaliado_id` dela é o
+   *  próprio usuário). */
+  function nomeDoItem(item: DesempenhoFilaItem): string {
+    return item.form_type === "escopo" ? "Avaliação do Escopo" : item.avaliado_nome ?? "—";
+  }
+
+  /** Avaliação do Escopo primeiro na lista (2026-09-09, a pedido: "antes
+   *  disso tem Avaliação do Escopo"). */
+  function ordenarFila(itens: DesempenhoFilaItem[]): DesempenhoFilaItem[] {
+    return [...itens].sort(
+      (a, b) => Number(b.form_type === "escopo") - Number(a.form_type === "escopo"),
+    );
   }
 
   async function abrirFilaDoTipo(tipo: DesempenhoTipo) {
@@ -542,7 +559,7 @@ export function AvaliacaoDesempenho() {
             )}
 
             <FilaList>
-              {filaOriginalDoTipo.map((item) => {
+              {ordenarFila(filaOriginalDoTipo).map((item) => {
                 const fechado = !item.aberto;
                 const concluido = !!rascunhos[chave(item)];
                 return (
@@ -562,7 +579,7 @@ export function AvaliacaoDesempenho() {
                     onClick={() => abrirPessoa(item)}
                   >
                     <FilaItemInfo>
-                      <FilaItemNome>{item.avaliado_nome}</FilaItemNome>
+                      <FilaItemNome>{nomeDoItem(item)}</FilaItemNome>
                       <FilaItemMeta>{projetosDaPessoa(item)}</FilaItemMeta>
                     </FilaItemInfo>
                     <PageBadge $tone={fechado ? "danger" : concluido ? "success" : "warning"}>
@@ -607,8 +624,9 @@ export function AvaliacaoDesempenho() {
         <PageCard>
           <PageCardHeader>
             <PageCardTitle>
-              Avaliando {pessoaAtual.avaliado_nome} · {ROTULO_PAPEL[pessoaAtual.form_type]} ·{" "}
-              {projetosDaPessoa(pessoaAtual)}
+              {pessoaAtual.form_type === "escopo"
+                ? `Avaliação do Escopo · ${projetosDaPessoa(pessoaAtual)}`
+                : `Avaliando ${pessoaAtual.avaliado_nome} · ${ROTULO_PAPEL[pessoaAtual.form_type]} · ${projetosDaPessoa(pessoaAtual)}`}
             </PageCardTitle>
           </PageCardHeader>
           <PageCardContent>
