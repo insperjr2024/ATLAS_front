@@ -100,6 +100,11 @@ export interface Banca extends BancaBase {
   /** A costura com o projeto: os escopos vendidos que esta banca cobre.
    *  Vazio nas bancas legadas, que não têm escopo vendido. */
   projeto_escopo_ids: number[];
+  /** Os escopos do CATÁLOGO que a banca cobre — a chave que casa com
+   *  `Pergunta.escopo_id`. O formulário de avaliação mostra um bloco de
+   *  critérios por item aqui, empilhados. Banca de 1 escopo: 1 item. Banca
+   *  legada: cai em `[escopo_id]`. */
+  escopos_avaliados_ids: number[];
   realizado_em: string | null;
   /** ⭐ Preenchido só pela ação manual de cancelar (`POST /bancas/{id}/cancelar`,
    *  gerência/diretoria de projetos). Nulo em toda banca que ainda pode
