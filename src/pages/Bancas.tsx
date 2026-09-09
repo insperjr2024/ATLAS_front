@@ -1182,6 +1182,21 @@ function SecaoBancas({
     const prazo = acao === "avaliar" ? contexto.prazosAvaliacao[banca.id] : undefined;
     const prazoExpirado = !!prazo?.prazoExpirado;
 
+    // ⭐ Trava dos 7 dias (2026-09-09): a menos de uma semana da banca, com a
+    // composição já batendo o mínimo, ninguém sai sozinho — a vaga não teria
+    // tempo de ser tapada. Só a diretoria de projetos passa por cima. O
+    // backend (`DeleteCandidaturaUseCase`) aplica a mesma regra; aqui é para
+    // o botão já vir desabilitado, com o motivo.
+    const diasAteBanca = dataHora
+      ? (dataHora.getTime() - Date.now()) / 86_400_000
+      : Infinity;
+    const saidaTravada =
+      acao === "deslocar" &&
+      !ehDiretorLista &&
+      diasAteBanca <= 7 &&
+      banca.piso_minimo > 0 &&
+      banca.alocados >= banca.piso_minimo;
+
     // ⭐ A composição exigida (§8), que até aqui não aparecia em
     // lugar nenhum desta tela: o card mostrava só `vagas`, o TETO de
     // quantos cabem. Quem escala precisa do outro número — quantos
@@ -1208,7 +1223,10 @@ function SecaoBancas({
             ? ` em ${formatarDataHora(prazo.prazoAvaliacao)}. `
             : ". ") +
           "A plataforma não aceita mais o envio. Avise a diretoria se esta avaliação ainda precisa entrar."
-        : null;
+        : saidaTravada
+          ? "A banca é em menos de 7 dias e a vaga já está preenchida, então não dá " +
+            "mais para sair sozinho — não haveria tempo de repor. Fale com a diretoria de projetos."
+          : null;
 
     // Qualquer clique dentro do rodapé de ações não deve também
     // disparar o clique do card inteiro (que abre "Ver mais").
@@ -1421,18 +1439,20 @@ function SecaoBancas({
               <PageButtonSm
                 $variant={acao === "deslocar" ? "outline" : "primary"}
                 type="button"
-                disabled={lotada || prazoExpirado}
+                disabled={lotada || prazoExpirado || saidaTravada}
                 onClick={pararPropagacao(() => onAcao(banca.id))}
               >
                 {lotada
                   ? "Lotada"
                   : prazoExpirado
                     ? "Prazo esgotado"
-                    : acao === "alocar"
-                      ? "Alocar-se"
-                      : acao === "deslocar"
-                        ? "Desalocar-se"
-                        : "Avaliar"}
+                    : saidaTravada
+                      ? "Faltam menos de 7 dias"
+                      : acao === "alocar"
+                        ? "Alocar-se"
+                        : acao === "deslocar"
+                          ? "Desalocar-se"
+                          : "Avaliar"}
               </PageButtonSm>
             </MotivoDesabilitado>
           )}
