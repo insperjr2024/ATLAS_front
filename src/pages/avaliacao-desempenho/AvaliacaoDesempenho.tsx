@@ -471,7 +471,7 @@ export function AvaliacaoDesempenho() {
           <AvisoFechadoLista>
             {itensFechados.map((item) => (
               <AvisoFechadoItem key={chave(item)}>
-                {item.avaliado_nome}, {item.lote_nome}
+                {nomeDoItem(item)}, {item.lote_nome}
               </AvisoFechadoItem>
             ))}
           </AvisoFechadoLista>
