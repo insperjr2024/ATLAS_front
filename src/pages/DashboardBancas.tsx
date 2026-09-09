@@ -60,9 +60,9 @@ import {
   InsightAcoes,
 } from "./DashboardBancas.styled";
 
-/** , quem avalia tem 2 dias corridos a partir da banca realizada.
+/** Quem avalia tem 7 dias corridos a partir da banca realizada (2026-09-09).
  *  Espelha `PRAZO_AVALIACAO_DIAS` em `src/utils/avaliacoes_pendentes.py`. */
-const PRAZO_AVALIACAO_DIAS = 2;
+const PRAZO_AVALIACAO_DIAS = 7;
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
