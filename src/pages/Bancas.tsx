@@ -64,7 +64,7 @@ import {
   createSolicitacaoTroca,
   getSolicitacoesTroca,
 } from "@/lib/solicitacoes-troca";
-import { formatarDataHora, paraDataUtc } from "@/lib/projetos";
+import { formatarDataHora, formatarDataHoraBanca, paraDataUtc } from "@/lib/projetos";
 import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import type {
   Banca,
@@ -1259,7 +1259,7 @@ function SecaoBancas({
                   {prazoExpirado
                     ? "Prazo esgotado"
                     : prazo
-                      ? `Prazo: ${new Date(prazo.prazoAvaliacao).toLocaleDateString("pt-BR")}`
+                      ? `Prazo: ${formatarDataHoraBanca(prazo.prazoAvaliacao)}`
                       : "Pendente"}
                 </PageBadge>
               )}
