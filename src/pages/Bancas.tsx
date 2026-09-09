@@ -76,6 +76,7 @@ import type {
   EscopoVendidoResumo,
   Frente,
   FormularioAtivo,
+  Pergunta,
   ResultadoBanca,
 } from "@/types/banca";
 import type { SolicitacaoTroca } from "@/types/notificacao";
@@ -119,6 +120,7 @@ import {
   ModalOverlay,
   ModalHeader,
   ModalTitle,
+  ModalSubtitulo,
   ModalClose,
   ModalBody,
   ModalFooter,
@@ -2100,19 +2102,37 @@ function AvaliarModal({
   );
   const [escopoOutro, setEscopoOutro] = useState("");
 
-  // O Bloco 2 (critérios técnicos) depende do que foi respondido AQUI —
-  // "Escopo Avaliado", não de `banca.escopo_id` direto: é essa resposta
-  // que decide o bloco, mesmo já vindo prenchida a partir da banca.
+  // ⭐ Uma banca pode ter sido de mais de um escopo (2026-09-09). Quando a
+  // costura com o projeto diz quais são (`escopos_avaliados_ids`), o
+  // formulário mostra um BLOCO de critérios por escopo, empilhados, e não há
+  // o que escolher — todo avaliador responde todos. Só a banca "Outro" (sem
+  // escopo nenhum vinculado) cai no seletor manual de antes.
+  const escoposDaBanca = banca.escopos_avaliados_ids ?? [];
+  const modoMultiEscopo = escoposDaBanca.length > 0;
+
+  // Legado / "Outro": o bloco técnico depende do que for escolhido AQUI, não
+  // de `banca.escopo_id` direto.
   const escopoIdParaFiltro = typeof escopoSelecionado === "number" ? escopoSelecionado : null;
 
-  const perguntasVisiveis = (formulario?.perguntas ?? [])
+  const todasPerguntas = (formulario?.perguntas ?? [])
     .slice()
     .sort((a, b) => a.ordem - b.ordem)
-    .filter((p) => p.escopo_id == null || p.escopo_id === escopoIdParaFiltro)
     .filter((p) => !isComentarioFeedbackPergunta(p.tipo_resposta, p.texto));
 
+  const perguntaEntraNoEnvio = (p: Pergunta) =>
+    modoMultiEscopo
+      ? p.escopo_id == null || escoposDaBanca.includes(p.escopo_id)
+      : p.escopo_id == null || p.escopo_id === escopoIdParaFiltro;
+
+  // Tudo que vai ser enviado (todos os blocos + as gerais). A validação e o
+  // POST das notas iteram sobre isto.
+  const perguntasVisiveis = todasPerguntas.filter(perguntaEntraNoEnvio);
   const perguntasNota = perguntasVisiveis.filter((p) => isPerguntaNota(p.tipo_resposta));
-  const perguntasTexto = perguntasVisiveis.filter((p) => !isPerguntaNota(p.tipo_resposta));
+
+  // Recortes para desenhar os blocos empilhados no modo multi-escopo.
+  const perguntasDoEscopo = (escopoId: number) =>
+    todasPerguntas.filter((p) => p.escopo_id === escopoId);
+  const perguntasGerais = todasPerguntas.filter((p) => p.escopo_id == null);
 
   const [notas, setNotas] = useState<Record<number, number | null>>(() =>
     Object.fromEntries(perguntasNota.map((p) => [p.id, null])),
@@ -2140,8 +2160,12 @@ function AvaliarModal({
           nome_avaliador: nomeAvaliador.trim() || undefined,
           tipo_avaliador: tipoAvaliador,
           projeto_avaliado: projetoAvaliado.trim() || undefined,
-          escopo_avaliado_id: escopoIdParaFiltro,
-          escopo_avaliado_outro: escopoIdParaFiltro == null ? escopoOutro.trim() || null : null,
+          // Multi-escopo: a avaliação é UMA, cobre todos os blocos; o vínculo
+          // por escopo mora em cada nota (via `pergunta.escopo_id`). Guarda o
+          // primeiro escopo como referência do registro.
+          escopo_avaliado_id: modoMultiEscopo ? escoposDaBanca[0] : escopoIdParaFiltro,
+          escopo_avaliado_outro:
+            modoMultiEscopo || escopoIdParaFiltro != null ? null : escopoOutro.trim() || null,
         },
         token,
       );
@@ -2176,6 +2200,41 @@ function AvaliarModal({
       setEnviando(false);
     }
   }
+
+  // Um bloco de critérios: as notas (escala 1-5) e depois as perguntas de
+  // texto. Reaproveitado por escopo no modo multi e uma vez só no legado.
+  const renderBlocoDeCriterios = (perguntas: Pergunta[]) => {
+    const notasDoBloco = perguntas.filter((p) => isPerguntaNota(p.tipo_resposta));
+    const textoDoBloco = perguntas.filter((p) => !isPerguntaNota(p.tipo_resposta));
+    return (
+      <>
+        {notasDoBloco.length > 0 && (
+          <NotaEscalaGrupo>
+            {notasDoBloco.map((pergunta) => (
+              <NotaEscala
+                key={pergunta.id}
+                id={`pergunta-${pergunta.id}`}
+                label={pergunta.texto}
+                value={notas[pergunta.id] ?? null}
+                onChange={(valor) => setNotas((n) => ({ ...n, [pergunta.id]: valor }))}
+              />
+            ))}
+          </NotaEscalaGrupo>
+        )}
+        {textoDoBloco.map((pergunta) => (
+          <FieldGroup key={pergunta.id}>
+            <FieldLabel htmlFor={`pergunta-${pergunta.id}`}>{pergunta.texto}</FieldLabel>
+            <FieldTextarea
+              id={`pergunta-${pergunta.id}`}
+              value={respostasTexto[pergunta.id] ?? ""}
+              onChange={(e) => setRespostasTexto((r) => ({ ...r, [pergunta.id]: e.target.value }))}
+              required={!isPerguntaOpcional(pergunta.texto)}
+            />
+          </FieldGroup>
+        ))}
+      </>
+    );
+  };
 
   return (
     <ModalOverlay onClick={onClose} role="presentation">
@@ -2223,60 +2282,75 @@ function AvaliarModal({
                   required
                 />
               </FieldGroup>
-              <FieldGroup>
-                <FieldLabel htmlFor="bloco1-escopo">Escopo Avaliado</FieldLabel>
-                <FieldSelect
-                  id="bloco1-escopo"
-                  value={escopoSelecionado}
-                  pesquisavel
-                  onChange={(e) =>
-                    setEscopoSelecionado(e.target.value === OUTRO ? OUTRO : Number(e.target.value))
-                  }
-                >
-                  {escoposOrdenados.map((escopo) => (
-                    <option key={escopo.id} value={escopo.id}>
-                      {escopo.nome}
-                    </option>
-                  ))}
-                  <option value={OUTRO}>Outro</option>
-                </FieldSelect>
-              </FieldGroup>
-              {escopoIdParaFiltro == null && (
+              {modoMultiEscopo ? (
                 <FieldGroup>
-                  <FieldLabel htmlFor="bloco1-escopo-outro">Qual escopo?</FieldLabel>
-                  <FieldInput
-                    id="bloco1-escopo-outro"
-                    value={escopoOutro}
-                    onChange={(e) => setEscopoOutro(e.target.value)}
-                    required
-                  />
+                  <FieldLabel>Escopos avaliados</FieldLabel>
+                  <ModalSubtitulo>
+                    {escoposDaBanca.map((id) => nomeEscopo(escopos, id)).join(" · ")} — você
+                    responde os critérios {escoposDaBanca.length === 1 ? "dele" : "dos dois"} abaixo.
+                  </ModalSubtitulo>
                 </FieldGroup>
+              ) : (
+                <>
+                  <FieldGroup>
+                    <FieldLabel htmlFor="bloco1-escopo">Escopo Avaliado</FieldLabel>
+                    <FieldSelect
+                      id="bloco1-escopo"
+                      value={escopoSelecionado}
+                      pesquisavel
+                      onChange={(e) =>
+                        setEscopoSelecionado(e.target.value === OUTRO ? OUTRO : Number(e.target.value))
+                      }
+                    >
+                      {escoposOrdenados.map((escopo) => (
+                        <option key={escopo.id} value={escopo.id}>
+                          {escopo.nome}
+                        </option>
+                      ))}
+                      <option value={OUTRO}>Outro</option>
+                    </FieldSelect>
+                  </FieldGroup>
+                  {escopoIdParaFiltro == null && (
+                    <FieldGroup>
+                      <FieldLabel htmlFor="bloco1-escopo-outro">Qual escopo?</FieldLabel>
+                      <FieldInput
+                        id="bloco1-escopo-outro"
+                        value={escopoOutro}
+                        onChange={(e) => setEscopoOutro(e.target.value)}
+                        required
+                      />
+                    </FieldGroup>
+                  )}
+                </>
               )}
 
-              {perguntasNota.length > 0 && (
-                <NotaEscalaGrupo>
-                  {perguntasNota.map((pergunta) => (
-                    <NotaEscala
-                      key={pergunta.id}
-                      id={`pergunta-${pergunta.id}`}
-                      label={pergunta.texto}
-                      value={notas[pergunta.id] ?? null}
-                      onChange={(valor) => setNotas((n) => ({ ...n, [pergunta.id]: valor }))}
-                    />
-                  ))}
-                </NotaEscalaGrupo>
+              {modoMultiEscopo ? (
+                <>
+                  {escoposDaBanca.map((escopoId) => {
+                    const doEscopo = perguntasDoEscopo(escopoId);
+                    return (
+                      <FrenteGrupo key={escopoId}>
+                        <FrenteGrupoTitulo>{nomeEscopo(escopos, escopoId)}</FrenteGrupoTitulo>
+                        {doEscopo.length > 0 ? (
+                          renderBlocoDeCriterios(doEscopo)
+                        ) : (
+                          <ModalSubtitulo>
+                            Sem critérios configurados para este escopo no formulário ativo.
+                          </ModalSubtitulo>
+                        )}
+                      </FrenteGrupo>
+                    );
+                  })}
+                  {perguntasGerais.length > 0 && (
+                    <FrenteGrupo>
+                      <FrenteGrupoTitulo>Avaliação geral</FrenteGrupoTitulo>
+                      {renderBlocoDeCriterios(perguntasGerais)}
+                    </FrenteGrupo>
+                  )}
+                </>
+              ) : (
+                renderBlocoDeCriterios(perguntasVisiveis)
               )}
-              {perguntasTexto.map((pergunta) => (
-                <FieldGroup key={pergunta.id}>
-                  <FieldLabel htmlFor={`pergunta-${pergunta.id}`}>{pergunta.texto}</FieldLabel>
-                  <FieldTextarea
-                    id={`pergunta-${pergunta.id}`}
-                    value={respostasTexto[pergunta.id] ?? ""}
-                    onChange={(e) => setRespostasTexto((r) => ({ ...r, [pergunta.id]: e.target.value }))}
-                    required={!isPerguntaOpcional(pergunta.texto)}
-                  />
-                </FieldGroup>
-              ))}
               <FieldGroup>
                 <FieldLabel htmlFor="comentario">Comentário (opcional)</FieldLabel>
                 <FieldTextarea id="comentario" value={comentario} onChange={(e) => setComentario(e.target.value)} />
