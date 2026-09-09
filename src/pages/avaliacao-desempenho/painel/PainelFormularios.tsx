@@ -52,6 +52,9 @@ const ABAS: { tipo: DesempenhoTipo; papel: DesempenhoPapel; rotulo: string }[] =
   { tipo: "periodico", papel: "coordenador", rotulo: "Periódica · Coordenador" },
   { tipo: "finalizacao", papel: "consultor", rotulo: "Finalização · Consultor" },
   { tipo: "finalizacao", papel: "coordenador", rotulo: "Finalização · Coordenador" },
+  // ⭐ 2026-09-09: Avaliação do Escopo — auto-avaliação de cada participante
+  // do projeto na finalização. Editada aqui como as outras.
+  { tipo: "finalizacao", papel: "escopo", rotulo: "Avaliação do Escopo" },
 ];
 
 export function PainelFormularios() {
