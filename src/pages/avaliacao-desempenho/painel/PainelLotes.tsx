@@ -678,7 +678,13 @@ export function PainelLotes() {
                               <PendenciaFaltamRotulo>falta avaliar:</PendenciaFaltamRotulo>{" "}
                               {grupo.itens.map((p, i) => (
                                 <span key={p.avaliado_id}>
-                                  {p.avaliado_nome}
+                                  {/* Avaliação do Escopo é auto (avaliador ==
+                                      avaliado): mostrar o nome da própria
+                                      pessoa leria como "Fulano falta avaliar
+                                      Fulano". */}
+                                  {p.form_type === "escopo"
+                                    ? "Avaliação do Escopo"
+                                    : p.avaliado_nome}
                                   {p.projeto_nomes.filter(Boolean).length > 0 &&
                                     ` (${p.projeto_nomes.filter(Boolean).join(", ")})`}
                                   {i < grupo.itens.length - 1 ? ", " : ""}
