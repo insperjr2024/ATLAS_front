@@ -75,6 +75,12 @@ export interface DesempenhoFilaItem {
   projeto_ids: number[];
 }
 
+export interface DesempenhoAvaliacaoEscopo {
+  escopo_id: number;
+  nome: string;
+  projeto_nome: string | null;
+}
+
 export interface DesempenhoAvaliacao {
   id: number;
   lote_id: number;
@@ -84,6 +90,10 @@ export interface DesempenhoAvaliacao {
   nota_geral: number;
   comentarios: string;
   criado_em?: string;
+  /** Só na Avaliação do Escopo (auto-avaliação): qual escopo a pessoa
+   *  avaliou, resolvido pelo backend cruzando a frente dela com os escopos
+   *  da banca. `null`/ausente quando não deu pra desambiguar. */
+  escopo?: DesempenhoAvaliacaoEscopo | null;
 }
 
 export interface DesempenhoAvaliacaoNotaDetalhe {

@@ -97,9 +97,13 @@ export function PainelAvaliacoes() {
   const [usuariosFrentes, setUsuariosFrentes] = useState<UsuarioFrente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [expandido, setExpandido] = useState<number | null>(null);
+  const [expandido, setExpandido] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<DesempenhoTipo | "todos">("todos");
   const [filtroFrente, setFiltroFrente] = useState<string>("todas");
+  // "pessoas" = agrupa avaliação por avaliador/avaliado (o de sempre).
+  // "escopo" = só as Avaliações do Escopo, agrupadas pelo ESCOPO avaliado
+  // (2026-09-10) — "Análise Mercadológica · BLEND I (média 4)".
+  const [visao, setVisao] = useState<"pessoas" | "escopo">("pessoas");
 
   const [avaliacaoExpandidaId, setAvaliacaoExpandidaId] = useState<number | null>(null);
   const [detalhes, setDetalhes] = useState<Map<number, DesempenhoAvaliacaoDetalhe>>(new Map());
@@ -200,28 +204,50 @@ export function PainelAvaliacoes() {
     return avaliacoes.filter((a) => tipoPorLote.get(a.lote_id) === filtroTipo);
   }, [avaliacoes, tipoPorLote, filtroTipo]);
 
-  // A chave de agrupamento é o único lugar onde os dois modos divergem de
-  // verdade — o resto da tela (filtros, expandir, remover) é idêntico.
-  const porPessoa = useMemo(() => {
-    const grupos = new Map<number, DesempenhoAvaliacao[]>();
-    for (const a of avaliacoesFiltradas) {
-      const chave = modo === "avaliador" ? a.avaliador_id : a.avaliado_id;
-      const lista = grupos.get(chave) ?? [];
-      lista.push(a);
-      grupos.set(chave, lista);
+  // Cada grupo é `{ chave, titulo, pessoaId?, lista }`. `pessoaId` só existe
+  // na visão "pessoas" — o contexto (frente/semestre) sai dele no render.
+  type Grupo = { chave: string; titulo: string; pessoaId?: number; lista: DesempenhoAvaliacao[] };
+  const grupos = useMemo<Grupo[]>(() => {
+    if (visao === "escopo") {
+      const mapa = new Map<number, Grupo>();
+      for (const a of avaliacoesFiltradas) {
+        if (!a.escopo) continue; // só a Avaliação do Escopo já atribuída a um escopo
+        const atual = mapa.get(a.escopo.escopo_id) ?? {
+          chave: `escopo-${a.escopo.escopo_id}`,
+          titulo: a.escopo.projeto_nome ? `${a.escopo.nome} · ${a.escopo.projeto_nome}` : a.escopo.nome,
+          lista: [],
+        };
+        atual.lista.push(a);
+        mapa.set(a.escopo.escopo_id, atual);
+      }
+      return Array.from(mapa.values()).sort((a, b) => b.lista.length - a.lista.length);
     }
-    // O filtro de frente é sobre a PESSOA do agrupamento, não sobre a
-    // avaliação em si, aplicado depois de agrupar, senão um filtro
-    // removeria linhas individuais e deixaria o grupo com contagem errada.
-    return Array.from(grupos.entries())
+
+    const mapa = new Map<number, DesempenhoAvaliacao[]>();
+    for (const a of avaliacoesFiltradas) {
+      if (a.escopo) continue; // a auto-avaliação de escopo tem visão própria
+      const chave = modo === "avaliador" ? a.avaliador_id : a.avaliado_id;
+      const lista = mapa.get(chave) ?? [];
+      lista.push(a);
+      mapa.set(chave, lista);
+    }
+    // O filtro de frente é sobre a PESSOA do agrupamento, aplicado depois de
+    // agrupar — senão removeria linhas soltas e deixaria a contagem errada.
+    return Array.from(mapa.entries())
       .filter(([pessoaId]) => {
         if (filtroFrente !== "todas" && !frenteIdsPorUsuario.get(pessoaId)?.has(Number(filtroFrente))) {
           return false;
         }
         return true;
       })
-      .sort(([, a], [, b]) => b.length - a.length);
-  }, [avaliacoesFiltradas, filtroFrente, frenteIdsPorUsuario, modo]);
+      .sort(([, a], [, b]) => b.length - a.length)
+      .map(([pessoaId, lista]) => ({
+        chave: `pessoa-${pessoaId}`,
+        titulo: nomes.get(pessoaId) ?? `Usuário ${pessoaId}`,
+        pessoaId,
+        lista,
+      }));
+  }, [avaliacoesFiltradas, filtroFrente, frenteIdsPorUsuario, modo, visao, nomes]);
 
   async function toggleDetalhe(avaliacaoId: number) {
     if (!token) return;
@@ -284,53 +310,72 @@ export function PainelAvaliacoes() {
       </PageCardHeader>
       <PageCardContent>
         <FiltrosRow>
+          <FieldSelect value={visao} onChange={(e) => setVisao(e.target.value as "pessoas" | "escopo")}>
+            <option value="pessoas">Avaliação de pessoas</option>
+            <option value="escopo">Avaliação de escopo</option>
+          </FieldSelect>
           <FieldSelect value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as DesempenhoTipo | "todos")}>
             <option value="todos">Todos os tipos</option>
             <option value="periodico">Periódica</option>
             <option value="finalizacao">Finalização</option>
           </FieldSelect>
-          <FieldSelect value={filtroFrente} onChange={(e) => setFiltroFrente(e.target.value)}>
-            <option value="todas">Todas as frentes</option>
-            {frentes.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.nome}
-              </option>
-            ))}
-          </FieldSelect>
+          {visao === "pessoas" && (
+            <FieldSelect value={filtroFrente} onChange={(e) => setFiltroFrente(e.target.value)}>
+              <option value="todas">Todas as frentes</option>
+              {frentes.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nome}
+                </option>
+              ))}
+            </FieldSelect>
+          )}
         </FiltrosRow>
 
-        {porPessoa.length === 0 ? (
-          <EmptyText>Nenhuma avaliação registrada ainda.</EmptyText>
+        {grupos.length === 0 ? (
+          <EmptyText>
+            {visao === "escopo"
+              ? "Nenhuma Avaliação do Escopo registrada ainda."
+              : "Nenhuma avaliação registrada ainda."}
+          </EmptyText>
         ) : (
           <ListaExpansivel>
-            {porPessoa.map(([pessoaId, lista]) => {
-              const media =
-                modo === "avaliado" ? lista.reduce((soma, a) => soma + a.nota_geral, 0) / lista.length : null;
+            {grupos.map((grupo) => {
+              const { chave, titulo, pessoaId, lista } = grupo;
+              // Média some só na visão "por avaliador" (é "X enviadas"); em
+              // "por avaliado" e "por escopo" a média é o ponto.
+              const temMedia = visao === "escopo" || modo === "avaliado";
+              const media = temMedia
+                ? lista.reduce((soma, a) => soma + a.nota_geral, 0) / lista.length
+                : null;
               return (
-                <div key={pessoaId}>
+                <div key={chave}>
                   <PessoaHeader
                     type="button"
-                    onClick={() => setExpandido((atual) => (atual === pessoaId ? null : pessoaId))}
+                    onClick={() => setExpandido((atual) => (atual === chave ? null : chave))}
                   >
                     <span>
-                      {nomes.get(pessoaId) ?? `Usuário ${pessoaId}`}{" "}
-                      <PessoaContexto>({resumoContexto(pessoaId)})</PessoaContexto>
+                      {titulo}{" "}
+                      {pessoaId != null && (
+                        <PessoaContexto>({resumoContexto(pessoaId)})</PessoaContexto>
+                      )}
                     </span>
                     <PessoaResumo>
-                      {modo === "avaliador" ? (
+                      {!temMedia ? (
                         `${lista.length} avaliações enviadas`
                       ) : (
                         <>
-                          {lista.length} avaliações recebidas · média{" "}
+                          {lista.length}{" "}
+                          {visao === "escopo" ? "avaliações" : "avaliações recebidas"} · média{" "}
                           <PageBadge $tone={corPorNota(media!)}>{media!.toFixed(1)}</PageBadge>
                         </>
                       )}
                     </PessoaResumo>
                   </PessoaHeader>
-                  {expandido === pessoaId && (
+                  {expandido === chave && (
                     <SubLista>
                       {lista.map((a) => {
-                        const outroLadoId = modo === "avaliador" ? a.avaliado_id : a.avaliador_id;
+                        const outroLadoId =
+                          visao === "escopo" || modo === "avaliado" ? a.avaliador_id : a.avaliado_id;
                         const detalhe = detalhes.get(a.id);
                         const expandidaAqui = avaliacaoExpandidaId === a.id;
                         return (
