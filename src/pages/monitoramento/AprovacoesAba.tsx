@@ -7,6 +7,7 @@ import { BancasSemResultadoCard } from "./BancasSemResultadoCard";
 import { EntradasEmProjetoCard } from "./EntradasEmProjetoCard";
 import { ExcecoesDeChoqueCard } from "./ExcecoesDeChoqueCard";
 import { PedidosDeDiasCard } from "./PedidosDeDiasCard";
+import { RemarcacoesDeBancaCard } from "./RemarcacoesDeBancaCard";
 import {
   PageStack,
   PageButton,
@@ -35,21 +36,20 @@ const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/aprovacoes", voltarRotulo
  * ela. O critério é ter alguém do outro lado bloqueado enquanto não houver
  * resposta.
  *
- * ⭐ **As seis filas aparecem sempre, mesmo vazias.** Uma tela que só surge
+ * ⭐ **As sete filas aparecem sempre, mesmo vazias.** Uma tela que só surge
  * quando há problema não ensina o que ela cobre.
  *
- * ⭐ **As seis decidem AQUI.** A maioria mandava a pessoa para outra tela — o
+ * ⭐ **As sete decidem AQUI.** A maioria mandava a pessoa para outra tela — o
  * projeto, Vagas, Bancas — com o argumento de que decidir sem contexto é
  * decidir no escuro. O argumento estava certo e a conclusão errada: o
  * caminho não era exportar a decisão, era importar o contexto. Cada linha
  * agora carrega o que a pessoa iria ver do outro lado (a urna da banca, a
- * carga de quem pediu, o motivo do atraso com escopo e dias), e as seis
- * rotas de decisão já existiam — nenhuma foi criada para isto.
+ * carga de quem pediu, o motivo do atraso com escopo e dias).
  *
  * ⚠ **A ordem dos cards é por custo de ficar parado**, não alfabética nem
- * histórica. Choque de horário e banca fora da janela vêm primeiro porque são
- * os únicos que APODRECEM: passada a data pretendida, a decisão não destrava
- * mais nada.
+ * histórica. Choque de horário, banca fora da janela e remarcação de banca
+ * vêm primeiro porque são os que APODRECEM: passada a data pretendida, a
+ * decisão não destrava mais nada.
  */
 export function AprovacoesAba() {
   const { token } = useAuth();
@@ -91,6 +91,7 @@ export function AprovacoesAba() {
   const filas = [
     { rotulo: "Choques de horário", n: dados.excecoes_de_choque.length, id: "fila-choque" },
     { rotulo: "Bancas fora da janela", n: dados.bancas_fora_da_janela.length, id: "fila-fora-da-janela" },
+    { rotulo: "Remarcações de banca", n: dados.remarcacoes_de_banca.length, id: "fila-remarcacoes-de-banca" },
     { rotulo: "Dias de ajuste", n: dados.dias_de_ajuste.length, id: "fila-dias" },
     { rotulo: "Bancas sem veredito", n: dados.bancas_sem_resultado.length, id: "fila-bancas" },
     { rotulo: "Pedidos de entrada", n: dados.solicitacoes_de_entrada.length, id: "fila-entradas" },
@@ -99,7 +100,7 @@ export function AprovacoesAba() {
 
   return (
     <PageStack>
-      {/* ⭐ "Quantos, sem rolar". A página tem cinco cards e cresce com a fila;
+      {/* ⭐ "Quantos, sem rolar". A página tem sete cards e cresce com a fila;
           sem a faixa, saber se há algo esperando exigia percorrer a tela
           inteira. Os números ficam NEUTROS de propósito — a mesma decisão da
           aba Atrasos: contagem é volume, não gravidade, e tingi-la faria a
@@ -116,11 +117,12 @@ export function AprovacoesAba() {
       </FaixaResumo>
 
       {dados.total === 0 && (
-        <EmptyText>Nada esperando por você. As seis filas estão limpas.</EmptyText>
+        <EmptyText>Nada esperando por você. As sete filas estão limpas.</EmptyText>
       )}
 
       <ExcecoesDeChoqueCard itens={dados.excecoes_de_choque} onDecidiu={carregar} />
       <BancasForaDaJanelaCard itens={dados.bancas_fora_da_janela} onDecidiu={carregar} />
+      <RemarcacoesDeBancaCard itens={dados.remarcacoes_de_banca} onDecidiu={carregar} />
       <PedidosDeDiasCard
         itens={dados.dias_de_ajuste}
         onDecidiu={carregar}

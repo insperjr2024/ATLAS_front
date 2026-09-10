@@ -742,6 +742,58 @@ export function decidirForaJanela(
 }
 
 /**
+ * ⭐ Pedir para remarcar uma banca que já tem data (§13, 2026-09-10).
+ *
+ * ⚠ **O atalho que isto fecha.** Remarcar dentro da janela e com folga era
+ * livre para quem edita o projeto — bastava justificativa e a data trocava na
+ * hora. Virou rotina silenciosa. Agora quem conduz o projeto PEDE aqui, e a
+ * diretoria decide na aba Aprovações; a aprovação já remarca a banca.
+ */
+export function solicitarRemarcacao(
+  dados: { projeto_escopo_id: number; data_hora_pretendida: string; justificativa: string },
+  token: string,
+) {
+  return apiFetch<{ id: number; status: string }>("/bancas/remarcacao", {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+/** Um pedido de remarcação de banca, esperando a diretoria. */
+export interface RemarcacaoPendente {
+  id: number;
+  banca_id: number | null;
+  projeto_id: number | null;
+  projeto_nome: string;
+  projeto_escopo_id: number;
+  escopo_nome: string | null;
+  data_hora_anterior: string;
+  data_hora_pretendida: string;
+  justificativa: string;
+  solicitado_por: number;
+  solicitado_por_nome: string | null;
+  criado_em: string;
+}
+
+export function getRemarcacoesPendentes(token: string) {
+  return apiFetch<RemarcacaoPendente[]>("/bancas/remarcacao/pendentes", { token });
+}
+
+/** A decisão da diretoria sobre a remarcação — aprovar já remarca a banca. */
+export function decidirRemarcacao(
+  pedidoId: number,
+  dados: { aprovar: boolean; resposta: string; autorizar_choque?: boolean },
+  token: string,
+) {
+  return apiFetch(`/bancas/remarcacao/${pedidoId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+/**
  * ⭐ Todas as bancas de um PROJETO, cada uma com a ficha completa.
  *
  * É o que a aba "Banca" do projeto consome. Rota própria, e não N chamadas a
