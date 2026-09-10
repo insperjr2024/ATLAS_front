@@ -10,6 +10,7 @@ import {
   cancelarBanca,
   deleteBanca,
   aceitaInscricao,
+  baixarEntregaArquivoBanca,
   desalocar,
   getBancas,
   getBancaDetalhes,
@@ -108,6 +109,7 @@ import {
   DetailRow,
   DetailTerm,
   DetailValue,
+  BotaoComoLink,
   AvaliadoresSecao,
   DescricaoSecao,
   FormStack,
@@ -656,9 +658,9 @@ export function Bancas() {
           {ehDiretor && (
             <PageSubheading>
               Bancas dos próximos 7 dias que ainda estiverem sem gente são preenchidas
-              automaticamente todo dia às 6h, por rodízio e priorizando a mesma frente. Use
-              “Distribuir agora” para rodar a mesma distribuição na hora, ou “Alocar pessoas”
-              num card para escalar alguém específico.
+              automaticamente, a cada poucos minutos, por rodízio e priorizando a mesma
+              frente. Use “Distribuir agora” para rodar a distribuição na hora, ou “Alocar
+              pessoas” num card para escalar alguém específico.
             </PageSubheading>
           )}
           {resultadoPush && <PageSubheading>{resultadoPush}</PageSubheading>}
@@ -1882,6 +1884,33 @@ function VerMaisModal({
             <DetailRow>
               <DetailTerm>Membros</DetailTerm>
               <DetailValue>{membrosDaBanca(banca.equipe_ids, banca.coordenador_id, contexto.usuarios).join(", ") || "—"}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Local</DetailTerm>
+              <DetailValue>{banca.local?.trim() || "—"}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Entrega</DetailTerm>
+              <DetailValue>
+                {banca.entrega_link ? (
+                  <a href={banca.entrega_link} target="_blank" rel="noreferrer">
+                    Abrir link
+                  </a>
+                ) : banca.entrega_arquivo_nome ? (
+                  <BotaoComoLink
+                    type="button"
+                    onClick={() => {
+                      if (token) {
+                        void baixarEntregaArquivoBanca(banca.id, banca.entrega_arquivo_nome as string, token);
+                      }
+                    }}
+                  >
+                    {banca.entrega_arquivo_nome}
+                  </BotaoComoLink>
+                ) : (
+                  "—"
+                )}
+              </DetailValue>
             </DetailRow>
           </DetailList>
 

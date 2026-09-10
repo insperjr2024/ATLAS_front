@@ -19,6 +19,9 @@ export interface DesempenhoLote {
   override_manual: DesempenhoOverrideManual;
   projeto_ids: number[];
   aberto: boolean;
+  /** Finalização: a Avaliação do Escopo entra junto? Escolhido ao abrir o
+   *  lote à mão; `true` na automática e nos lotes antigos. Periódica ignora. */
+  inclui_avaliacao_de_escopo: boolean;
 }
 
 export interface DesempenhoCriterio {
@@ -200,9 +203,7 @@ export interface DesempenhoPdiPastaComItens {
 export interface DesempenhoRelatorioLote {
   lote_id: number;
   lote_nome: string | null;
-  /** "escopo" é a Avaliação do Escopo — separada das médias de finalização
-   *  no `get_relatorio.py`, mostrada numa aba própria. */
-  tipo: DesempenhoTipo | "escopo" | null;
+  tipo: DesempenhoTipo | null;
   nota_geral_media: number | null;
   quantidade_avaliadores: number;
   criterios: DesempenhoRelatorioCriterio[];

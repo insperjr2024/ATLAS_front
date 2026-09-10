@@ -77,6 +77,19 @@ export const DetailValue = styled.dd`
   text-align: right;
 `;
 
+/** Baixar o arquivo da entrega direto de uma linha do `DetailRow` — a
+ *  requisição vai com o Bearer no header (ver `baixarEntregaArquivoBanca`),
+ *  então não dá pra ser um `<a href>` cru; é um botão pintado de link. */
+export const BotaoComoLink = styled.button`
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: ${theme.colors.primary};
+  text-decoration: underline;
+  cursor: pointer;
+`;
+
 /** A lista de avaliadores agrupados no "ver mais" — uma coluna de blocos
  *  (liderança/membro × frente), não um par rótulo→valor como as linhas do
  *  `DetailRow`. Ganha respiro do bloco de detalhes acima. */

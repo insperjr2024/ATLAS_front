@@ -30,15 +30,13 @@ import {
   TipoTabButton,
 } from "./RelatorioDesempenho.styled";
 
-type TipoRelatorio = DesempenhoTipo | "escopo";
-
-const TIPOS: { valor: TipoRelatorio; rotulo: string }[] = [
+const TIPOS: { valor: DesempenhoTipo; rotulo: string }[] = [
   { valor: "periodico", rotulo: "Periódica" },
   { valor: "finalizacao", rotulo: "Finalização" },
-  // A Avaliação do Escopo é auto-avaliação sobre o ESCOPO, não sobre a
-  // pessoa — fica numa aba própria, fora da média de finalização.
-  { valor: "escopo", rotulo: "Avaliação do Escopo" },
 ];
+// A Avaliação do Escopo NÃO aparece aqui (2026-09-10): é auto-avaliação
+// sobre o escopo, não sobre a pessoa. Vive no painel de avaliações, na
+// visão "Avaliação de escopo". O backend já não a devolve neste relatório.
 
 // Regra 2.9: nota < 3 é sinalizada (atenção), >= 3 fica neutra, é o que
 // deixa escanear o painel sem ler número por número.
@@ -118,7 +116,7 @@ interface RelatorioDesempenhoProps {
 }
 
 export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoProps) {
-  const [tipoAtivo, setTipoAtivo] = useState<TipoRelatorio>("periodico");
+  const [tipoAtivo, setTipoAtivo] = useState<DesempenhoTipo>("periodico");
   const [loteIdFiltro, setLoteIdFiltro] = useState<number | null>(null);
   const [exportando, setExportando] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
@@ -168,7 +166,7 @@ export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoPr
         </RelatorioPessoaHeader>
       )}
 
-      {/* Sempre as três abas, mesmo sem avaliação daquele tipo ainda, perder
+      {/* Sempre as duas abas, mesmo sem avaliação daquele tipo ainda, perder
           a aba faria perder a informação de qual tipo é aquela nota. */}
       <TipoTabBar role="tablist">
         {TIPOS.map((t) => (

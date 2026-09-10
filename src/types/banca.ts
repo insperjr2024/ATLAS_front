@@ -110,6 +110,15 @@ export interface Banca extends BancaBase {
    *  gerência/diretoria de projetos). Nulo em toda banca que ainda pode
    *  acontecer — inclusive as automáticas, que nunca passam por aqui. */
   cancelada_em: string | null;
+  /** Onde a banca vai acontecer — texto livre, preenchido por quem é do
+   *  projeto avaliado, editável até 1h antes. Nulo enquanto ninguém registrou. */
+  local: string | null;
+  /** Link da entrega anexado por consultor/coord do projeto, para acesso
+   *  antes ou depois da banca. Nulo, ou some quando um arquivo é enviado. */
+  entrega_link: string | null;
+  /** Nome do arquivo da entrega (o conteúdo baixa por
+   *  `GET /bancas/{id}/entrega-arquivo`). Nulo, ou some quando um link é salvo. */
+  entrega_arquivo_nome: string | null;
   resultado: ResultadoBanca | null;
   /** O relato do coordenador do projeto sobre a banca, texto livre, no
    *  lugar do formulário de avaliação (ele não é avaliador da própria
@@ -134,6 +143,12 @@ export interface BancaDetalhes {
   realizado_em: string | null;
   /** ⭐ Preenchido só pela ação manual de cancelar — ver `BancaBase.cancelada_em`. */
   cancelada_em: string | null;
+  /** Ver `BancaBase.local` — onde a banca vai acontecer, texto livre. */
+  local: string | null;
+  /** Ver `BancaBase.entrega_link`. */
+  entrega_link: string | null;
+  /** Ver `BancaBase.entrega_arquivo_nome`. */
+  entrega_arquivo_nome: string | null;
   resultado: ResultadoBanca | null;
   status: StatusBanca;
   /** Plural: uma banca pode cobrir vários escopos do projeto de uma sentada. */

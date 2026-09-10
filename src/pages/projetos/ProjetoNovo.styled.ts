@@ -246,17 +246,20 @@ export const ArquivoBotao = styled.label`
   gap: 0.375rem;
   min-height: 2.25rem;
   padding: 0 0.875rem;
-  border: 1px solid ${theme.colors.border};
+  /* Azul cheio, não a caixa cinza de antes: um <input type=file> nu não lê
+     como algo pra clicar. É a única cor de ação não-vermelha do tema. */
+  border: 1px solid ${theme.colors.info};
   border-radius: ${theme.borderRadius.lg};
-  background: ${theme.colors.background};
+  background: ${theme.colors.info};
   font-size: ${theme.fontSize.sm};
   font-weight: ${theme.fontWeight.medium};
-  color: ${theme.colors.foreground};
+  color: ${theme.colors.infoForeground};
   cursor: pointer;
   transition: background ${theme.transitions.fast}, border-color ${theme.transitions.fast};
 
   &:hover {
-    background: ${theme.colors.muted};
+    background: color-mix(in srgb, ${theme.colors.info} 88%, black);
+    border-color: color-mix(in srgb, ${theme.colors.info} 88%, black);
   }
 
   /* Mesmo motivo das pastilhas de frente: fora da tela, e não display:none,

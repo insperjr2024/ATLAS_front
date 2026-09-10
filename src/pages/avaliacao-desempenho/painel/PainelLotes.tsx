@@ -164,6 +164,9 @@ export function PainelLotes() {
 
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<DesempenhoTipo>("periodico");
+  // Finalização: a Avaliação do Escopo (auto-avaliação de cada participante)
+  // entra junto? Só é perguntado aqui, no lote aberto à mão.
+  const [incluiEscopo, setIncluiEscopo] = useState(true);
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [projetoIds, setProjetoIds] = useState<number[]>([]);
@@ -279,6 +282,7 @@ export function PainelLotes() {
           data_inicio: new Date(dataInicio).toISOString(),
           data_fim: new Date(dataFim).toISOString(),
           projeto_ids: projetoIds,
+          inclui_avaliacao_de_escopo: tipo === "finalizacao" ? incluiEscopo : undefined,
         },
         token,
       );
@@ -287,6 +291,7 @@ export function PainelLotes() {
       setDataInicio("");
       setDataFim("");
       setProjetoIds([]);
+      setIncluiEscopo(true);
     } catch (err) {
       setErroForm(err instanceof Error ? err.message : "Erro ao criar formulário");
     } finally {
@@ -415,6 +420,18 @@ export function PainelLotes() {
                 <option value="finalizacao">Finalização</option>
               </FieldSelect>
             </FieldGroup>
+            {tipo === "finalizacao" && (
+              <FieldGroup>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={incluiEscopo}
+                    onChange={(e) => setIncluiEscopo(e.target.checked)}
+                  />
+                  Incluir a Avaliação do Escopo (cada participante avalia o escopo finalizado)
+                </label>
+              </FieldGroup>
+            )}
             <FieldGroup>
               <FieldLabel htmlFor="lote-inicio">Início</FieldLabel>
               <CampoInlineRow>

@@ -5,6 +5,7 @@ import { getBancaDetalhes } from "@/lib/bancas";
 import { paraDataUtc } from "@/lib/projetos";
 import type { BancaDetalhes } from "@/types/banca";
 import {
+  AvaliadoresSecao,
   DetailList,
   DetailRow,
   DetailTerm,
@@ -17,6 +18,7 @@ import {
   ModalTitle,
   NarrowModalContent,
 } from "@/pages/Bancas.styled";
+import { AvaliadoresAgrupados } from "@/components/bancas/AvaliadoresAgrupados";
 import { EmptyText, ErrorText, PageButton } from "@/styles/page.styled";
 
 const ROTULO_STATUS: Record<BancaDetalhes["status"], string> = {
@@ -106,6 +108,7 @@ export function BancaDetalhesModal({
           {!banca && !erro && <EmptyText>Carregando…</EmptyText>}
 
           {banca && (
+            <>
             <DetailList>
               <DetailRow>
                 <DetailTerm>Data</DetailTerm>
@@ -149,10 +152,6 @@ export function BancaDetalhesModal({
                 <DetailTerm>Membros</DetailTerm>
                 <DetailValue>{banca.membros.join(", ") || "—"}</DetailValue>
               </DetailRow>
-              <DetailRow>
-                <DetailTerm>Avaliadores</DetailTerm>
-                <DetailValue>{banca.avaliadores.map((a) => a.nome).join(", ") || "—"}</DetailValue>
-              </DetailRow>
               {banca.descricao_coordenador && (
                 <DetailRow>
                   <DetailTerm>Relato do coordenador</DetailTerm>
@@ -160,6 +159,24 @@ export function BancaDetalhesModal({
                 </DetailRow>
               )}
             </DetailList>
+
+            {/* Os avaliadores separados por (liderança | membro) × frente da
+                banca, o mesmo bloco da aba Banca do projeto e do "ver mais" de
+                /bancas — antes era uma linha só com todos os nomes juntos. */}
+            <AvaliadoresSecao>
+              <DetailTerm>Avaliadores</DetailTerm>
+              {banca.avaliadores.length === 0 ? (
+                <DetailValue style={{ textAlign: "left" }}>—</DetailValue>
+              ) : (
+                <AvaliadoresAgrupados
+                  avaliadores={banca.avaliadores}
+                  frentesDaBanca={banca.frentes_da_banca}
+                  composicao={banca.composicao}
+                  realizadoEm={banca.realizado_em}
+                />
+              )}
+            </AvaliadoresSecao>
+            </>
           )}
         </ModalBody>
 

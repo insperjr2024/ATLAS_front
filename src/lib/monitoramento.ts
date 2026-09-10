@@ -729,6 +729,22 @@ export interface AprovacaoForaDaJanela {
   criado_em: string;
 }
 
+/** §13, 2026-09-10: um pedido para remarcar uma banca que já tem data. */
+export interface AprovacaoRemarcacao {
+  id: number;
+  banca_id: number | null;
+  projeto_id: number | null;
+  projeto_nome: string;
+  projeto_escopo_id: number;
+  escopo_nome: string | null;
+  /** A data que vale hoje — o "de" do "de → para". */
+  data_hora_anterior: string;
+  data_hora_pretendida: string;
+  justificativa: string;
+  solicitado_por_nome: string | null;
+  criado_em: string;
+}
+
 /**
  * Havia uma terceira fila, `entregas_sem_classificacao` (entregas atrasadas
  * sem o rótulo interno/agenda do cliente). Removida em 2026-08-12 junto com o
@@ -744,6 +760,8 @@ export interface Aprovacoes {
   excecoes_de_choque: AprovacaoExcecaoChoque[];
   /** §13: pedidos para marcar banca fora da janela do escopo. */
   bancas_fora_da_janela: AprovacaoForaDaJanela[];
+  /** §13, 2026-09-10: pedidos para remarcar uma banca que já tem data. */
+  remarcacoes_de_banca: AprovacaoRemarcacao[];
   /** Servido pronto pelo backend — o badge da aba precisa dele antes de
    *  qualquer render, e somar no front duplicaria a conta. */
   total: number;

@@ -11,7 +11,7 @@ import {
 } from "@/styles/modal.styled";
 import { PageButton } from "@/styles/page.styled";
 import { formatarData } from "@/lib/projetos";
-import { solicitarExcecaoChoque, solicitarForaJanela } from "@/lib/bancas";
+import { solicitarExcecaoChoque, solicitarForaJanela, solicitarRemarcacao } from "@/lib/bancas";
 import { useAuth } from "@/context/AuthContext";
 import {
   AvisoBanner,
@@ -23,7 +23,9 @@ import {
   FormErrorText,
 } from "./Projetos.styled";
 
-/** remarcar uma banca que acontece dentro desta folga exige diretoria. */
+/** Abaixo desta folga, o texto do modal avisa que os avaliadores já estão
+ *  escalados. Não muda mais o fluxo — TODA remarcação por quem não é da
+ *  diretoria passa por pedido (2026-09-10) —, é só contexto para quem lê. */
 const FOLGA_LIVRE_DIAS_UTEIS = 5;
 
 /** O mínimo que o seletor de cobertura precisa saber de cada escopo. */
@@ -72,13 +74,13 @@ interface Props {
  * a tela barra antes de enviar quando dá pra prever (em cima da hora), em
  * vez de deixar o 422 explicar depois.
  *
- * A justificativa é exigida em três casos, e por motivos diferentes:
+ * A justificativa é exigida em dois casos, e por motivos diferentes:
  *
  * - a data cai **fora da janela** do escopo — exige um pedido aprovado pela
  *   diretoria (§13), em ato separado; nem ela marca sozinha;
- * - é uma **remarcação**, remarcar nunca é silencioso;
- * - a banca atual acontece nos **próximos 5 dias úteis** (os avaliadores
- *   já reservaram a agenda), e aí a diretoria marca direto.
+ * - é uma **remarcação** (a banca já tem data) — remarcar nunca é silencioso,
+ *   e desde 2026-09-10 quem não é da diretoria não remarca sozinho: o botão
+ *   vira "Pedir remarcação à diretoria", e a aprovação é que remarca.
  *
  * Quem decide de verdade continua sendo o backend: se ele recusar por fora da
  * janela, o botão de pedir autorização aparece aqui embaixo.
@@ -140,6 +142,12 @@ export function MarcarBancaModal({
   const [foraJanelaNegada, setForaJanelaNegada] = useState(false);
   const [pedindoJanela, setPedindoJanela] = useState(false);
   const [pedidoJanela, setPedidoJanela] = useState(false);
+  /** ⭐ 2026-09-10: o pedido de remarcação (§13). Diferente de `foraJanelaNegada`,
+   *  este não reage a um 422 — a regra é conhecida no cliente (é remarcação e
+   *  quem edita não é diretoria), então o botão já nasce sendo "Pedir
+   *  remarcação à diretoria". */
+  const [pedindoRemarcacao, setPedindoRemarcacao] = useState(false);
+  const [pedidoRemarcacao, setPedidoRemarcacao] = useState(false);
 
   const foraDaJanela = !!fimJanela && dia > fimJanela;
   const emCimaDaHora =
@@ -151,10 +159,12 @@ export function MarcarBancaModal({
   // "Pedir exceção à diretoria" ficava desabilitado para sempre, sem
   // nenhum jeito de escrever o motivo que ele mesmo pede para preencher.
   const exigeJustificativa = jaTemData || foraDaJanela || choque;
-  // `foraDaJanela` não bloqueia mais de antemão: mesmo a diretoria precisa
-  // de um pedido aprovado, então a tentativa de marcar é que decide — só
-  // "em cima da hora" continua sendo um atalho direto dela.
-  const bloqueado = emCimaDaHora && !ehDiretor;
+  // ⭐ 2026-09-10: TODA remarcação por quem não é da diretoria passa por um
+  // pedido — dentro da janela, com folga, em cima da hora, tanto faz. O
+  // backend rejeita a marcação direta; aqui a gente já oferece o caminho
+  // certo (o botão vira "Pedir remarcação à diretoria") em vez de deixar o
+  // 422 explicar depois.
+  const precisaPedirRemarcacao = jaTemData && !ehDiretor;
 
   const candidatos = escoposDoProjeto.filter(
     (e) => e.id === escopoId || e.status !== "cancelado",
@@ -247,6 +257,29 @@ export function MarcarBancaModal({
     }
   }
 
+  async function pedirRemarcacao() {
+    if (!token) return;
+    setPedindoRemarcacao(true);
+    setErro("");
+    try {
+      await solicitarRemarcacao(
+        {
+          projeto_escopo_id: escopoId,
+          // Mesma conversão de `pedirAutorizacaoJanela`: a aprovação remarca a
+          // banca por `data_hora` EXATA.
+          data_hora_pretendida: new Date(`${dia}T${horario}:00`).toISOString(),
+          justificativa: justificativa.trim(),
+        },
+        token,
+      );
+      setPedidoRemarcacao(true);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível enviar o pedido");
+    } finally {
+      setPedindoRemarcacao(false);
+    }
+  }
+
   return (
     <ModalOverlay onClick={onCancelar}>
       <ModalContent onClick={(e) => e.stopPropagation()}>
@@ -280,7 +313,16 @@ export function MarcarBancaModal({
               e os avaliadores já estão escalados.{" "}
               {ehDiretor
                 ? "A remarcação fica registrada com a justificativa."
-                : "Remarcar em cima da hora é decisão da diretoria."}
+                : "Quem estava escalado é avisado da mudança."}
+            </p>
+          )}
+
+          {precisaPedirRemarcacao && !pedidoRemarcacao && (
+            <p>
+              Remarcar uma banca que já tem data é <strong>decisão da diretoria</strong>.
+              Escreva abaixo por que a data precisa mudar — é o que ela vai ler
+              para decidir. Se autorizar, a banca é remarcada nesta data
+              automaticamente e quem estava escalado é avisado.
             </p>
           )}
 
@@ -329,7 +371,7 @@ export function MarcarBancaModal({
             />
           </FieldGroup>
 
-          {exigeJustificativa && !bloqueado && (
+          {exigeJustificativa && !pedidoRemarcacao && (
             <FieldGroup>
               <FieldLabel htmlFor="justificativa-banca">Justificativa</FieldLabel>
               <FieldInput
@@ -404,21 +446,41 @@ export function MarcarBancaModal({
               se autorizar, a banca já é marcada nesta data — você não precisa voltar aqui.
             </AvisoBanner>
           )}
+
+          {pedidoRemarcacao && (
+            <AvisoBanner>
+              Pedido de remarcação enviado. A diretoria decide na aba{" "}
+              <strong>Monitoramento → Aprovações</strong>; se autorizar, a banca já é remarcada
+              para esta data e quem estava escalado é avisado — você não precisa voltar aqui.
+            </AvisoBanner>
+          )}
         </ModalBody>
 
         <ModalFooter>
           <PageButton type="button" $variant="ghost" onClick={onCancelar}>
-            Cancelar
+            {pedidoRemarcacao ? "Fechar" : "Cancelar"}
           </PageButton>
-          <PageButton
-            type="button"
-            disabled={
-              enviando || bloqueado || !horario || (exigeJustificativa && !justificativa.trim())
-            }
-            onClick={enviar}
-          >
-            {jaTemData ? "Remarcar" : "Marcar"}
-          </PageButton>
+          {precisaPedirRemarcacao ? (
+            !pedidoRemarcacao && (
+              <PageButton
+                type="button"
+                disabled={pedindoRemarcacao || !horario || !justificativa.trim()}
+                onClick={pedirRemarcacao}
+              >
+                {pedindoRemarcacao ? "Enviando pedido..." : "Pedir remarcação à diretoria"}
+              </PageButton>
+            )
+          ) : (
+            <PageButton
+              type="button"
+              disabled={
+                enviando || !horario || (exigeJustificativa && !justificativa.trim())
+              }
+              onClick={enviar}
+            >
+              {jaTemData ? "Remarcar" : "Marcar"}
+            </PageButton>
+          )}
         </ModalFooter>
       </ModalContent>
     </ModalOverlay>
