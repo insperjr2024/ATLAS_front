@@ -1089,6 +1089,9 @@ function SecaoBancas({
 }) {
   const [frenteFiltro, setFrenteFiltro] = useState(TODAS_FRENTES);
   const idFiltroFrente = `frente-${titulo.replace(/\s+/g, "-").toLowerCase()}`;
+  // "Agora" fixado na montagem: a trava dos 7 dias não precisa de precisão de
+  // segundo, e chamar `Date.now()` no meio do render é impuro.
+  const [agoraMs] = useState(() => Date.now());
 
   /** Só as frentes que aparecem NESTAS bancas: oferecer o catálogo inteiro
    *  encheria o filtro de opção que não recorta nada. */
@@ -1188,7 +1191,7 @@ function SecaoBancas({
     // backend (`DeleteCandidaturaUseCase`) aplica a mesma regra; aqui é para
     // o botão já vir desabilitado, com o motivo.
     const diasAteBanca = dataHora
-      ? (dataHora.getTime() - Date.now()) / 86_400_000
+      ? (dataHora.getTime() - agoraMs) / 86_400_000
       : Infinity;
     const saidaTravada =
       acao === "deslocar" &&
@@ -2124,6 +2127,28 @@ function AvaliarModal({
   );
   const [escopoOutro, setEscopoOutro] = useState("");
 
+  // ⚠ O formulário vem como prop, carregado uma vez no load da página. Se a
+  // diretoria editar o formulário enquanto a pessoa está com a tela aberta, a
+  // prop fica velha: um escopo cujos critérios foram adicionados depois
+  // aparece como "sem critérios" e a avaliação vai incompleta — foi o que
+  // aconteceu na BLEND I (2026-09-10). Rebusca a versão atual ao abrir.
+  const [formularioAtual, setFormularioAtual] = useState(formulario);
+  useEffect(() => {
+    let vivo = true;
+    getFormularioAtivo(token)
+      .then((f) => {
+        if (vivo) setFormularioAtual(f);
+      })
+      .catch(() => {
+        /* sem formulário ativo agora: fica com a prop */
+      });
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const form = formularioAtual ?? formulario;
+
   // ⭐ Uma banca pode ter sido de mais de um escopo (2026-09-09). Quando a
   // costura com o projeto diz quais são (`escopos_avaliados_ids`), o
   // formulário mostra um BLOCO de critérios por escopo, empilhados, e não há
@@ -2136,7 +2161,7 @@ function AvaliarModal({
   // de `banca.escopo_id` direto.
   const escopoIdParaFiltro = typeof escopoSelecionado === "number" ? escopoSelecionado : null;
 
-  const todasPerguntas = (formulario?.perguntas ?? [])
+  const todasPerguntas = (form?.perguntas ?? [])
     .slice()
     .sort((a, b) => a.ordem - b.ordem)
     .filter((p) => !isComentarioFeedbackPergunta(p.tipo_resposta, p.texto));
@@ -2166,7 +2191,7 @@ function AvaliarModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!formulario) return;
+    if (!form) return;
     const faltando = perguntasNota.some((p) => notas[p.id] == null);
     if (faltando) {
       setErro("Selecione uma nota de 1 a 5 para todos os critérios.");
@@ -2178,7 +2203,7 @@ function AvaliarModal({
       const avaliacao = await createAvaliacao(
         {
           banca_id: banca.id,
-          formulario_id: formulario.id,
+          formulario_id: form.id,
           nome_avaliador: nomeAvaliador.trim() || undefined,
           tipo_avaliador: tipoAvaliador,
           projeto_avaliado: projetoAvaliado.trim() || undefined,
@@ -2267,7 +2292,7 @@ function AvaliarModal({
             <X size={18} />
           </ModalClose>
         </ModalHeader>
-        {!formulario ? (
+        {!form ? (
           <ModalBody>
             <EmptyText>Nenhum formulário ativo configurado no momento.</EmptyText>
           </ModalBody>
