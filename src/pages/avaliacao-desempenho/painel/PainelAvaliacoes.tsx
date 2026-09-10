@@ -286,27 +286,37 @@ export function PainelAvaliacoes() {
   return (
     <PageCard>
       <PageCardHeader>
-        <PageCardTitle>{modo === "avaliador" ? "Quem avaliou quem" : "Como cada um foi avaliado"}</PageCardTitle>
-        <ViewToggleRow role="tablist" aria-label="Agrupar por">
-          <ViewToggleBtn
-            type="button"
-            role="tab"
-            aria-selected={modo === "avaliador"}
-            $ativo={modo === "avaliador"}
-            onClick={() => trocarModo("avaliador")}
-          >
-            Por avaliador
-          </ViewToggleBtn>
-          <ViewToggleBtn
-            type="button"
-            role="tab"
-            aria-selected={modo === "avaliado"}
-            $ativo={modo === "avaliado"}
-            onClick={() => trocarModo("avaliado")}
-          >
-            Por avaliado
-          </ViewToggleBtn>
-        </ViewToggleRow>
+        <PageCardTitle>
+          {visao === "escopo"
+            ? "Como cada escopo foi avaliado"
+            : modo === "avaliador"
+              ? "Quem avaliou quem"
+              : "Como cada um foi avaliado"}
+        </PageCardTitle>
+        {/* O toggle avaliador/avaliado só faz sentido agrupando por PESSOA —
+            na visão de escopo o agrupamento é o próprio escopo. */}
+        {visao !== "escopo" && (
+          <ViewToggleRow role="tablist" aria-label="Agrupar por">
+            <ViewToggleBtn
+              type="button"
+              role="tab"
+              aria-selected={modo === "avaliador"}
+              $ativo={modo === "avaliador"}
+              onClick={() => trocarModo("avaliador")}
+            >
+              Por avaliador
+            </ViewToggleBtn>
+            <ViewToggleBtn
+              type="button"
+              role="tab"
+              aria-selected={modo === "avaliado"}
+              $ativo={modo === "avaliado"}
+              onClick={() => trocarModo("avaliado")}
+            >
+              Por avaliado
+            </ViewToggleBtn>
+          </ViewToggleRow>
+        )}
       </PageCardHeader>
       <PageCardContent>
         <FiltrosRow>

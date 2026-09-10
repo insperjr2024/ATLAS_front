@@ -122,6 +122,16 @@ function formatNota(nota: number | null | undefined): string {
   return nota.toFixed(1);
 }
 
+/** Escala 1-5 do formulário: < 3 grita (vermelho), 3 é meio-termo (âmbar),
+ *  4-5 é bom (verde). Mesma leitura da AVD. ⚠ `"default"` do PageBadge é
+ *  avermelhado — nunca usar pra nota "ok". */
+function tomDaNota(nota: number | null | undefined): "danger" | "warning" | "success" | "muted" {
+  if (nota == null) return "muted";
+  if (nota < 3) return "danger";
+  if (nota < 4) return "warning";
+  return "success";
+}
+
 /** "aprovada" | "nao_aprovada" | `null` (aconteceu, ainda esperando decisão
  *  de diretoria ou gerente da frente — ver `use_cases/banca/aprovar_banca.py`). */
 function rotuloResultado(resultado: HistoricoBanca["resultado"]): string {
@@ -616,7 +626,7 @@ function VerAvaliacoesModal({
                         {media != null && (
                           <>
                             {" · média "}
-                            <PageBadge $tone={media < 3 ? "danger" : "default"}>
+                            <PageBadge $tone={tomDaNota(media)}>
                               {formatNota(media)}
                             </PageBadge>
                           </>
@@ -630,7 +640,7 @@ function VerAvaliacoesModal({
                             <span>{labelPorPergunta.get(n.pergunta_id) ?? `Pergunta ${n.pergunta_id}`}</span>
                             <SubItemMeta>
                               {n.nota != null ? (
-                                <PageBadge $tone={n.nota < 3 ? "danger" : "default"}>
+                                <PageBadge $tone={tomDaNota(n.nota)}>
                                   {formatNota(n.nota)}
                                 </PageBadge>
                               ) : (
