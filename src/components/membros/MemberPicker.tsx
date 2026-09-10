@@ -95,6 +95,12 @@ interface MemberPickerProps {
    *  precisa ser a do projeto: dá pra somar outras manualmente). */
   frentes?: Frente[];
   frenteIdsProjeto?: number[];
+  /** Só para RESOLVER NOME das pastilhas já escolhidas — não vira opção no
+   *  dropdown. É o que faz um membro desativado que ainda está na equipe
+   *  aparecer com o nome dele em vez de "Usuário 2": `usuarios` traz só quem
+   *  está ativo (quem dá pra adicionar), e sem isto a pastilha dele fica sem
+   *  nome. */
+  nomesExtra?: { id: number; nome: string }[];
 }
 
 export function MemberPicker({
@@ -105,6 +111,7 @@ export function MemberPicker({
   usuariosFrentes = [],
   frentes = [],
   frenteIdsProjeto = [],
+  nomesExtra = [],
 }: MemberPickerProps) {
   // `null` = segue as frentes do projeto automaticamente (o normal). No
   // instante em que a pessoa mexe num pill, vira um conjunto próprio,
@@ -119,7 +126,12 @@ export function MemberPicker({
     setFiltroManual(proximo);
   }
 
-  const nomePorId = new Map(usuarios.map((u) => [u.id, u.nome]));
+  // `nomesExtra` primeiro, `usuarios` por cima: se a pessoa está nas duas, o
+  // registro ativo é o que vale.
+  const nomePorId = new Map<number, string>([
+    ...nomesExtra.map((u) => [u.id, u.nome] as const),
+    ...usuarios.map((u) => [u.id, u.nome] as const),
+  ]);
   const { coordenadorIds, consultorIds } = valor;
 
   const frenteIdsPorUsuario = new Map<number, Set<number>>();

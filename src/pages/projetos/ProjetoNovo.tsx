@@ -534,9 +534,8 @@ export function ProjetoNovo() {
                 pesquisavel
               />
               <EmptyText style={{ fontSize: "0.7rem" }}>
-                Opcional. Aparecem os coordenadores de vendas e os consultores marcados
-                como BDR. Quem vendeu enxerga o projeto em modo somente leitura, mesmo
-                sem estar na equipe, e pode avaliar a banca deste projeto normalmente.
+                Quem vendeu enxerga o projeto em modo somente leitura, mesmo sem estar
+                na equipe, e pode avaliar a banca deste projeto.
               </EmptyText>
             </FieldGroup>
           </BlocoSecao>

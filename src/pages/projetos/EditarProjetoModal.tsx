@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
-import { X } from "lucide-react";
+import { Paperclip, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
@@ -31,7 +31,14 @@ import type { UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import type { EscopoVendido, ProjetoCompleto } from "@/types/projeto";
 import type { Escopo, Frente } from "@/types/banca";
 import { EmptyText, PageButton } from "@/styles/page.styled";
-import { FrenteLista, FrenteToggle } from "./ProjetoNovo.styled";
+import {
+  ArquivoBotao,
+  ArquivoLinha,
+  ArquivoNome,
+  ArquivoRemover,
+  FrenteLista,
+  FrenteToggle,
+} from "./ProjetoNovo.styled";
 import {
   FieldGroup,
   FieldInput,
@@ -245,6 +252,7 @@ export function EditarProjetoModal({
   const [linkProposta, setLinkProposta] = useState(projeto.link_proposta ?? "");
   /** PDF da proposta escolhido agora. Envia só no salvar. */
   const [anexoProposta, setAnexoProposta] = useState<File | null>(null);
+  const anexoRef = useRef<HTMLInputElement>(null);
   const [frenteIds, setFrenteIds] = useState(projeto.frente_ids);
   const [equipe, setEquipe] = useState<EquipeSelecionada>({
     coordenadorIds: projeto.coordenador_ids,
@@ -491,19 +499,37 @@ export function EditarProjetoModal({
                 </FieldGroup>
 
                 <FieldGroup>
-                  <FieldLabel htmlFor="editar-anexo-proposta">PDF da proposta</FieldLabel>
-                  <input
-                    id="editar-anexo-proposta"
-                    type="file"
-                    accept="application/pdf,.pdf"
-                    disabled={salvando}
-                    onChange={(e) => setAnexoProposta(e.target.files?.[0] ?? null)}
-                  />
-                  <EmptyText style={{ margin: 0, fontSize: "0.7rem" }}>
-                    {projeto.anexo_proposta_nome
-                      ? `Atual: ${projeto.anexo_proposta_nome}. Escolher um novo substitui.`
-                      : "Opcional. Enviar um PDF apaga o link da proposta."}
-                  </EmptyText>
+                  <FieldLabel as="span">PDF da proposta</FieldLabel>
+                  <ArquivoLinha>
+                    <ArquivoBotao htmlFor="editar-anexo-proposta">
+                      <Paperclip size={14} aria-hidden="true" />
+                      {anexoProposta || projeto.anexo_proposta_nome ? "Trocar PDF" : "Escolher PDF"}
+                      <input
+                        ref={anexoRef}
+                        id="editar-anexo-proposta"
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        aria-label="Arquivo da proposta, em PDF"
+                        disabled={salvando}
+                        onChange={(e) => setAnexoProposta(e.target.files?.[0] ?? null)}
+                      />
+                    </ArquivoBotao>
+                    <ArquivoNome $vazio={!anexoProposta && !projeto.anexo_proposta_nome}>
+                      {anexoProposta?.name ?? projeto.anexo_proposta_nome ?? "Nenhum PDF"}
+                    </ArquivoNome>
+                    {anexoProposta && (
+                      <ArquivoRemover
+                        type="button"
+                        aria-label={`Remover ${anexoProposta.name}`}
+                        onClick={() => {
+                          setAnexoProposta(null);
+                          if (anexoRef.current) anexoRef.current.value = "";
+                        }}
+                      >
+                        <X size={16} />
+                      </ArquivoRemover>
+                    )}
+                  </ArquivoLinha>
                 </FieldGroup>
               </SecaoForm>
 
@@ -569,6 +595,9 @@ export function EditarProjetoModal({
                   usuariosFrentes={usuariosFrentes}
                   frentes={frentes}
                   frenteIdsProjeto={frenteIds}
+                  /* Nomes de quem já está na equipe mas foi desativado — sem
+                     isto a pastilha dele vira "Usuário 2". */
+                  nomesExtra={usuarios}
                 />
 
                 <FieldGroup>
@@ -576,7 +605,11 @@ export function EditarProjetoModal({
                   <MultiSelect
                     valores={vendedorIds.map(String)}
                     onChange={(ids) => setVendedorIds(ids.map(Number))}
-                    opcoes={ativos
+                    /* `usuarios`, não `ativos`: um vendedor que foi desativado
+                       continua marcado no projeto e precisa aparecer com o
+                       nome. O filtro já não oferece inativo novo (só quem
+                       `podeSerVendedor` ou já está na lista). */
+                    opcoes={usuarios
                       .filter((u) => podeSerVendedor(u) || vendedorIds.includes(u.id))
                       .map((u) => ({ value: String(u.id), label: u.nome }))}
                     rotuloVazio="Ninguém marcado"
@@ -584,9 +617,6 @@ export function EditarProjetoModal({
                     aria-label="Quem vendeu o projeto"
                     pesquisavel
                   />
-                  <EmptyText style={{ fontSize: "0.7rem" }}>
-                    Aparecem os coordenadores de vendas e os consultores marcados como BDR.
-                  </EmptyText>
                 </FieldGroup>
 
                 {/* Mesma leitura de quando o projeto nasceu: trocar alguém pode
