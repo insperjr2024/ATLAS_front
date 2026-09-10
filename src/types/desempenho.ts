@@ -190,7 +190,9 @@ export interface DesempenhoPdiPastaComItens {
 export interface DesempenhoRelatorioLote {
   lote_id: number;
   lote_nome: string | null;
-  tipo: DesempenhoTipo | null;
+  /** "escopo" é a Avaliação do Escopo — separada das médias de finalização
+   *  no `get_relatorio.py`, mostrada numa aba própria. */
+  tipo: DesempenhoTipo | "escopo" | null;
   nota_geral_media: number | null;
   quantidade_avaliadores: number;
   criterios: DesempenhoRelatorioCriterio[];
