@@ -228,6 +228,10 @@ function FichaDaBanca({
   const [excluindo, setExcluindo] = useState(false);
 
   const podeRegistrar = !!usuario?.permissoes.pode_definir_cronograma;
+  // ⭐ As avaliações da banca (nota final e o que cada avaliador deu) só
+  // aparecem para quem tem o Dashboard de Bancas (2026-09-10, a pedido). Na
+  // aba do projeto, ninguém da equipe vê avaliação de ninguém.
+  const podeVerAvaliacoes = !!usuario?.permissoes.pode_ver_dashboard_bancas;
   /**
    * ⭐ Cancelar a banca (2026-09-04, a pedido). Não existe mais "Registrar
    * realização": `data_hora` passar sozinho já marca a banca como realizada
@@ -361,14 +365,16 @@ function FichaDaBanca({
             <CampoRotulo>Frentes</CampoRotulo>
             <CampoValor>{banca.frentes.join(", ") || "—"}</CampoValor>
           </Campo>
-          <Campo>
-            <CampoRotulo>Nota final</CampoRotulo>
-            {/* Nota e aprovação medem coisas diferentes: a nota diz QUÃO BEM
-                o trabalho foi feito; a aprovação diz se ele pode ir ao cliente. */}
-            <CampoValor>
-              {banca.nota_final !== null ? banca.nota_final.toFixed(1) : "sem notas"}
-            </CampoValor>
-          </Campo>
+          {podeVerAvaliacoes && (
+            <Campo>
+              <CampoRotulo>Nota final</CampoRotulo>
+              {/* Nota e aprovação medem coisas diferentes: a nota diz QUÃO BEM
+                  o trabalho foi feito; a aprovação diz se ele pode ir ao cliente. */}
+              <CampoValor>
+                {banca.nota_final !== null ? banca.nota_final.toFixed(1) : "sem notas"}
+              </CampoValor>
+            </Campo>
+          )}
         </Colunas>
 
         {/* A avaliação de quem está lendo, sem sair do projeto. */}
@@ -451,22 +457,30 @@ function FichaDaBanca({
           </>
         )}
 
-        <SecaoTitulo>Avaliações</SecaoTitulo>
-        {banca.avaliacoes.length === 0 ? (
-          <EmptyText>Nenhuma avaliação enviada ainda.</EmptyText>
-        ) : (
-          [...porSessao.entries()]
-            .sort((a, b) => a[0] - b[0])
-            .map(([numero, avaliacoes]) => (
-              <div key={numero}>
-                {porSessao.size > 1 && <SecaoTitulo>{nomeDaTentativa(numero)}</SecaoTitulo>}
-                <Lista>
-                  {avaliacoes.map((a) => (
-                    <AvaliacaoLinha key={a.id} avaliacao={a} />
-                  ))}
-                </Lista>
-              </div>
-            ))
+        {/* As avaliações da banca (nota e comentário de cada avaliador) NÃO
+            aparecem na aba do projeto — só no Dashboard de Bancas, para quem
+            tem acesso a ele (2026-09-10, a pedido). Quem lê continua vendo e
+            enviando A SUA em `MeuVotoBloco` acima. */}
+        {podeVerAvaliacoes && (
+          <>
+            <SecaoTitulo>Avaliações</SecaoTitulo>
+            {banca.avaliacoes.length === 0 ? (
+              <EmptyText>Nenhuma avaliação enviada ainda.</EmptyText>
+            ) : (
+              [...porSessao.entries()]
+                .sort((a, b) => a[0] - b[0])
+                .map(([numero, avaliacoes]) => (
+                  <div key={numero}>
+                    {porSessao.size > 1 && <SecaoTitulo>{nomeDaTentativa(numero)}</SecaoTitulo>}
+                    <Lista>
+                      {avaliacoes.map((a) => (
+                        <AvaliacaoLinha key={a.id} avaliacao={a} />
+                      ))}
+                    </Lista>
+                  </div>
+                ))
+            )}
+          </>
         )}
 
         <SecaoTitulo>Relato da coordenação</SecaoTitulo>
