@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -25,7 +25,6 @@ import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { AvaliadoresAgrupados } from "@/components/bancas/AvaliadoresAgrupados";
 import type {
   AprovacaoDaBanca,
-  AvaliacaoDaBanca,
   AvaliadorDaBanca,
   Banca,
   BancaDetalhes,
@@ -67,10 +66,6 @@ import {
 import {
   AcoesLinha,
   Ajuda,
-  CriterioNota,
-  CriterioResposta,
-  CriterioTexto,
-  Criterios,
   AvisoReprovada,
   Campo,
   CampoRotulo,
@@ -85,10 +80,6 @@ import {
   TentativaMeta,
   TentativaNome,
   TentativaTopo,
-  Voto,
-  VotoAutor,
-  VotoBotao,
-  VotoTopo,
 } from "./ProjetoBanca.styled";
 import { useProjeto } from "./ProjetoPage";
 
@@ -228,10 +219,6 @@ function FichaDaBanca({
   const [excluindo, setExcluindo] = useState(false);
 
   const podeRegistrar = !!usuario?.permissoes.pode_definir_cronograma;
-  // ⭐ As avaliações da banca (nota final e o que cada avaliador deu) só
-  // aparecem para quem tem o Dashboard de Bancas (2026-09-10, a pedido). Na
-  // aba do projeto, ninguém da equipe vê avaliação de ninguém.
-  const podeVerAvaliacoes = !!usuario?.permissoes.pode_ver_dashboard_bancas;
   /**
    * ⭐ Cancelar a banca (2026-09-04, a pedido). Não existe mais "Registrar
    * realização": `data_hora` passar sozinho já marca a banca como realizada
@@ -260,13 +247,6 @@ function FichaDaBanca({
   // O mesmo nome no título do card e na confirmação de exclusão: quem clicou
   // no lixo precisa reconhecer no modal exatamente o que estava olhando.
   const nomeDaBanca = banca.escopos.join(" + ") || banca.nome_projeto;
-
-  const porSessao = new Map<number, AvaliacaoDaBanca[]>();
-  for (const a of banca.avaliacoes) {
-    const lista = porSessao.get(a.sessao) ?? [];
-    lista.push(a);
-    porSessao.set(a.sessao, lista);
-  }
 
   return (
     <PageCard>
@@ -365,16 +345,10 @@ function FichaDaBanca({
             <CampoRotulo>Frentes</CampoRotulo>
             <CampoValor>{banca.frentes.join(", ") || "—"}</CampoValor>
           </Campo>
-          {podeVerAvaliacoes && (
-            <Campo>
-              <CampoRotulo>Nota final</CampoRotulo>
-              {/* Nota e aprovação medem coisas diferentes: a nota diz QUÃO BEM
-                  o trabalho foi feito; a aprovação diz se ele pode ir ao cliente. */}
-              <CampoValor>
-                {banca.nota_final !== null ? banca.nota_final.toFixed(1) : "sem notas"}
-              </CampoValor>
-            </Campo>
-          )}
+          {/* "Nota final" saiu daqui junto com a seção de Avaliações
+              (2026-09-10) — é resultado de avaliação, e isso é só no
+              Dashboard de Bancas. O veredito (aprovada/reprovada), que é o
+              que libera a entrega ao cliente, continua no cabeçalho. */}
         </Colunas>
 
         {/* A avaliação de quem está lendo, sem sair do projeto. */}
@@ -457,31 +431,11 @@ function FichaDaBanca({
           </>
         )}
 
-        {/* As avaliações da banca (nota e comentário de cada avaliador) NÃO
-            aparecem na aba do projeto — só no Dashboard de Bancas, para quem
-            tem acesso a ele (2026-09-10, a pedido). Quem lê continua vendo e
-            enviando A SUA em `MeuVotoBloco` acima. */}
-        {podeVerAvaliacoes && (
-          <>
-            <SecaoTitulo>Avaliações</SecaoTitulo>
-            {banca.avaliacoes.length === 0 ? (
-              <EmptyText>Nenhuma avaliação enviada ainda.</EmptyText>
-            ) : (
-              [...porSessao.entries()]
-                .sort((a, b) => a[0] - b[0])
-                .map(([numero, avaliacoes]) => (
-                  <div key={numero}>
-                    {porSessao.size > 1 && <SecaoTitulo>{nomeDaTentativa(numero)}</SecaoTitulo>}
-                    <Lista>
-                      {avaliacoes.map((a) => (
-                        <AvaliacaoLinha key={a.id} avaliacao={a} />
-                      ))}
-                    </Lista>
-                  </div>
-                ))
-            )}
-          </>
-        )}
+        {/* Nada de "Avaliações" aqui (2026-09-10, a pedido): a nota e o
+            comentário de cada avaliador vivem SÓ no Dashboard de Bancas.
+            Nesta aba, quem lê vê e envia A SUA em `MeuVotoBloco` acima, e
+            mais nada. O backend também não manda mais `avaliacoes`/
+            `nota_final` pra quem não tem o dashboard. */}
 
         <SecaoTitulo>Relato da coordenação</SecaoTitulo>
         <RelatoDaCoordenacao banca={banca} token={token} onSalvou={onMudou} />
@@ -810,74 +764,6 @@ function AprovacaoBloco({
         />
       )}
     </>
-  );
-}
-
-/**
- * ⭐ Uma avaliação na lista — o nome ABRE o que a pessoa respondeu.
- *
- * As notas por critério e o comentário existiam no banco desde sempre e não
- * apareciam em tela nenhuma fora do formulário de quem escreveu.
- *
- * Fechado por padrão, e não expandido: numa banca de cinco avaliadores com dez
- * critérios cada, tudo aberto vira uma parede de números que esconde o que
- * importa primeiro — quem avaliou.
- */
-function AvaliacaoLinha({ avaliacao }: { avaliacao: AvaliacaoDaBanca }) {
-  const [aberta, setAberta] = useState(false);
-  const temDetalhe = !!avaliacao.comentario_feedback || avaliacao.notas.length > 0;
-
-  const conteudo = (
-    <VotoTopo>
-      <VotoAutor>{avaliacao.avaliador}</VotoAutor>
-      {avaliacao.submetida_em && (
-        <TentativaMeta>{formatarDataHora(avaliacao.submetida_em)}</TentativaMeta>
-      )}
-      {temDetalhe && (
-        <TentativaMeta>{aberta ? "▲ ocultar" : "▼ ver avaliação"}</TentativaMeta>
-      )}
-    </VotoTopo>
-  );
-
-  return (
-    <Voto $aprova={null}>
-      {/* Sem detalhe não vira botão: um clique que não faz nada é pior que
-          nenhum clique. */}
-      {temDetalhe ? (
-        <VotoBotao
-          type="button"
-          aria-expanded={aberta}
-          onClick={() => setAberta((v) => !v)}
-        >
-          {conteudo}
-        </VotoBotao>
-      ) : (
-        conteudo
-      )}
-
-      {aberta && (
-        <>
-          {avaliacao.comentario_feedback && (
-            <Comentario>{avaliacao.comentario_feedback}</Comentario>
-          )}
-          {avaliacao.notas.length > 0 && (
-            <Criterios>
-              {avaliacao.notas.map((n, i) => (
-                <Fragment key={`${n.pergunta}-${i}`}>
-                  <CriterioTexto>{n.pergunta}</CriterioTexto>
-                  {n.nota !== null ? (
-                    <CriterioNota>{n.nota.toFixed(1)}</CriterioNota>
-                  ) : (
-                    <CriterioNota>—</CriterioNota>
-                  )}
-                  {n.resposta_texto && <CriterioResposta>{n.resposta_texto}</CriterioResposta>}
-                </Fragment>
-              ))}
-            </Criterios>
-          )}
-        </>
-      )}
-    </Voto>
   );
 }
 
