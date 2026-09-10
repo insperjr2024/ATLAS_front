@@ -16,16 +16,10 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
-export const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: ${theme.spacing.md};
-  background: rgb(0 0 0 / 45%);
-`;
+// `ModalOverlay` deixou de ser um styled puro (2026-09-10): agora trava a
+// rolagem do body enquanto montado. Mora em `ModalOverlay.tsx` (tem hook),
+// e é re-exportado aqui para não mexer nos ~40 imports de `modal.styled`.
+export { ModalOverlay } from "./ModalOverlay";
 
 // `$expandido` é opcional e por padrão falso — os outros modais que importam
 // `ModalContent` sem o prop continuam do tamanho de sempre.

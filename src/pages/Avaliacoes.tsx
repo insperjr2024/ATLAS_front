@@ -52,6 +52,15 @@ import {
   EmptyText,
 } from "@/styles/page.styled";
 import {
+  ListaExpansivel,
+  PessoaContexto,
+  PessoaHeader,
+  PessoaResumo,
+  SubItem,
+  SubItemMeta,
+  SubLista,
+} from "@/pages/avaliacao-desempenho/painel/Painel.styled";
+import {
   PageHeaderRow,
   PageHeaderText,
   PageHeading,
@@ -101,9 +110,6 @@ import {
   SectionTitle,
   NotaFinalDestaque,
   DescricaoIndicador,
-  AvaliacaoBlock,
-  AvaliacaoTitulo,
-  AvaliacaoMeta,
   DetailList,
   DetailRow,
   DetailTerm,
@@ -515,6 +521,7 @@ function VerAvaliacoesModal({
 }) {
   const [medias, setMedias] = useState<NotaPorPergunta[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [avaliadorExpandido, setAvaliadorExpandido] = useState<number | null>(null);
 
   useEffect(() => {
     getNotasPorPergunta(banca.id, token)
@@ -523,6 +530,13 @@ function VerAvaliacoesModal({
   }, [banca.id, token]);
 
   const avaliacoesSubmetidas = avaliacoes.filter((a) => a.banca_id === banca.id && a.status === "submetida");
+
+  // pergunta_id -> texto do critério, resolvido pelo backend em `medias`
+  // (mesma ordem do formulário). É o que faltava pra cada nota individual
+  // saber de qual critério ela é.
+  const labelPorPergunta = new Map(
+    medias.map((m) => [m.pergunta_id, m.texto ?? `Pergunta ${m.pergunta_id}`] as const),
+  );
 
   return (
     <ModalOverlay onClick={onClose} role="presentation">
@@ -576,25 +590,68 @@ function VerAvaliacoesModal({
 
           <SectionTitle>Avaliações individuais ({avaliacoesSubmetidas.length})</SectionTitle>
           {avaliacoesSubmetidas.length === 0 && <EmptyText>Nenhuma avaliação submetida.</EmptyText>}
-          {avaliacoesSubmetidas.map((av) => {
-            const notas = avaliacoesNotas.filter((n) => n.avaliacao_id === av.id);
-            return (
-              <AvaliacaoBlock key={av.id}>
-                <AvaliacaoTitulo>{nomeUsuario(usuarios, av.avaliador_id)}</AvaliacaoTitulo>
-                {av.submetida_em && (
-                  <AvaliacaoMeta>
-                    Submetida em {new Date(av.submetida_em).toLocaleDateString("pt-BR")}
-                  </AvaliacaoMeta>
-                )}
-                {notas.map((n) => (
-                  <AvaliacaoMeta key={n.id}>
-                    {n.nota != null ? `Nota: ${formatNota(n.nota)}` : n.resposta_texto ?? "—"}
-                  </AvaliacaoMeta>
-                ))}
-                {av.comentario_feedback && <AvaliacaoMeta>Comentário: {av.comentario_feedback}</AvaliacaoMeta>}
-              </AvaliacaoBlock>
-            );
-          })}
+          {avaliacoesSubmetidas.length > 0 && (
+            <ListaExpansivel>
+              {avaliacoesSubmetidas.map((av) => {
+                const notas = avaliacoesNotas.filter((n) => n.avaliacao_id === av.id);
+                const valores = notas.map((n) => n.nota).filter((v): v is number => v != null);
+                const media = valores.length ? valores.reduce((s, v) => s + v, 0) / valores.length : null;
+                const aberto = avaliadorExpandido === av.id;
+                return (
+                  <div key={av.id}>
+                    <PessoaHeader
+                      type="button"
+                      onClick={() => setAvaliadorExpandido((atual) => (atual === av.id ? null : av.id))}
+                    >
+                      <span>
+                        {nomeUsuario(usuarios, av.avaliador_id)}{" "}
+                        {av.submetida_em && (
+                          <PessoaContexto>
+                            ({new Date(av.submetida_em).toLocaleDateString("pt-BR")})
+                          </PessoaContexto>
+                        )}
+                      </span>
+                      <PessoaResumo>
+                        {notas.length} {notas.length === 1 ? "critério" : "critérios"}
+                        {media != null && (
+                          <>
+                            {" · média "}
+                            <PageBadge $tone={media < 3 ? "danger" : "default"}>
+                              {formatNota(media)}
+                            </PageBadge>
+                          </>
+                        )}
+                      </PessoaResumo>
+                    </PessoaHeader>
+                    {aberto && (
+                      <SubLista>
+                        {notas.map((n) => (
+                          <SubItem key={n.id}>
+                            <span>{labelPorPergunta.get(n.pergunta_id) ?? `Pergunta ${n.pergunta_id}`}</span>
+                            <SubItemMeta>
+                              {n.nota != null ? (
+                                <PageBadge $tone={n.nota < 3 ? "danger" : "default"}>
+                                  {formatNota(n.nota)}
+                                </PageBadge>
+                              ) : (
+                                n.resposta_texto || "—"
+                              )}
+                            </SubItemMeta>
+                          </SubItem>
+                        ))}
+                        {av.comentario_feedback && (
+                          <SubItem>
+                            <span>Comentário</span>
+                            <SubItemMeta>{av.comentario_feedback}</SubItemMeta>
+                          </SubItem>
+                        )}
+                      </SubLista>
+                    )}
+                  </div>
+                );
+              })}
+            </ListaExpansivel>
+          )}
         </ModalBody>
         <ModalFooter>
           <PageButton $variant="outline" type="button" onClick={onClose}>

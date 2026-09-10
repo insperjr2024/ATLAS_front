@@ -30,9 +30,14 @@ import {
   TipoTabButton,
 } from "./RelatorioDesempenho.styled";
 
-const TIPOS: { valor: DesempenhoTipo; rotulo: string }[] = [
+type TipoRelatorio = DesempenhoTipo | "escopo";
+
+const TIPOS: { valor: TipoRelatorio; rotulo: string }[] = [
   { valor: "periodico", rotulo: "Periódica" },
   { valor: "finalizacao", rotulo: "Finalização" },
+  // A Avaliação do Escopo é auto-avaliação sobre o ESCOPO, não sobre a
+  // pessoa — fica numa aba própria, fora da média de finalização.
+  { valor: "escopo", rotulo: "Avaliação do Escopo" },
 ];
 
 // Regra 2.9: nota < 3 é sinalizada (atenção), >= 3 fica neutra, é o que
@@ -113,7 +118,7 @@ interface RelatorioDesempenhoProps {
 }
 
 export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoProps) {
-  const [tipoAtivo, setTipoAtivo] = useState<DesempenhoTipo>("periodico");
+  const [tipoAtivo, setTipoAtivo] = useState<TipoRelatorio>("periodico");
   const [loteIdFiltro, setLoteIdFiltro] = useState<number | null>(null);
   const [exportando, setExportando] = useState(false);
   const conteudoRef = useRef<HTMLDivElement>(null);
@@ -163,7 +168,7 @@ export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoPr
         </RelatorioPessoaHeader>
       )}
 
-      {/* Sempre as duas abas, mesmo sem avaliação daquele tipo ainda, perder
+      {/* Sempre as três abas, mesmo sem avaliação daquele tipo ainda, perder
           a aba faria perder a informação de qual tipo é aquela nota. */}
       <TipoTabBar role="tablist">
         {TIPOS.map((t) => (
