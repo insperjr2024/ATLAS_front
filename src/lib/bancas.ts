@@ -192,6 +192,56 @@ export function getBancaDetalhes(bancaId: number, token: string) {
   return apiFetch<BancaDetalhes>(`/bancas/${bancaId}/detalhes`, { token });
 }
 
+// ---------------------------------------------------------------- local e entrega
+
+/** Só quem é do projeto avaliado, e só até 1h antes da banca. Texto livre. */
+export function registrarLocalBanca(bancaId: number, local: string, token: string) {
+  return apiFetch<{ id: number; local: string }>(`/bancas/${bancaId}/local`, {
+    method: "PUT",
+    token,
+    body: JSON.stringify({ local }),
+  });
+}
+
+/** Entrega por link — apaga o arquivo anterior se houver. */
+export function registrarEntregaLinkBanca(bancaId: number, link: string, token: string) {
+  return apiFetch<{ id: number; entrega_link: string | null; entrega_arquivo_nome: string | null }>(
+    `/bancas/${bancaId}/entrega-link`,
+    { method: "PUT", token, body: JSON.stringify({ link }) },
+  );
+}
+
+/** Entrega por arquivo (até 10 MB) — apaga o link anterior se houver. */
+export function subirEntregaArquivoBanca(bancaId: number, arquivo: File, token: string) {
+  const fd = new FormData();
+  fd.append("arquivo", arquivo);
+  return apiFetch<{ id: number; entrega_arquivo_nome: string | null; entrega_link: string | null }>(
+    `/bancas/${bancaId}/entrega-arquivo`,
+    { method: "POST", token, body: fd },
+  );
+}
+
+export function removerEntregaBanca(bancaId: number, token: string) {
+  return apiFetch<null>(`/bancas/${bancaId}/entrega`, { method: "DELETE", token });
+}
+
+/** A rota exige Bearer, então baixa como blob e dispara via link temporário
+ *  (mesmo padrão do anexo de proposta). */
+export async function baixarEntregaArquivoBanca(bancaId: number, nome: string, token: string) {
+  const { API_URL } = await import("@/config/config");
+  const resp = await fetch(`${API_URL}/bancas/${bancaId}/entrega-arquivo`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) throw new Error("Não foi possível baixar o arquivo da entrega.");
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nome || "entrega";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function getCandidaturas(token: string) {
   return apiFetch<Candidatura[]>("/candidaturas", { token });
 }

@@ -10,6 +10,7 @@ import {
   cancelarBanca,
   deleteBanca,
   aceitaInscricao,
+  baixarEntregaArquivoBanca,
   desalocar,
   getBancas,
   getBancaDetalhes,
@@ -108,6 +109,7 @@ import {
   DetailRow,
   DetailTerm,
   DetailValue,
+  BotaoComoLink,
   AvaliadoresSecao,
   DescricaoSecao,
   FormStack,
@@ -1882,6 +1884,33 @@ function VerMaisModal({
             <DetailRow>
               <DetailTerm>Membros</DetailTerm>
               <DetailValue>{membrosDaBanca(banca.equipe_ids, banca.coordenador_id, contexto.usuarios).join(", ") || "—"}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Local</DetailTerm>
+              <DetailValue>{banca.local?.trim() || "—"}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Entrega</DetailTerm>
+              <DetailValue>
+                {banca.entrega_link ? (
+                  <a href={banca.entrega_link} target="_blank" rel="noreferrer">
+                    Abrir link
+                  </a>
+                ) : banca.entrega_arquivo_nome ? (
+                  <BotaoComoLink
+                    type="button"
+                    onClick={() => {
+                      if (token) {
+                        void baixarEntregaArquivoBanca(banca.id, banca.entrega_arquivo_nome as string, token);
+                      }
+                    }}
+                  >
+                    {banca.entrega_arquivo_nome}
+                  </BotaoComoLink>
+                ) : (
+                  "—"
+                )}
+              </DetailValue>
             </DetailRow>
           </DetailList>
 
