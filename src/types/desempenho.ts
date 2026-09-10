@@ -19,6 +19,9 @@ export interface DesempenhoLote {
   override_manual: DesempenhoOverrideManual;
   projeto_ids: number[];
   aberto: boolean;
+  /** Finalização: a Avaliação do Escopo entra junto? Escolhido ao abrir o
+   *  lote à mão; `true` na automática e nos lotes antigos. Periódica ignora. */
+  inclui_avaliacao_de_escopo: boolean;
 }
 
 export interface DesempenhoCriterio {

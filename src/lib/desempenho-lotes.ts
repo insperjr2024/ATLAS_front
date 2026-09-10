@@ -6,7 +6,15 @@ export function getLotes(token: string, abertos = true) {
 }
 
 export function createLote(
-  payload: { nome: string; tipo: DesempenhoTipo; data_inicio: string; data_fim: string; projeto_ids: number[] },
+  payload: {
+    nome: string;
+    tipo: DesempenhoTipo;
+    data_inicio: string;
+    data_fim: string;
+    projeto_ids: number[];
+    /** Só na finalização — o backend ignora na periódica. Omitido = `true`. */
+    inclui_avaliacao_de_escopo?: boolean;
+  },
   token: string,
 ) {
   return apiFetch<DesempenhoLote>("/desempenho/lotes", {
