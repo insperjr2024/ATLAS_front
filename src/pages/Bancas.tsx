@@ -884,6 +884,7 @@ export function Bancas() {
         onRegistrarResultado={setBancaResultado}
           podeAprovarLista={podeAprovar}
         ehDiretor={!!ehDiretor}
+        podeGerirMembros={!!usuario.permissoes.pode_gerir_membros}
         onDescricaoEnviada={recarregar}
       />
 
@@ -1749,6 +1750,7 @@ function VerMaisModal({
   onRegistrarResultado,
   ehDiretor,
   podeAprovarLista,
+  podeGerirMembros,
   onDescricaoEnviada,
 }: {
   banca: Banca | null;
@@ -1782,6 +1784,11 @@ function VerMaisModal({
   ehDiretor?: boolean;
   /** ⭐ Diretoria OU gerente de frente — diferente de `ehDiretor` acima. */
   podeAprovarLista?: boolean;
+  /** `pode_gerir_membros` (2026-09-11) — mostra o "remover" ao lado de cada
+   *  avaliador. É a mesma permissão que `DELETE /candidaturas/{id}` cobra
+   *  pra tirar QUALQUER pessoa (não só a própria) e passar por cima da
+   *  trava dos 7 dias. */
+  podeGerirMembros?: boolean;
   onDescricaoEnviada?: () => void;
 }) {
   // A ficha completa — avaliadores com categoria e frente resolvidas, mais a
@@ -1833,6 +1840,13 @@ function VerMaisModal({
     }
   }
 
+  // Quem tem `pode_gerir_membros` tira QUALQUER avaliador daqui — mesma rota
+  // do "me desalocar" (`desalocar`/`DELETE /candidaturas/{id}`), que já passa
+  // por cima da trava dos 7 dias pra quem gere membros (`eh_gestao` no
+  // backend). Confirmação antes de disparar: tirar alguém escalado é o tipo
+  // de clique que não se quer dar sem querer.
+  const [removendo, setRemovendo] = useState<{ candidaturaId: number; nome: string } | null>(null);
+
   // Trava a rolagem do fundo enquanto o modal está aberto — sem isto a roda do
   // mouse sobre o véu arrasta a página atrás. `overflowY` no `<html>` e não no
   // `<body>`: `index.css` põe `overflow-x: clip` no `<html>`, o que faz dele o
@@ -1858,6 +1872,7 @@ function VerMaisModal({
   const ehCoordenador = usuarioId === banca.coordenador_id;
 
   return (
+    <>
     <ModalOverlay onClick={onClose} role="presentation">
       <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="ver-mais-titulo">
         <ModalHeader>
@@ -1927,6 +1942,8 @@ function VerMaisModal({
                   frentesDaBanca={detalheDaBanca.frentes_da_banca}
                   composicao={detalheDaBanca.composicao}
                   realizadoEm={detalheDaBanca.realizado_em}
+                  podeRemover={podeGerirMembros}
+                  onRemover={(candidaturaId, nome) => setRemovendo({ candidaturaId, nome })}
                 />
               )
             ) : (
@@ -1969,6 +1986,22 @@ function VerMaisModal({
         </ModalFooter>
       </NarrowModalContent>
     </ModalOverlay>
+
+    {removendo && token && (
+      <ConfirmarModal
+        titulo="Tirar da banca"
+        mensagem={`${removendo.nome} vai ser desalocado(a) desta banca — a vaga fica aberta de novo.`}
+        rotuloConfirmar="Tirar da banca"
+        rotuloProcessando="Removendo…"
+        onCancelar={() => setRemovendo(null)}
+        onConfirmar={async () => {
+          await desalocar(removendo.candidaturaId, token);
+          setRemovendo(null);
+          await refetchDetalhe();
+        }}
+      />
+    )}
+    </>
   );
 }
 
