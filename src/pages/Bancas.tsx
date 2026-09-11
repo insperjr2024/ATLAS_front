@@ -1905,7 +1905,10 @@ function VerMaisModal({
               coordenador + equipe); o resto vê em leitura. */}
           <LocalEEntregaBloco
             banca={detalheDaBanca ?? banca}
-            podeMexer={!banca.cancelada_em && (banca.equipe_ids?.includes(usuarioId) ?? false)}
+            podeMexer={
+              !banca.cancelada_em &&
+              ((banca.equipe_ids?.includes(usuarioId) ?? false) || !!ehDiretor)
+            }
             token={token}
             onMudou={refetchDetalhe}
           />

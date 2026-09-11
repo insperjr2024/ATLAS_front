@@ -360,10 +360,11 @@ function FichaDaBanca({
         <LocalEEntregaBloco
           banca={banca}
           podeMexer={
-            !somenteLeitura &&
             !banca.cancelada_em &&
-            !!usuario &&
-            (equipeIds.includes(usuario.id) || usuario.id === banca.coordenador_id)
+            (ehDiretoriaDeProjetos(usuario) ||
+              (!somenteLeitura &&
+                !!usuario &&
+                (equipeIds.includes(usuario.id) || usuario.id === banca.coordenador_id)))
           }
           token={token}
           onMudou={onMudou}
