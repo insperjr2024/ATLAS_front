@@ -10,7 +10,6 @@ import {
   cancelarBanca,
   deleteBanca,
   aceitaInscricao,
-  baixarEntregaArquivoBanca,
   desalocar,
   getBancas,
   getBancaDetalhes,
@@ -47,6 +46,7 @@ import {
 import { CalendarioBancas } from "@/components/bancas/CalendarioBancas";
 import { BancaFormModal } from "@/components/bancas/BancaFormModal";
 import { AvaliadoresAgrupados } from "@/components/bancas/AvaliadoresAgrupados";
+import { LocalEEntregaBloco } from "@/components/bancas/LocalEEntregaBloco";
 import { AprovacaoLinha, FormDecisao } from "@/pages/monitoramento/AprovacaoLinha";
 import {
   AprovacaoMeta,
@@ -109,7 +109,6 @@ import {
   DetailRow,
   DetailTerm,
   DetailValue,
-  BotaoComoLink,
   AvaliadoresSecao,
   DescricaoSecao,
   FormStack,
@@ -1820,6 +1819,20 @@ function VerMaisModal({
   const detalheDaBanca =
     doCache ?? (detalheFetched && detalheFetched.id === bancaId ? detalheFetched : null);
 
+  // Recarrega a ficha depois de mexer no local/entrega — atualiza o cache do
+  // pai (por `onDetalheCarregado`), então `doCache` volta fresco no próximo
+  // render.
+  async function refetchDetalhe() {
+    if (bancaId == null || !token) return;
+    try {
+      const d = await getBancaDetalhes(bancaId, token);
+      setDetalheFetched(d);
+      onDetalheCarregado?.(d);
+    } catch {
+      /* mantém o que já estava */
+    }
+  }
+
   // Trava a rolagem do fundo enquanto o modal está aberto — sem isto a roda do
   // mouse sobre o véu arrasta a página atrás. `overflowY` no `<html>` e não no
   // `<body>`: `index.css` põe `overflow-x: clip` no `<html>`, o que faz dele o
@@ -1885,34 +1898,17 @@ function VerMaisModal({
               <DetailTerm>Membros</DetailTerm>
               <DetailValue>{membrosDaBanca(banca.equipe_ids, banca.coordenador_id, contexto.usuarios).join(", ") || "—"}</DetailValue>
             </DetailRow>
-            <DetailRow>
-              <DetailTerm>Local</DetailTerm>
-              <DetailValue>{banca.local?.trim() || "—"}</DetailValue>
-            </DetailRow>
-            <DetailRow>
-              <DetailTerm>Entrega</DetailTerm>
-              <DetailValue>
-                {banca.entrega_link ? (
-                  <a href={banca.entrega_link} target="_blank" rel="noreferrer">
-                    Abrir link
-                  </a>
-                ) : banca.entrega_arquivo_nome ? (
-                  <BotaoComoLink
-                    type="button"
-                    onClick={() => {
-                      if (token) {
-                        void baixarEntregaArquivoBanca(banca.id, banca.entrega_arquivo_nome as string, token);
-                      }
-                    }}
-                  >
-                    {banca.entrega_arquivo_nome}
-                  </BotaoComoLink>
-                ) : (
-                  "—"
-                )}
-              </DetailValue>
-            </DetailRow>
           </DetailList>
+
+          {/* Local + entrega — o MESMO bloco da aba Banca do projeto. Só
+              quem é do projeto avaliado edita (`equipe_ids` já soma
+              coordenador + equipe); o resto vê em leitura. */}
+          <LocalEEntregaBloco
+            banca={detalheDaBanca ?? banca}
+            podeMexer={!banca.cancelada_em && (banca.equipe_ids?.includes(usuarioId) ?? false)}
+            token={token}
+            onMudou={refetchDetalhe}
+          />
 
           {/* Avaliadores separados por (liderança | membro) × frente, com o
               "1/2 · falta 1" de cada bloco — a mesma leitura da aba Banca do
