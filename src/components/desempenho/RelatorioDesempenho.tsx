@@ -28,6 +28,7 @@ import {
   StarBarValue,
   TipoTabBar,
   TipoTabButton,
+  type TomNota,
 } from "./RelatorioDesempenho.styled";
 
 const TIPOS: { valor: DesempenhoTipo; rotulo: string }[] = [
@@ -38,21 +39,24 @@ const TIPOS: { valor: DesempenhoTipo; rotulo: string }[] = [
 // sobre o escopo, não sobre a pessoa. Vive no painel de avaliações, na
 // visão "Avaliação de escopo". O backend já não a devolve neste relatório.
 
-// Regra 2.9: nota < 3 é sinalizada (atenção), >= 3 fica neutra, é o que
-// deixa escanear o painel sem ler número por número.
-function ehAtencao(nota: number | null): boolean {
-  return nota !== null && nota < 3;
+// Escala 1-5 por cor: < 3 vermelho, 3 âmbar, 4-5 verde, sem nota cinza.
+// Mesma leitura da AVD e do "ver avaliações" da banca.
+function tomDaNota(nota: number | null): TomNota {
+  if (nota == null) return "muted";
+  if (nota < 3) return "danger";
+  if (nota < 4) return "warning";
+  return "success";
 }
 
 function StarBar({ value }: { value: number | null }) {
-  const atencao = ehAtencao(value);
+  const tom = tomDaNota(value);
   const percent = value != null ? (value / 5) * 100 : 0;
   return (
     <StarBarRow>
       <StarBarTrack>
-        <StarBarFill $percent={percent} $atencao={atencao} />
+        <StarBarFill $percent={percent} $tom={tom} />
       </StarBarTrack>
-      <StarBarValue $atencao={atencao}>{value != null ? value.toFixed(1) : "—"}</StarBarValue>
+      <StarBarValue $tom={tom}>{value != null ? value.toFixed(1) : "—"}</StarBarValue>
     </StarBarRow>
   );
 }
@@ -209,7 +213,7 @@ export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoPr
       {loteExibido && (
         <>
           <NotaGeralRow>
-            <NotaGeralCirculo $atencao={ehAtencao(loteExibido.nota_geral_media)}>
+            <NotaGeralCirculo $tom={tomDaNota(loteExibido.nota_geral_media)}>
               {loteExibido.nota_geral_media != null ? loteExibido.nota_geral_media.toFixed(1) : "—"}
             </NotaGeralCirculo>
             <div>
@@ -243,7 +247,7 @@ export function RelatorioDesempenho({ relatorio, pessoa }: RelatorioDesempenhoPr
 
           {loteExibido.comentarios.length > 0 && (
             <div>
-              <SectionTitle>Comentários recebidos</SectionTitle>
+              <SectionTitle>Comentários gerais recebidos</SectionTitle>
               <ComentariosList>
                 {loteExibido.comentarios.map((comentario, i) => (
                   <ComentarioItem key={i}>{comentario}</ComentarioItem>

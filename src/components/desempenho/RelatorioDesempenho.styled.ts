@@ -1,6 +1,33 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
+/** Escala 1-5: < 3 vermelho, 3 âmbar, 4-5 verde, sem nota cinza. Mesma
+ *  leitura da AVD e do `tomDaNota` de `Avaliacoes.tsx`. */
+export type TomNota = "danger" | "warning" | "success" | "muted";
+
+const CORES_NOTA: Record<TomNota, { texto: string; barra: string; fundo: string }> = {
+  danger: {
+    texto: theme.colors.destructive,
+    barra: theme.colors.destructive,
+    fundo: `color-mix(in srgb, ${theme.colors.destructive} 14%, white)`,
+  },
+  warning: {
+    texto: `color-mix(in srgb, ${theme.colors.warning} 78%, black)`,
+    barra: theme.colors.warning,
+    fundo: `color-mix(in srgb, ${theme.colors.warning} 18%, white)`,
+  },
+  success: {
+    texto: `color-mix(in srgb, ${theme.colors.success} 82%, black)`,
+    barra: theme.colors.success,
+    fundo: `color-mix(in srgb, ${theme.colors.success} 14%, white)`,
+  },
+  muted: {
+    texto: theme.colors.mutedForeground,
+    barra: theme.colors.mutedForeground,
+    fundo: theme.colors.secondary,
+  },
+};
+
 export const RelatorioStack = styled.div`
   display: flex;
   flex-direction: column;
@@ -91,7 +118,7 @@ export const NotaGeralRow = styled.div`
   gap: ${theme.spacing.lg};
 `;
 
-export const NotaGeralCirculo = styled.div<{ $atencao: boolean }>`
+export const NotaGeralCirculo = styled.div<{ $tom: TomNota }>`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -101,11 +128,8 @@ export const NotaGeralCirculo = styled.div<{ $atencao: boolean }>`
   border-radius: ${theme.borderRadius.full};
   font-size: ${theme.fontSize.lg};
   font-weight: ${theme.fontWeight.bold};
-  color: ${({ $atencao }) => ($atencao ? theme.colors.destructive : theme.colors.primary)};
-  background: ${({ $atencao }) =>
-    $atencao
-      ? `color-mix(in srgb, ${theme.colors.destructive} 14%, white)`
-      : `color-mix(in srgb, ${theme.colors.primary} 10%, white)`};
+  color: ${({ $tom }) => CORES_NOTA[$tom].texto};
+  background: ${({ $tom }) => CORES_NOTA[$tom].fundo};
 `;
 
 export const NotaGeralLabel = styled.div`
@@ -151,20 +175,20 @@ export const StarBarTrack = styled.div`
   overflow: hidden;
 `;
 
-export const StarBarFill = styled.div<{ $percent: number; $atencao: boolean }>`
+export const StarBarFill = styled.div<{ $percent: number; $tom: TomNota }>`
   height: 100%;
   border-radius: ${theme.borderRadius.full};
   width: ${({ $percent }) => $percent}%;
-  background: ${({ $atencao }) => ($atencao ? theme.colors.destructive : theme.colors.mutedForeground)};
+  background: ${({ $tom }) => CORES_NOTA[$tom].barra};
   transition: width ${theme.transitions.fast};
 `;
 
-export const StarBarValue = styled.span<{ $atencao: boolean }>`
+export const StarBarValue = styled.span<{ $tom: TomNota }>`
   min-width: 1.75rem;
   text-align: right;
   font-size: ${theme.fontSize.sm};
   font-weight: ${theme.fontWeight.bold};
-  color: ${({ $atencao }) => ($atencao ? theme.colors.destructive : theme.colors.foreground)};
+  color: ${({ $tom }) => CORES_NOTA[$tom].texto};
 `;
 
 export const RespostaTextoBlock = styled.p`
