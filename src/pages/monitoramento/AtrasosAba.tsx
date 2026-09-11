@@ -38,7 +38,6 @@ import {
   LegendaItem,
   LinkProjeto,
   ListaSimples,
-  NotaRodape,
   Pilula,
   TabelaRolagem,
   TableBody,
@@ -156,19 +155,6 @@ export function AtrasosAba() {
       />
 
       <CardPorCoordenador itens={coordenadores} />
-
-      {/* A nota que impede a leitura errada de voltar. Sem ela, quem vê
-          "0 bancas vencidas" e "2 escopos além do vendido" na mesma tela lê
-          contradição, foi exatamente o que a tela antiga produzia. */}
-      <NotaRodape>
-        <strong>Atrasado</strong> = a data da banca passou e ela não foi registrada como
-        realizada. Dias úteis pelo calendário do Insper; dias de projeto pausado não contam.{" "}
-        <strong>Além do vendido</strong> = dias úteis consumidos acima de vendidos + ajustados;
-        não é atraso de marco, para de correr quando a banca acontece, e não entra na conta de
-        projetos atrasados. Os dois números medem coisas diferentes e não se somam. Projeto
-        finalizado, pausado ou arquivado, escopo cancelado, entregue ou ainda sem reunião
-        inicial ficam de fora das duas listas.
-      </NotaRodape>
     </PageStack>
     </ConteudoCarregando>
   );
