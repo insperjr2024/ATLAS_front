@@ -60,3 +60,31 @@ export const ListaNomes = styled.ul`
   font-size: ${theme.fontSize.sm};
   color: ${theme.colors.foreground};
 `;
+
+/** A linha de um avaliador quando tem ação ao lado (remover) — sem isso o
+ *  botão empurra pra baixo do texto em vez de ficar na mesma linha. */
+export const NomeLinha = styled.li`
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+`;
+
+/** "remover" — só aparece pra quem tem `pode_gerir_membros`. Texto, não
+ *  ícone: some entre "· avaliou" e os outros sufixos sem chamar mais
+ *  atenção do que uma ação destrutiva pode chamar por engano. */
+export const RemoverBotao = styled.button`
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.destructive};
+  text-decoration: underline;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+`;

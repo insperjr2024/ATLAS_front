@@ -7,6 +7,8 @@ import {
   GrupoRotulo,
   GrupoVazio,
   ListaNomes,
+  NomeLinha,
+  RemoverBotao,
 } from "./AvaliadoresAgrupados.styled";
 
 /**
@@ -19,17 +21,27 @@ import {
  * falta pro piso — mora em `agruparAvaliadores`; aqui é só a apresentação.
  * Coordenador de vendas ganha "· vendas" no nome (é liderança sem frente, cai
  * no bloco "outras frentes" e não fecha piso de frente nenhuma).
+ *
+ * `podeRemover`/`onRemover` são opcionais e ligados juntos (2026-09-11, a
+ * pedido): só quem tem `pode_gerir_membros` (admin, diretoria) vê o "remover"
+ * ao lado do nome — o backend cobra a mesma permissão em
+ * `DELETE /candidaturas/{id}` e, pra quem tem, passa por cima da trava dos 7
+ * dias (`eh_gestao`), então a ação sempre vale mesmo perto da banca.
  */
 export function AvaliadoresAgrupados({
   avaliadores,
   frentesDaBanca,
   composicao,
   realizadoEm,
+  podeRemover = false,
+  onRemover,
 }: {
   avaliadores: AvaliadorDaBanca[];
   frentesDaBanca: { id: number; nome: string }[];
   composicao: ComposicaoDaFrente[] | undefined;
   realizadoEm: string | null;
+  podeRemover?: boolean;
+  onRemover?: (candidaturaId: number, nome: string) => void;
 }) {
   return (
     <>
@@ -51,20 +63,30 @@ export function AvaliadoresAgrupados({
             ) : (
               <ListaNomes>
                 {g.avaliadores.map((a) => (
-                  <li key={a.usuario_id}>
-                    {a.nome}
-                    {a.coordenador_vendas && " · vendas"}
-                    {/* ⭐ 2026-09-05: liderança que sobra além do mínimo
-                        exigido também conta pro piso de membros — ver
-                        `agruparAvaliadores`. Sem a marca, a mesma pessoa
-                        aparecendo em "Liderança" E "Membros" pareceria
-                        duplicidade, não a regra explicada. */}
-                    {a.cobrindoPiso && " · liderança cobrindo o piso de membro"}
-                    {/* Escalado e compareceu são coisas diferentes: quem
-                        faltou não avalia a banca. */}
-                    {realizadoEm && !a.presente && " · faltou"}
-                    {a.ja_enviou && " · avaliou"}
-                  </li>
+                  <NomeLinha key={a.usuario_id}>
+                    <span>
+                      {a.nome}
+                      {a.coordenador_vendas && " · vendas"}
+                      {/* ⭐ 2026-09-05: liderança que sobra além do mínimo
+                          exigido também conta pro piso de membros — ver
+                          `agruparAvaliadores`. Sem a marca, a mesma pessoa
+                          aparecendo em "Liderança" E "Membros" pareceria
+                          duplicidade, não a regra explicada. */}
+                      {a.cobrindoPiso && " · liderança cobrindo o piso de membro"}
+                      {/* Escalado e compareceu são coisas diferentes: quem
+                          faltou não avalia a banca. */}
+                      {realizadoEm && !a.presente && " · faltou"}
+                      {a.ja_enviou && " · avaliou"}
+                    </span>
+                    {podeRemover && onRemover && (
+                      <RemoverBotao
+                        type="button"
+                        onClick={() => onRemover(a.candidatura_id, a.nome)}
+                      >
+                        remover
+                      </RemoverBotao>
+                    )}
+                  </NomeLinha>
                 ))}
               </ListaNomes>
             )}

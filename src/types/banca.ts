@@ -196,6 +196,10 @@ export interface BancaDetalhes {
  */
 export interface AvaliadorDaBanca {
   usuario_id: number;
+  /** A candidatura, não o usuário — o que `DELETE /candidaturas/{id}`
+   *  (desalocar) pede. Quem tem `pode_gerir_membros` usa pra tirar esta
+   *  pessoa da banca direto da ficha. */
+  candidatura_id: number;
   nome: string;
   presente: boolean;
   /** A posição da pessoa hoje. */
