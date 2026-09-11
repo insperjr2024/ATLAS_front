@@ -1,5 +1,6 @@
 import { useState } from "react";
 import styled from "styled-components";
+import { Paperclip } from "lucide-react";
 import { theme } from "@/styles/theme";
 import {
   baixarEntregaArquivoBanca,
@@ -11,6 +12,7 @@ import {
 import { paraDataUtc } from "@/lib/projetos";
 import { PageButtonSm } from "@/styles/page.styled";
 import { FieldInput, FormErrorText } from "@/pages/Bancas.styled";
+import { ArquivoBotao } from "@/pages/projetos/ProjetoNovo.styled";
 
 /** O mínimo que o bloco precisa da banca — serve tanto o `Banca` da lista
  *  quanto o `BancaDetalhes` da ficha. */
@@ -241,24 +243,29 @@ export function LocalEEntregaBloco({
             Salvar link
           </PageButtonSm>
           <Rotulo>ou</Rotulo>
-          <input
-            type="file"
-            disabled={salvandoEntrega}
-            onChange={(e) => {
-              const arquivo = e.target.files?.[0];
-              if (arquivo) {
-                void comErro(
-                  async () => {
-                    await subirEntregaArquivoBanca(banca.id, arquivo, token as string);
-                    setAnexoAberto(false);
-                  },
-                  setSalvandoEntrega,
-                  "Não foi possível enviar o arquivo",
-                );
-              }
-              e.target.value = "";
-            }}
-          />
+          <ArquivoBotao htmlFor={`entrega-arq-${banca.id}`}>
+            <Paperclip size={13} aria-hidden="true" />
+            Escolher arquivo
+            <input
+              id={`entrega-arq-${banca.id}`}
+              type="file"
+              disabled={salvandoEntrega}
+              onChange={(e) => {
+                const arquivo = e.target.files?.[0];
+                if (arquivo) {
+                  void comErro(
+                    async () => {
+                      await subirEntregaArquivoBanca(banca.id, arquivo, token as string);
+                      setAnexoAberto(false);
+                    },
+                    setSalvandoEntrega,
+                    "Não foi possível enviar o arquivo",
+                  );
+                }
+                e.target.value = "";
+              }}
+            />
+          </ArquivoBotao>
         </Linha>
       )}
 
