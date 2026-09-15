@@ -1926,8 +1926,22 @@ function VerMaisModal({
               </DetailValue>
             </DetailRow>
             <DetailRow>
-              <DetailTerm>Escopo</DetailTerm>
-              <DetailValue>{nomeEscopo(contexto.escopos, banca.escopo_id)}</DetailValue>
+              {/* Mesmo critério do card da lista (`nomesEscopos` em
+                  `BancaCard`): banca costurada a escopo(s) do projeto
+                  mostra TODOS os que ela cobre via `projeto_escopo_ids`
+                  resolvido em `escoposVendidos` — `escopo_id` só guarda o
+                  primeiro e escondia o resto quando a banca cobria mais
+                  de um. Banca legada (sem costura) cai no catálogo, como
+                  sempre foi. */}
+              <DetailTerm>{banca.projeto_escopo_ids.length > 1 ? "Escopos" : "Escopo"}</DetailTerm>
+              <DetailValue>
+                {(banca.projeto_escopo_ids.length > 0
+                  ? banca.projeto_escopo_ids
+                      .map((id) => contexto.escoposVendidos.find((e) => e.id === id)?.nome)
+                      .filter((nome): nome is string => !!nome)
+                  : [nomeEscopo(contexto.escopos, banca.escopo_id)]
+                ).join(", ")}
+              </DetailValue>
             </DetailRow>
             <DetailRow>
               <DetailTerm>Frentes</DetailTerm>
