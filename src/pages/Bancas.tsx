@@ -1711,9 +1711,13 @@ function SecaoTrocas({
             )}
           </BancaNomeLinha>
           <BancaMetaLinha>
+            {/* Prefixo "Pedido por" de propósito: um nome pelado do lado do
+                projeto lia como se fosse o coordenador dele (que aparece do
+                mesmo jeito noutras telas) — sem dizer QUEM é essa pessoa,
+                ficava ambíguo se era quem pediu a troca ou quem coordena. */}
             <BancaMetaItem>
               <User size={12} />
-              {nomeUsuario(usuarios, solicitacao.usuario_original_id)}
+              Pedido por {nomeUsuario(usuarios, solicitacao.usuario_original_id)}
             </BancaMetaItem>
             {dataHora && (
               <BancaMetaItem>
