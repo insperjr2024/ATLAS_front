@@ -76,4 +76,16 @@ export interface SolicitacaoTroca {
   criado_em: string;
   confirmada_por: number | null;
   confirmada_em: string | null;
+  /** Frente cuja composição a saída desta pessoa afeta — nulo se a vaga é
+   *  excedente (não precisa de ninguém de uma frente específica). */
+  frente_id: number | null;
+  frente_nome: string | null;
+  /** A saída desta pessoa descobre o piso/liderança da frente dela. */
+  vaga_precisada: boolean;
+  /** Dentro de `vaga_precisada`, é a LIDERANÇA da frente que fica faltando —
+   *  só gerente/coordenador da frente cobre. */
+  precisa_lideranca: boolean;
+  /** Quem pode de fato confirmar esta troca, já considerando o acima —
+   *  convite direto vira uma lista de 1 (o convidado). */
+  elegiveis_ids: number[];
 }
