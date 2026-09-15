@@ -152,7 +152,6 @@ import {
   BancaInfo,
   BancaNomeLinha,
   BancaNome,
-  BancaMeta,
   BancaStatusBadges,
   BancaMetaLinha,
   BancaMetaItem,
@@ -806,6 +805,7 @@ export function Bancas() {
           <SecaoTrocas
             solicitacoes={contexto.solicitacoesTroca}
             bancas={bancas}
+            usuarios={contexto.usuarios}
             usuarioId={usuario.id}
             onConfirmar={handleConfirmarTroca}
             onCancelar={handleCancelarTroca}
@@ -1631,12 +1631,14 @@ function SecaoEsperandoAprovacao({
 function SecaoTrocas({
   solicitacoes,
   bancas,
+  usuarios,
   usuarioId,
   onConfirmar,
   onCancelar,
 }: {
   solicitacoes: SolicitacaoTroca[];
   bancas: Banca[];
+  usuarios: UsuarioResumo[];
   usuarioId: number;
   onConfirmar: (solicitacaoId: number) => void;
   onCancelar: (solicitacaoId: number) => void;
@@ -1650,13 +1652,13 @@ function SecaoTrocas({
     const banca = bancas.find((b) => b.id === s.banca_id);
     return !banca || aceitaInscricao(banca.status);
   });
-  // Convite pra outra pessoa não aparece pra mais ninguém: só quem pediu
-  // ("Meu pedido") e quem foi convidado ("Convite pra você"), o resto do
-  // pool nem sabe que existe (o backend também recusaria a confirmação).
+  // `elegiveis_ids` (2026-09-15) já resolve as duas perguntas de quem pode
+  // ver "Confirmar": convite direto (lista de 1, o convidado) e pedido
+  // aberto restrito por frente (só quem cobriria a vaga que ficaria
+  // descoberta) — o resto do pool nem aparece aqui, nem precisa tentar pro
+  // backend recusar.
   const disponiveis = pendentes.filter(
-    (s) =>
-      s.usuario_original_id !== usuarioId &&
-      (s.usuario_convidado_id === null || s.usuario_convidado_id === usuarioId),
+    (s) => s.usuario_original_id !== usuarioId && s.elegiveis_ids.includes(usuarioId),
   );
   const minhas = pendentes.filter((s) => s.usuario_original_id === usuarioId);
   const total = disponiveis.length + minhas.length;
@@ -1665,6 +1667,7 @@ function SecaoTrocas({
     const banca = bancas.find((b) => b.id === solicitacao.banca_id);
     const dataHora = banca?.data_hora ? paraDataUtc(banca.data_hora) : null;
     const convitePraMim = !propria && solicitacao.usuario_convidado_id === usuarioId;
+    const nomesElegiveis = solicitacao.elegiveis_ids.map((id) => nomeUsuario(usuarios, id));
     return (
       <BancaLinha key={solicitacao.id}>
         <BancaData>
@@ -1683,12 +1686,44 @@ function SecaoTrocas({
             <PageBadge $tone={propria ? "default" : convitePraMim ? "success" : "warning"}>
               {propria ? "Meu pedido" : convitePraMim ? "Convite pra você" : "Troca aberta"}
             </PageBadge>
+            {/* Vaga excedente (composição já fecha sem quem está saindo) não
+                ganha badge — "tanto faz quem entra", como sempre foi. Só a
+                vaga que de fato descobre a frente precisa dizer isso, senão
+                quem vê "Confirmar" não entende por que não pode clicar. */}
+            {solicitacao.vaga_precisada && (
+              <PageBadge
+                $tone="warning"
+                title={
+                  solicitacao.precisa_lideranca
+                    ? `Só liderança de ${solicitacao.frente_nome} cobre esta vaga`
+                    : `Só quem é de ${solicitacao.frente_nome} cobre esta vaga`
+                }
+              >
+                {solicitacao.frente_nome}
+                {solicitacao.precisa_lideranca ? " · liderança" : ""}
+              </PageBadge>
+            )}
           </BancaNomeLinha>
-          {dataHora && (
-            <BancaMeta>
-              {dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-            </BancaMeta>
-          )}
+          <BancaMetaLinha>
+            <BancaMetaItem>
+              <User size={12} />
+              {nomeUsuario(usuarios, solicitacao.usuario_original_id)}
+            </BancaMetaItem>
+            {dataHora && (
+              <BancaMetaItem>
+                <Clock size={12} />
+                {dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </BancaMetaItem>
+            )}
+            <BancaMetaItem
+              title={nomesElegiveis.length ? `Pode confirmar: ${nomesElegiveis.join(", ")}` : undefined}
+            >
+              <Users size={12} />
+              {solicitacao.elegiveis_ids.length === 1
+                ? "1 pessoa pode cobrir"
+                : `${solicitacao.elegiveis_ids.length} pessoas podem cobrir`}
+            </BancaMetaItem>
+          </BancaMetaLinha>
         </BancaInfo>
         <BancaAcoes>
           {propria ? (
