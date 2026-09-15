@@ -1657,8 +1657,13 @@ function SecaoTrocas({
   // aberto restrito por frente (só quem cobriria a vaga que ficaria
   // descoberta) — o resto do pool nem aparece aqui, nem precisa tentar pro
   // backend recusar.
+  // ⚠ `?? []`: se o backend em produção ainda não tiver este campo no ar
+  // (deploy do front à frente do back), `elegiveis_ids` vem `undefined` — e
+  // sem a guarda a página quebrava inteira com "Cannot read properties of
+  // undefined (reading 'includes')" em vez de só perder a restrição por
+  // frente temporariamente.
   const disponiveis = pendentes.filter(
-    (s) => s.usuario_original_id !== usuarioId && s.elegiveis_ids.includes(usuarioId),
+    (s) => s.usuario_original_id !== usuarioId && (s.elegiveis_ids ?? []).includes(usuarioId),
   );
   const minhas = pendentes.filter((s) => s.usuario_original_id === usuarioId);
   const total = disponiveis.length + minhas.length;
@@ -1667,7 +1672,8 @@ function SecaoTrocas({
     const banca = bancas.find((b) => b.id === solicitacao.banca_id);
     const dataHora = banca?.data_hora ? paraDataUtc(banca.data_hora) : null;
     const convitePraMim = !propria && solicitacao.usuario_convidado_id === usuarioId;
-    const nomesElegiveis = solicitacao.elegiveis_ids.map((id) => nomeUsuario(usuarios, id));
+    const elegiveisIds = solicitacao.elegiveis_ids ?? [];
+    const nomesElegiveis = elegiveisIds.map((id) => nomeUsuario(usuarios, id));
     return (
       <BancaLinha key={solicitacao.id}>
         <BancaData>
@@ -1719,9 +1725,9 @@ function SecaoTrocas({
               title={nomesElegiveis.length ? `Pode confirmar: ${nomesElegiveis.join(", ")}` : undefined}
             >
               <Users size={12} />
-              {solicitacao.elegiveis_ids.length === 1
+              {elegiveisIds.length === 1
                 ? "1 pessoa pode cobrir"
-                : `${solicitacao.elegiveis_ids.length} pessoas podem cobrir`}
+                : `${elegiveisIds.length} pessoas podem cobrir`}
             </BancaMetaItem>
           </BancaMetaLinha>
         </BancaInfo>
