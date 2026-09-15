@@ -84,7 +84,7 @@ export function AlocarPessoasModal({
     // quer favorecer aqui é "quem ainda não pegou banca", e o alfabeto
     // esconderia isso. Quem procura alguém específico usa a busca.
     return usuarios
-      .filter((u) => !jaNaBanca.has(u.id) && !daEquipe.has(u.id))
+      .filter((u) => u.ativo && !jaNaBanca.has(u.id) && !daEquipe.has(u.id))
       .map((u) => ({ usuario: u, bancas: carga.get(u.id) ?? 0 }))
       .sort((a, b) => a.bancas - b.bancas || a.usuario.nome.localeCompare(b.usuario.nome));
   }, [usuarios, candidaturas, equipes, banca.id]);
