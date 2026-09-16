@@ -26,9 +26,21 @@ function slug(texto: string): string {
     .replace(/^-|-$/g, "");
 }
 
+/** "yyyy-MM-dd" de HOJE no fuso de Brasília, não em UTC.
+ *
+ * ⚠ `toISOString().slice(0, 10)` (como era) lê o dia em UTC — de 21h às
+ * 23h59 no horário de Brasília (UTC-3) já é o dia seguinte em UTC, e o
+ * arquivo baixava com a data de amanhã horas antes de amanhã existir aqui.
+ * `Intl.DateTimeFormat` com `timeZone` fixo não depende do relógio/fuso do
+ * SO de quem baixa, ao contrário de ler `getFullYear`/`getMonth`/`getDate`
+ * locais — o "en-CA" só é o locale cujo formato padrão já sai em
+ * "yyyy-MM-dd", não tem relação com fuso nenhum do Canadá. */
+function hojeNoFusoDeBrasilia(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+}
+
 function nomeArquivo(projeto: string, extensao: string, prefixo = "cronograma"): string {
-  const hoje = new Date().toISOString().slice(0, 10);
-  return `${prefixo}-${slug(projeto)}-${hoje}.${extensao}`;
+  return `${prefixo}-${slug(projeto)}-${hojeNoFusoDeBrasilia()}.${extensao}`;
 }
 
 /**
