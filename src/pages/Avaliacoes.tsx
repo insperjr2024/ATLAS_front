@@ -134,19 +134,29 @@ function tomResultado(resultado: HistoricoBanca["resultado"]): "success" | "dang
 }
 
 interface PerguntaEditavel {
+  /** Da pergunta original — carregado só pra ida e volta com o backend (o
+   *  editor não exibe nem deixa mexer nele). Presente = "é esta pergunta,
+   *  só editada", o que faz o backend atualizar em vez de duplicar; ausente
+   *  (linha criada por "Adicionar pergunta") = pergunta nova de verdade. */
+  id?: number;
   texto: string;
   tipo_resposta: "nota" | "texto";
   escopo_id: number | null;
 }
 
 /** As perguntas de um formulário na forma que o editor manipula: ordenadas
- *  por `ordem` e sem os campos que o editor não mexe (id, ordem — a ordem
- *  vira a posição na lista). */
+ *  por `ordem` e sem o campo que o editor não mexe (a ordem vira a posição
+ *  na lista). `id` viaja escondido — ver o comentário em `PerguntaEditavel`. */
 function paraEditaveis(formulario: FormularioAtivo | null): PerguntaEditavel[] {
   return (formulario?.perguntas ?? [])
     .slice()
     .sort((a, b) => a.ordem - b.ordem)
-    .map((p) => ({ texto: p.texto, tipo_resposta: p.tipo_resposta, escopo_id: p.escopo_id }));
+    .map((p) => ({
+      id: p.id,
+      texto: p.texto,
+      tipo_resposta: p.tipo_resposta,
+      escopo_id: p.escopo_id,
+    }));
 }
 
 export function Avaliacoes() {
@@ -833,6 +843,7 @@ function EditarFormularioModal({
       const novo = await createNovaVersaoFormulario(
         validas.map(
           (p, i): PerguntaNovaVersao => ({
+            id: p.id,
             texto: p.texto.trim(),
             ordem: i + 1,
             tipo_resposta: p.tipo_resposta,

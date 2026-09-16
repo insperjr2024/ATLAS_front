@@ -398,6 +398,11 @@ export interface NotaPorPergunta {
 }
 
 export interface PerguntaNovaVersao {
+  /** Presente quando é a MESMA pergunta de antes, só editada — o backend
+   *  atualiza esse registro em vez de criar outro, pra quem já respondeu sob
+   *  este id (inclusive "Médias por critério" de banca já realizada)
+   *  enxergar a correção. Ausente = pergunta nova. */
+  id?: number;
   texto: string;
   ordem: number;
   tipo_resposta: "nota" | "texto";
