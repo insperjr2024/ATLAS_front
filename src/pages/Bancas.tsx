@@ -502,10 +502,19 @@ export function Bancas() {
   /**
    * **O buraco em que uma banca some da tela.**
    *
+   * ⚠ Apesar do nome antigo da seção ("sem avaliador"), o filtro NÃO checa
+   * se a banca tem candidato nenhum — só se ELA NÃO ESTÁ na lista pessoal
+   * de pendentes/já avaliadas de QUEM ESTÁ OLHANDO a tela. Uma banca com
+   * 7 candidatos e 6 avaliações já submetidas cai aqui do mesmo jeito, se
+   * quem abriu a página não é um dos avaliadores dela — as pendências são de
+   * outras pessoas, não "não tem avaliador". Corrigido o nome pra não prometer
+   * "zero avaliador" quando o que a seção garante é só "ainda sem resultado".
+   *
    * As três seções de alocação acima exigem `aceitaInscricao`, e `paraAvaliar`
    * só traz banca em que o usuário logado é avaliador alocado. Uma banca
-   * registrada como realizada com zero alocados não cai em nenhuma das quatro:
-   * ela existe no banco, vem no `GET /bancas`, e a interface inteira a ignora.
+   * registrada como realizada não cai em nenhuma das quatro quando quem olha
+   * não é avaliador dela: ela existe no banco, vem no `GET /bancas`, e a
+   * interface inteira a ignora.
    *
    * Some sem nenhuma pista de que existiu. Desde que "Registrar realização"
    * saiu (2026-09-04) isto ficou mais comum, não menos: a finalização
@@ -514,7 +523,7 @@ export function Bancas() {
    * decidindo se vale a pena abaixo do mínimo. Listar aqui é o mínimo para a
    * banca continuar encontrável.
    */
-  const realizadasSemAvaliador = bancas
+  const realizadasAguardandoResultado = bancas
     .filter(
       (b) =>
         b.realizado_em &&
@@ -700,7 +709,7 @@ export function Bancas() {
         </TabButton>
         <TabButton type="button" $ativa={aba === "avaliacao"} onClick={() => setAba("avaliacao")}>
           Avaliação
-          <TabCount>{paraAvaliar.length + realizadasSemAvaliador.length}</TabCount>
+          <TabCount>{paraAvaliar.length + realizadasAguardandoResultado.length}</TabCount>
         </TabButton>
         {/* ⭐ Diretoria de projetos e gerente de frente — quem decide a banca
             hoje (§5.5, §8), não mais os avaliadores. */}
@@ -831,20 +840,22 @@ export function Bancas() {
             onAcao={(id) => setBancaAvaliar(paraAvaliar.find((b) => b.id === id) ?? null)}
             onVerMais={setBancaDetalhe}
           />
-          {/* Realizada, sem resultado e sem avaliador — ver
-              `realizadasSemAvaliador`. Estas não caem em nenhuma das outras
-              seções: as de alocação exigem status aberto, e a de avaliação
-              pendente só lista quem é avaliador. Sem esta seção elas existiam
-              no banco e a tela inteira as ignorava.
+          {/* Realizada e sem resultado, mas fora da visão pessoal de quem
+              olha (ver `realizadasAguardandoResultado`) — não quer dizer que
+              não tenha avaliador NENHUM, só que os avaliadores dela, se
+              houver, não são quem está com a tela aberta agora. Estas não
+              caem em nenhuma das outras seções: as de alocação exigem status
+              aberto, e a de avaliação pendente só lista quem é avaliador. Sem
+              esta seção elas existiam no banco e a tela inteira as ignorava.
 
               A decisão (diretoria + gerente da frente) acontece pela própria
               seção, ou na aba "Esperando aprovação" ao lado. */}
-          {realizadasSemAvaliador.length > 0 && (
+          {realizadasAguardandoResultado.length > 0 && (
             <SecaoBancas
               bancaDestacada={bancaDestacada}
               refDestacada={refDestacada}
-              titulo="Realizadas sem avaliador"
-              bancas={realizadasSemAvaliador}
+              titulo="Realizadas aguardando resultado"
+              bancas={realizadasAguardandoResultado}
               contexto={contexto}
               acao="nenhuma"
               usuarioId={usuario.id}
