@@ -45,6 +45,26 @@ export function isPerguntaNota(tipo: string): boolean {
   return tipo === "nota";
 }
 
+export function formatNota(nota: number | null | undefined): string {
+  if (nota == null) return "—";
+  return nota.toFixed(1);
+}
+
+/** Escala 1-5 do formulário: < 3 grita (vermelho), 3 é meio-termo (âmbar),
+ *  4-5 é bom (verde). Mesma leitura da AVD. ⚠ `"default"` do PageBadge é
+ *  avermelhado — nunca usar pra nota "ok".
+ *
+ *  Compartilhado entre o Dashboard Bancas e "minhas avaliações" (2026-09-15,
+ *  a pedido): as duas telas mostravam a mesma nota de jeitos diferentes —
+ *  aqui com badge colorido, lá em texto puro — cada uma com sua própria
+ *  cópia desta função, e as cores só existiam numa das duas. */
+export function tomDaNota(nota: number | null | undefined): "danger" | "warning" | "success" | "muted" {
+  if (nota == null) return "muted";
+  if (nota < 3) return "danger";
+  if (nota < 4) return "warning";
+  return "success";
+}
+
 /** Perguntas de comentário opcional no formulário (não exigem resposta). */
 export function isPerguntaOpcional(texto: string): boolean {
   return /opcional/i.test(texto);

@@ -27,6 +27,11 @@ import {
  * ao lado do nome — o backend cobra a mesma permissão em
  * `DELETE /candidaturas/{id}` e, pra quem tem, passa por cima da trava dos 7
  * dias (`eh_gestao`), então a ação sempre vale mesmo perto da banca.
+ *
+ * `podeVerAvaliou` (2026-09-15, a pedido): quem já enviou o formulário só
+ * importa pra gerência/diretoria decidirem a banca — o resto da equipe via
+ * "· avaliou" ao lado de todo mundo sem nenhum motivo pra saber quem
+ * submeteu o quê. Mesma audiência de `pode_ver_dashboard_bancas`.
  */
 export function AvaliadoresAgrupados({
   avaliadores,
@@ -35,6 +40,7 @@ export function AvaliadoresAgrupados({
   realizadoEm,
   podeRemover = false,
   onRemover,
+  podeVerAvaliou = false,
 }: {
   avaliadores: AvaliadorDaBanca[];
   frentesDaBanca: { id: number; nome: string }[];
@@ -42,6 +48,7 @@ export function AvaliadoresAgrupados({
   realizadoEm: string | null;
   podeRemover?: boolean;
   onRemover?: (candidaturaId: number, nome: string) => void;
+  podeVerAvaliou?: boolean;
 }) {
   return (
     <>
@@ -76,7 +83,7 @@ export function AvaliadoresAgrupados({
                       {/* Escalado e compareceu são coisas diferentes: quem
                           faltou não avalia a banca. */}
                       {realizadoEm && !a.presente && " · faltou"}
-                      {a.ja_enviou && " · avaliou"}
+                      {podeVerAvaliou && a.ja_enviou && " · avaliou"}
                     </span>
                     {podeRemover && onRemover && (
                       <RemoverBotao

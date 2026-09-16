@@ -413,6 +413,7 @@ function FichaDaBanca({
               frentesDaBanca={banca.frentes_da_banca}
               composicao={banca.composicao}
               realizadoEm={banca.realizado_em}
+              podeVerAvaliou={!!usuario?.permissoes.pode_ver_dashboard_bancas}
             />
           )}
         </Campo>

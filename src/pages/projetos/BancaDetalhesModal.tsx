@@ -55,7 +55,7 @@ export function BancaDetalhesModal({
   bancaId: number;
   onFechar: () => void;
 }) {
-  const { token } = useAuth();
+  const { usuario, token } = useAuth();
   const [banca, setBanca] = useState<BancaDetalhes | null>(null);
   const [erro, setErro] = useState("");
 
@@ -173,6 +173,7 @@ export function BancaDetalhesModal({
                   frentesDaBanca={banca.frentes_da_banca}
                   composicao={banca.composicao}
                   realizadoEm={banca.realizado_em}
+                  podeVerAvaliou={!!usuario?.permissoes.pode_ver_dashboard_bancas}
                 />
               )}
             </AvaliadoresSecao>

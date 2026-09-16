@@ -305,6 +305,12 @@ export function Bancas() {
    *  gerente de frente. Grosso de propósito: o backend recusa quem não for
    *  gerente da frente DESTA banca especificamente. */
   const podeAprovar = ehDiretor || usuario?.posicao === "gerente";
+  /** Mesma audiência do Dashboard Bancas (2026-09-15, a pedido) — hoje é
+   *  exatamente diretor_projetos + gerente, configurável por cargo em
+   *  Configurações. Usado pra esconder de quem não gerencia coisas que só
+   *  fazem sentido pra gerência/diretoria: a seção de bancas realizadas
+   *  aguardando resultado, e o "avaliou" ao lado do nome na ficha da banca. */
+  const podeVerDashboardBancas = !!usuario?.permissoes.pode_ver_dashboard_bancas;
 
   async function recarregar() {
     if (!token || !usuario) return;
@@ -709,7 +715,9 @@ export function Bancas() {
         </TabButton>
         <TabButton type="button" $ativa={aba === "avaliacao"} onClick={() => setAba("avaliacao")}>
           Avaliação
-          <TabCount>{paraAvaliar.length + realizadasAguardandoResultado.length}</TabCount>
+          <TabCount>
+            {paraAvaliar.length + (podeVerDashboardBancas ? realizadasAguardandoResultado.length : 0)}
+          </TabCount>
         </TabButton>
         {/* ⭐ Diretoria de projetos e gerente de frente — quem decide a banca
             hoje (§5.5, §8), não mais os avaliadores. */}
@@ -850,7 +858,12 @@ export function Bancas() {
 
               A decisão (diretoria + gerente da frente) acontece pela própria
               seção, ou na aba "Esperando aprovação" ao lado. */}
-          {realizadasAguardandoResultado.length > 0 && (
+          {/* Só quem gerencia (2026-09-15, a pedido): diretoria/gerência é
+              quem decide o resultado ou aloca reforço aqui — o resto do time
+              não tem ação nenhuma a tomar nessas bancas e só ficaria confuso
+              vendo uma banca "sem avaliador" que talvez nem seja da equipe
+              dele. */}
+          {podeVerDashboardBancas && realizadasAguardandoResultado.length > 0 && (
             <SecaoBancas
               bancaDestacada={bancaDestacada}
               refDestacada={refDestacada}
@@ -897,6 +910,7 @@ export function Bancas() {
           podeAprovarLista={podeAprovar}
         ehDiretor={!!ehDiretor}
         podeGerirMembros={!!usuario.permissoes.pode_gerir_membros}
+        podeVerAvaliou={podeVerDashboardBancas}
         onDescricaoEnviada={recarregar}
       />
 
@@ -1798,6 +1812,7 @@ function VerMaisModal({
   ehDiretor,
   podeAprovarLista,
   podeGerirMembros,
+  podeVerAvaliou,
   onDescricaoEnviada,
 }: {
   banca: Banca | null;
@@ -1836,6 +1851,9 @@ function VerMaisModal({
    *  pra tirar QUALQUER pessoa (não só a própria) e passar por cima da
    *  trava dos 7 dias. */
   podeGerirMembros?: boolean;
+  /** `pode_ver_dashboard_bancas` (2026-09-15) — mesma audiência que decide a
+   *  banca: mostra "· avaliou" ao lado de quem já enviou o formulário. */
+  podeVerAvaliou?: boolean;
   onDescricaoEnviada?: () => void;
 }) {
   // A ficha completa — avaliadores com categoria e frente resolvidas, mais a
@@ -2005,6 +2023,7 @@ function VerMaisModal({
                   realizadoEm={detalheDaBanca.realizado_em}
                   podeRemover={podeGerirMembros}
                   onRemover={(candidaturaId, nome) => setRemovendo({ candidaturaId, nome })}
+                  podeVerAvaliou={podeVerAvaliou}
                 />
               )
             ) : (

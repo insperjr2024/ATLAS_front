@@ -4,12 +4,14 @@ import { NotebookPen, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   createNovaVersaoFormulario,
+  formatNota,
   getAvaliacoes,
   getAvaliacoesNotas,
   getFormularioAtivo,
   getFormularioParaEditar,
   getNotasPorPergunta,
   isPerguntaNota,
+  tomDaNota,
 } from "@/lib/avaliacoes";
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
 import { DescricaoQuote } from "@/styles/shared.styled";
@@ -116,21 +118,6 @@ import {
   DetailValue,
   FormularioModalContent,
 } from "./Avaliacoes.styled";
-
-function formatNota(nota: number | null | undefined): string {
-  if (nota == null) return "—";
-  return nota.toFixed(1);
-}
-
-/** Escala 1-5 do formulário: < 3 grita (vermelho), 3 é meio-termo (âmbar),
- *  4-5 é bom (verde). Mesma leitura da AVD. ⚠ `"default"` do PageBadge é
- *  avermelhado — nunca usar pra nota "ok". */
-function tomDaNota(nota: number | null | undefined): "danger" | "warning" | "success" | "muted" {
-  if (nota == null) return "muted";
-  if (nota < 3) return "danger";
-  if (nota < 4) return "warning";
-  return "success";
-}
 
 /** "aprovada" | "nao_aprovada" | `null` (aconteceu, ainda esperando decisão
  *  de diretoria ou gerente da frente — ver `use_cases/banca/aprovar_banca.py`). */

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api";
-import { getAvaliacoes, getAvaliacoesNotas, getPerguntas, isPerguntaNota } from "@/lib/avaliacoes";
+import { formatNota, getAvaliacoes, getAvaliacoesNotas, getPerguntas, isPerguntaNota, tomDaNota } from "@/lib/avaliacoes";
 import { getBancas, getBancasFrentes, getFrentes } from "@/lib/bancas";
 import { paraDataUtc } from "@/lib/projetos";
 import type {
@@ -22,6 +22,7 @@ import {
   PageCardTitle,
   PageCardContent,
   PageButton,
+  PageBadge,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
@@ -68,12 +69,7 @@ function saudacao(): string {
   return "Boa noite";
 }
 
-function formatNota(nota: number | null | undefined): string {
-  if (nota == null) return "—";
-  return nota.toFixed(1);
-}
-
-function formatResposta(nota: AvaliacaoNota, pergunta?: Pergunta): string {
+function formatRespostaTexto(nota: AvaliacaoNota, pergunta?: Pergunta): string {
   if (pergunta && !isPerguntaNota(pergunta.tipo_resposta)) {
     return nota.resposta_texto?.trim() || "—";
   }
@@ -316,7 +312,17 @@ function VerMinhaAvaliacaoModal({
           {respostasOrdenadas.map(({ nota, pergunta }) => (
             <RespostaItem key={nota.id}>
               <RespostaPergunta>{pergunta?.texto ?? `Pergunta ${nota.pergunta_id}`}</RespostaPergunta>
-              <RespostaValor>{formatResposta(nota, pergunta)}</RespostaValor>
+              <RespostaValor>
+                {/* Mesmo badge colorido do Dashboard Bancas (2026-09-15, a
+                    pedido): antes a nota aqui era só texto puro, sem cor
+                    nenhuma — as duas telas mostram o mesmo dado de jeitos
+                    diferentes. */}
+                {nota.nota != null ? (
+                  <PageBadge $tone={tomDaNota(nota.nota)}>{formatNota(nota.nota)}</PageBadge>
+                ) : (
+                  formatRespostaTexto(nota, pergunta)
+                )}
+              </RespostaValor>
             </RespostaItem>
           ))}
 
