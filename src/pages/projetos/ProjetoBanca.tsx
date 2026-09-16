@@ -814,7 +814,9 @@ function RelatoDaCoordenacao({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
-  const souCoordenador = !!usuario && usuario.id === banca.coordenador_id;
+  // ⚠ `coordenador_ids` (plural) e não `coordenador_id`: o projeto pode ter
+  // mais de um coordenador (2026-08-20), e o singular é só o primeiro.
+  const souCoordenador = !!usuario && banca.coordenador_ids.includes(usuario.id);
   // Só depois que a banca aconteceu: relatar o que ainda não ocorreu não faz
   // sentido, e o backend recusa.
   const podeEscrever = souCoordenador && !!banca.realizado_em;

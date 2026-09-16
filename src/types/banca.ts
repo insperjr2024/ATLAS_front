@@ -163,11 +163,16 @@ export interface BancaDetalhes {
    *  dizer "Membros · Business 2/3" e marcar frente lotada. Mesmo shape do
    *  `Banca.composicao`. Vazio na banca legada. */
   composicao: ComposicaoDaFrente[];
+  /** Nome(s) — "e" entre os dois quando o projeto tem mais de um coordenador. */
   coordenador: string;
-  /** Para a tela saber se o usuário logado é ele — comparar por nome quebra
-   *  em homônimos e em qualquer diferença de grafia. */
+  /** ⚠ Só o PRIMEIRO coordenador, mantido pra quem ainda lê esse campo —
+   *  projeto pode ter mais de um (2026-08-20). Para "sou eu, entre todos os
+   *  coordenadores?" use `coordenador_ids`. */
   coordenador_id: number | null;
-  /** Já sem o coordenador, que tem linha própria na ficha. */
+  /** Todos os coordenadores do projeto — comparar por nome quebra em
+   *  homônimos e em qualquer diferença de grafia. */
+  coordenador_ids: number[];
+  /** Já sem o(s) coordenador(es), que tem(êm) linha própria na ficha. */
   membros: string[];
   /** ⭐ Objetos, não nomes: a aba precisa do id para saber quem é o usuário
    *  logado e se ele já enviou a avaliação nesta tentativa. */
