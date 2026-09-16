@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { deleteAvaliacao, getAvaliacaoDetalhe, getAvaliacoes } from "@/lib/desempenho-avaliacoes";
 import { getLotes } from "@/lib/desempenho-lotes";
+import { tomDaNota } from "@/lib/avaliacoes";
 import { getUsuarios } from "@/lib/usuarios";
 import { getProjetos, paraDataUtc } from "@/lib/projetos";
 import { getFrentes } from "@/lib/frentes";
@@ -55,10 +56,6 @@ import {
 } from "./Painel.styled";
 
 type Modo = "avaliador" | "avaliado";
-
-function corPorNota(nota: number): "danger" | "default" {
-  return nota < 3 ? "danger" : "default";
-}
 
 /** Vermelho abaixo do esperado, âmbar no meio, verde acima, mesma leitura
  *  rápida de "isso é bom ou ruim" da escala 1-5 do formulário de origem. */
@@ -376,7 +373,7 @@ export function PainelAvaliacoes() {
                         <>
                           {lista.length}{" "}
                           {visao === "escopo" ? "avaliações" : "avaliações recebidas"} · média{" "}
-                          <PageBadge $tone={corPorNota(media!)}>{media!.toFixed(1)}</PageBadge>
+                          <PageBadge $tone={tomDaNota(media!)}>{media!.toFixed(1)}</PageBadge>
                         </>
                       )}
                     </PessoaResumo>
@@ -399,7 +396,7 @@ export function PainelAvaliacoes() {
                                 {formatarData(a.criado_em)}
                               </span>
                               <SubItemMeta>
-                                <PageBadge $tone={corPorNota(a.nota_geral)}>{a.nota_geral.toFixed(1)}</PageBadge>
+                                <PageBadge $tone={tomDaNota(a.nota_geral)}>{a.nota_geral.toFixed(1)}</PageBadge>
                                 <PageButtonSm $variant="outline" type="button" onClick={() => toggleDetalhe(a.id)}>
                                   {expandidaAqui ? "Ocultar" : "Detalhes"}
                                 </PageButtonSm>

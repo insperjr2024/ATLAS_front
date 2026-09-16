@@ -62,6 +62,8 @@ const PERMISSOES_PLACEHOLDER: Permissoes = {
   pode_aprovar_pedidos: false,
   pode_ver_todos_projetos: false,
   pode_ver_dashboard_bancas: false,
+  pode_responsavel_por_vendas: false,
+  pode_coordenar_vendas: false,
 };
 
 /**

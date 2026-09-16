@@ -205,6 +205,18 @@ const PERMISSOES = [
     descricao:
       "A única permissão que muda QUAIS projetos aparecem; as outras só abrem funcionalidade, sem tocar nisso. Sem esta, coordenador e consultor sempre ficam limitados aos projetos em que já estão alocados, mesmo com todo o resto marcado.",
   },
+  {
+    campo: "pode_responsavel_por_vendas" as const,
+    titulo: "Ser responsável por vendas",
+    descricao:
+      "Quem tem esta caixa aparece na lista \"quem vendeu o projeto\" do cadastro de projeto.",
+  },
+  {
+    campo: "pode_coordenar_vendas" as const,
+    titulo: "Coordenar as vendas",
+    descricao:
+      "Continua contando como liderança — vai à banca, soma no total — mas não cobre o mínimo de liderança nem de membros da frente em que está cadastrado.",
+  },
 ];
 
 type CampoPermissao = (typeof PERMISSOES)[number]["campo"];

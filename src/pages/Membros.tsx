@@ -1077,8 +1077,7 @@ function MembroModal({
   const [semestreGraduacao, setSemestreGraduacao] = useState(
     membro.semestre_graduacao ? String(membro.semestre_graduacao) : "",
   );
-  const [coordenadorVendas, setCoordenadorVendas] = useState(membro.coordenador_vendas);
-  const [bdr, setBdr] = useState(membro.bdr);
+  const [bdr, setBdr] = useState(membro.cargo_extra === "bdr");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -1120,12 +1119,10 @@ function MembroModal({
           // `ativo` é espelho de `status` (F2), mandado junto para o front
           // legado que ainda lê o booleano não divergir.
           ativo: status === "ativo",
-          // Só coordenador tem essa marca. Fora disso manda `false` para não
-          // deixar a flag pendurada se a pessoa deixou de ser coordenador.
-          coordenador_vendas: posicao === "coordenador" ? coordenadorVendas : false,
-          // Mesma ideia da marca de coordenador: só o consultor tem BDR, e
-          // fora disso manda `false` para a flag não ficar pendurada.
-          bdr: posicao === "consultor" ? bdr : false,
+          // Só o consultor pode acumular o cargo extra BDR. Fora disso manda
+          // `null` para não deixar a marca pendurada se a pessoa deixou de
+          // ser consultor.
+          cargo_extra: posicao === "consultor" && bdr ? "bdr" : null,
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
@@ -1172,8 +1169,7 @@ function MembroModal({
                   <DetailTerm>Posição</DetailTerm>
                   <DetailValue>
                     {rotuloPosicao(contexto.posicoes, membro.posicao)}
-                    {membro.posicao === "coordenador" && membro.coordenador_vendas && " · vendas"}
-                    {membro.posicao === "consultor" && membro.bdr && " · BDR"}
+                    {membro.posicao === "consultor" && membro.cargo_extra === "bdr" && " · BDR"}
                   </DetailValue>
                 </DetailRow>
                 <DetailRow>
@@ -1277,28 +1273,11 @@ function MembroModal({
                   </FieldSelect>
                 </FieldGroup>
 
-                {/* Só faz sentido para coordenador: o acesso não muda, a marca
-                    só tira a pessoa da contagem de capacidade de coordenadores
-                    no Monitoramento. */}
-                {posicao === "coordenador" && (
-                  <FieldGroup>
-                    <ToggleRow>
-                      <input
-                        type="checkbox"
-                        checked={coordenadorVendas}
-                        onChange={(e) => setCoordenadorVendas(e.target.checked)}
-                      />
-                      Coordenador de vendas (comercial)
-                    </ToggleRow>
-                    <EmptyText style={{ fontSize: "0.7rem" }}>
-                      Mesmo acesso dos outros coordenadores. Fica de fora da conta de
-                      "quantos projetos cada coordenador tem" no Monitoramento.
-                    </EmptyText>
-                  </FieldGroup>
-                )}
-
-                {/* BDR: consultor que também prospecta. Não muda acesso, só o
-                    habilita a aparecer como vendedor no cadastro de projeto. */}
+                {/* BDR: o único cargo que a pessoa pode acumular com
+                    "consultor" — ver `usuario_model.py` no backend. Não muda
+                    acesso, só o habilita a aparecer como vendedor no cadastro
+                    de projeto. "Coordenador de vendas" não é mais uma marca
+                    aqui: é escolhido direto no seletor de Posição acima. */}
                 {posicao === "consultor" && (
                   <FieldGroup>
                     <ToggleRow>
@@ -1311,7 +1290,7 @@ function MembroModal({
                     </ToggleRow>
                     <EmptyText style={{ fontSize: "0.7rem" }}>
                       Mesmo acesso dos outros consultores. Passa a aparecer na lista
-                      "quem vendeu o projeto" do cadastro, junto dos coordenadores de vendas.
+                      "quem vendeu o projeto" do cadastro.
                     </EmptyText>
                   </FieldGroup>
                 )}
@@ -1384,8 +1363,7 @@ function MembroModal({
                   setEmail(membro.email_insper);
                   setPosicao(membro.posicao);
                   setStatus(membro.status);
-                  setCoordenadorVendas(membro.coordenador_vendas);
-                  setBdr(membro.bdr);
+                  setBdr(membro.cargo_extra === "bdr");
                   setFrenteIds(
                     contexto.usuariosFrentes.filter((uf) => uf.usuario_id === membro.id).map((uf) => uf.frente_id),
                   );

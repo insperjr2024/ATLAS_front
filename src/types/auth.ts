@@ -81,6 +81,13 @@ export interface Permissoes {
    *  estão alocados mesmo com todas marcadas). Quem tem esta é tratado como
    *  diretor só para fins de visão de projetos. */
   pode_ver_todos_projetos: boolean;
+  /** ⭐ 2026-09-16 — substitui o antigo `usuario.coordenador_vendas`/`bdr`
+   *  soltos. Quem tem esta caixa (na posição base ou no `cargo_extra` da
+   *  pessoa) aparece na lista "quem vendeu o projeto". */
+  pode_responsavel_por_vendas: boolean;
+  /** Continua contando como liderança (vai à banca, soma no total), mas não
+   *  cobre `min_lideranca`/`min_membros` da FRENTE em que está cadastrado. */
+  pode_coordenar_vendas: boolean;
 }
 
 /**
@@ -167,14 +174,15 @@ export interface UsuarioResumo {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
-  /** Coordenador comercial (de vendas). Só relevante quando `posicao` é
-   *  `coordenador`: não muda acesso, só tira a pessoa da contagem de
-   *  capacidade de coordenadores no Monitoramento. */
-  coordenador_vendas: boolean;
-  /** BDR: consultor que também prospecta e fecha projeto. Só relevante
-   *  quando `posicao` é `consultor`. Não muda acesso, só faz a pessoa
-   *  aparecer na lista "quem vendeu o projeto" do cadastro. */
-  bdr: boolean;
+  /** 2026-09-16 — substitui os antigos `coordenador_vendas`/`bdr`. A ÚNICA
+   *  situação em que a pessoa acumula duas posições: a principal (`posicao`,
+   *  sempre "consultor" na prática) e esta, opcional — hoje só pode ser
+   *  "bdr". `null` pra quase todo mundo. */
+  cargo_extra: string | null;
+  /** Computado no backend (posição base OU `cargo_extra`, permissão
+   *  `pode_responsavel_por_vendas`) — quem tem isto entra na lista "quem
+   *  vendeu o projeto" do cadastro. */
+  responsavel_por_vendas: boolean;
   /** 1º a 8º semestre da graduação, `null` pra quem não é aluno em curso
    *  (diretoria, gerência já formada etc). */
   semestre_graduacao: number | null;

@@ -6,14 +6,15 @@ export function getUsuarios(token: string) {
 }
 
 /**
- * Quem aparece na lista "quem vendeu o projeto" do cadastro: os
- * coordenadores de vendas e os consultores com a marca BDR. Para incluir
- * outra pessoa, a diretoria marca ela como BDR no cadastro do membro. Quem
- * já está gravado como vendedor num projeto continua listado mesmo sem se
+ * Quem aparece na lista "quem vendeu o projeto" do cadastro — computado no
+ * backend (posição base OU `cargo_extra`, permissão `pode_responsavel_por_
+ * vendas`, ver `usuario_model.py`). Para incluir outra pessoa, a diretoria dá
+ * essa permissão ao cargo dela (ou marca BDR como `cargo_extra`). Quem já
+ * está gravado como vendedor num projeto continua listado mesmo sem se
  * encaixar (os formulários somam os ids atuais a esta lista).
  */
-export function podeSerVendedor(u: Pick<UsuarioResumo, "coordenador_vendas" | "bdr">): boolean {
-  return u.coordenador_vendas || u.bdr;
+export function podeSerVendedor(u: Pick<UsuarioResumo, "responsavel_por_vendas">): boolean {
+  return u.responsavel_por_vendas;
 }
 
 export interface UpdateUsuarioPayload {
@@ -28,12 +29,9 @@ export interface UpdateUsuarioPayload {
    */
   status?: StatusUsuario;
   ativo?: boolean;
-  /** Marca o coordenador como comercial (de vendas). Não mexe em acesso, só
-   *  o tira da contagem de capacidade de coordenadores. */
-  coordenador_vendas?: boolean;
-  /** Marca o consultor como BDR (prospecta e fecha projeto). Não mexe em
-   *  acesso, só o habilita na lista "quem vendeu o projeto". */
-  bdr?: boolean;
+  /** O cargo extra — hoje só pode ser "bdr", e só quando `posicao` (a atual
+   *  ou a que está sendo enviada junto) é "consultor". `null` para tirar. */
+  cargo_extra?: string | null;
   /** 1º a 8º semestre da graduação, ou `null` pra limpar. */
   semestre_graduacao?: number | null;
 }

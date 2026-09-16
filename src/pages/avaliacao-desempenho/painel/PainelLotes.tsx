@@ -45,7 +45,6 @@ import {
   PendenciaTexto,
   ProjetoChip,
   ProjetoChipsRow,
-  ChipMarca,
   RodadaLegendaBolinha,
   RodadaLegendaItem,
   RodadaLegendaRow,
@@ -203,23 +202,6 @@ export function PainelLotes() {
   }, [token]);
 
   const nomesProjeto = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
-
-  // Um projeto conta como "finalizado" pra esta tela se: (a) já está
-  // marcado como finalizado no sistema de bancas, ou (b) já foi coberto por
-  // um lote de finalização que fechou. Nos dois casos ele continua
-  // escolhível manualmente, só não vem pré-marcado numa periódica nova.
-  const projetosFinalizados = useMemo(() => {
-    const finalizados = new Set<number>();
-    for (const p of projetos) {
-      if (p.status === "finalizado") finalizados.add(p.id);
-    }
-    for (const lote of lotes) {
-      if (lote.tipo === "finalizacao" && !lote.aberto) {
-        for (const pid of lote.projeto_ids) finalizados.add(pid);
-      }
-    }
-    return finalizados;
-  }, [projetos, lotes]);
 
   // ⭐ 2026-09-05, a pedido: contorno colorido no chip de cada projeto,
   // indicando quantas rodadas de avaliação (qualquer tipo, já fechadas) ele
@@ -536,9 +518,6 @@ export function PainelLotes() {
                         onClick={() => toggleProjeto(p.id)}
                       >
                         {p.nome}
-                        {projetosFinalizados.has(p.id) && (
-                          <ChipMarca $selecionado={selecionado}>finalizado</ChipMarca>
-                        )}
                       </ProjetoChip>
                     );
                   })
@@ -660,7 +639,6 @@ export function PainelLotes() {
                               onClick={() => toggleEditProjeto(p.id)}
                             >
                               {p.nome}
-                              {projetosFinalizados.has(p.id) && " (Finalizado)"}
                             </ProjetoChip>
                           ))}
                         </ProjetoChipsRow>

@@ -432,18 +432,6 @@ export const ProjetoChip = styled.button<{ $selecionado: boolean; $corRodada?: s
   }
 `;
 
-/** O "(Finalizado)" some dentro do texto do chip; como selo separado ele
- *  continua legível mesmo quando o chip está vermelho. */
-export const ChipMarca = styled.span<{ $selecionado: boolean }>`
-  font-size: 0.625rem;
-  font-weight: ${theme.fontWeight.medium};
-  padding: 0 0.25rem;
-  border-radius: ${theme.borderRadius.sm};
-  background: ${({ $selecionado }) =>
-    $selecionado ? "rgb(255 255 255 / 25%)" : theme.colors.muted};
-  color: ${({ $selecionado }) => ($selecionado ? theme.colors.primaryForeground : theme.colors.mutedForeground)};
-`;
-
 /** Busca + ações + contador, acima da lista. */
 export const SeletorBarra = styled.div`
   display: flex;
