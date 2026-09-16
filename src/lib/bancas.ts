@@ -166,6 +166,21 @@ export function getBancas(token: string) {
   return apiFetch<Banca[]>("/bancas", { token });
 }
 
+export interface CargaBancaDeUsuario {
+  usuario_id: number;
+  nome: string;
+  posicao: string;
+  quantidade_bancas: number;
+}
+
+/** Mesmo dado que o push automático usa pra rodízio (contagem de bancas por
+ *  pessoa), exposto pra diretoria/gerência conferirem quem está sobrecarregado
+ *  — `pode_ver_dashboard_bancas` no backend. Já vem ordenado, carga maior
+ *  primeiro. */
+export function getCargaBancas(token: string) {
+  return apiFetch<CargaBancaDeUsuario[]>("/bancas/carga-por-usuario", { token });
+}
+
 /**
  * Uma banca só, com os ids CRUS — o que o formulário de edição precisa.
  *

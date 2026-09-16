@@ -18,7 +18,7 @@ import { DescricaoQuote } from "@/styles/shared.styled";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { getEscopos, getFrentes } from "@/lib/bancas";
 import { getHistoricoBancas } from "@/lib/historico";
-import { getBancas, getBancasFrentes, getCandidaturas } from "@/lib/bancas";
+import { getBancas, getBancasFrentes, getCandidaturas, getCargaBancas, type CargaBancaDeUsuario } from "@/lib/bancas";
 import { DashboardBancas } from "./DashboardBancas";
 import { nomeEscopo, nomeUsuario } from "@/lib/nucleo";
 import { getSemestres } from "@/lib/semestres";
@@ -163,6 +163,7 @@ export function Avaliacoes() {
   const [bancas, setBancas] = useState<Banca[]>([]);
   const [candidaturas, setCandidaturas] = useState<Candidatura[]>([]);
   const [bancasFrentes, setBancasFrentes] = useState<BancaFrente[]>([]);
+  const [cargaBancas, setCargaBancas] = useState<CargaBancaDeUsuario[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
@@ -183,7 +184,7 @@ export function Avaliacoes() {
     setCarregando(true);
     setErro("");
     try {
-      const [historicoResp, formularioResp, avaliacoesResp, notasResp, usuariosResp, escoposResp, frentesResp, semestresResp, bancasResp, candidaturasResp, bancasFrentesResp] =
+      const [historicoResp, formularioResp, avaliacoesResp, notasResp, usuariosResp, escoposResp, frentesResp, semestresResp, bancasResp, candidaturasResp, bancasFrentesResp, cargaBancasResp] =
         await Promise.all([
           getHistoricoBancas(token),
           getFormularioAtivo(token).catch(() => null),
@@ -196,6 +197,7 @@ export function Avaliacoes() {
           getBancas(token),
           getCandidaturas(token),
           getBancasFrentes(token),
+          getCargaBancas(token),
         ]);
       setHistorico(historicoResp);
       setFormulario(formularioResp);
@@ -208,6 +210,7 @@ export function Avaliacoes() {
       setBancas(bancasResp);
       setCandidaturas(candidaturasResp);
       setBancasFrentes(bancasFrentesResp);
+      setCargaBancas(cargaBancasResp);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar avaliações");
     } finally {
@@ -319,6 +322,41 @@ export function Avaliacoes() {
         historico={historico}
         semestres={semestres}
       />
+
+      {/* Mesmo dado que o push automático usa pra rodízio — antes só existia
+          dentro do cálculo dele, sem tela nenhuma pra conferir quem está
+          sobrecarregado. Já vem ordenado do backend, carga maior primeiro. */}
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Carga de bancas por pessoa</PageCardTitle>
+        </PageCardHeader>
+        <PageCardContent>
+          {cargaBancas.length === 0 ? (
+            <EmptyText>Ninguém com banca registrada ainda.</EmptyText>
+          ) : (
+            <TableScrollWrap $scrollable={cargaBancas.length > LIST_MAX_VISIVEIS} $min="24rem">
+              <DataTable>
+                <TableHead>
+                  <TableRow>
+                    <TableHeadCell>Pessoa</TableHeadCell>
+                    <TableHeadCell>Cargo</TableHeadCell>
+                    <TableHeadCell>Bancas</TableHeadCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {cargaBancas.map((linha) => (
+                    <TableRow key={linha.usuario_id}>
+                      <NameCell>{linha.nome}</NameCell>
+                      <TableCell style={{ textTransform: "capitalize" }}>{linha.posicao}</TableCell>
+                      <TableCell>{linha.quantidade_bancas}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </DataTable>
+            </TableScrollWrap>
+          )}
+        </PageCardContent>
+      </PageCard>
 
       <PageCard>
         <PageCardHeader>
