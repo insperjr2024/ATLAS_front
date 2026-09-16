@@ -849,6 +849,7 @@ export function Bancas() {
               acao="nenhuma"
               usuarioId={usuario.id}
               gerenciar={podeAgendar}
+              onAlocarPessoas={setBancaAlocar}
               ehDiretorLista={ehDiretor}
               onRegistrarResultado={setBancaResultado}
           podeAprovarLista={podeAprovar}
