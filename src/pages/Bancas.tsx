@@ -1934,7 +1934,14 @@ function VerMaisModal({
   // O coordenador não é avaliador da própria banca ("ninguém avalia o
   // próprio grupo"), no lugar do formulário de notas, ele só registra este
   // relato livre, e só depois que a banca de fato aconteceu.
-  const ehCoordenador = usuarioId === banca.coordenador_id;
+  // ⚠ `coordenador_ids`, não `coordenador_id ===`: projeto pode ter mais de
+  // um coordenador (2026-08-20), e comparar só com o primeiro deixava o
+  // segundo sem o "registrar relato" mesmo tendo coordenado a banca (mesma
+  // correção do `souCoordenador` em `ProjetoBanca.tsx`). Sem o detalhe ainda
+  // carregado, cai no único id que a listagem já tinha.
+  const ehCoordenador = detalheDaBanca
+    ? detalheDaBanca.coordenador_ids.includes(usuarioId)
+    : usuarioId === banca.coordenador_id;
 
   return (
     <>
@@ -1986,11 +1993,23 @@ function VerMaisModal({
             </DetailRow>
             <DetailRow>
               <DetailTerm>Coordenador</DetailTerm>
-              <DetailValue>{nomeUsuario(contexto.usuarios, banca.coordenador_id)}</DetailValue>
+              {/* ⚠ `banca.coordenador_id` é só o PRIMEIRO coordenador (projeto
+                  pode ter mais de um, 2026-08-20). `detalheDaBanca.coordenador`
+                  já vem com todos os nomes juntos — mesma correção de
+                  `get_banca_detalhes.py` que a aba Banca do projeto usa.
+                  Enquanto o detalhe não chega, cai no nome único de sempre. */}
+              <DetailValue>
+                {detalheDaBanca?.coordenador ?? nomeUsuario(contexto.usuarios, banca.coordenador_id)}
+              </DetailValue>
             </DetailRow>
             <DetailRow>
               <DetailTerm>Membros</DetailTerm>
-              <DetailValue>{membrosDaBanca(banca.equipe_ids, banca.coordenador_id, contexto.usuarios).join(", ") || "—"}</DetailValue>
+              <DetailValue>
+                {(
+                  detalheDaBanca?.membros ??
+                  membrosDaBanca(banca.equipe_ids, banca.coordenador_id, contexto.usuarios)
+                ).join(", ") || "—"}
+              </DetailValue>
             </DetailRow>
           </DetailList>
 
