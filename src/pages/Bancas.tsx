@@ -2572,10 +2572,17 @@ function AvaliarModal({
               {modoMultiEscopo ? (
                 <FieldGroup>
                   <FieldLabel>Escopos avaliados</FieldLabel>
-                  <ModalSubtitulo>
-                    {escoposDaBanca.map((id) => nomeEscopo(escopos, id)).join(" · ")} — você
-                    responde os critérios {escoposDaBanca.length === 1 ? "dele" : "dos dois"} abaixo.
-                  </ModalSubtitulo>
+                  {/* Com 1 escopo só, o bloco de critérios logo abaixo já
+                      repete este nome no título — a frase toda virava
+                      redundância pura, dizendo a mesma coisa duas vezes
+                      seguidas. Com 2+, ela ainda serve pra listar os dois de
+                      uma vez, algo que os títulos individuais não fazem. */}
+                  {escoposDaBanca.length > 1 && (
+                    <ModalSubtitulo>
+                      {escoposDaBanca.map((id) => nomeEscopo(escopos, id)).join(" · ")} — você
+                      responde os critérios dos dois abaixo.
+                    </ModalSubtitulo>
+                  )}
                 </FieldGroup>
               ) : (
                 <>
