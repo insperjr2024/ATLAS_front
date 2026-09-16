@@ -28,6 +28,58 @@ function rotuloPosicao(posicoes: PosicaoPermissao[], posicao: string): string {
   return posicoes.find((p) => p.posicao === posicao)?.nome ?? ROTULO_POSICAO[posicao] ?? posicao;
 }
 
+/** O par de cargo que a pessoa tem agora — sempre uma `posicao` principal,
+ *  mais `bdr` (o `cargo_extra`) opcional em cima de "consultor". */
+interface EstadoCargo {
+  posicao: Posicao;
+  bdr: boolean;
+}
+
+/** ⭐ 2026-09-16, a pedido — a lista de cargos vira múltipla seleção de
+ *  verdade (não select + checkbox à parte), mas com UMA regra: o único par
+ *  que pode ficar marcado junto é "consultor" + "bdr" (ver `usuario_model.py`
+ *  no backend, `cargo_extra`). Clicar em qualquer outra posição troca a
+ *  seleção pra ela sozinha; clicar em "bdr" sem "consultor" marcado já traz
+ *  o consultor junto, porque BDR nunca existe sozinho. */
+function alternarCargo(atual: EstadoCargo, clicado: string): EstadoCargo {
+  if (clicado === "bdr") {
+    return atual.bdr ? { ...atual, bdr: false } : { posicao: "consultor", bdr: true };
+  }
+  return { posicao: clicado, bdr: clicado === "consultor" ? atual.bdr : false };
+}
+
+function cargoMarcado(atual: EstadoCargo, posicaoDaLinha: string): boolean {
+  return posicaoDaLinha === "bdr" ? atual.bdr : atual.posicao === posicaoDaLinha;
+}
+
+/** A lista de cargos como checkboxes — substitui o `<select>` único de
+ *  posição. Compartilhada entre cadastro e edição de membro para as duas
+ *  telas não divergirem na regra do par consultor+BDR. */
+function SeletorDeCargo({
+  posicoes,
+  estado,
+  onMudar,
+}: {
+  posicoes: PosicaoPermissao[];
+  estado: EstadoCargo;
+  onMudar: (novo: EstadoCargo) => void;
+}) {
+  return (
+    <CheckboxGrid>
+      {posicoes.map((p) => (
+        <CheckboxLabel key={p.posicao}>
+          <input
+            type="checkbox"
+            checked={cargoMarcado(estado, p.posicao)}
+            onChange={() => onMudar(alternarCargo(estado, p.posicao))}
+          />
+          {p.nome}
+        </CheckboxLabel>
+      ))}
+    </CheckboxGrid>
+  );
+}
+
 /** As colunas ordenáveis da lista de membros. Recebe as frentes porque
  *  "Frentes" é derivada de outra tabela, não um campo do usuário — e as
  *  posições pelo mesmo motivo: o rótulo de um cargo vem do catálogo. */
@@ -103,7 +155,6 @@ import {
   FormErrorText,
   EditSection,
   EditSectionTitle,
-  ToggleRow,
   FiltersRow,
   SearchField,
   HeaderActions,
@@ -857,6 +908,7 @@ function NovoMembroModal({
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [posicao, setPosicao] = useState<Posicao>("consultor");
+  const [bdr, setBdr] = useState(false);
   const [frenteIds, setFrenteIds] = useState<number[]>([]);
   const [semestreGraduacao, setSemestreGraduacao] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -871,12 +923,14 @@ function NovoMembroModal({
   // recusa a segunda, ver `create_usuario_frente.py`).
   const frenteObrigatoria = posicao === "gerente";
 
-  function trocarPosicao(nova: Posicao) {
-    setPosicao(nova);
+  function trocarCargo(novo: EstadoCargo) {
+    setBdr(novo.bdr);
     // Muda o que a frente SIGNIFICA (trava de acesso pro gerente vs. mero
     // metadado de alocação pros outros), a seleção anterior não deveria
-    // sobreviver a essa troca sem a pessoa confirmar de novo.
-    setFrenteIds([]);
+    // sobreviver a essa troca sem a pessoa confirmar de novo. BDR ligando ou
+    // desligando sozinho não mexe na posição principal, então não reseta.
+    if (novo.posicao !== posicao) setFrenteIds([]);
+    setPosicao(novo.posicao);
   }
 
   function toggleFrente(id: number) {
@@ -901,6 +955,7 @@ function NovoMembroModal({
           nome: nome.trim(),
           email_insper: email.trim(),
           posicao,
+          cargo_extra: bdr ? "bdr" : null,
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
@@ -979,19 +1034,15 @@ function NovoMembroModal({
               </FieldGroup>
 
               <FieldGroup>
-                <FieldLabel htmlFor="novo-membro-posicao">Posição na plataforma</FieldLabel>
-                <FieldSelect
-                  id="novo-membro-posicao"
-                  value={posicao}
-                  onChange={(e) => trocarPosicao(e.target.value as Posicao)}
-                  required
-                >
-                  {contexto.posicoes.map((p) => (
-                    <option key={p.posicao} value={p.posicao}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </FieldSelect>
+                {/* Multi-seleção de verdade (2026-09-16, a pedido): o único
+                    par que pode ficar marcado junto é consultor + BDR — ver
+                    `alternarCargo`. Substitui o antigo select único. */}
+                <FieldLabel>Posição na plataforma</FieldLabel>
+                <SeletorDeCargo
+                  posicoes={contexto.posicoes}
+                  estado={{ posicao, bdr }}
+                  onMudar={trocarCargo}
+                />
               </FieldGroup>
 
               <FieldGroup>
@@ -1087,9 +1138,12 @@ function MembroModal({
   // nada. E só UMA, ver o comentário equivalente em `NovoMembroModal`.
   const frenteObrigatoria = posicao === "gerente";
 
-  function trocarPosicao(nova: Posicao) {
-    setPosicao(nova);
-    setFrenteIds([]);
+  function trocarCargo(novo: EstadoCargo) {
+    setBdr(novo.bdr);
+    // BDR ligando/desligando sozinho não muda a posição principal, então não
+    // reseta frentes — só quando a posição de fato troca.
+    if (novo.posicao !== posicao) setFrenteIds([]);
+    setPosicao(novo.posicao);
   }
 
   function toggleFrente(id: number) {
@@ -1257,43 +1311,21 @@ function MembroModal({
                 <FieldGroup>
                   {/* "na troca de gestão, muitos consultores viram
                       coordenadores ou gerentes", a promoção da virada é
-                      feita por aqui. */}
-                  <FieldLabel htmlFor="posicao-membro">Posição na plataforma</FieldLabel>
-                  <FieldSelect
-                    id="posicao-membro"
-                    value={posicao}
-                    onChange={(e) => trocarPosicao(e.target.value as Posicao)}
-                    required
-                  >
-                    {contexto.posicoes.map((p) => (
-                      <option key={p.posicao} value={p.posicao}>
-                        {p.nome}
-                      </option>
-                    ))}
-                  </FieldSelect>
+                      feita por aqui. Multi-seleção de verdade (2026-09-16, a
+                      pedido): o único par que pode ficar marcado junto é
+                      consultor + BDR — ver `alternarCargo`. */}
+                  <FieldLabel>Posição na plataforma</FieldLabel>
+                  <SeletorDeCargo
+                    posicoes={contexto.posicoes}
+                    estado={{ posicao, bdr }}
+                    onMudar={trocarCargo}
+                  />
+                  <EmptyText style={{ fontSize: "0.7rem" }}>
+                    BDR é o único cargo que acumula com Consultor — marcar os dois deixa a
+                    pessoa com o acesso de consultor e, além disso, na lista "quem vendeu o
+                    projeto" do cadastro.
+                  </EmptyText>
                 </FieldGroup>
-
-                {/* BDR: o único cargo que a pessoa pode acumular com
-                    "consultor" — ver `usuario_model.py` no backend. Não muda
-                    acesso, só o habilita a aparecer como vendedor no cadastro
-                    de projeto. "Coordenador de vendas" não é mais uma marca
-                    aqui: é escolhido direto no seletor de Posição acima. */}
-                {posicao === "consultor" && (
-                  <FieldGroup>
-                    <ToggleRow>
-                      <input
-                        type="checkbox"
-                        checked={bdr}
-                        onChange={(e) => setBdr(e.target.checked)}
-                      />
-                      BDR (também vende projeto)
-                    </ToggleRow>
-                    <EmptyText style={{ fontSize: "0.7rem" }}>
-                      Mesmo acesso dos outros consultores. Passa a aparecer na lista
-                      "quem vendeu o projeto" do cadastro.
-                    </EmptyText>
-                  </FieldGroup>
-                )}
 
                 <FieldGroup>
                   <FieldLabel htmlFor="semestre-membro">Semestre da graduação</FieldLabel>

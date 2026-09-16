@@ -883,9 +883,10 @@ function ModalPosicaoPermissao({
 }: {
   posicao: PosicaoPermissao;
   onClose: () => void;
-  onSalvar: (dados: Partial<Permissoes>) => Promise<void>;
+  onSalvar: (dados: Partial<Permissoes> & { nome?: string }) => Promise<void>;
   onExcluir: () => void;
 }) {
+  const [nome, setNome] = useState(posicao.nome);
   const [permissoes, setPermissoes] = useState(permissoesDe(posicao));
   /** A caixa que está esperando confirmação para ser desmarcada. */
   const [campoPendente, setCampoPendente] = useState<CampoPermissao | null>(null);
@@ -934,7 +935,10 @@ function ModalPosicaoPermissao({
     setSalvando(true);
     setErro("");
     try {
-      await onSalvar(permissoes);
+      // Só manda `nome` quando de fato mudou — cargo padrão nem mostra o
+      // campo editável, então `nome` aqui nunca diverge do original pra ele.
+      const nomeMudou = !posicao.e_padrao && nome.trim() !== posicao.nome;
+      await onSalvar(nomeMudou ? { ...permissoes, nome: nome.trim() } : permissoes);
     } catch (err) {
       /* A recusa de última porta é a única que precisa MEXER na tela: o
          backend não gravou, mas o checkbox local já está desmarcado, e deixá-lo
@@ -965,6 +969,21 @@ function ModalPosicaoPermissao({
           </ModalHeader>
           <FormStack onSubmit={handleSubmit}>
             <ModalBody>
+              <FieldGroup>
+                <FieldLabel htmlFor="cargo-nome-edicao">Nome do cargo</FieldLabel>
+                <FieldInput
+                  id="cargo-nome-edicao"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  disabled={posicao.e_padrao}
+                  required
+                />
+                {posicao.e_padrao && (
+                  <EmptyText style={{ fontSize: "0.7rem" }}>
+                    Os 6 cargos padrão da plataforma não podem ser renomeados.
+                  </EmptyText>
+                )}
+              </FieldGroup>
               <FieldGroup>
                 <FieldLabel htmlFor="busca-permissao">Permissões na plataforma</FieldLabel>
                 <FieldInput

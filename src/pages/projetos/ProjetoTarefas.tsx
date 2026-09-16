@@ -124,6 +124,14 @@ export function ProjetoTarefas() {
 
   return (
     <PageStack>
+      {/* ⚠ Vem ANTES do quadro (2026-09-16, corrigido a pedido): o board
+          logo abaixo empilha os cards de tarefa sem rolagem própria — numa
+          coluna cheia ele passa de 2000px de altura. Este card, renderizado
+          DEPOIS do quadro, ficava fora da tela sem nenhum aviso: clicar em
+          "Colunas" parecia não fazer nada, quando na verdade abria a
+          quilômetros de distância do clique. */}
+      {configurando && <ColunasTarefaCard projetoId={projeto.id} onMudou={carregar} />}
+
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>
@@ -168,8 +176,6 @@ export function ProjetoTarefas() {
           )}
         </PageCardContent>
       </PageCard>
-
-      {configurando && <ColunasTarefaCard projetoId={projeto.id} onMudou={carregar} />}
 
       {aberta && (
         <TarefaDetalheModal

@@ -8,7 +8,7 @@ export function getPosicoesPermissoes(token: string) {
 
 export function updatePosicaoPermissao(
   posicao: Posicao,
-  dados: Partial<Permissoes>,
+  dados: Partial<Permissoes> & { nome?: string },
   token: string,
 ) {
   return apiFetch<PosicaoPermissao>(`/posicoes-permissoes/${posicao}`, {

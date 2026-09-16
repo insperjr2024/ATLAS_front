@@ -83,6 +83,8 @@ export interface RegistrarUsuarioPayload {
   nome: string;
   email_insper: string;
   posicao: Posicao;
+  /** Só "bdr", e só quando `posicao` é "consultor" — ver `UpdateUsuarioPayload`. */
+  cargo_extra?: string | null;
   semestre_graduacao?: number | null;
 }
 
