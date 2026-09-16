@@ -549,6 +549,11 @@ export const EscopoAvaliacaoBloco = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.md};
+  /* O \`gap\` do corpo do modal (\`lg\`) já separa este bloco do que vem antes
+   *  (o Bloco 1), mas o título em negrito com a barra pesa mais que o campo
+   *  simples ali em cima — sem este respiro a mais, os dois pareciam
+   *  colados mesmo com o gap padrão entre eles. */
+  margin-top: ${theme.spacing.sm};
 
   & + & {
     margin-top: ${theme.spacing.lg};
