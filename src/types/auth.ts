@@ -84,17 +84,30 @@ export interface Permissoes {
 }
 
 /**
- * Os 6 perfis, desde 2026-08-07 a única dimensão de permissão.
+ * O cargo de uma pessoa na plataforma.
  *
- * A diretoria virou TRÊS cargos em 2026-08-20. `diretor_projetos` herdou os
- * poderes do `diretor` de antes; `diretor` passou a significar
- * só-visualização. Espelha o enum `posicao_usuario` do backend.
+ * Até 2026-09-16 eram 6 valores fechados (união literal, `posicao_usuario`
+ * no backend), e o comentário aqui avisava: acrescentar um valor quebrava a
+ * compilação de todo `Record<Posicao, ...>` incompleto, de propósito.
  *
- * ⚠ Ao acrescentar um valor aqui, todo `Record<Posicao, ...>` incompleto
- * quebra a compilação — é de propósito, é o compilador apontando os lugares
- * que precisam decidir sobre o cargo novo.
+ * ⚠ Desde a migration `a9cae5c30c6d` o backend trocou aquele ENUM fechado por
+ * um catálogo (`posicao_permissao`, ver `PosicaoPermissao` abaixo): a
+ * diretoria cria e apaga cargo pela tela de Configurações
+ * (`POST`/`DELETE /posicoes-permissoes`). `Posicao` virou `string` para
+ * caber um cargo novo, e a rede de exhaustividade que os `Record<Posicao,...>`
+ * tinham (`DIRETORIA`, `MATRIZ` em `utils/permissoes.ts`, `ROTULO_POSICAO`
+ * abaixo) SAIU — é o preço aceito da decisão: um cargo criado pela tela
+ * nasce só com as caixas de `Permissoes` que a diretoria marcar, e não entra
+ * em nenhuma dessas listas de identidade (não é elegível a mentor, não
+ * enxerga o portfólio inteiro, etc.). Os 6 valores de sempre continuam
+ * literais dentro dessas listas — só o TIPO parou de fechar o conjunto.
  */
-export type Posicao =
+export type Posicao = string;
+
+/** Os 6 cargos que a plataforma sempre teve — os únicos que entram em
+ *  `DIRETORIA`, `MATRIZ` e companhia (`utils/permissoes.ts`). Um cargo novo
+ *  criado pela tela nunca está aqui. */
+export type PosicaoPadrao =
   | "diretor_projetos"
   | "diretor_pessoas"
   | "diretor"
@@ -102,9 +115,17 @@ export type Posicao =
   | "coordenador"
   | "consultor";
 
-/** Uma linha de `GET /posicoes-permissoes`: as 14 caixas de UMA posição. */
+/** Uma linha de `GET /posicoes-permissoes`: as caixas de UMA posição, mais o
+ *  rótulo mostrado na tela e se é um dos 6 cargos padrão (só esses podem ser
+ *  apagados — ver `e_padrao`). */
 export interface PosicaoPermissao extends Permissoes {
   posicao: Posicao;
+  /** O rótulo mostrado na tela — "Vendas", "Diretor(a) de Projetos" etc. */
+  nome: string;
+  /** Um dos 6 cargos que a plataforma sempre teve. A tela de Configurações
+   *  não deixa apagar nem editar o nome desses — ver o docstring de
+   *  `PosicaoPermissaoModel` no backend. */
+  e_padrao: boolean;
 }
 
 /** , sair por vontade própria (ex_membro) é diferente de ser desligado. */

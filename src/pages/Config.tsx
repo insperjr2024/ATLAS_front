@@ -2,7 +2,12 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { getPosicoesPermissoes, updatePosicaoPermissao } from "@/lib/posicoes-permissoes";
+import {
+  createPosicaoPermissao,
+  deletePosicaoPermissao,
+  getPosicoesPermissoes,
+  updatePosicaoPermissao,
+} from "@/lib/posicoes-permissoes";
 import { createEscopo, deleteEscopo, getEscopos, updateEscopo } from "@/lib/escopos";
 import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/frentes";
 import { normalizarTexto } from "@/lib/nucleo";
@@ -14,7 +19,6 @@ import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { AlertModal } from "@/components/AlertModal";
 import type { Escopo, Frente } from "@/types/banca";
 import type { Permissoes, PosicaoPermissao } from "@/types/auth";
-import { ROTULO_POSICAO } from "@/utils/permissoes";
 import {
   PageStack,
   PageCard,
@@ -232,15 +236,20 @@ export function Config() {
   const [modalFrente, setModalFrente] = useState<Frente | "novo" | null>(null);
   const [modalEscopo, setModalEscopo] = useState<Escopo | "novo" | null>(null);
   const [modalPosicao, setModalPosicao] = useState<PosicaoPermissao | null>(null);
+  const [modalNovoCargo, setModalNovoCargo] = useState(false);
 
   const [paraExcluir, setParaExcluir] = useState<
-    { tipo: "frente"; item: Frente } | { tipo: "escopo"; item: Escopo } | null
+    | { tipo: "frente"; item: Frente }
+    | { tipo: "escopo"; item: Escopo }
+    | { tipo: "cargo"; item: PosicaoPermissao }
+    | null
   >(null);
 
   async function confirmarExclusao() {
     if (!token || !paraExcluir) return;
     if (paraExcluir.tipo === "frente") await deleteFrente(paraExcluir.item.id, token);
-    else await deleteEscopo(paraExcluir.item.id, token);
+    else if (paraExcluir.tipo === "escopo") await deleteEscopo(paraExcluir.item.id, token);
+    else await deletePosicaoPermissao(paraExcluir.item.posicao, token);
     setParaExcluir(null);
     buscar();
   }
@@ -433,6 +442,12 @@ export function Config() {
           <PageCardHeader>
             <CardHeaderActions>
               <PageCardTitle>Permissões por posição</PageCardTitle>
+              {podeEditarPermissoes && (
+                <PageButtonSm type="button" onClick={() => setModalNovoCargo(true)}>
+                  <Plus size={14} />
+                  Criar cargo
+                </PageButtonSm>
+              )}
             </CardHeaderActions>
           </PageCardHeader>
           <PageCardContent>
@@ -454,7 +469,7 @@ export function Config() {
                 <TableBody>
                   {posicoes.map((posicao) => (
                     <TableRow key={posicao.posicao}>
-                      <NameCell>{ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</NameCell>
+                      <NameCell>{posicao.nome}</NameCell>
                       <TableCell>
                         {permissoesDaPosicao(posicao).length === 0 && "—"}
                         {permissoesDaPosicao(posicao).map((p) => (
@@ -515,13 +530,34 @@ export function Config() {
             setModalPosicao(null);
             buscar();
           }}
+          onExcluir={() => {
+            setModalPosicao(null);
+            setParaExcluir({ tipo: "cargo", item: modalPosicao });
+          }}
+        />
+      )}
+
+      {modalNovoCargo && (
+        <ModalNovoCargo
+          onClose={() => setModalNovoCargo(false)}
+          onSalvar={async (nome) => {
+            await createPosicaoPermissao(nome, token);
+            setModalNovoCargo(false);
+            buscar();
+          }}
         />
       )}
 
       {paraExcluir && (
         <ConfirmarModal
           titulo="Excluir"
-          mensagem={`Excluir ${paraExcluir.tipo === "frente" ? "a frente" : "o escopo"} "${paraExcluir.item.nome}"?`}
+          mensagem={
+            paraExcluir.tipo === "frente"
+              ? `Excluir a frente "${paraExcluir.item.nome}"?`
+              : paraExcluir.tipo === "escopo"
+                ? `Excluir o escopo "${paraExcluir.item.nome}"?`
+                : `Excluir o cargo "${paraExcluir.item.nome}"? Quem estiver nele precisa ser movido para outro cargo antes — a exclusão é recusada enquanto alguém ainda estiver aqui.`
+          }
           onCancelar={() => setParaExcluir(null)}
           onConfirmar={confirmarExclusao}
         />
@@ -747,6 +783,78 @@ function ModalFrente({
   );
 }
 
+function ModalNovoCargo({
+  onClose,
+  onSalvar,
+}: {
+  onClose: () => void;
+  onSalvar: (nome: string) => Promise<void>;
+}) {
+  const [nome, setNome] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nome.trim()) return;
+    setSalvando(true);
+    setErro("");
+    try {
+      await onSalvar(nome.trim());
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao criar o cargo");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog">
+        <ModalHeader>
+          <ModalTitle>Novo cargo</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <FormStack onSubmit={handleSubmit}>
+          <ModalBody>
+            <FieldGroup>
+              <FieldLabel htmlFor="cargo-nome">Nome</FieldLabel>
+              <FieldInput
+                id="cargo-nome"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Ex.: Vendas"
+                required
+                autoFocus
+              />
+              {/* Nasce sem nenhuma caixa marcada — quem criou define o acesso
+                  logo em seguida, em "Editar", igual qualquer outra posição.
+                  Não entra em nenhuma regra de identidade hardcoded (mentor,
+                  composição de banca, portfólio inteiro): só as caixas desta
+                  tela valem para um cargo novo. */}
+              <EmptyText style={{ fontSize: "0.7rem" }}>
+                O cargo nasce sem nenhuma permissão marcada — depois de criar, use
+                "Editar" na linha dele para escolher o que ele pode fazer.
+              </EmptyText>
+            </FieldGroup>
+            {erro && <FormErrorText>{erro}</FormErrorText>}
+          </ModalBody>
+          <ModalFooter>
+            <PageButton $variant="outline" type="button" onClick={onClose}>
+              Cancelar
+            </PageButton>
+            <PageButton type="submit" disabled={salvando}>
+              {salvando ? "Criando..." : "Criar"}
+            </PageButton>
+          </ModalFooter>
+        </FormStack>
+      </WideModalContent>
+    </ModalOverlay>
+  );
+}
+
 /** As caixas do formulário, na ordem em que aparecem, derivadas de
  *  `PERMISSOES` para uma permissão nova não nascer faltando no modal. */
 function permissoesDe(posicao: PosicaoPermissao): Record<CampoPermissao, boolean> {
@@ -759,10 +867,12 @@ function ModalPosicaoPermissao({
   posicao,
   onClose,
   onSalvar,
+  onExcluir,
 }: {
   posicao: PosicaoPermissao;
   onClose: () => void;
   onSalvar: (dados: Partial<Permissoes>) => Promise<void>;
+  onExcluir: () => void;
 }) {
   const [permissoes, setPermissoes] = useState(permissoesDe(posicao));
   /** A caixa que está esperando confirmação para ser desmarcada. */
@@ -836,7 +946,7 @@ function ModalPosicaoPermissao({
       <ModalOverlay onClick={onClose} role="presentation">
         <WideModalContent onClick={(e) => e.stopPropagation()} role="dialog">
           <ModalHeader>
-            <ModalTitle>Editar permissões, {ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</ModalTitle>
+            <ModalTitle>Editar permissões, {posicao.nome}</ModalTitle>
             <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
               <X size={18} />
             </ModalClose>
@@ -888,6 +998,21 @@ function ModalPosicaoPermissao({
               {erro && <FormErrorText>{erro}</FormErrorText>}
             </ModalBody>
             <ModalFooter>
+              {/* Só cargo criado pela tela pode sair — os 6 padrão sustentam
+                  regras de identidade hardcoded fora daqui (ver o docstring
+                  de `Posicao` em `types/auth.ts`), apagar um deles quebraria
+                  todas elas sem aviso. `marginRight: auto` separa esta ação
+                  destrutiva das duas de sempre sem precisar de outro layout. */}
+              {!posicao.e_padrao && (
+                <PageButton
+                  $variant="outline"
+                  type="button"
+                  style={{ marginRight: "auto" }}
+                  onClick={onExcluir}
+                >
+                  Excluir cargo
+                </PageButton>
+              )}
               <PageButton $variant="outline" type="button" onClick={onClose}>
                 Cancelar
               </PageButton>
@@ -905,7 +1030,7 @@ function ModalPosicaoPermissao({
           mensagem={
             <>
               Esta é a caixa que dá acesso a esta tela. Tirando-a de{" "}
-              <strong>{ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</strong>, ninguém
+              <strong>{posicao.nome}</strong>, ninguém
               dessa posição consegue mais abrir as permissões de ninguém, nem devolver esta
               caixa a si mesmo.
               <br />
@@ -936,7 +1061,7 @@ function ModalPosicaoPermissao({
             <>
               Nenhum outro cargo com gente ativa tem a permissão{" "}
               <strong>Editar as permissões das posições</strong>. Tirando-a de{" "}
-              <strong>{ROTULO_POSICAO[posicao.posicao] ?? posicao.posicao}</strong>, a
+              <strong>{posicao.nome}</strong>, a
               plataforma ficaria sem ninguém capaz de abrir esta tela, e não haveria como
               desfazer por aqui.
               <br />
