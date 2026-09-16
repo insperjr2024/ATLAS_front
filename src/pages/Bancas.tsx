@@ -2256,6 +2256,21 @@ function ConvidarTrocaModal({
 
 const OUTRO = "outro" as const;
 
+interface RascunhoAvaliacao {
+  nomeAvaliador: string;
+  tipoAvaliador: "consultor" | "lideranca";
+  projetoAvaliado: string;
+  escopoSelecionado: number | typeof OUTRO | "";
+  escopoOutro: string;
+  notas: Record<number, number | null>;
+  respostasTexto: Record<number, string>;
+  comentario: string;
+}
+
+function chaveRascunhoAvaliacao(bancaId: number, usuarioId: number) {
+  return `avaliacao-banca-rascunho-${bancaId}-${usuarioId}`;
+}
+
 function AvaliarModal({
   banca,
   formulario,
@@ -2274,18 +2289,41 @@ function AvaliarModal({
   const { usuario } = useAuth();
   const escoposOrdenados = escopos.slice().sort((a, b) => a.nome.localeCompare(b.nome));
 
+  // ⚠ Pausar e retomar (2026-09-16, a pedido): fechar este modal o
+  // desmontava, e reabrir criava uma instância nova, do zero — notas,
+  // texto e comentário já preenchidos iam embora mesmo sem ter sido
+  // enviado nada. Um único rascunho no localStorage, lido uma vez aqui e
+  // espelhado a cada mudança (efeito logo abaixo), é o que deixa fechar e
+  // reabrir sem perder o que já foi respondido. Mesma ideia do rascunho de
+  // `AvaliacaoDesempenho.tsx`.
+  const chaveRascunho = usuario ? chaveRascunhoAvaliacao(banca.id, usuario.id) : null;
+  const [rascunhoInicial] = useState<RascunhoAvaliacao | null>(() => {
+    if (!chaveRascunho) return null;
+    try {
+      const salvo = localStorage.getItem(chaveRascunho);
+      return salvo ? (JSON.parse(salvo) as RascunhoAvaliacao) : null;
+    } catch {
+      return null;
+    }
+  });
+
   // Bloco 1, a diretoria pede de novo mesmo o sistema já sabendo quem
   // está logado e qual o escopo cadastrado da banca: são só o ponto de
   // partida, o avaliador pode confirmar diferente.
-  const [nomeAvaliador, setNomeAvaliador] = useState(usuario?.nome ?? "");
+  const [nomeAvaliador, setNomeAvaliador] = useState(
+    rascunhoInicial?.nomeAvaliador ?? (usuario?.nome ?? ""),
+  );
   const [tipoAvaliador, setTipoAvaliador] = useState<"consultor" | "lideranca">(
-    usuario && usuario.posicao !== "consultor" ? "lideranca" : "consultor",
+    rascunhoInicial?.tipoAvaliador ??
+      (usuario && usuario.posicao !== "consultor" ? "lideranca" : "consultor"),
   );
-  const [projetoAvaliado, setProjetoAvaliado] = useState(banca.nome_projeto);
+  const [projetoAvaliado, setProjetoAvaliado] = useState(
+    rascunhoInicial?.projetoAvaliado ?? banca.nome_projeto,
+  );
   const [escopoSelecionado, setEscopoSelecionado] = useState<number | typeof OUTRO | "">(
-    banca.escopo_id ?? OUTRO,
+    rascunhoInicial?.escopoSelecionado ?? (banca.escopo_id ?? OUTRO),
   );
-  const [escopoOutro, setEscopoOutro] = useState("");
+  const [escopoOutro, setEscopoOutro] = useState(rascunhoInicial?.escopoOutro ?? "");
 
   // ⚠ O formulário vem como prop, carregado uma vez no load da página. Se a
   // diretoria editar o formulário enquanto a pessoa está com a tela aberta, a
@@ -2341,13 +2379,47 @@ function AvaliarModal({
     todasPerguntas.filter((p) => p.escopo_id === escopoId);
   const perguntasGerais = todasPerguntas.filter((p) => p.escopo_id == null);
 
-  const [notas, setNotas] = useState<Record<number, number | null>>(() =>
-    Object.fromEntries(perguntasNota.map((p) => [p.id, null])),
+  const [notas, setNotas] = useState<Record<number, number | null>>(() => ({
+    ...Object.fromEntries(perguntasNota.map((p) => [p.id, null])),
+    ...rascunhoInicial?.notas,
+  }));
+  const [respostasTexto, setRespostasTexto] = useState<Record<number, string>>(
+    rascunhoInicial?.respostasTexto ?? {},
   );
-  const [respostasTexto, setRespostasTexto] = useState<Record<number, string>>({});
-  const [comentario, setComentario] = useState("");
+  const [comentario, setComentario] = useState(rascunhoInicial?.comentario ?? "");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+
+  // Espelha o formulário inteiro pro localStorage a cada mudança — é o que
+  // sobrevive a fechar o modal (ou a aba) no meio do preenchimento.
+  useEffect(() => {
+    if (!chaveRascunho) return;
+    const rascunho: RascunhoAvaliacao = {
+      nomeAvaliador,
+      tipoAvaliador,
+      projetoAvaliado,
+      escopoSelecionado,
+      escopoOutro,
+      notas,
+      respostasTexto,
+      comentario,
+    };
+    try {
+      localStorage.setItem(chaveRascunho, JSON.stringify(rascunho));
+    } catch {
+      // Modo privado ou quota cheia: perde a persistência, não a tela.
+    }
+  }, [
+    chaveRascunho,
+    nomeAvaliador,
+    tipoAvaliador,
+    projetoAvaliado,
+    escopoSelecionado,
+    escopoOutro,
+    notas,
+    respostasTexto,
+    comentario,
+  ]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -2400,6 +2472,13 @@ function AvaliarModal({
         }
       }
       await submeterAvaliacao(avaliacao.id, comentario.trim() || null, token);
+      if (chaveRascunho) {
+        try {
+          localStorage.removeItem(chaveRascunho);
+        } catch {
+          // Sem localStorage: nada a limpar.
+        }
+      }
       onEnviada();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao enviar avaliação");
