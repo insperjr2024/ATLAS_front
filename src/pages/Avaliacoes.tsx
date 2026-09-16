@@ -270,7 +270,7 @@ export function Avaliacoes() {
       projeto: { valor: (b) => b.nome_projeto, inicial: "asc" },
       data: { valor: (b) => b.data_hora, inicial: "desc" },
       coordenador: { valor: (b) => nomeUsuario(usuarios, b.coordenador_id), inicial: "asc" },
-      escopo: { valor: (b) => nomeEscopo(escopos, b.escopo_id), inicial: "asc" },
+      escopo: { valor: (b) => b.escopos.join(", ") || nomeEscopo(escopos, b.escopo_id), inicial: "asc" },
       semestre: { valor: (b) => b.semestre_nome, inicial: "desc" },
       nota: { valor: (b) => b.nota_final, inicial: "desc" },
       resultado: {
@@ -451,7 +451,7 @@ export function Avaliacoes() {
                     </NameCell>
                     <TableCell>{paraDataUtc(banca.data_hora).toLocaleDateString("pt-BR")}</TableCell>
                     <TableCell>{nomeUsuario(usuarios, banca.coordenador_id)}</TableCell>
-                    <TableCell>{nomeEscopo(escopos, banca.escopo_id)}</TableCell>
+                    <TableCell>{banca.escopos.join(", ") || nomeEscopo(escopos, banca.escopo_id)}</TableCell>
                     <TableCell>{banca.semestre_nome ?? "—"}</TableCell>
                     <NotaCell>{formatNota(banca.nota_final)}</NotaCell>
                     <TableCell>

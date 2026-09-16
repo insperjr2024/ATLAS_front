@@ -452,6 +452,10 @@ export interface HistoricoBanca {
   id: number;
   nome_projeto: string;
   escopo_id: number;
+  /** Plural: uma banca pode cobrir mais de um escopo do projeto de uma
+   *  sentada — `escopo_id` acima é só o campo legado de UM. Já vem com os
+   *  nomes resolvidos pelo backend, igual `BancaDetalhes.escopos`. */
+  escopos: string[];
   coordenador_id: number;
   data_hora: string;
   nota_final: number | null;
