@@ -100,12 +100,17 @@ export const CardGrid = styled.div`
   gap: ${theme.spacing.md};
 `;
 
-export const ProjetoCard = styled(NavLink)`
+export const ProjetoCard = styled(NavLink)<{ $comSelecao?: boolean }>`
   position: relative;
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.md};
+  /* No modo seleção, o checkbox absoluto do canto superior esquerdo
+     (SelecaoCheckboxWrap, abaixo) sobrepunha o título — nada empurrava
+     o conteúdo, já que posição absoluta sai do fluxo. Reserva espaço à
+     esquerda só enquanto o modo estiver ativo. */
+  padding-left: ${({ $comSelecao }) => ($comSelecao ? "1.85rem" : theme.spacing.md)};
   border-radius: ${theme.borderRadius.xl};
   border: 1px solid ${theme.colors.border};
   background: ${theme.colors.card};

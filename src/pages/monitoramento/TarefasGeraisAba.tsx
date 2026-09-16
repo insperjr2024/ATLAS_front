@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getTarefasGerais, type TarefasGerais } from "@/lib/monitoramento";
@@ -24,6 +24,7 @@ import {
   BarraFiltros,
   BotaoLimparBusca,
   CabecalhoQuadro,
+  FiltroToggle,
   LinhaColunas,
   SwimGrid,
   SwimHeaderCell,
@@ -35,7 +36,6 @@ import {
 import { useFiltroFrente } from "./FiltroFrente";
 import { EstadoVazio } from "@/components/EstadoVazio";
 import { useFiltroEscopo } from "./FiltroEscopo";
-import { useFiltroStatus } from "./FiltroStatus";
 
 /**
  * Board macro: todas as tarefas de todos os projetos visíveis, num
@@ -67,12 +67,29 @@ export function TarefasGeraisAba() {
   const { token } = useAuth();
   const { frenteId, seletor: seletorFrente } = useFiltroFrente();
   const { escopoId, seletor: seletorEscopo } = useFiltroEscopo(frenteId);
-  const { status, seletor: seletorStatus } = useFiltroStatus();
+  // ⚠ Filtro de STATUS DA TAREFA, não do projeto (2026-09-16, a pedido): os
+  // outros dois filtros da barra (frente/escopo) recortam quais PROJETOS
+  // entram, o que faz sentido em qualquer aba de Monitoramento — mas
+  // `useFiltroStatus` é a etapa do CICLO DO PROJETO (Vendido…Finalizado), e
+  // aqui o quadro é de TAREFAS. Reaproveitar aquele filtro respondia "qual
+  // projeto" quando a pergunta da tela é "qual tarefa" — vencida ou não é a
+  // única coisa que a aba de Tarefas tem que seja realmente da tarefa, não
+  // do projeto dela. Client-side: `tarefa.vencida` já vem pronto do backend,
+  // não precisa de ida e volta pra filtrar isso.
+  const [soAtrasadas, setSoAtrasadas] = useState(false);
   const seletor = (
     <BarraFiltros>
       {seletorFrente}
       {seletorEscopo}
-      {seletorStatus}
+      <FiltroToggle
+        type="button"
+        $ativo={soAtrasadas}
+        aria-pressed={soAtrasadas}
+        onClick={() => setSoAtrasadas((atual) => !atual)}
+      >
+        <AlertTriangle size={14} aria-hidden="true" />
+        Só atrasadas
+      </FiltroToggle>
     </BarraFiltros>
   );
   const [busca, setBusca] = useState("");
@@ -93,7 +110,7 @@ export function TarefasGeraisAba() {
     setCarregando(true);
     setErro("");
     try {
-      setDados(await getTarefasGerais(token, frenteId, escopoId, status));
+      setDados(await getTarefasGerais(token, frenteId, escopoId));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar as tarefas");
     } finally {
@@ -104,7 +121,14 @@ export function TarefasGeraisAba() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, frenteId, escopoId, status]);
+  }, [token, frenteId, escopoId]);
+
+  // Só atrasadas é client-side (ver comentário acima de soAtrasadas) — filtra
+  // em cima do que já chegou, sem outra ida ao backend.
+  const tarefasFiltradas = useMemo(
+    () => (dados ? (soAtrasadas ? dados.tarefas.filter((t) => t.vencida) : dados.tarefas) : []),
+    [dados, soAtrasadas],
+  );
 
   if (erro) {
     return (
@@ -129,11 +153,11 @@ export function TarefasGeraisAba() {
     );
   }
 
-  if (dados.tarefas.length === 0 || dados.colunas.length === 0) {
+  if (tarefasFiltradas.length === 0 || dados.colunas.length === 0) {
     // Com filtro ligado a tarefa provavelmente existe e está escondida; sem
     // nenhum, ou ninguém criou tarefa ainda, ou não é da sua visão. As duas
     // levam a ações opostas.
-    const filtrando = frenteId !== null || escopoId !== null || status.length > 0;
+    const filtrando = frenteId !== null || escopoId !== null || soAtrasadas;
     return (
       <ConteudoCarregando $carregando={carregando}>
       <PageStack>
@@ -159,7 +183,7 @@ export function TarefasGeraisAba() {
   // Uma linha por projeto, só quem tem alguma tarefa na visão atual entra.
   const projetos = Array.from(
     new Map(
-      dados.tarefas.map((t) => [t.projeto_id, { nome: t.projeto_nome, cliente: t.cliente }]),
+      tarefasFiltradas.map((t) => [t.projeto_id, { nome: t.projeto_nome, cliente: t.cliente }]),
     ),
     ([id, info]) => ({ id, ...info }),
   )
@@ -260,7 +284,7 @@ export function TarefasGeraisAba() {
 
               {dados.colunas.map((coluna) => {
                 const tons = tonsDaColuna(coluna.cor);
-                const tarefas = dados.tarefas.filter(
+                const tarefas = tarefasFiltradas.filter(
                   (t) => t.projeto_id === projeto.id && t.grupo_coluna === coluna.chave,
                 );
                 return (

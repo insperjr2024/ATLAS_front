@@ -297,6 +297,38 @@ export const FiltroMulti = styled(MultiSelect)`
   }
 `;
 
+/**
+ * Um filtro liga/desliga na `BarraFiltros`, ao lado dos selects.
+ *
+ * Diferente de `FiltroSelect`/`FiltroMulti` (que escolhem um valor entre
+ * vários), este é booleano — "Só atrasadas" da aba Tarefas, por exemplo, que
+ * é uma pergunta de tarefa (vencida ou não), não de status do PROJETO como os
+ * outros filtros desta barra (2026-09-16, a pedido).
+ */
+export const FiltroToggle = styled.button<{ $ativo?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  height: 2.25rem;
+  padding: 0 0.85rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${({ $ativo }) => ($ativo ? theme.colors.ring : theme.colors.border)};
+  background: ${({ $ativo }) =>
+    $ativo
+      ? `color-mix(in srgb, ${theme.colors.destructive} 14%, white)`
+      : theme.colors.card};
+  color: ${({ $ativo }) => ($ativo ? theme.colors.destructive : theme.colors.foreground)};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: ${theme.colors.ring};
+  }
+`;
+
 /** O rodapé de navegação entre páginas de um card. Discreto e centrado: é
  *  rodapé, não ação principal da tela. */
 export const BarraPaginacao = styled.div`

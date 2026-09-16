@@ -572,6 +572,7 @@ export function ProjetosList() {
               <ProjetoCard
                 key={projeto.id}
                 to={`/projetos/${projeto.id}`}
+                $comSelecao={selecaoAtiva}
                 // Este card só renderiza fora do Kanban (que já é o padrão
                 // pra onde "Voltar" cai sem state nenhum), aqui é sempre
                 // preciso dizer explicitamente o modo de onde se veio.
