@@ -1345,8 +1345,11 @@ function SecaoBancas({
 
             {/* Escalar à mão: a diretoria não precisa esperar a
                 janela de uma semana do push para preencher uma
-                banca vazia. */}
-            {ehDiretorLista && onAlocarPessoas && !banca.realizado_em && (
+                banca vazia. Sem checar `realizado_em` (2026-09-15, a
+                pedido): diretoria também corrige a ficha de uma banca
+                que já aconteceu — o backend já aceita isso pra quem
+                gere membros. */}
+            {ehDiretorLista && onAlocarPessoas && (
               <PageButtonSm
                 $variant="outline"
                 type="button"
