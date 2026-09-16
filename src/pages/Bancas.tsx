@@ -671,9 +671,10 @@ export function Bancas() {
           {ehDiretor && (
             <PageSubheading>
               Bancas dos próximos 7 dias que ainda estiverem sem gente são preenchidas
-              automaticamente, a cada poucos minutos, por rodízio e priorizando a mesma
-              frente. Use “Distribuir agora” para rodar a distribuição na hora, ou “Alocar
-              pessoas” num card para escalar alguém específico.
+              automaticamente, por rodízio e priorizando a mesma frente — uma vez só por
+              banca, não repetidamente. Cobrir um buraco que sobrar depois é manual: use
+              “Distribuir agora” para rodar a distribuição na hora, ou “Alocar pessoas” num
+              card para escalar alguém específico.
             </PageSubheading>
           )}
           {resultadoPush && <PageSubheading>{resultadoPush}</PageSubheading>}
