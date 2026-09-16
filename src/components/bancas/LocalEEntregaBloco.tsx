@@ -165,7 +165,10 @@ export function LocalEEntregaBloco({
         ) : (
           <Valor>
             {banca.local?.trim() || "não informado"}
-            {podeMexer && localTrancado && " · trancado (falta < 1h)"}
+            {/* Só vale avisar que trancou quando ainda faltava preencher —
+                quem já informou o local não precisa saber que perdeu a
+                chance de editar algo que já está lá. */}
+            {podeMexer && localTrancado && !banca.local?.trim() && " · trancado (falta < 1h)"}
           </Valor>
         )}
       </Linha>
