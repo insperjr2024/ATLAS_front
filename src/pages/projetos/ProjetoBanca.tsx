@@ -615,6 +615,10 @@ function EditarBancaModal({
  * Quem aprova a banca é diretoria + gerente da frente (ver `AprovacaoBloco`
  * abaixo), não o avaliador — esta avaliação é só pedagógica.
  */
+function chaveRascunhoComentario(bancaId: number, usuarioId: number) {
+  return `banca-comentario-rascunho-${bancaId}-${usuarioId}`;
+}
+
 function MeuVotoBloco({
   banca,
   eu,
@@ -626,9 +630,36 @@ function MeuVotoBloco({
   token: string | null;
   onEnviou: () => Promise<void>;
 }) {
-  const [comentario, setComentario] = useState("");
+  const { usuario } = useAuth();
+  // ⚠ Puro estado de componente sumia ao sair da tela e voltar: navegar pra
+  // outra página desmonta este bloco, e o que a pessoa tinha escrito ia
+  // embora sem nunca ter sido enviado. Espelha no localStorage, mesma ideia
+  // do rascunho de `AvaliacaoDesempenho.tsx`.
+  const chaveRascunho = usuario ? chaveRascunhoComentario(banca.id, usuario.id) : null;
+  const [comentario, setComentario] = useState(() => {
+    if (!chaveRascunho) return "";
+    try {
+      return localStorage.getItem(chaveRascunho) ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
+
+  function atualizarComentario(valor: string) {
+    setComentario(valor);
+    if (!chaveRascunho) return;
+    try {
+      if (valor) {
+        localStorage.setItem(chaveRascunho, valor);
+      } else {
+        localStorage.removeItem(chaveRascunho);
+      }
+    } catch {
+      // Modo privado ou quota cheia: perde a persistência, não a tela.
+    }
+  }
 
   if (eu.ja_enviou) {
     return (
@@ -673,6 +704,13 @@ function MeuVotoBloco({
         avaliacaoId = criada.id;
       }
       await submeterAvaliacao(avaliacaoId, comentario.trim() || null, token);
+      if (chaveRascunho) {
+        try {
+          localStorage.removeItem(chaveRascunho);
+        } catch {
+          // Sem localStorage: nada a limpar.
+        }
+      }
       await onEnviou();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Não foi possível enviar a avaliação");
@@ -690,7 +728,7 @@ function MeuVotoBloco({
           id={`comentario-${banca.id}`}
           rows={3}
           value={comentario}
-          onChange={(e) => setComentario(e.target.value)}
+          onChange={(e) => atualizarComentario(e.target.value)}
           placeholder="O que o grupo precisa saber sobre esta avaliação"
         />
       </FieldGroup>
