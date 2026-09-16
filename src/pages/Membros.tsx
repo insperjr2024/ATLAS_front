@@ -14,24 +14,34 @@ import {
   type SenhaProvisoriaEmitida,
 } from "@/lib/usuarios";
 import { getUsuariosFrentes, syncFrentesUsuario } from "@/lib/usuarios-frentes";
+import { getPosicoesPermissoes } from "@/lib/posicoes-permissoes";
 import { getLotes, getPendencias } from "@/lib/desempenho-lotes";
 import { getFaixasDisponiveis, getGradeDeUsuario, getGradesPreenchidas } from "@/lib/grade-horaria";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { GradeEditor } from "@/components/grade/GradeEditor";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 
+/** O rótulo de uma posição: o `nome` do catálogo (`GET /posicoes-permissoes`,
+ *  cobre cargo padrão E cargo criado pela diretoria) e só cai para
+ *  `ROTULO_POSICAO`/a chave crua se a lista ainda não carregou. */
+function rotuloPosicao(posicoes: PosicaoPermissao[], posicao: string): string {
+  return posicoes.find((p) => p.posicao === posicao)?.nome ?? ROTULO_POSICAO[posicao] ?? posicao;
+}
+
 /** As colunas ordenáveis da lista de membros. Recebe as frentes porque
- *  "Frentes" é derivada de outra tabela, não um campo do usuário. */
+ *  "Frentes" é derivada de outra tabela, não um campo do usuário — e as
+ *  posições pelo mesmo motivo: o rótulo de um cargo vem do catálogo. */
 function colunasDeMembro(
   usuariosFrentes: UsuarioFrente[],
   frentes: Frente[],
+  posicoes: PosicaoPermissao[],
 ): Colunas<UsuarioResumo> {
   return {
     nome: { valor: (m) => m.nome, inicial: "asc" },
     email: { valor: (m) => m.email_insper, inicial: "asc" },
     // Pelo RÓTULO, que é o que está escrito na célula: ordenar pela chave
     // ("consultor", "diretor_projetos") daria uma ordem que a tela não mostra.
-    posicao: { valor: (m) => ROTULO_POSICAO[m.posicao] ?? m.posicao, inicial: "asc" },
+    posicao: { valor: (m) => rotuloPosicao(posicoes, m.posicao), inicial: "asc" },
     frentes: {
       valor: (m) => frentesDoUsuario(usuariosFrentes, frentes, m.id).join(", "),
       inicial: "asc",
@@ -42,7 +52,7 @@ function colunasDeMembro(
 }
 import type { Frente } from "@/types/banca";
 import type { FaixaDisponivel, FaixaGrade } from "@/types/grade";
-import type { Posicao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
+import type { Posicao, PosicaoPermissao, StatusUsuario, UsuarioFrente, UsuarioResumo } from "@/types/auth";
 import { pode, ROTULO_POSICAO, ROTULO_STATUS_USUARIO } from "@/utils/permissoes";
 import {
   PageStack,
@@ -110,6 +120,7 @@ const SEMESTRES_GRADUACAO = [1, 2, 3, 4, 5, 6, 7, 8];
 interface Contexto {
   frentes: Frente[];
   usuariosFrentes: UsuarioFrente[];
+  posicoes: PosicaoPermissao[];
 }
 
 /** Quantas avaliações da rodada aberta cada pessoa já respondeu, como
@@ -174,16 +185,17 @@ export function Membros() {
     if (mostrarCarregando) setCarregando(true);
     setErro("");
     try {
-      const [usuariosResp, frentes, usuariosFrentes, grades] = await Promise.all([
+      const [usuariosResp, frentes, usuariosFrentes, posicoes, grades] = await Promise.all([
         getUsuarios(token),
         getFrentes(token),
         getUsuariosFrentes(token),
+        getPosicoesPermissoes(token),
         // Sem gestão ativa a rota devolve 422. O pino é acessório, então uma
         // falha aqui só o deixa de fora, não derruba a lista.
         getGradesPreenchidas(token).catch(() => ({ semestre_id: 0, usuario_ids: [] as number[] })),
       ]);
       setMembros(usuariosResp.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")));
-      setContexto({ frentes, usuariosFrentes });
+      setContexto({ frentes, usuariosFrentes, posicoes });
       setGradesPreenchidas(new Set(grades.usuario_ids));
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar membros");
@@ -217,6 +229,7 @@ export function Membros() {
   const termo = normalizarTexto(termoPesquisa.trim());
   const usuariosFrentes = contexto?.usuariosFrentes ?? [];
   const frentesCadastradas = contexto?.frentes ?? [];
+  const posicoesCadastradas = contexto?.posicoes ?? [];
   const membrosFiltrados = membros.filter((membro) => {
     if (filtroPosicao && membro.posicao !== filtroPosicao) return false;
     if (filtroFrente) {
@@ -228,7 +241,7 @@ export function Membros() {
     if (!termo) return true;
     const frentes = frentesDoUsuario(usuariosFrentes, frentesCadastradas, membro.id).join(" ");
     const texto = normalizarTexto(
-      `${membro.nome} ${membro.email_insper ?? ""} ${ROTULO_POSICAO[membro.posicao] ?? ""} ${frentes}`,
+      `${membro.nome} ${membro.email_insper ?? ""} ${rotuloPosicao(posicoesCadastradas, membro.posicao)} ${frentes}`,
     );
     return texto.includes(termo);
   });
@@ -238,7 +251,7 @@ export function Membros() {
      "a certa" para uma lista de 80 pessoas — quem procura ordena pelo que
      está procurando. */
   const colunas = useMemo(
-    () => colunasDeMembro(usuariosFrentes, frentesCadastradas),
+    () => colunasDeMembro(usuariosFrentes, frentesCadastradas, posicoesCadastradas),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [contexto],
   );
@@ -303,9 +316,9 @@ export function Membros() {
               style={{ width: "10rem" }}
             >
               <option value="">Todas as posições</option>
-              {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((posicao) => (
-                <option key={posicao} value={posicao}>
-                  {ROTULO_POSICAO[posicao]}
+              {posicoesCadastradas.map((p) => (
+                <option key={p.posicao} value={p.posicao}>
+                  {p.nome}
                 </option>
               ))}
             </FieldSelect>
@@ -371,7 +384,7 @@ export function Membros() {
                     <TableRow key={membro.id}>
                       <NameCell>{membro.nome}</NameCell>
                       <TableCell>{membro.email_insper}</TableCell>
-                      <TableCell>{ROTULO_POSICAO[membro.posicao] ?? membro.posicao}</TableCell>
+                      <TableCell>{rotuloPosicao(posicoesCadastradas, membro.posicao)}</TableCell>
                       <TableCell>{frentes.length > 0 ? frentes.join(", ") : "—"}</TableCell>
                       <TableCell>{membro.semestre_graduacao ? `${membro.semestre_graduacao}º` : "—"}</TableCell>
                       <TableCell>
@@ -973,9 +986,9 @@ function NovoMembroModal({
                   onChange={(e) => trocarPosicao(e.target.value as Posicao)}
                   required
                 >
-                  {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((p) => (
-                    <option key={p} value={p}>
-                      {ROTULO_POSICAO[p]}
+                  {contexto.posicoes.map((p) => (
+                    <option key={p.posicao} value={p.posicao}>
+                      {p.nome}
                     </option>
                   ))}
                 </FieldSelect>
@@ -1158,7 +1171,7 @@ function MembroModal({
                 <DetailRow>
                   <DetailTerm>Posição</DetailTerm>
                   <DetailValue>
-                    {ROTULO_POSICAO[membro.posicao] ?? membro.posicao}
+                    {rotuloPosicao(contexto.posicoes, membro.posicao)}
                     {membro.posicao === "coordenador" && membro.coordenador_vendas && " · vendas"}
                     {membro.posicao === "consultor" && membro.bdr && " · BDR"}
                   </DetailValue>
@@ -1256,9 +1269,9 @@ function MembroModal({
                     onChange={(e) => trocarPosicao(e.target.value as Posicao)}
                     required
                   >
-                    {(Object.keys(ROTULO_POSICAO) as Posicao[]).map((p) => (
-                      <option key={p} value={p}>
-                        {ROTULO_POSICAO[p]}
+                    {contexto.posicoes.map((p) => (
+                      <option key={p.posicao} value={p.posicao}>
+                        {p.nome}
                       </option>
                     ))}
                   </FieldSelect>
