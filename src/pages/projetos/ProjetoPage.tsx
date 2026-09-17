@@ -538,6 +538,11 @@ export function ProjetoPage() {
             <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
             <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
             <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
+            {/* ⭐ 2026-09-17 — § integração com a Contratos, ainda Fase 1
+                (só em contratos-implementacao, nunca em produção). Por
+                último: é a aba mais nova, e ninguém depende da posição dela
+                ainda. */}
+            <TabLink to={`/projetos/${projeto.id}/contratos`}>Contratos</TabLink>
           </>
         )}
       </TabBar>
