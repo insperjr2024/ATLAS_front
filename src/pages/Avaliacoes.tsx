@@ -18,7 +18,14 @@ import { DescricaoQuote } from "@/styles/shared.styled";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import { getEscopos, getFrentes } from "@/lib/bancas";
 import { getHistoricoBancas } from "@/lib/historico";
-import { getBancas, getBancasFrentes, getCandidaturas, getCargaBancas, type CargaBancaDeUsuario } from "@/lib/bancas";
+import {
+  getBancas,
+  getBancasFrentes,
+  getCandidaturas,
+  getCargaBancas,
+  type CargaBancaDeUsuario,
+  type FiltroCargaBancas,
+} from "@/lib/bancas";
 import { DashboardBancas } from "./DashboardBancas";
 import { nomeEscopo, nomeUsuario } from "@/lib/nucleo";
 import { getSemestres } from "@/lib/semestres";
@@ -174,6 +181,8 @@ export function Avaliacoes() {
   const [candidaturas, setCandidaturas] = useState<Candidatura[]>([]);
   const [bancasFrentes, setBancasFrentes] = useState<BancaFrente[]>([]);
   const [cargaBancas, setCargaBancas] = useState<CargaBancaDeUsuario[]>([]);
+  const [filtroCargaBancas, setFiltroCargaBancas] = useState<FiltroCargaBancas>("todas");
+  const [erroCargaBancas, setErroCargaBancas] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
@@ -194,7 +203,7 @@ export function Avaliacoes() {
     setCarregando(true);
     setErro("");
     try {
-      const [historicoResp, formularioResp, avaliacoesResp, notasResp, usuariosResp, escoposResp, frentesResp, semestresResp, bancasResp, candidaturasResp, bancasFrentesResp, cargaBancasResp] =
+      const [historicoResp, formularioResp, avaliacoesResp, notasResp, usuariosResp, escoposResp, frentesResp, semestresResp, bancasResp, candidaturasResp, bancasFrentesResp] =
         await Promise.all([
           getHistoricoBancas(token),
           getFormularioAtivo(token).catch(() => null),
@@ -207,7 +216,6 @@ export function Avaliacoes() {
           getBancas(token),
           getCandidaturas(token),
           getBancasFrentes(token),
-          getCargaBancas(token),
         ]);
       setHistorico(historicoResp);
       setFormulario(formularioResp);
@@ -220,7 +228,6 @@ export function Avaliacoes() {
       setBancas(bancasResp);
       setCandidaturas(candidaturasResp);
       setBancasFrentes(bancasFrentesResp);
-      setCargaBancas(cargaBancasResp);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao carregar avaliações");
     } finally {
@@ -232,6 +239,17 @@ export function Avaliacoes() {
     buscar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  /* Separado do `buscar()` de cima: trocar o recorte (já atendidas/futuras/
+     todas) não deveria recarregar histórico, avaliações e o resto da tela —
+     só esta tabela. */
+  useEffect(() => {
+    if (!token) return;
+    setErroCargaBancas("");
+    getCargaBancas(token, filtroCargaBancas)
+      .then(setCargaBancas)
+      .catch((err) => setErroCargaBancas(err instanceof Error ? err.message : "Erro ao carregar a carga de bancas"));
+  }, [token, filtroCargaBancas]);
 
   /* As listas dos filtros, na ordem em que se PROCURA nelas. O estado cru
      guarda a ordem que o backend devolveu, que não é ordem nenhuma, e o
@@ -341,8 +359,21 @@ export function Avaliacoes() {
           <PageCardTitle>Carga de bancas por pessoa</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
-          {cargaBancas.length === 0 ? (
-            <EmptyText>Ninguém com banca registrada ainda.</EmptyText>
+          <FiltersRow>
+            <FieldSelect
+              value={filtroCargaBancas}
+              onChange={(e) => setFiltroCargaBancas(e.target.value as FiltroCargaBancas)}
+              style={{ width: "12rem" }}
+            >
+              <option value="todas">Já atendidas + futuras</option>
+              <option value="realizadas">Só já atendidas</option>
+              <option value="futuras">Só futuras</option>
+            </FieldSelect>
+          </FiltersRow>
+          {erroCargaBancas ? (
+            <ErrorText>{erroCargaBancas}</ErrorText>
+          ) : cargaBancas.length === 0 ? (
+            <EmptyText>Ninguém com banca neste recorte ainda.</EmptyText>
           ) : (
             <TableScrollWrap $scrollable={cargaBancas.length > LIST_MAX_VISIVEIS} $min="24rem">
               <DataTable>

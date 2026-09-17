@@ -173,12 +173,16 @@ export interface CargaBancaDeUsuario {
   quantidade_bancas: number;
 }
 
+export type FiltroCargaBancas = "todas" | "realizadas" | "futuras";
+
 /** Mesmo dado que o push automático usa pra rodízio (contagem de bancas por
  *  pessoa), exposto pra diretoria/gerência conferirem quem está sobrecarregado
  *  — `pode_ver_dashboard_bancas` no backend. Já vem ordenado, carga maior
- *  primeiro. */
-export function getCargaBancas(token: string) {
-  return apiFetch<CargaBancaDeUsuario[]>("/bancas/carga-por-usuario", { token });
+ *  primeiro. `filtro` recorta por já realizadas / só futuras / as duas
+ *  somadas (default) — o push sempre usa "todas", mas quem está CONFERINDO
+ *  carga às vezes quer separar quem já avaliou de quem ainda vai. */
+export function getCargaBancas(token: string, filtro: FiltroCargaBancas = "todas") {
+  return apiFetch<CargaBancaDeUsuario[]>(`/bancas/carga-por-usuario?filtro=${filtro}`, { token });
 }
 
 /**
