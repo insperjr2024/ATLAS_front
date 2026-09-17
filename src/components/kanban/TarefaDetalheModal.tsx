@@ -75,10 +75,26 @@ interface Props {
  * criou, e a conversa. Editar e excluir é da coordenação do projeto e da
  * diretoria (o backend revalida); comentar é de quem enxerga o projeto.
  */
+function chaveRascunhoComentarioTarefa(tarefaId: number, usuarioId: number) {
+  return `tarefa-comentario-rascunho-${tarefaId}-${usuarioId}`;
+}
+
 export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiveis, consultorIds, coordenadorIds, irmasDoGrupo = [], onClose, onMudou }: Props) {
   const { usuario, token } = useAuth();
   const [comentarios, setComentarios] = useState<ComentarioTarefa[]>([]);
-  const [novo, setNovo] = useState("");
+  // ⚠ Mesmo furo já corrigido na avaliação de banca e na avaliação de
+  // desempenho (2026-09-17): sem espelhar no localStorage, sair da tela (ou
+  // fechar o modal sem querer) no meio de um comentário comprido apagava
+  // tudo, sem nunca ter sido enviado.
+  const chaveRascunho = usuario ? chaveRascunhoComentarioTarefa(tarefa.id, usuario.id) : null;
+  const [novo, setNovo] = useState(() => {
+    if (!chaveRascunho) return "";
+    try {
+      return localStorage.getItem(chaveRascunho) ?? "";
+    } catch {
+      return "";
+    }
+  });
   const [editando, setEditando] = useState(false);
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -124,6 +140,19 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tarefa.id, token]);
 
+  useEffect(() => {
+    if (!chaveRascunho) return;
+    try {
+      if (novo) {
+        localStorage.setItem(chaveRascunho, novo);
+      } else {
+        localStorage.removeItem(chaveRascunho);
+      }
+    } catch {
+      // Modo privado ou quota cheia: perde a persistência, não a tela.
+    }
+  }, [chaveRascunho, novo]);
+
   async function comentar(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !novo.trim()) return;
@@ -132,6 +161,13 @@ export function TarefaDetalheModal({ tarefa, colunas, usuarios, usuariosAtribuiv
     try {
       await createComentario(tarefa.id, novo.trim(), token);
       setNovo("");
+      if (chaveRascunho) {
+        try {
+          localStorage.removeItem(chaveRascunho);
+        } catch {
+          // Sem localStorage: nada a limpar.
+        }
+      }
       await carregarComentarios();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao comentar");
