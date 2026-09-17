@@ -108,7 +108,11 @@ type Passo = "carregando" | "escolha" | "fila" | "avaliando" | "concluido";
 
 interface Rascunho {
   notas: Record<number, DesempenhoNotaInput>;
-  notaGeral: number;
+  // ⚠ Nullable (2026-09-17): o rascunho agora é espelhado a cada tecla, não
+  // só ao clicar "Continuar" — nesse meio-tempo a pessoa pode ainda não ter
+  // escolhido a nota geral. `handleEnviarTodas` só processa quem já
+  // completou (ver o guard lá).
+  notaGeral: number | null;
   comentarios: string;
 }
 
@@ -182,6 +186,22 @@ export function AvaliacaoDesempenho() {
       // Modo privado ou quota cheia: perde a persistência, não a tela.
     }
   }, [rascunhos, usuario, rascunhosCarregados]);
+
+  // ⚠ Sem isto, o rascunho de QUEM ESTÁ SENDO AVALIADO AGORA só entrava no
+  // mapa (e por tabela, no localStorage) em `handleSubmit`, ao clicar
+  // "Continuar" — 2026-09-17, o mesmo furo já corrigido no formulário de
+  // avaliação de banca. Sair da tela (trocar de aba, fechar o navegador) no
+  // meio de UMA pessoa, antes de clicar em continuar, apagava exatamente o
+  // que tinha acabado de ser digitado nela — o resto da fila, já submetida
+  // ou nunca aberta, continuava seguro. Espelha a cada tecla, igual ao
+  // efeito acima.
+  useEffect(() => {
+    if (!pessoaAtual || !rascunhosCarregados) return;
+    setRascunhos((atual) => ({
+      ...atual,
+      [chave(pessoaAtual)]: { notas: { ...notas }, notaGeral, comentarios },
+    }));
+  }, [pessoaAtual, notas, notaGeral, comentarios, rascunhosCarregados]);
 
   const nomesProjeto = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
 
@@ -360,7 +380,12 @@ export function AvaliacaoDesempenho() {
 
       for (const item of filaOriginalDoTipo) {
         const rascunho = rascunhos[chave(item)];
-        if (!rascunho) continue;
+        // O rascunho agora nasce incompleto (espelhado a cada tecla, antes
+        // de "Continuar"), então `notaGeral` pode ainda estar nulo aqui —
+        // só devia acontecer se a fila mudou por fora entre abrir e clicar
+        // "Enviar tudo" (já coberto pelo `fecharamAgora` acima), mas o guard
+        // evita mandar `nota_geral: null` pro backend em vez de estourar.
+        if (!rascunho || rascunho.notaGeral == null) continue;
         await submitAvaliacao(
           {
             lote_id: item.lote_id,
