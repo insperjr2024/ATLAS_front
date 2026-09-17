@@ -12,6 +12,7 @@ import {
 import type { DocumentoContratual, TipoDocumentoContratual } from "@/types/contratos";
 import { ROTULO_STATUS_DOCUMENTO, ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
 import { useProjeto } from "./ProjetoPage";
+import { DadosDocumentoForm } from "./DadosDocumentoForm";
 import {
   PageStack,
   PageCard,
@@ -29,7 +30,6 @@ import { ModalOverlay } from "@/styles/ModalOverlay";
 import { ModalContent, ModalHeader, ModalTitle, ModalClose, ModalBody, ModalFooter } from "@/styles/modal.styled";
 import {
   AcoesLinha,
-  DadosTextarea,
   DocumentoLinha,
   DocumentoLista,
   DocumentoMeta,
@@ -47,12 +47,10 @@ function tomDoStatus(status: DocumentoContratual["status"]): "default" | "succes
 }
 
 /**
- * ⭐ 2026-09-17 — primeira versão da aba Contratos (§ integração com a
- * antiga plataforma Contratos, ainda Fase 1). `dados` não tem form
- * campo-a-campo ainda — o shape muda por tipo (ver `render_template.py` no
- * backend) — então esta tela edita como JSON cru por enquanto. Suficiente
- * pra exercitar o ciclo completo (abrir → preencher → confirmar → gerar) de
- * ponta a ponta; um formulário de verdade por tipo é o próximo passo.
+ * ⭐ 2026-09-17 — aba Contratos (§ integração com a antiga plataforma
+ * Contratos, ainda Fase 1). `dados` é editado campo a campo por
+ * `DadosDocumentoForm.tsx` — o shape muda por tipo (ver `render_template.py`
+ * no backend), por isso o formulário troca de seções por `atual.tipo`.
  */
 export function ProjetoContratos() {
   const { projeto } = useProjeto();
@@ -200,27 +198,19 @@ function DocumentoModal({
   onMudou: () => Promise<void>;
 }) {
   const [atual, setAtual] = useState(documento);
-  const [dadosTexto, setDadosTexto] = useState(() => JSON.stringify(documento.dados ?? {}, null, 2));
-  const [erroDados, setErroDados] = useState("");
+  const [dados, setDados] = useState<Record<string, unknown>>(() => documento.dados ?? {});
   const [salvando, setSalvando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState("");
 
   async function handleSalvar() {
-    let dados: Record<string, unknown>;
-    try {
-      dados = JSON.parse(dadosTexto);
-    } catch {
-      setErroDados("JSON inválido — confira vírgulas e aspas.");
-      return;
-    }
-    setErroDados("");
     setSalvando(true);
     setErro("");
     try {
       const atualizado = await atualizarDadosDocumento(atual.id, dados, token);
       setAtual(atualizado);
+      setDados(atualizado.dados ?? {});
       await onMudou();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao salvar dados");
@@ -262,7 +252,7 @@ function DocumentoModal({
 
   return (
     <ModalOverlay onClick={onClose} role="presentation">
-      <ModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="documento-titulo">
+      <ModalContent $expandido onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="documento-titulo">
         <ModalHeader>
           <ModalTitle id="documento-titulo">{ROTULO_TIPO_DOCUMENTO[atual.tipo]}</ModalTitle>
           <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
@@ -277,11 +267,7 @@ function DocumentoModal({
 
           {erro && <ErrorText>{erro}</ErrorText>}
 
-          <p style={{ fontSize: "0.8rem", color: "inherit", opacity: 0.7 }}>
-            Dados do formulário (JSON) — ainda sem campo-a-campo, edite direto aqui.
-          </p>
-          <DadosTextarea value={dadosTexto} onChange={(e) => setDadosTexto(e.target.value)} spellCheck={false} />
-          {erroDados && <ErrorText>{erroDados}</ErrorText>}
+          <DadosDocumentoForm tipo={atual.tipo} dados={dados} onChange={setDados} />
 
           {!!atual.ultima_versao && (
             <div style={{ marginTop: "1rem" }}>
