@@ -652,7 +652,9 @@ function VerAvaliacoesModal({
                         {nomeUsuario(usuarios, av.avaliador_id)}{" "}
                         {av.submetida_em && (
                           <PessoaContexto>
-                            ({new Date(av.submetida_em).toLocaleDateString("pt-BR")})
+                            {/* `submetida_em` é UTC cru do backend — ver o
+                                comentário em Desempenho.tsx. */}
+                            ({paraDataUtc(av.submetida_em).toLocaleDateString("pt-BR")})
                           </PessoaContexto>
                         )}
                       </span>

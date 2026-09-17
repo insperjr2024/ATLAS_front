@@ -302,7 +302,13 @@ function VerMinhaAvaliacaoModal({
             {avaliacao.submetida_em && (
               <DetailRow>
                 <DetailTerm>Enviado em</DetailTerm>
-                <DetailValue>{new Date(avaliacao.submetida_em).toLocaleString("pt-BR")}</DetailValue>
+                {/* ⚠ `submetida_em` é gravado com `datetime.now()` no
+                    backend, que no servidor devolve UTC — cru, `new Date`
+                    lia a string sem fuso como se já fosse local e mostrava
+                    o horário de Greenwich como se fosse daqui. `paraDataUtc`
+                    (mesma conversão de `banca.data_hora` acima) força a
+                    leitura como UTC antes de formatar. */}
+                <DetailValue>{paraDataUtc(avaliacao.submetida_em).toLocaleString("pt-BR")}</DetailValue>
               </DetailRow>
             )}
           </DetailList>
