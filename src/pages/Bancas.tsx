@@ -1391,7 +1391,16 @@ function SecaoBancas({
                   <PageBadge $tone="success">{banca.vagas - banca.alocados} vaga(s)</PageBadge>
                 ))}
               {acao === "nenhuma" &&
-                (alocacaoCompleta && banca.status === "aberta" ? (
+                (onSolicitarEntrada ? (
+                  // ⚠ 2026-09-18, corrigido: esta seção é SEMPRE "sem vaga
+                  // pra você" (é a bucketização de fora que garante isso,
+                  // via `vaga_disponivel_para_mim`) — mostrar o status cru
+                  // da banca aqui ("Aberta para inscrições") contradizia o
+                  // próprio card quando ela não estava no teto cheio, só
+                  // com a última vaga reservada pra outra frente. A mesma
+                  // frase da mensagem do modal de "Solicitar entrada".
+                  <PageBadge $tone="danger">Sem vaga para você</PageBadge>
+                ) : alocacaoCompleta && banca.status === "aberta" ? (
                   <PageBadge $tone="default">Lotada</PageBadge>
                 ) : (
                   <PageBadge $tone={tomDoStatusBanca(banca.status)}>
@@ -2403,8 +2412,13 @@ function SolicitarEntradaBancaModal({
         </ModalHeader>
         <ModalBody>
           <p style={{ marginTop: 0 }}>
-            Esta banca já tem {banca.alocados}/{banca.vagas} avaliadores. O pedido vai para a
-            diretoria decidir — se aprovado, você entra acima do máximo normal.
+            {/* ⚠ 2026-09-18, corrigido: liderar com "X/Y avaliadores" ficava
+                incoerente quando a banca não estava no teto (ex: 7/8) e a
+                vaga que falta é reservada pra outra frente — não é "falta
+                gente", é "falta gente da sua frente". A mesma frase do
+                badge em "Com alocação máxima". */}
+            Não há vaga disponível para você nesta banca ({banca.alocados}/{banca.vagas} avaliadores).
+            O pedido vai para a diretoria decidir — se aprovado, você entra acima do máximo normal.
           </p>
           <FieldGroup>
             <FieldLabel htmlFor="justificativa-entrada">Por que você quer entrar nesta banca?</FieldLabel>
