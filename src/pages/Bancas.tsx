@@ -503,14 +503,27 @@ export function Bancas() {
   const jaAlocado = bancas
     .filter((b) => aceitaInscricao(b.status) && candidaturaDe(b.id))
     .sort(porDataMaisProxima);
+  // ⚠ 2026-09-18: "lotada" não é mais só `alocados >= vagas` — o backend
+  // (`vaga_disponivel_para_mim`) já considera a reserva das últimas vagas
+  // pro piso por frente. A MESMA banca cai em seções diferentes pra pessoas
+  // diferentes: falta 1 de Tech, então ela é "lotada" pra quem é de
+  // Business e "disponível" pra quem é de Tech.
   const lotadas = bancas
     .filter(
-      (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados >= b.vagas && !ehDoProprioGrupo(b),
+      (b) =>
+        aceitaInscricao(b.status) &&
+        !candidaturaDe(b.id) &&
+        !b.vaga_disponivel_para_mim &&
+        !ehDoProprioGrupo(b),
     )
     .sort(porDataMaisProxima);
   const disponiveisParaAlocacao = bancas
     .filter(
-      (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados < b.vagas && !ehDoProprioGrupo(b),
+      (b) =>
+        aceitaInscricao(b.status) &&
+        !candidaturaDe(b.id) &&
+        b.vaga_disponivel_para_mim &&
+        !ehDoProprioGrupo(b),
     )
     .sort(porDataMaisProxima);
 
@@ -1232,7 +1245,12 @@ function SecaoBancas({
     const hora = dataHora
       ? dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
       : "";
-    const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
+    // ⚠ 2026-09-18: não é mais só o teto — `vaga_disponivel_para_mim` já
+    // considera a reserva das últimas vagas pro piso por frente. A seção
+    // "Disponíveis" só lista banca com vaga PRA ESTA PESSOA, então `lotada`
+    // aqui deveria vir sempre `false` por construção; a fórmula fica pela
+    // mesma pessoa, não pela bucketização de fora.
+    const lotada = acao === "alocar" && !banca.vaga_disponivel_para_mim;
     // Independe da `acao`: a seção "Com alocação máxima" mostra o selo de
     // ESTADO (`acao === "nenhuma"`), e "Aberta para inscrições" numa banca
     // cheia se contradiz. Aqui a inscrição está fechada de fato.
