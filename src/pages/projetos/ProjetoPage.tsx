@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import {
   Archive,
@@ -733,6 +733,7 @@ function MenuAcoesProjeto({
 }) {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!aberto) return;
@@ -748,6 +749,32 @@ function MenuAcoesProjeto({
       document.removeEventListener("mousedown", aoClicarFora);
       document.removeEventListener("keydown", aoTeclar);
     };
+  }, [aberto]);
+
+  // ⚠ 2026-09-18, a pedido — o "..." é o ÚLTIMO item de `IdentidadeLinha`
+  // (nome + tags + menu, `flex-wrap`), então no celular ele às vezes cai
+  // sozinho bem perto da margem ESQUERDA da tela (as tags ocuparam a linha
+  // de cima). `AcoesMenu` abre ancorado por `right: 0` — cresce pra
+  // ESQUERDA a partir do botão — e sem espaço à esquerda ele estourava a
+  // viewport; como `index.css` trava `overflow-x: clip` de propósito (nada
+  // pode vazar a ponto de precisar de zoom out), o menu ficava com as
+  // opções literalmente fora da tela, sem como rolar até elas. Aqui só
+  // mede depois de aberto e, se estourou, troca a ancoragem de `right`
+  // para um `left` fixo que mantém tudo dentro da viewport.
+  useLayoutEffect(() => {
+    if (!aberto) return;
+    const menu = menuRef.current;
+    const wrap = ref.current;
+    if (!menu || !wrap) return;
+    menu.style.left = "";
+    menu.style.right = "0";
+    const margem = 8;
+    const rect = menu.getBoundingClientRect();
+    if (rect.left < margem) {
+      const wrapRect = wrap.getBoundingClientRect();
+      menu.style.left = `${margem - wrapRect.left}px`;
+      menu.style.right = "auto";
+    }
   }, [aberto]);
 
   // Apagar só existe para projeto arquivado — arquivar é o passo anterior
@@ -768,7 +795,7 @@ function MenuAcoesProjeto({
       </AcoesBotao>
 
       {aberto && (
-        <AcoesMenu role="menu">
+        <AcoesMenu ref={menuRef} role="menu">
           {podeEditar && (
             <AcoesItem
               type="button"
