@@ -28,12 +28,13 @@ import {
   registrarDescricaoCoordenador,
   resumoDoQueFalta,
   ROTULO_STATUS_BANCA,
+  getMinhasEntradaBancaPendentes,
   solicitarEntradaBanca,
   totalFaltando,
   tomDoStatusBanca,
 } from "@/lib/bancas";
 import { codigoDoErro, CODIGO_BANCA_LOTADA } from "@/lib/api";
-import type { BancaEsperandoAprovacao } from "@/lib/bancas";
+import type { BancaEsperandoAprovacao, MinhaEntradaBancaPendente } from "@/lib/bancas";
 import { getUsuarios } from "@/lib/usuarios";
 import {
   createAvaliacao,
@@ -204,6 +205,9 @@ interface Contexto {
   equipesProjeto: EquipeProjeto[];
   candidaturas: Candidatura[];
   solicitacoesTroca: SolicitacaoTroca[];
+  /** ⭐ 2026-09-18: meus próprios pedidos de entrada em banca ainda
+   *  pendentes — troca "Solicitar entrada" por "Aguardando aprovação". */
+  minhasEntradasPendentes: MinhaEntradaBancaPendente[];
   /** banca_id → prazo de avaliação, separado de `Banca` porque
    *  `paraAvaliar` funde `BancaParaAvaliar` com a `Banca` cheia e descarta os
    *  campos extras (ver `recarregar`). */
@@ -320,7 +324,7 @@ export function Bancas() {
     setCarregando(true);
     setErro("");
     try {
-      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca, esperandoAprovacaoResp] =
+      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca, esperandoAprovacaoResp, minhasEntradasPendentes] =
         await Promise.all([
           getBancas(token),
           getCandidaturas(token),
@@ -337,6 +341,7 @@ export function Bancas() {
           // Só quem decide (diretoria ou gerente) tem acesso à rota —
           // pedir para os outros só devolveria 403 à toa.
           podeAprovar ? getBancasEsperandoAprovacao(token) : Promise.resolve([]),
+          getMinhasEntradaBancaPendentes(token),
         ]);
       setBancas(bancasResp);
       setCandidaturas(candidaturasResp);
@@ -377,6 +382,7 @@ export function Bancas() {
         equipesProjeto,
         candidaturas: candidaturasResp,
         solicitacoesTroca,
+        minhasEntradasPendentes,
         prazosAvaliacao: Object.fromEntries(
           avaliarResp.map((item) => [
             item.banca_id,
@@ -1231,6 +1237,12 @@ function SecaoBancas({
     // ESTADO (`acao === "nenhuma"`), e "Aberta para inscrições" numa banca
     // cheia se contradiz. Aqui a inscrição está fechada de fato.
     const alocacaoCompleta = banca.alocados >= banca.vagas;
+    // ⭐ 2026-09-18, a pedido: quem já pediu não vê o botão de pedir de
+    // novo — a tela mostra que o pedido está esperando decisão, em vez de
+    // deixar parecer que nada foi enviado.
+    const minhaEntradaPendente = contexto.minhasEntradasPendentes.some(
+      (p) => p.banca_id === banca.id,
+    );
     const podeGerenciar =
       gerenciar &&
       usuarioId != null &&
@@ -1525,15 +1537,23 @@ function SecaoBancas({
               </PageButtonSm>
             </MotivoDesabilitado>
           )}
-          {onSolicitarEntrada && (
-            <PageButtonSm
-              type="button"
-              $variant="outline"
-              onClick={pararPropagacao(() => onSolicitarEntrada(banca))}
-            >
-              Solicitar entrada
-            </PageButtonSm>
-          )}
+          {onSolicitarEntrada &&
+            (minhaEntradaPendente ? (
+              <PageBadge
+                $tone="warning"
+                title="Você já pediu para entrar nesta banca — a diretoria ainda não decidiu."
+              >
+                Aguardando aprovação
+              </PageBadge>
+            ) : (
+              <PageButtonSm
+                type="button"
+                $variant="outline"
+                onClick={pararPropagacao(() => onSolicitarEntrada(banca))}
+              >
+                Solicitar entrada
+              </PageButtonSm>
+            ))}
         </BancaCardFooter>
       </BancaCard>
     );
@@ -1563,6 +1583,15 @@ function SecaoBancas({
         <PageBadge $tone="muted">{visiveis.length}</PageBadge>
       </PageCardHeader>
       <PageCardContent>
+        {/* ⭐ 2026-09-18, a pedido: sem isto, quem cai aqui via a banca
+            lotada e parava — nada dizia que dava pra pedir entrada mesmo
+            assim. O aviso é do CARD (aparece uma vez), não de cada linha,
+            porque é uma explicação da seção, não de uma banca específica. */}
+        {onSolicitarEntrada && bancas.length > 0 && (
+          <EmptyText style={{ marginBottom: "0.75rem" }}>
+            Mesmo lotada, dá pra pedir entrada — a diretoria decide.
+          </EmptyText>
+        )}
         {bancas.length === 0 && <EmptyText>Nenhuma banca aqui.</EmptyText>}
         {bancas.length > 0 && visiveis.length === 0 && (
           <EmptyText>Nenhuma banca desta frente.</EmptyText>

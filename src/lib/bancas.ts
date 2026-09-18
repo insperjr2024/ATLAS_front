@@ -850,6 +850,18 @@ export function getEntradaBancaPendentes(token: string) {
   return apiFetch<EntradaBancaPendente[]>("/bancas/entrada/pendentes", { token });
 }
 
+/** O que EU pedi e ainda espera decisão (2026-09-18) — troca "Solicitar
+ *  entrada" por "Aguardando aprovação" nas bancas já pedidas. */
+export interface MinhaEntradaBancaPendente {
+  id: number;
+  banca_id: number;
+  criado_em: string;
+}
+
+export function getMinhasEntradaBancaPendentes(token: string) {
+  return apiFetch<MinhaEntradaBancaPendente[]>("/bancas/entrada/minhas", { token });
+}
+
 /** A decisão da diretoria — aprovar cria a candidatura, acima do teto normal. */
 export function decidirEntradaBanca(
   pedidoId: number,
