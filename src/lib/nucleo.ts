@@ -56,9 +56,19 @@ export function frentesDoUsuario(usuariosFrentes: UsuarioFrente[], frentes: Fren
 }
 
 export function frentesDaBanca(bancasFrentes: BancaFrente[], frentes: Frente[], bancaId: number): string[] {
-  return bancasFrentes
-    .filter((bf) => bf.banca_id === bancaId)
-    .map((bf) => frentes.find((f) => f.id === bf.frente_id)?.nome ?? "—");
+  // ⚠ Dedup por frente_id (2026-09-17): `banca_frente` não tem unique
+  // constraint em (banca_id, frente_id) — uma linha duplicada aí mostrava a
+  // mesma frente duas vezes na lista ("Direito, Business, Business"). Esta
+  // função lê o registro cru de `/bancas-frentes` (para a tela de
+  // administração ver cada linha), então o dedup é aqui, não na origem.
+  const idsVistos = new Set<number>();
+  const nomes: string[] = [];
+  for (const bf of bancasFrentes) {
+    if (bf.banca_id !== bancaId || idsVistos.has(bf.frente_id)) continue;
+    idsVistos.add(bf.frente_id);
+    nomes.push(frentes.find((f) => f.id === bf.frente_id)?.nome ?? "—");
+  }
+  return nomes;
 }
 
 /**
