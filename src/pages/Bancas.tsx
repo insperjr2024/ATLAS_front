@@ -2555,6 +2555,19 @@ function AvaliarModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form) return;
+    // ⚠ 2026-09-18, corrigido: `faltando` checa só as perguntas que ENTRARAM
+    // no envio (`perguntasNota`, filtradas por escopo) — com a lista vazia
+    // (ex.: `escopoSelecionado` de um rascunho antigo não casando com
+    // nenhum critério do escopo certo), `.some(...)` dá `false` e a
+    // validação passava em branco. Foi assim que a avaliação refeita da
+    // Marcella Canozo na banca do ATLAS I foi enviada só com o comentário,
+    // sem nota nenhuma. Bloqueia aqui, antes de checar nota por nota.
+    if (perguntasNota.length === 0) {
+      setErro(
+        "Nenhum critério encontrado para o escopo selecionado — confira o escopo antes de enviar.",
+      );
+      return;
+    }
     const faltando = perguntasNota.some((p) => notas[p.id] == null);
     if (faltando) {
       setErro("Selecione uma nota de 1 a 5 para todos os critérios.");
