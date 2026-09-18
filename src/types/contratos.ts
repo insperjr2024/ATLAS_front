@@ -66,13 +66,14 @@ export interface SolicitacaoAlteracao {
   criado_em: string;
 }
 
-/** O que a tela pública de aprovação (`/aprovacao/:token`, sem login) recebe. */
+/** O que a tela pública de aprovação (`/aprovacao/:token`, sem login) recebe.
+ *  O PDF em si vem de `urlArquivoAprovacao(token)` — o conteúdo mora no
+ *  banco, não um caminho (ver docstring do model no backend). */
 export interface AprovacaoPublica {
   usado: boolean;
   nome_projeto: string;
   tipo_documento: TipoDocumentoContratual;
   status: StatusDocumentoContratual;
-  pdf_path: string;
 }
 
 export interface ParagrafoEditavel {
@@ -89,8 +90,8 @@ export interface ItemRepositorioContratual {
   tipo_rotulo: string;
   gestao_id: number | null;
   gestao_nome: string | null;
-  docx_path: string | null;
-  pdf_path: string | null;
+  /** O conteúdo mora no banco — baixa por `item.id` no endpoint dedicado. */
+  tem_arquivo: boolean;
   arquivado_em: string | null;
 }
 

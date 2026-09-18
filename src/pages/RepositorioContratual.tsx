@@ -99,24 +99,28 @@ export function RepositorioContratual() {
                       {item.gestao_nome && ` · ${item.gestao_nome}`}
                     </DocumentoMeta>
                   </div>
-                  <AcoesLinha>
-                    <PageButtonSm
-                      type="button"
-                      $variant="outline"
-                      disabled={baixando === `${item.id}-pdf`}
-                      onClick={() => handleBaixar(item, "pdf")}
-                    >
-                      {baixando === `${item.id}-pdf` ? "Baixando..." : "PDF"}
-                    </PageButtonSm>
-                    <PageButtonSm
-                      type="button"
-                      $variant="outline"
-                      disabled={baixando === `${item.id}-docx`}
-                      onClick={() => handleBaixar(item, "docx")}
-                    >
-                      {baixando === `${item.id}-docx` ? "Baixando..." : ".docx"}
-                    </PageButtonSm>
-                  </AcoesLinha>
+                  {item.tem_arquivo ? (
+                    <AcoesLinha>
+                      <PageButtonSm
+                        type="button"
+                        $variant="outline"
+                        disabled={baixando === `${item.id}-pdf`}
+                        onClick={() => handleBaixar(item, "pdf")}
+                      >
+                        {baixando === `${item.id}-pdf` ? "Baixando..." : "PDF"}
+                      </PageButtonSm>
+                      <PageButtonSm
+                        type="button"
+                        $variant="outline"
+                        disabled={baixando === `${item.id}-docx`}
+                        onClick={() => handleBaixar(item, "docx")}
+                      >
+                        {baixando === `${item.id}-docx` ? "Baixando..." : ".docx"}
+                      </PageButtonSm>
+                    </AcoesLinha>
+                  ) : (
+                    <EmptyText>sem arquivo</EmptyText>
+                  )}
                 </DocumentoLinha>
               ))}
             </DocumentoLista>
