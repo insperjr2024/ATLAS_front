@@ -154,3 +154,10 @@ export const CODIGO_CHOQUE_DE_HORARIO = "choque_de_horario";
  *  local — o backend não gravou, e deixar a caixa desmarcada na tela
  *  mostraria um estado que não existe no servidor. */
 export const CODIGO_ULTIMO_ADMINISTRADOR = "ultimo_administrador_de_permissoes";
+
+/** Autoinscrição recusada por falta de vaga (banca no teto, ou a última vaga
+ *  reservada pro piso por frente que a pessoa não cobre) — 2026-09-18.
+ *
+ *  Reage em `Bancas.tsx`: em vez de só mostrar a recusa, oferece "Solicitar
+ *  entrada", que manda o pedido pra fila da diretoria. */
+export const CODIGO_BANCA_LOTADA = "banca_lotada";

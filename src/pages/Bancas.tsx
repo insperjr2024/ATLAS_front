@@ -28,9 +28,11 @@ import {
   registrarDescricaoCoordenador,
   resumoDoQueFalta,
   ROTULO_STATUS_BANCA,
+  solicitarEntradaBanca,
   totalFaltando,
   tomDoStatusBanca,
 } from "@/lib/bancas";
+import { codigoDoErro, CODIGO_BANCA_LOTADA } from "@/lib/api";
 import type { BancaEsperandoAprovacao } from "@/lib/bancas";
 import { getUsuarios } from "@/lib/usuarios";
 import {
@@ -269,6 +271,7 @@ export function Bancas() {
   const [avisoErro, setAvisoErro] = useState("");
   const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
   const [bancaConvidar, setBancaConvidar] = useState<Banca | null>(null);
+  const [bancaSolicitarEntrada, setBancaSolicitarEntrada] = useState<Banca | null>(null);
   const [distribuindo, setDistribuindo] = useState(false);
   /** O que a distribuição fez — dito em números, não em "pronto!". */
   const [resultadoPush, setResultadoPush] = useState("");
@@ -550,8 +553,37 @@ export function Bancas() {
       await alocar(bancaId, token);
       recarregar();
     } catch (err) {
+      // ⚠ 2026-09-18, a pedido: a recusa por falta de vaga (teto cheio, ou a
+      // última reservada pro piso por frente) não é mais um beco sem saída —
+      // em vez do aviso de erro sozinho, abre "Solicitar entrada", que manda
+      // o pedido pra diretoria decidir.
+      if (codigoDoErro(err) === CODIGO_BANCA_LOTADA) {
+        const banca = bancas.find((b) => b.id === bancaId);
+        if (banca) {
+          setBancaSolicitarEntrada(banca);
+          return;
+        }
+      }
       setAvisoErro(err instanceof Error ? err.message : "Não foi possível se alocar");
     }
+  }
+
+  /**
+   * ⭐ 2026-09-18: pedir para entrar numa banca lotada.
+   *
+   * `alocado_direto` é o caso raro em que a vaga abriu entre abrir o modal e
+   * confirmar — a pessoa já entra, sem pedido nenhum indo pra fila.
+   */
+  async function handleSolicitarEntrada(bancaId: number, justificativa: string) {
+    if (!token) return;
+    const resultado = await solicitarEntradaBanca(bancaId, justificativa, token);
+    setBancaSolicitarEntrada(null);
+    recarregar();
+    setAvisoErro(
+      resultado.alocado_direto
+        ? "A vaga estava livre — você já foi alocado, sem precisar de aprovação."
+        : "Pedido enviado à diretoria. Você recebe uma notificação quando ela decidir.",
+    );
   }
 
   /** ⭐ Roda na hora o mesmo rodízio do agendador das 6h (§8).
@@ -819,6 +851,7 @@ export function Bancas() {
             onRegistrarResultado={setBancaResultado}
           podeAprovarLista={podeAprovar}
             onVerMais={setBancaDetalhe}
+            onSolicitarEntrada={setBancaSolicitarEntrada}
           />
           <SecaoTrocas
             solicitacoes={contexto.solicitacoesTroca}
@@ -922,6 +955,14 @@ export function Bancas() {
           usuarioId={usuario.id}
           onConvidar={(usuarioConvidadoId) => handleConvidarTroca(bancaConvidar.id, usuarioConvidadoId)}
           onClose={() => setBancaConvidar(null)}
+        />
+      )}
+
+      {bancaSolicitarEntrada && (
+        <SolicitarEntradaBancaModal
+          banca={bancaSolicitarEntrada}
+          onSolicitar={(justificativa) => handleSolicitarEntrada(bancaSolicitarEntrada.id, justificativa)}
+          onClose={() => setBancaSolicitarEntrada(null)}
         />
       )}
 
@@ -1076,6 +1117,7 @@ function SecaoBancas({
   onPedirTroca,
   onConvidar,
   onCancelarTroca,
+  onSolicitarEntrada,
   filtrarPorFrente,
   bancaDestacada,
   refDestacada,
@@ -1110,6 +1152,11 @@ function SecaoBancas({
   /** Abre o picker de convite específico, alternativa ao pedido aberto. */
   onConvidar?: (banca: Banca) => void;
   onCancelarTroca?: (solicitacaoId: number) => void;
+  /** ⭐ 2026-09-18: pedir para entrar mesmo com a banca lotada. Só nas bancas
+   *  que já chegam aqui aceitando inscrição e sem ser do próprio grupo (a
+   *  seção "Com alocação máxima" já filtra isso) — a checagem de sobra fica
+   *  no backend de qualquer forma. */
+  onSolicitarEntrada?: (banca: Banca) => void;
   /** Liga o filtro por frente e a separação da lista em blocos de frente.
    *  Só faz sentido em fila de ESCOLHA — quem procura banca para se alocar
    *  procura a da frente dele. Nas outras seções a lista é curta e já é
@@ -1477,6 +1524,15 @@ function SecaoBancas({
                         : "Avaliar"}
               </PageButtonSm>
             </MotivoDesabilitado>
+          )}
+          {onSolicitarEntrada && (
+            <PageButtonSm
+              type="button"
+              $variant="outline"
+              onClick={pararPropagacao(() => onSolicitarEntrada(banca))}
+            >
+              Solicitar entrada
+            </PageButtonSm>
           )}
         </BancaCardFooter>
       </BancaCard>
@@ -2248,6 +2304,80 @@ function ConvidarTrocaModal({
             onClick={() => usuarioEscolhidoId && onConvidar(usuarioEscolhidoId)}
           >
             Enviar convite
+          </PageButton>
+        </ModalFooter>
+      </NarrowModalContent>
+    </ModalOverlay>
+  );
+}
+
+/**
+ * ⭐ 2026-09-18, a pedido: pedir para entrar numa banca sem vaga livre.
+ *
+ * Abre em dois momentos — clicando direto no botão de uma banca lotada, ou
+ * automaticamente quando "Alocar-se" recusa por falta de vaga
+ * (`CODIGO_BANCA_LOTADA`, ver `handleAlocar`). Nos dois casos o pedido vai
+ * pra fila da diretoria; aprovar cria a candidatura acima do teto normal.
+ */
+function SolicitarEntradaBancaModal({
+  banca,
+  onSolicitar,
+  onClose,
+}: {
+  banca: Banca;
+  onSolicitar: (justificativa: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [justificativa, setJustificativa] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function enviar() {
+    setErro("");
+    setEnviando(true);
+    try {
+      await onSolicitar(justificativa.trim());
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível enviar o pedido");
+      setEnviando(false);
+    }
+    // No sucesso quem chamou fecha o modal — mexer no estado depois seria
+    // atualizar um componente que já morreu.
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="solicitar-entrada-titulo">
+        <ModalHeader>
+          <ModalTitle id="solicitar-entrada-titulo">Solicitar entrada, {banca.nome_projeto}</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          <p style={{ marginTop: 0 }}>
+            Esta banca já tem {banca.alocados}/{banca.vagas} avaliadores. O pedido vai para a
+            diretoria decidir — se aprovado, você entra acima do máximo normal.
+          </p>
+          <FieldGroup>
+            <FieldLabel htmlFor="justificativa-entrada">Por que você quer entrar nesta banca?</FieldLabel>
+            <FieldInput
+              as="textarea"
+              id="justificativa-entrada"
+              rows={3}
+              autoFocus
+              value={justificativa}
+              onChange={(e) => setJustificativa(e.target.value)}
+            />
+          </FieldGroup>
+          {erro && <ErrorText>{erro}</ErrorText>}
+        </ModalBody>
+        <ModalFooter>
+          <PageButton $variant="outline" type="button" onClick={onClose} disabled={enviando}>
+            Cancelar
+          </PageButton>
+          <PageButton type="button" disabled={enviando || !justificativa.trim()} onClick={enviar}>
+            {enviando ? "Enviando…" : "Enviar pedido"}
           </PageButton>
         </ModalFooter>
       </NarrowModalContent>
