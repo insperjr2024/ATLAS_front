@@ -8,6 +8,9 @@ import { Layout } from "@/components/Layout";
 import { Login } from "@/pages/Login";
 import { EsqueciSenha } from "@/pages/EsqueciSenha";
 import { RedefinirSenha } from "@/pages/RedefinirSenha";
+import { AprovacaoContratual } from "@/pages/AprovacaoContratual";
+import { RepositorioContratual } from "@/pages/RepositorioContratual";
+import { IdentidadeInstitucional } from "@/pages/IdentidadeInstitucional";
 import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
@@ -62,6 +65,10 @@ export default function App() {
               que vai no e-mail, e quem clica nele está justamente sem conseguir
               logar. Caindo no `*` iria para /projetos e de lá para /login. */}
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+          {/* Pública: quem recebe o link de aprovação (o representante do
+              cliente) não tem conta no ATLAS. Ver `aprovacao_contratual.py`
+              no backend — o token de uso único é a única credencial. */}
+          <Route path="/aprovacao/:token" element={<AprovacaoContratual />} />
           <Route element={<PrivateRoute />}>
             {/* Primeiro acesso: dentro do PrivateRoute (exige sessão) e
                 FORA do Layout, quem ainda não definiu a senha não deve ver o
@@ -201,6 +208,20 @@ export default function App() {
               </Route>
               <Route element={<AdminRoute permissao="pode_gerir_membros" />}>
                 <Route path="/membros" element={<Membros />} />
+              </Route>
+              {/* § Contratos: o Repositório é leitura de todo documento
+                  jurídico final assinado — caixa própria, ortogonal a
+                  `pode_editar_documento_juridico` (era permissão opcional no
+                  sistema antigo, não amarrada ao Jurídico). */}
+              <Route element={<AdminRoute permissao="pode_ver_repositorio_contratos" />}>
+                <Route path="/repositorio-contratual" element={<RepositorioContratual />} />
+              </Route>
+              {/* Identidade Institucional nunca virou caixa de permissão —
+                  é quem assina PELA Insper Jr, identidade organizacional,
+                  não algo delegável. Mesmo padrão de `RequirePosicao` do
+                  resto do app. */}
+              <Route element={<RequirePosicao posicoes={["diretor_projetos"]} />}>
+                <Route path="/identidade-institucional" element={<IdentidadeInstitucional />} />
               </Route>
             </Route>
           </Route>

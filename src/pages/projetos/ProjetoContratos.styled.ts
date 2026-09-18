@@ -148,6 +148,113 @@ export const ListaAdicionarBotao = styled.button`
   }
 `;
 
+export const ArquivoLinha = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+export const ArquivoBotao = styled.label`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border: 1px solid ${theme.colors.info};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.info};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.infoForeground};
+  cursor: pointer;
+  transition: background ${theme.transitions.fast}, border-color ${theme.transitions.fast};
+
+  &:hover {
+    background: color-mix(in srgb, ${theme.colors.info} 88%, black);
+    border-color: color-mix(in srgb, ${theme.colors.info} 88%, black);
+  }
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &:has(input:focus-visible) {
+    box-shadow: 0 0 0 3px color-mix(in srgb, ${theme.colors.ring} 35%, transparent);
+  }
+`;
+
+export const ArquivoNome = styled.span<{ $vazio?: boolean }>`
+  min-width: 0;
+  font-size: ${theme.fontSize.sm};
+  color: ${({ $vazio }) => ($vazio ? theme.colors.mutedForeground : theme.colors.foreground)};
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+export const LinkCaixa = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.muted};
+`;
+
+export const LinkLinha = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+
+  code {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: ${theme.fontSize.xs};
+    color: ${theme.colors.mutedForeground};
+  }
+`;
+
+export const SolicitacaoCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.background};
+`;
+
+export const TrechoCitado = styled.blockquote`
+  margin: 0;
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  border-left: 2px solid ${theme.colors.border};
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  font-style: italic;
+`;
+
+export const ParagrafoEditavelBloco = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+  padding-bottom: ${theme.spacing.md};
+
+  & + & {
+    border-top: 1px solid ${theme.colors.border};
+    padding-top: ${theme.spacing.md};
+  }
+`;
+
 export const VersaoLinha = styled.div`
   display: flex;
   align-items: center;

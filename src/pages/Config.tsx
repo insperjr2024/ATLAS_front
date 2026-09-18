@@ -217,6 +217,42 @@ const PERMISSOES = [
     descricao:
       "Continua contando como liderança — vai à banca, soma no total — mas não cobre o mínimo de liderança nem de membros da frente em que está cadastrado.",
   },
+  {
+    campo: "pode_gerar_documento_juridico" as const,
+    titulo: "Gerar documentos jurídicos (Contratos)",
+    descricao:
+      "Gerar o rascunho de um documento jurídico (Contrato, TEP, NDA, Uso de Imagem, Aditivo) e exportar o link de aprovação pro cliente. Abrir o documento em si usa outras permissões (criar projeto, TEP, vendas).",
+  },
+  {
+    campo: "pode_editar_documento_juridico" as const,
+    titulo: "Editar documentos jurídicos (Contratos)",
+    descricao:
+      "A partir de confirmado, a palavra sobre os dados e o texto do documento passa a ser de quem tem esta caixa: editar dados, editar o texto do rascunho, reanexar um .docx externo e analisar pedido de alteração do cliente.",
+  },
+  {
+    campo: "pode_marcar_documento_assinado" as const,
+    titulo: "Marcar documento jurídico como assinado",
+    descricao:
+      "Fechar o ciclo de um documento jurídico: marcar como assinado fora da plataforma e arquivar, incluindo o aceite tácito do TEP.",
+  },
+  {
+    campo: "pode_ver_repositorio_contratos" as const,
+    titulo: "Ver o Repositório de Contratos",
+    descricao:
+      "Todo documento jurídico final assinado, de qualquer projeto, organizado por gestão. Só leitura.",
+  },
+  {
+    campo: "pode_importar_documento_antigo" as const,
+    titulo: "Importar documento jurídico antigo",
+    descricao:
+      "Cadastrar um documento já assinado fora do fluxo normal da plataforma, direto como arquivado.",
+  },
+  {
+    campo: "pode_solicitar_tep" as const,
+    titulo: "Solicitar TEP",
+    descricao:
+      "Abrir o Termo de Encerramento de Projeto dentro de um projeto — quem acompanha a entrega, não a venda.",
+  },
 ];
 
 type CampoPermissao = (typeof PERMISSOES)[number]["campo"];

@@ -88,6 +88,22 @@ export interface Permissoes {
   /** Continua contando como liderança (vai à banca, soma no total), mas não
    *  cobre `min_lideranca`/`min_membros` da FRENTE em que está cadastrado. */
   pode_coordenar_vendas: boolean;
+  /** ⭐ 2026-09-18 — as seis caixas da integração com a Contratos. "Criar
+   *  documento"/"enviar ao cliente" não têm caixa própria: reaproveitam
+   *  `pode_criar_projeto` e `pode_responsavel_por_vendas`. */
+  /** Gerar o rascunho (.docx → PDF) e exportar o link de aprovação. */
+  pode_gerar_documento_juridico: boolean;
+  /** Editar o texto do rascunho e regerar depois de confirmado — a partir
+   *  daqui a palavra sobre o documento passa a ser de quem tem esta caixa. */
+  pode_editar_documento_juridico: boolean;
+  /** Fechar o ciclo: marcar como assinado (fora da plataforma) e arquivar. */
+  pode_marcar_documento_assinado: boolean;
+  /** Ver o Repositório — todo documento final assinado, organizado por gestão. */
+  pode_ver_repositorio_contratos: boolean;
+  /** Cadastrar documento já assinado fora do fluxo normal. */
+  pode_importar_documento_antigo: boolean;
+  /** Abrir o TEP dentro de um projeto que já tem Contrato de Prestação. */
+  pode_solicitar_tep: boolean;
 }
 
 /**

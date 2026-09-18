@@ -64,6 +64,12 @@ const PERMISSOES_PLACEHOLDER: Permissoes = {
   pode_ver_dashboard_bancas: false,
   pode_responsavel_por_vendas: false,
   pode_coordenar_vendas: false,
+  pode_gerar_documento_juridico: false,
+  pode_editar_documento_juridico: false,
+  pode_marcar_documento_assinado: false,
+  pode_ver_repositorio_contratos: false,
+  pode_importar_documento_antigo: false,
+  pode_solicitar_tep: false,
 };
 
 /**
