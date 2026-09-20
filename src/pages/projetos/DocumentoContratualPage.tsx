@@ -58,6 +58,7 @@ import {
   Etapa,
   EtapaMarca,
   LinkCaixa,
+  LinkDiscreto,
   LinkLinha,
   ParagrafoEditavelBloco,
   SolicitacaoCard,
@@ -179,8 +180,10 @@ export function DocumentoContratualPage() {
     setErro("");
     setCamposFaltando([]);
     try {
-      const atualizado = await confirmarPreenchimento(atual.id, token);
+      const salvo = await atualizarDadosDocumento(atual.id, dados, token);
+      const atualizado = await confirmarPreenchimento(salvo.id, token);
       setAtual(atualizado);
+      setDados(atualizado.dados ?? {});
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao confirmar");
       setCamposFaltando(camposFaltandoDoErro(err) ?? []);
@@ -195,9 +198,11 @@ export function DocumentoContratualPage() {
     setErro("");
     setCamposFaltando([]);
     try {
+      await atualizarDadosDocumento(atual.id, dados, token);
       await gerarDocumento(atual.id, token);
       const recarregado = await getDocumento(atual.id, token);
       setAtual(recarregado);
+      setDados(recarregado.dados ?? {});
       setLinkAprovacao(null);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao gerar documento");
@@ -406,17 +411,6 @@ export function DocumentoContratualPage() {
         <PageCardContent>
           {!dadosTravados && (
             <ArquivoLinha style={{ marginBottom: "1rem" }}>
-              <PageButtonSm
-                type="button"
-                $variant="outline"
-                onClick={() =>
-                  baixarModeloColeta(token!).catch((err) =>
-                    setErro(err instanceof Error ? err.message : "Erro ao baixar o modelo"),
-                  )
-                }
-              >
-                Baixar modelo da Coleta de Dados
-              </PageButtonSm>
               <ArquivoBotao htmlFor="coleta-dados-upload">
                 {extraindoColeta ? "Extraindo..." : "Preencher a partir da Coleta de Dados"}
                 <input
@@ -431,7 +425,20 @@ export function DocumentoContratualPage() {
                   }}
                 />
               </ArquivoBotao>
-              <ArquivoNome $vazio>.docx preenchido pelo cliente — só pré-preenche</ArquivoNome>
+              <ArquivoNome $vazio>
+                .docx preenchido pelo cliente — só pré-preenche (
+                <LinkDiscreto
+                  type="button"
+                  onClick={() =>
+                    baixarModeloColeta(token!).catch((err) =>
+                      setErro(err instanceof Error ? err.message : "Erro ao baixar o modelo"),
+                    )
+                  }
+                >
+                  baixar modelo em branco
+                </LinkDiscreto>
+                )
+              </ArquivoNome>
             </ArquivoLinha>
           )}
 

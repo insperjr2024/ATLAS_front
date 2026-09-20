@@ -291,6 +291,32 @@ export const ArquivoLinha = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
+/** ⚠ 2026-09-21, corrigido de novo: "Baixar modelo" virou botão-outline igual
+ *  ao "Preencher a partir da Coleta" quando tirei o azul do segundo — os dois
+ *  ficaram gêmeos idênticos lado a lado. São ações de peso bem diferente
+ *  (baixar um .docx em branco vs. subir um preenchido e reescrever o
+ *  formulário inteiro), então só o texto do meio ("baixar o modelo") fica
+ *  como link discreto — o botão de verdade sobra só pra ação que importa. */
+export const LinkDiscreto = styled.button`
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+
+  &:hover {
+    color: ${theme.colors.foreground};
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+`;
+
 /** ⚠ 2026-09-21, corrigido: era o azul cheio (`theme.colors.info`) de
  *  `ProjetoNovo.styled.ts` — fazia sentido lá, onde é a ÚNICA ação da tela
  *  (anexar a proposta). Aqui são duas entre várias outras (Coleta de Dados,

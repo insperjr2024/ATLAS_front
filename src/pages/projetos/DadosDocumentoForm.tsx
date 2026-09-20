@@ -54,9 +54,29 @@ function setPath(dados: any, caminho: Caminho, valor: unknown): Dados {
  *  nenhum precisa saber que esta trava existe. */
 const CamposFaltandoContext = createContext<Set<string>>(new Set());
 
-function Campo({ label, caminho, children }: { label: string; caminho?: Caminho; children: ReactNode }) {
+/** Mesma régua de "vazio" que o backend usa em `_vazio()` — só serve pra
+ *  decidir se ainda mostra o destaque; quem decide se falta de verdade
+ *  continua sendo o backend na próxima tentativa de Confirmar/Gerar. */
+function campoAindaVazio(valor: unknown): boolean {
+  if (valor === null || valor === undefined) return true;
+  if (typeof valor === "string") return valor.trim() === "";
+  if (typeof valor === "number") return valor === 0;
+  return false;
+}
+
+function Campo({
+  label,
+  caminho,
+  valor,
+  children,
+}: {
+  label: string;
+  caminho?: Caminho;
+  valor?: unknown;
+  children: ReactNode;
+}) {
   const camposFaltando = useContext(CamposFaltandoContext);
-  const emFalta = !!caminho && camposFaltando.has(caminho.join("."));
+  const emFalta = !!caminho && camposFaltando.has(caminho.join(".")) && campoAindaVazio(valor);
   return (
     <FieldGroup>
       <FieldLabel>{label}</FieldLabel>
@@ -67,9 +87,10 @@ function Campo({ label, caminho, children }: { label: string; caminho?: Caminho;
 }
 
 function Texto({ dados, set, caminho, label }: { dados: Dados; set: Setter; caminho: Caminho; label: string }) {
+  const valor = obter(dados, caminho);
   return (
-    <Campo label={label} caminho={caminho}>
-      <FieldInput value={obter(dados, caminho) ?? ""} onChange={(e) => set(caminho, e.target.value)} />
+    <Campo label={label} caminho={caminho} valor={valor}>
+      <FieldInput value={valor ?? ""} onChange={(e) => set(caminho, e.target.value)} />
     </Campo>
   );
 }
@@ -77,7 +98,7 @@ function Texto({ dados, set, caminho, label }: { dados: Dados; set: Setter; cami
 function Numero({ dados, set, caminho, label }: { dados: Dados; set: Setter; caminho: Caminho; label: string }) {
   const valor = obter(dados, caminho);
   return (
-    <Campo label={label} caminho={caminho}>
+    <Campo label={label} caminho={caminho} valor={valor}>
       <FieldInput
         type="number"
         value={valor ?? ""}
@@ -88,17 +109,19 @@ function Numero({ dados, set, caminho, label }: { dados: Dados; set: Setter; cam
 }
 
 function DataCampo({ dados, set, caminho, label }: { dados: Dados; set: Setter; caminho: Caminho; label: string }) {
+  const valor = obter(dados, caminho);
   return (
-    <Campo label={label} caminho={caminho}>
-      <FieldInput type="date" value={obter(dados, caminho) ?? ""} onChange={(e) => set(caminho, e.target.value)} />
+    <Campo label={label} caminho={caminho} valor={valor}>
+      <FieldInput type="date" value={valor ?? ""} onChange={(e) => set(caminho, e.target.value)} />
     </Campo>
   );
 }
 
 function TextoLongo({ dados, set, caminho, label }: { dados: Dados; set: Setter; caminho: Caminho; label: string }) {
+  const valor = obter(dados, caminho);
   return (
-    <Campo label={label} caminho={caminho}>
-      <FieldTextarea value={obter(dados, caminho) ?? ""} onChange={(e) => set(caminho, e.target.value)} />
+    <Campo label={label} caminho={caminho} valor={valor}>
+      <FieldTextarea value={valor ?? ""} onChange={(e) => set(caminho, e.target.value)} />
     </Campo>
   );
 }
