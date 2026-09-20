@@ -257,3 +257,16 @@ export function getRepositorio(
     { token },
   );
 }
+
+// ---------- WhatsApp ----------
+
+/** Mesma regra de `wa_link_contratual.py` (removida de lá em 2026-09-20): só
+ *  os dígitos do telefone, prefixados com "55" se ainda não tiverem. O
+ *  número vem de quem está mandando a mensagem, digitado na hora — não do
+ *  que estiver cadastrado no formulário do documento (pode estar errado, ou
+ *  ser de outra pessoa). */
+export function montarLinkWhatsapp(telefone: string, mensagem: string): string {
+  const digitos = telefone.replace(/\D/g, "");
+  const numeroCompleto = digitos.startsWith("55") ? digitos : `55${digitos}`;
+  return `https://wa.me/${numeroCompleto}?text=${encodeURIComponent(mensagem)}`;
+}

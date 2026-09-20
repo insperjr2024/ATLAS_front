@@ -7,6 +7,7 @@ import {
   FormSecaoTitulo,
   FormSubsecaoTitulo,
   FormGrid,
+  FormGridEstreito,
   ListaLinha,
   ListaRemoverBotao,
   ListaAdicionarBotao,
@@ -231,11 +232,11 @@ function AssinaturaSecao({ dados, set }: { dados: Dados; set: Setter }) {
   return (
     <section>
       <FormSecaoTitulo>Assinatura</FormSecaoTitulo>
-      <FormGrid $colunas={3}>
+      <FormGridEstreito>
         <Numero dados={dados} set={set} caminho={["assinatura", "dia"]} label="Dia" />
         <Texto dados={dados} set={set} caminho={["assinatura", "mes"]} label="Mês (número ou nome)" />
         <Numero dados={dados} set={set} caminho={["assinatura", "ano"]} label="Ano" />
-      </FormGrid>
+      </FormGridEstreito>
     </section>
   );
 }

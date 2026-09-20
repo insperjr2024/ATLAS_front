@@ -19,6 +19,7 @@ import {
   getParagrafosEditaveis,
   getSolicitacoesAlteracao,
   marcarAssinado,
+  montarLinkWhatsapp,
   reanexarDocumento,
   recusarAssinaturaTep,
 } from "@/lib/contratos";
@@ -41,7 +42,7 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
-import { FieldTextarea } from "../Bancas.styled";
+import { FieldInput, FieldLabel, FieldTextarea } from "../Bancas.styled";
 import { ModalOverlay } from "@/styles/ModalOverlay";
 import { ModalContent, ModalHeader, ModalTitle, ModalClose, ModalBody, ModalFooter } from "@/styles/modal.styled";
 import {
@@ -72,6 +73,15 @@ function tomDoStatus(status: DocumentoContratual["status"]): "default" | "succes
   if (status === "alteracao_solicitada") return "warning";
   if (status === "aguardando_preenchimento") return "muted";
   return "default";
+}
+
+/** Só um chute inicial pro campo de telefone do WhatsApp — quem manda ainda
+ *  pode trocar antes de abrir a mensagem (ver `montarLinkWhatsapp`). */
+function telefoneRepresentante(dados: Record<string, unknown>): string {
+  const contratante = dados.contratante as Record<string, unknown> | undefined;
+  const representante = contratante?.representante as Record<string, unknown> | undefined;
+  const telefone = representante?.telefone;
+  return typeof telefone === "string" ? telefone : "";
 }
 
 const STATUS_DADOS_TRAVADOS = new Set(["aprovado_pelo_cliente", "assinado_e_arquivado"]);
@@ -115,6 +125,7 @@ export function DocumentoContratualPage() {
   const [camposFaltando, setCamposFaltando] = useState<string[]>([]);
 
   const [linkAprovacao, setLinkAprovacao] = useState<LinkAprovacao | null>(null);
+  const [telefoneWhatsapp, setTelefoneWhatsapp] = useState("");
   const [exportando, setExportando] = useState(false);
   const [recusandoAssinatura, setRecusandoAssinatura] = useState(false);
   const [marcandoAssinado, setMarcandoAssinado] = useState(false);
@@ -219,6 +230,7 @@ export function DocumentoContratualPage() {
     try {
       const link = await exportarAprovacao(atual.id, token);
       setLinkAprovacao(link);
+      setTelefoneWhatsapp(telefoneRepresentante(dados));
       const recarregado = await getDocumento(atual.id, token);
       setAtual(recarregado);
     } catch (err) {
@@ -235,6 +247,7 @@ export function DocumentoContratualPage() {
     try {
       const link = await recusarAssinaturaTep(atual.id, token);
       setLinkAprovacao(link);
+      setTelefoneWhatsapp(telefoneRepresentante(dados));
       const recarregado = await getDocumento(atual.id, token);
       setAtual(recarregado);
     } catch (err) {
@@ -377,7 +390,6 @@ export function DocumentoContratualPage() {
         </DocumentoPaginaTitulo>
         <AcoesLinha>
           <PageBadge $tone={tomDoStatus(atual.status)}>{ROTULO_STATUS_DOCUMENTO[atual.status]}</PageBadge>
-          {atual.confirmado && <PageBadge $tone="success">confirmado</PageBadge>}
           {podeConsiderarAceito && <PageBadge $tone="warning">prazo de aceite tácito vencido</PageBadge>}
         </AcoesLinha>
       </DocumentoPaginaHeader>
@@ -509,13 +521,36 @@ export function DocumentoContratualPage() {
           <PageCardContent>
             <LinkCaixa>
               <CopiarLinkLinha rotulo="Link de aprovação" valor={linkAprovacao.link_aprovacao} />
-              {linkAprovacao.link_whatsapp ? (
-                <PageButton as="a" href={linkAprovacao.link_whatsapp} target="_blank" rel="noreferrer" $variant="outline" type="button">
-                  Abrir mensagem pronta no WhatsApp
-                </PageButton>
-              ) : (
-                <EmptyText>Sem telefone do representante cadastrado — copie o link acima e envie por conta própria.</EmptyText>
-              )}
+              <div>
+                <FieldLabel htmlFor="telefone-whatsapp">Número de WhatsApp de quem vai receber</FieldLabel>
+                <AcoesLinha style={{ marginTop: "0.375rem" }}>
+                  <FieldInput
+                    id="telefone-whatsapp"
+                    style={{ maxWidth: "14rem" }}
+                    placeholder="(11) 99999-8888"
+                    value={telefoneWhatsapp}
+                    onChange={(e) => setTelefoneWhatsapp(e.target.value)}
+                  />
+                  <PageButton
+                    as="a"
+                    href={
+                      telefoneWhatsapp.replace(/\D/g, "")
+                        ? montarLinkWhatsapp(telefoneWhatsapp, linkAprovacao.mensagem_whatsapp)
+                        : undefined
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    $variant="outline"
+                    type="button"
+                    aria-disabled={!telefoneWhatsapp.replace(/\D/g, "")}
+                    onClick={(e) => {
+                      if (!telefoneWhatsapp.replace(/\D/g, "")) e.preventDefault();
+                    }}
+                  >
+                    Abrir mensagem pronta no WhatsApp
+                  </PageButton>
+                </AcoesLinha>
+              </div>
             </LinkCaixa>
           </PageCardContent>
         </PageCard>

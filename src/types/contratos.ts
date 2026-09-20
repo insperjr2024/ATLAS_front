@@ -48,12 +48,14 @@ export interface DocumentoContratual {
   dias_restantes_aceite_tacito: number | null;
 }
 
-/** Resposta de `POST .../exportar-aprovacao` e `.../recusar-assinatura-tep`. */
+/** Resposta de `POST .../exportar-aprovacao` e `.../recusar-assinatura-tep`.
+ *  O número de WhatsApp não vem daqui — quem manda digita na hora (ver
+ *  `montarLinkWhatsapp` em `lib/contratos.ts`), porque o telefone cadastrado
+ *  no formulário pode estar errado ou ser de outra pessoa. */
 export interface LinkAprovacao {
   token: string;
   link_aprovacao: string;
-  /** `null` quando o Contrato de PS não tem telefone do representante. */
-  link_whatsapp: string | null;
+  mensagem_whatsapp: string;
 }
 
 export interface SolicitacaoAlteracao {

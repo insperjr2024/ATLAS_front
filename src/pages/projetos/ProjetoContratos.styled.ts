@@ -218,6 +218,21 @@ export const FormGrid = styled.div<{ $colunas?: 2 | 3 }>`
   }
 `;
 
+/** Dia/Mês/Ano da assinatura cabem em poucos caracteres — no `FormGrid`
+ *  normal (colunas 1fr) cada um esticava pra 1/3 da largura da tela, o que
+ *  ficava ainda mais estranho depois de destacar o campo vazio em vermelho
+ *  (a caixa vermelha, gigante, sem relação com o tamanho do valor). */
+export const FormGridEstreito = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+
+  > * {
+    width: 9rem;
+    max-width: 100%;
+  }
+`;
+
 export const ListaLinha = styled.div`
   display: flex;
   align-items: center;
