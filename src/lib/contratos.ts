@@ -135,6 +135,12 @@ export function getAprovacao(token: string) {
   return apiFetch<AprovacaoPublica>(`/aprovacao/${token}`);
 }
 
+/** O texto do documento em blocos, pra selecionar e citar um trecho — o PDF
+ *  no `<iframe>` não expõe seleção pro JavaScript da página. */
+export function getTextoAprovacao(token: string) {
+  return apiFetch<{ paragrafos: string[] }>(`/aprovacao/${token}/texto`);
+}
+
 export function responderAprovacao(
   token: string,
   request: { acao: "aprovar" | "alteracao"; texto?: string; trechos?: string[] },
@@ -189,6 +195,21 @@ export function reanexarDocumento(documentoId: number, arquivo: File, token: str
 }
 
 // ---------- Coleta de Dados ----------
+
+/** O .docx em branco pra mandar ao cliente preencher. */
+export async function baixarModeloColeta(token: string) {
+  const response = await fetch(`${API_URL}/documentos-contratuais/coleta-dados/modelo`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error("Erro ao baixar o modelo da Coleta de Dados");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "Coleta de Dados - Modelo.docx";
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 export function extrairColeta(
   projetoId: number,

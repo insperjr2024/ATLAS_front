@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import insperJrLogo from "@/assets/insperjr2.png";
-import { getAprovacao, responderAprovacao, urlArquivoAprovacao } from "@/lib/contratos";
+import { getAprovacao, getTextoAprovacao, responderAprovacao, urlArquivoAprovacao } from "@/lib/contratos";
 import type { AprovacaoPublica } from "@/types/contratos";
 import { ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
 import { PageButton, PageButtonSm, ErrorText, PageLoadingBlock } from "@/styles/page.styled";
 import { FieldGroup, FieldLabel, FieldTextarea } from "./Bancas.styled";
-import { ListaLinha, ListaRemoverBotao, ListaAdicionarBotao } from "./projetos/ProjetoContratos.styled";
+import { ListaRemoverBotao } from "./projetos/ProjetoContratos.styled";
 import {
   AprovacaoWrapper,
   AprovacaoHeader,
@@ -17,14 +17,25 @@ import {
   AprovacaoPainel,
   AprovacaoAcoes,
   AprovacaoCentro,
+  TextoDocumentoTitulo,
+  TextoDocumentoBloco,
+  BotaoCitarFlutuante,
+  TrechosCitadosLista,
+  TrechoCitadoLinha,
 } from "./AprovacaoContratual.styled";
+
+const MAXIMO_TRECHOS = 20;
 
 /**
  * ⭐ 2026-09-18 — a tela pública de aprovação (§ Contratos), sem login: quem
  * recebe o link (o representante do cliente) vê o PDF gerado e decide
- * aprovar ou pedir ajuste, citando trechos livres do texto (o PDF num
- * `<iframe>` não expõe seleção pra recorte automático — mesma limitação do
- * sistema antigo).
+ * aprovar ou pedir ajuste.
+ *
+ * ⭐ 2026-09-20 — citar um trecho é por SELEÇÃO de texto, não digitação: o
+ * PDF num `<iframe>` não expõe seleção pro JavaScript da página (é um
+ * documento à parte, renderizado pelo navegador), então o texto também vai
+ * em blocos HTML normais — só ali dá pra selecionar e o botão flutuante
+ * "Citar este trecho" aparece perto da seleção.
  *
  * Precisa estar registrada como rota PÚBLICA no `App.tsx`, acima do
  * `PrivateRoute` — é o destino do link que vai no WhatsApp/e-mail, e quem
@@ -33,21 +44,58 @@ import {
 export function AprovacaoContratual() {
   const { token = "" } = useParams<{ token: string }>();
   const [info, setInfo] = useState<AprovacaoPublica | null>(null);
+  const [paragrafos, setParagrafos] = useState<string[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [respondido, setRespondido] = useState<"aprovado" | "alteracao" | null>(null);
 
   const [modo, setModo] = useState<"nenhum" | "alteracao">("nenhum");
   const [texto, setTexto] = useState("");
-  const [trechos, setTrechos] = useState<string[]>([""]);
+  const [trechos, setTrechos] = useState<string[]>([]);
   const [enviando, setEnviando] = useState(false);
 
+  const textoRef = useRef<HTMLDivElement>(null);
+  const [botaoCitar, setBotaoCitar] = useState<{ x: number; y: number; texto: string } | null>(null);
+
   useEffect(() => {
-    getAprovacao(token)
-      .then(setInfo)
+    Promise.all([getAprovacao(token), getTextoAprovacao(token)])
+      .then(([aprovacao, { paragrafos: p }]) => {
+        setInfo(aprovacao);
+        setParagrafos(p);
+      })
       .catch((err) => setErro(err instanceof Error ? err.message : "Link inválido"))
       .finally(() => setCarregando(false));
   }, [token]);
+
+  // Só escuta seleção enquanto a caixa de citar trechos está aberta — fora
+  // dela, selecionar texto da página (pra copiar algo, por exemplo) não deve
+  // fazer um botão flutuante aparecer do nada.
+  useEffect(() => {
+    if (modo !== "alteracao") return;
+
+    function aoSelecionar() {
+      const selecao = window.getSelection();
+      const texto = selecao?.toString().trim() ?? "";
+      if (!selecao || !texto || selecao.rangeCount === 0 || !textoRef.current?.contains(selecao.anchorNode)) {
+        setBotaoCitar(null);
+        return;
+      }
+      const rect = selecao.getRangeAt(0).getBoundingClientRect();
+      setBotaoCitar({ x: rect.left + rect.width / 2, y: rect.top - 8, texto });
+    }
+
+    document.addEventListener("selectionchange", aoSelecionar);
+    return () => document.removeEventListener("selectionchange", aoSelecionar);
+  }, [modo]);
+
+  function citarTrechoSelecionado() {
+    if (!botaoCitar) return;
+    if (trechos.length < MAXIMO_TRECHOS && !trechos.includes(botaoCitar.texto)) {
+      setTrechos((atuais) => [...atuais, botaoCitar.texto]);
+    }
+    window.getSelection()?.removeAllRanges();
+    setBotaoCitar(null);
+  }
 
   async function handleAprovar() {
     setEnviando(true);
@@ -70,11 +118,7 @@ export function AprovacaoContratual() {
     setEnviando(true);
     setErro("");
     try {
-      await responderAprovacao(token, {
-        acao: "alteracao",
-        texto: texto.trim(),
-        trechos: trechos.map((t) => t.trim()).filter(Boolean),
-      });
+      await responderAprovacao(token, { acao: "alteracao", texto: texto.trim(), trechos });
       setRespondido("alteracao");
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao enviar o pedido de alteração");
@@ -149,31 +193,28 @@ export function AprovacaoContratual() {
                 </FieldGroup>
 
                 <FieldGroup>
-                  <FieldLabel as="span">Trechos do documento que você quer citar (opcional)</FieldLabel>
-                  {trechos.map((trecho, i) => (
-                    <ListaLinha key={i}>
-                      <FieldTextarea
-                        rows={2}
-                        value={trecho}
-                        onChange={(e) =>
-                          setTrechos((atuais) => atuais.map((t, j) => (j === i ? e.target.value : t)))
-                        }
-                      />
-                      {trechos.length > 1 && (
-                        <ListaRemoverBotao
-                          type="button"
-                          aria-label="Remover trecho"
-                          onClick={() => setTrechos((atuais) => atuais.filter((_, j) => j !== i))}
-                        >
-                          ×
-                        </ListaRemoverBotao>
-                      )}
-                    </ListaLinha>
-                  ))}
-                  {trechos.length < 20 && (
-                    <ListaAdicionarBotao type="button" onClick={() => setTrechos((atuais) => [...atuais, ""])}>
-                      + Citar outro trecho
-                    </ListaAdicionarBotao>
+                  <TextoDocumentoTitulo>Selecione um trecho abaixo pra citar (opcional)</TextoDocumentoTitulo>
+                  <TextoDocumentoBloco ref={textoRef}>
+                    {paragrafos.map((p, i) => (
+                      <p key={i}>{p}</p>
+                    ))}
+                  </TextoDocumentoBloco>
+
+                  {trechos.length > 0 && (
+                    <TrechosCitadosLista>
+                      {trechos.map((trecho, i) => (
+                        <TrechoCitadoLinha key={i}>
+                          <blockquote>{trecho}</blockquote>
+                          <ListaRemoverBotao
+                            type="button"
+                            aria-label="Remover trecho citado"
+                            onClick={() => setTrechos((atuais) => atuais.filter((_, j) => j !== i))}
+                          >
+                            ×
+                          </ListaRemoverBotao>
+                        </TrechoCitadoLinha>
+                      ))}
+                    </TrechosCitadosLista>
                   )}
                 </FieldGroup>
 
@@ -190,6 +231,22 @@ export function AprovacaoContratual() {
           </AprovacaoPainel>
         )}
       </AprovacaoCorpo>
+
+      {botaoCitar && (
+        <BotaoCitarFlutuante
+          type="button"
+          style={{ left: botaoCitar.x, top: botaoCitar.y, transform: "translate(-50%, -100%)" }}
+          // `onMouseDown` (não `onClick`): o `mouseup` da seleção dispara
+          // ANTES do click, e um clique comum já teria desfeito a seleção
+          // (e escondido este botão) no momento em que o `onClick` rodasse.
+          onMouseDown={(e) => {
+            e.preventDefault();
+            citarTrechoSelecionado();
+          }}
+        >
+          + Citar este trecho
+        </BotaoCitarFlutuante>
+      )}
     </AprovacaoWrapper>
   );
 }

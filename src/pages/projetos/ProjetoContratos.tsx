@@ -5,6 +5,7 @@ import {
   analisarSolicitacao,
   atualizarDadosDocumento,
   baixarArquivoDocumento,
+  baixarModeloColeta,
   confirmarPreenchimento,
   considerarAceitoPorPrazo,
   deletarDocumento,
@@ -31,6 +32,7 @@ import type {
 import { ROTULO_STATUS_DOCUMENTO, ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
 import { useProjeto } from "./ProjetoPage";
 import { DadosDocumentoForm } from "./DadosDocumentoForm";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
   PageStack,
   PageCard,
@@ -250,7 +252,7 @@ function DocumentoModal({
   const [recusandoAssinatura, setRecusandoAssinatura] = useState(false);
   const [marcandoAssinado, setMarcandoAssinado] = useState(false);
   const [considerandoAceito, setConsiderandoAceito] = useState(false);
-  const [deletando, setDeletando] = useState(false);
+  const [mostrarConfirmarApagar, setMostrarConfirmarApagar] = useState(false);
   const [baixando, setBaixando] = useState<"pdf" | "docx" | null>(null);
 
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAlteracao[]>([]);
@@ -379,16 +381,11 @@ function DocumentoModal({
   }
 
   async function handleDeletar() {
-    setDeletando(true);
-    setErro("");
-    try {
-      await deletarDocumento(atual.id, token);
-      await onMudou();
-      onClose();
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Erro ao apagar documento");
-      setDeletando(false);
-    }
+    // Erro e "processando" ficam a cargo do próprio ConfirmarModal — ele
+    // captura o que `onConfirmar` lançar e mostra dentro do modal.
+    await deletarDocumento(atual.id, token);
+    await onMudou();
+    onClose();
   }
 
   async function handleAnalisar(solicitacaoId: number) {
@@ -479,6 +476,17 @@ function DocumentoModal({
 
           {!dadosTravados && (
             <ArquivoLinha style={{ marginBottom: "1rem" }}>
+              <PageButtonSm
+                type="button"
+                $variant="outline"
+                onClick={() =>
+                  baixarModeloColeta(token).catch((err) =>
+                    setErro(err instanceof Error ? err.message : "Erro ao baixar o modelo"),
+                  )
+                }
+              >
+                Baixar modelo da Coleta de Dados
+              </PageButtonSm>
               <ArquivoBotao htmlFor="coleta-dados-upload">
                 {extraindoColeta ? "Extraindo..." : "Preencher a partir da Coleta de Dados"}
                 <input
@@ -620,8 +628,8 @@ function DocumentoModal({
               </PageButton>
             )}
             {podeApagar && (
-              <PageButton type="button" $variant="outline" disabled={deletando} onClick={handleDeletar}>
-                {deletando ? "Apagando..." : "Apagar documento"}
+              <PageButton type="button" $variant="outline" onClick={() => setMostrarConfirmarApagar(true)}>
+                Apagar documento
               </PageButton>
             )}
             {!dadosTravados && (
@@ -655,6 +663,17 @@ function DocumentoModal({
 
       {mostrarEditorTexto && (
         <EditarTextoModal documentoId={atual.id} token={token} onClose={() => setMostrarEditorTexto(false)} />
+      )}
+
+      {mostrarConfirmarApagar && (
+        <ConfirmarModal
+          titulo="Apagar documento"
+          mensagem={`Isso apaga o ${ROTULO_TIPO_DOCUMENTO[atual.tipo]} deste projeto — só é possível porque ele ainda não foi confirmado. Não tem como desfazer.`}
+          rotuloConfirmar="Apagar"
+          rotuloProcessando="Apagando…"
+          onConfirmar={handleDeletar}
+          onCancelar={() => setMostrarConfirmarApagar(false)}
+        />
       )}
     </ModalOverlay>
   );
