@@ -1,6 +1,121 @@
 import styled from "styled-components";
 import { theme } from "@/styles/theme";
 
+// ---------- Página de detalhe do documento ----------
+
+export const DocumentoPaginaHeader = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
+`;
+
+export const DocumentoPaginaTitulo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+
+  h1 {
+    margin: 0;
+    font-size: ${theme.fontSize.lg};
+    font-weight: ${theme.fontWeight.semibold};
+  }
+`;
+
+export const VoltarLink = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+  cursor: pointer;
+
+  &:hover {
+    color: ${theme.colors.foreground};
+    text-decoration: underline;
+  }
+`;
+
+/** As 6 etapas do ciclo de vida — mesma ideia visual do stepper do sistema
+ *  antigo (Preenchimento → Geração → Revisão interna → Aprovação do
+ *  cliente → Aprovado → Arquivado), pra orientar de cara em que ponto do
+ *  processo o documento está, sem precisar decifrar o rótulo do status. */
+export const Etapas = styled.ol`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+`;
+
+export const Etapa = styled.li<{ $estado: "concluida" | "atual" | "pendente" }>`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm} ${theme.spacing.xs} 0;
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${({ $estado }) => ($estado === "atual" ? theme.fontWeight.semibold : theme.fontWeight.medium)};
+  color: ${({ $estado }) =>
+    $estado === "pendente" ? theme.colors.mutedForeground : theme.colors.foreground};
+
+  &:not(:last-child)::after {
+    content: "";
+    display: inline-block;
+    width: 1.5rem;
+    height: 1px;
+    margin: 0 ${theme.spacing.xs};
+    background: ${theme.colors.border};
+  }
+`;
+
+export const EtapaMarca = styled.span<{ $estado: "concluida" | "atual" | "pendente" }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: ${theme.fontWeight.semibold};
+  flex-shrink: 0;
+
+  ${({ $estado }) =>
+    $estado === "concluida"
+      ? `background: ${theme.colors.success}; color: ${theme.colors.successForeground};`
+      : $estado === "atual"
+        ? `background: ${theme.colors.primary}; color: ${theme.colors.primaryForeground};`
+        : `background: ${theme.colors.muted}; color: ${theme.colors.mutedForeground}; border: 1px solid ${theme.colors.border};`}
+`;
+
+/** A ação que de fato move o processo pra frente, visualmente separada das
+ *  ações secundárias (editar, baixar, apagar) — numa barra própria, maior,
+ *  em vez de competir por atenção com o resto. */
+export const AcaoPrincipalBarra = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.border};
+  background: ${theme.colors.muted};
+`;
+
+export const AcoesSecundariasLinha = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  padding-top: ${theme.spacing.sm};
+  border-top: 1px solid ${theme.colors.border};
+  margin-top: ${theme.spacing.md};
+`;
+
 export const DocumentoLista = styled.div`
   display: flex;
   flex-direction: column;
