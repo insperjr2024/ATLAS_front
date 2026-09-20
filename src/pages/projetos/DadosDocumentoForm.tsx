@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react";
 import type { ComponentType, ReactNode } from "react";
 import type { TipoDocumentoContratual } from "@/types/contratos";
 import { FieldGroup, FieldLabel, FieldInput, FieldTextarea, CheckboxLabel } from "../Bancas.styled";
@@ -9,6 +10,8 @@ import {
   ListaLinha,
   ListaRemoverBotao,
   ListaAdicionarBotao,
+  CampoDestacadoWrapper,
+  CampoObrigatorioTexto,
 } from "./ProjetoContratos.styled";
 
 /**
@@ -44,18 +47,28 @@ function setPath(dados: any, caminho: Caminho, valor: unknown): Dados {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-function Campo({ label, children }: { label: string; children: ReactNode }) {
+/** As caminhos (já em formato "a.b.c", igual o backend manda em `campos`)
+ *  que faltam preencher — populado por `DadosDocumentoForm` a partir do erro
+ *  de "Faltam campos obrigatórios". Context em vez de prop em cada campo:
+ *  são dezenas de `<Texto>`/`<Numero>` espalhados pelas seções por tipo, e
+ *  nenhum precisa saber que esta trava existe. */
+const CamposFaltandoContext = createContext<Set<string>>(new Set());
+
+function Campo({ label, caminho, children }: { label: string; caminho?: Caminho; children: ReactNode }) {
+  const camposFaltando = useContext(CamposFaltandoContext);
+  const emFalta = !!caminho && camposFaltando.has(caminho.join("."));
   return (
     <FieldGroup>
       <FieldLabel>{label}</FieldLabel>
-      {children}
+      <CampoDestacadoWrapper $destacar={emFalta}>{children}</CampoDestacadoWrapper>
+      {emFalta && <CampoObrigatorioTexto>Campo obrigatório</CampoObrigatorioTexto>}
     </FieldGroup>
   );
 }
 
 function Texto({ dados, set, caminho, label }: { dados: Dados; set: Setter; caminho: Caminho; label: string }) {
   return (
-    <Campo label={label}>
+    <Campo label={label} caminho={caminho}>
       <FieldInput value={obter(dados, caminho) ?? ""} onChange={(e) => set(caminho, e.target.value)} />
     </Campo>
   );
@@ -64,7 +77,7 @@ function Texto({ dados, set, caminho, label }: { dados: Dados; set: Setter; cami
 function Numero({ dados, set, caminho, label }: { dados: Dados; set: Setter; caminho: Caminho; label: string }) {
   const valor = obter(dados, caminho);
   return (
-    <Campo label={label}>
+    <Campo label={label} caminho={caminho}>
       <FieldInput
         type="number"
         value={valor ?? ""}
@@ -76,7 +89,7 @@ function Numero({ dados, set, caminho, label }: { dados: Dados; set: Setter; cam
 
 function DataCampo({ dados, set, caminho, label }: { dados: Dados; set: Setter; caminho: Caminho; label: string }) {
   return (
-    <Campo label={label}>
+    <Campo label={label} caminho={caminho}>
       <FieldInput type="date" value={obter(dados, caminho) ?? ""} onChange={(e) => set(caminho, e.target.value)} />
     </Campo>
   );
@@ -84,7 +97,7 @@ function DataCampo({ dados, set, caminho, label }: { dados: Dados; set: Setter; 
 
 function TextoLongo({ dados, set, caminho, label }: { dados: Dados; set: Setter; caminho: Caminho; label: string }) {
   return (
-    <Campo label={label}>
+    <Campo label={label} caminho={caminho}>
       <FieldTextarea value={obter(dados, caminho) ?? ""} onChange={(e) => set(caminho, e.target.value)} />
     </Campo>
   );
@@ -434,10 +447,16 @@ export function DadosDocumentoForm({
   tipo,
   dados,
   onChange,
+  camposFaltando,
 }: {
   tipo: TipoDocumentoContratual;
   dados: Dados;
   onChange: (dados: Dados) => void;
+  /** Os caminhos ("contratante.cnpj", "assinatura.dia"...) que a última
+   *  recusa de "campos obrigatórios" apontou — ver `camposFaltandoDoErro`
+   *  em `lib/api.ts`. Cada `<Texto>`/`<Numero>`/etc. nesse caminho ganha
+   *  destaque; some assim que o campo é preenchido e reenviado. */
+  camposFaltando?: string[];
 }) {
   function set(caminho: Caminho, valor: unknown) {
     onChange(setPath(dados, caminho, valor));
@@ -450,11 +469,13 @@ export function DadosDocumentoForm({
   }
 
   return (
-    <FormSecoes>
-      <ContratanteSecao dados={dados} set={set} />
-      {Especifica && <Especifica dados={dados} set={set} />}
-      <TestemunhasSecao dados={dados} set={set} />
-      <AssinaturaSecao dados={dados} set={set} />
-    </FormSecoes>
+    <CamposFaltandoContext.Provider value={new Set(camposFaltando ?? [])}>
+      <FormSecoes>
+        <ContratanteSecao dados={dados} set={set} />
+        {Especifica && <Especifica dados={dados} set={set} />}
+        <TestemunhasSecao dados={dados} set={set} />
+        <AssinaturaSecao dados={dados} set={set} />
+      </FormSecoes>
+    </CamposFaltandoContext.Provider>
   );
 }

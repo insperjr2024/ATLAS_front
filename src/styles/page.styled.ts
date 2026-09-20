@@ -289,5 +289,10 @@ export const ErrorBlock = styled.div`
 export const ErrorText = styled.p`
   margin: 0;
   font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.mutedForeground};
+  font-weight: ${theme.fontWeight.medium};
+  /* ⚠ 2026-09-21, corrigido: estava na cor de texto secundário
+     (mutedForeground) — um "ErrorText" cinza-claro é indistinguível de uma
+     legenda qualquer, e é usado em toda a aplicação pra mostrar o motivo de
+     uma ação ter falhado. Precisa ler como erro à primeira vista. */
+  color: ${theme.colors.destructive};
 `;

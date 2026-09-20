@@ -23,17 +23,28 @@ interface ApiOptions extends RequestInit {
  */
 export class ErroDaApi extends Error {
   readonly codigo?: string;
+  /** Os CAMINHOS dos campos que faltam (ex.: "contratante.cnpj"), quando a
+   *  recusa é de campo obrigatório vazio — ver `campos_faltando` no backend.
+   *  Mesma ideia do `codigo`, só que pra destacar cada campo no formulário
+   *  em vez de reagir a um flag só. */
+  readonly campos?: string[];
 
-  constructor(mensagem: string, codigo?: string) {
+  constructor(mensagem: string, codigo?: string, campos?: string[]) {
     super(mensagem);
     this.name = "ErroDaApi";
     this.codigo = codigo;
+    this.campos = campos;
   }
 }
 
 /** O código da recusa, quando houver — `undefined` para qualquer outro erro. */
 export function codigoDoErro(erro: unknown): string | undefined {
   return erro instanceof ErroDaApi ? erro.codigo : undefined;
+}
+
+/** Os campos obrigatórios vazios apontados pela recusa, quando houver. */
+export function camposFaltandoDoErro(erro: unknown): string[] | undefined {
+  return erro instanceof ErroDaApi ? erro.campos : undefined;
 }
 
 function formatApiDetail(detail: unknown): string {
@@ -116,7 +127,11 @@ export async function apiFetch<T>(endpoint: string, options: ApiOptions = {}): P
         detalhe && typeof detalhe === "object" && "codigo" in detalhe
           ? String((detalhe as { codigo: unknown }).codigo)
           : undefined;
-      throw new ErroDaApi(mensagem, codigo);
+      const campos =
+        detalhe && typeof detalhe === "object" && "campos" in detalhe
+          ? (detalhe as { campos: unknown }).campos
+          : undefined;
+      throw new ErroDaApi(mensagem, codigo, Array.isArray(campos) ? (campos as string[]) : undefined);
     }
 
     console.error(`Erro ${response.status} em ${endpoint}`);

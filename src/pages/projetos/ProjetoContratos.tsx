@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { camposFaltandoDoErro } from "@/lib/api";
 import {
   abrirDocumento,
   analisarSolicitacao,
@@ -246,6 +247,10 @@ function DocumentoModal({
   const [confirmando, setConfirmando] = useState(false);
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState("");
+  // Os caminhos ("assinatura.dia", "contratante.cnpj"...) da última recusa
+  // de "campos obrigatórios" — destaca o campo certo no formulário em vez
+  // de só listar o nome dele na mensagem de erro acima.
+  const [camposFaltando, setCamposFaltando] = useState<string[]>([]);
 
   const [linkAprovacao, setLinkAprovacao] = useState<LinkAprovacao | null>(null);
   const [exportando, setExportando] = useState(false);
@@ -278,6 +283,7 @@ function DocumentoModal({
   async function handleSalvar() {
     setSalvando(true);
     setErro("");
+    setCamposFaltando([]);
     try {
       const atualizado = await atualizarDadosDocumento(atual.id, dados, token);
       setAtual(atualizado);
@@ -293,12 +299,14 @@ function DocumentoModal({
   async function handleConfirmar() {
     setConfirmando(true);
     setErro("");
+    setCamposFaltando([]);
     try {
       const atualizado = await confirmarPreenchimento(atual.id, token);
       setAtual(atualizado);
       await onMudou();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao confirmar");
+      setCamposFaltando(camposFaltandoDoErro(err) ?? []);
     } finally {
       setConfirmando(false);
     }
@@ -307,6 +315,7 @@ function DocumentoModal({
   async function handleGerar() {
     setGerando(true);
     setErro("");
+    setCamposFaltando([]);
     try {
       await gerarDocumento(atual.id, token);
       const recarregado = await getDocumento(atual.id, token);
@@ -315,6 +324,7 @@ function DocumentoModal({
       await onMudou();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao gerar documento");
+      setCamposFaltando(camposFaltandoDoErro(err) ?? []);
     } finally {
       setGerando(false);
     }
@@ -517,7 +527,12 @@ function DocumentoModal({
           {dadosTravados ? (
             <EmptyText>O cliente já aprovou este documento — os dados não podem mais ser editados.</EmptyText>
           ) : (
-            <DadosDocumentoForm tipo={atual.tipo} dados={dados} onChange={setDados} />
+            <DadosDocumentoForm
+              tipo={atual.tipo}
+              dados={dados}
+              onChange={setDados}
+              camposFaltando={camposFaltando}
+            />
           )}
 
           {!!atual.ultima_versao && (

@@ -148,6 +148,27 @@ export const ListaAdicionarBotao = styled.button`
   }
 `;
 
+/** Contorno vermelho ao redor de um campo apontado como obrigatório vazio —
+ *  envolve o `<FieldInput>`/`<FieldTextarea>` sem precisar mexer neles (são
+ *  compartilhados com o resto do app). */
+export const CampoDestacadoWrapper = styled.div<{ $destacar?: boolean }>`
+  ${({ $destacar }) =>
+    $destacar &&
+    `
+      outline: 2px solid ${theme.colors.destructive};
+      outline-offset: 2px;
+      border-radius: ${theme.borderRadius.md};
+    `}
+`;
+
+export const CampoObrigatorioTexto = styled.span`
+  display: block;
+  margin-top: ${theme.spacing.xs};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+  color: ${theme.colors.destructive};
+`;
+
 export const ArquivoLinha = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -155,25 +176,30 @@ export const ArquivoLinha = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
+/** ⚠ 2026-09-21, corrigido: era o azul cheio (`theme.colors.info`) de
+ *  `ProjetoNovo.styled.ts` — fazia sentido lá, onde é a ÚNICA ação da tela
+ *  (anexar a proposta). Aqui são duas entre várias outras (Coleta de Dados,
+ *  reanexar .docx), sempre secundárias — o mesmo visual "outline" de
+ *  `PageButton $variant="outline"`, pra não competir com os botões de ação
+ *  de verdade (Gerar rascunho, Confirmar). */
 export const ArquivoBotao = styled.label`
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  min-height: 2.25rem;
-  padding: 0 0.875rem;
-  border: 1px solid ${theme.colors.info};
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid ${theme.colors.border};
   border-radius: ${theme.borderRadius.lg};
-  background: ${theme.colors.info};
+  background: ${theme.colors.background};
   font-size: ${theme.fontSize.sm};
   font-weight: ${theme.fontWeight.medium};
-  color: ${theme.colors.infoForeground};
+  color: ${theme.colors.foreground};
   cursor: pointer;
   transition: background ${theme.transitions.fast}, border-color ${theme.transitions.fast};
 
   &:hover {
-    background: color-mix(in srgb, ${theme.colors.info} 88%, black);
-    border-color: color-mix(in srgb, ${theme.colors.info} 88%, black);
+    background: ${theme.colors.muted};
   }
 
   input {

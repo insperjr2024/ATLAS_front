@@ -6,7 +6,7 @@ import { pode, rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, Archive } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
 import { ID_MENU_LATERAL } from "./Layout.styled";
@@ -167,6 +167,23 @@ const navItems: NavItemConfig[] = [
     path: "/calendarios-base",
     grupo: "sistema",
     visible: (c) => c.pode_gerir_calendarios_base,
+  },
+  {
+    icon: Archive,
+    label: "Repositório de Contratos",
+    path: "/repositorio-contratual",
+    grupo: "sistema",
+    visible: (c) => c.pode_ver_repositorio_contratos,
+  },
+  {
+    icon: Landmark,
+    label: "Identidade Institucional",
+    path: "/identidade-institucional",
+    grupo: "sistema",
+    // Não é caixa de permissão — quem assina PELA Insper Jr é identidade
+    // organizacional, mesma régua do backend (`eh_diretoria_de_projetos`),
+    // não algo delegável por posição comum.
+    visiblePorPosicao: (u) => u.posicao === "diretor_projetos",
   },
   {
     icon: Settings,
