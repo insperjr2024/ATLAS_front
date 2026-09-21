@@ -36,10 +36,18 @@ import {
   Ponto,
 } from "./Kanban.styled";
 
-const COLUNAS = (Object.keys(ROTULO_STATUS) as StatusProjeto[]).map((status) => ({
-  status,
-  rotulo: ROTULO_STATUS[status],
-}));
+/** ⚠ 2026-09-21 — a pedido: "Contrato em elaboração" não entra no Kanban
+ *  geral. É um projeto que ainda não é venda de fato — a régua da diretora
+ *  foi literal: "não precisa ficar todos esses projetos ali". Esses ficam
+ *  só na aba Contratos (`ContratosPainel.tsx`); quando o contrato é
+ *  assinado e o projeto vira "Vendido" de verdade, ele aparece aqui como
+ *  qualquer outro — mesma linha, só o status mudou. */
+const COLUNAS = (Object.keys(ROTULO_STATUS) as StatusProjeto[])
+  .filter((status) => status !== "contrato_em_elaboracao")
+  .map((status) => ({
+    status,
+    rotulo: ROTULO_STATUS[status],
+  }));
 
 /**
  * Pra onde um projeto no status `atual` pode ir num arrasto, mesma régua

@@ -314,10 +314,17 @@ export function ProjetosList() {
   // "Arquivados" é a MESMA tela de Lista, só trocando o recorte de conteúdo
   //, nunca uma rota/página à parte. Fora dela, o checkbox "Mostrar"
   // é quem decide se os arquivados aparecem misturados aos ativos.
+  // ⚠ 2026-09-21 — a pedido: "Contrato em elaboração" não é venda de
+  // verdade ainda, e a diretora não quer esses projetos aparecendo na lista
+  // geral (kanban ou tabela) — eles ficam só na aba Contratos
+  // (`ContratosPainel.tsx`) até o contrato ser assinado e o projeto virar
+  // "Vendido" de verdade, quando entram aqui como qualquer outro.
   const projetosVisiveis =
     modo === "arquivados"
       ? projetos.filter((p) => p.arquivado_em)
-      : projetos.filter((p) => mostrarArquivados || !p.arquivado_em);
+      : projetos.filter(
+          (p) => (mostrarArquivados || !p.arquivado_em) && p.status !== "contrato_em_elaboracao",
+        );
 
   const projetosFiltrados =
     frentesSelecionadas.length === 0
