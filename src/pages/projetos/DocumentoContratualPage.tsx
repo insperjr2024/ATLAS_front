@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { camposFaltandoDoErro } from "@/lib/api";
 import {
   analisarSolicitacao,
+  aprovarInternamente,
   atualizarDadosDocumento,
   baixarArquivoDocumento,
   baixarModeloColeta,
@@ -85,20 +86,34 @@ function telefoneRepresentante(dados: Record<string, unknown>): string {
 }
 
 const STATUS_DADOS_TRAVADOS = new Set(["aprovado_pelo_cliente", "assinado_e_arquivado"]);
-const STATUS_EDICAO_TEXTO = new Set(["em_revisao_interna", "alteracao_solicitada"]);
-const STATUS_GERACAO_PERMITIDA = new Set(["aguardando_preenchimento", "em_revisao_interna", "alteracao_solicitada"]);
+const STATUS_EDICAO_TEXTO = new Set(["em_revisao_interna", "aprovado_internamente", "alteracao_solicitada"]);
+const STATUS_GERACAO_PERMITIDA = new Set([
+  "aguardando_preenchimento",
+  "em_revisao_interna",
+  "aprovado_internamente",
+  "alteracao_solicitada",
+]);
 
-const ETAPAS = ["Preenchimento", "Geração", "Revisão interna", "Aprovação do cliente", "Aprovado", "Arquivado"];
+const ETAPAS = [
+  "Preenchimento",
+  "Geração",
+  "Revisão interna",
+  "Aprovado internamente",
+  "Aprovação do cliente",
+  "Aprovado",
+  "Arquivado",
+];
 
-/** Em que das 6 etapas o documento está — mesma sequência visual do stepper
+/** Em que das 7 etapas o documento está — mesma sequência visual do stepper
  *  do sistema antigo, pra orientar de cara sem precisar decifrar o rótulo
  *  cru do status. */
 function indiceDaEtapa(doc: DocumentoContratual): number {
   if (doc.status === "aguardando_preenchimento") return doc.confirmado ? 1 : 0;
   if (doc.status === "em_revisao_interna") return 2;
-  if (doc.status === "aguardando_aprovacao_cliente" || doc.status === "alteracao_solicitada") return 3;
-  if (doc.status === "aprovado_pelo_cliente") return 4;
-  return 5; // assinado_e_arquivado
+  if (doc.status === "aprovado_internamente") return 3;
+  if (doc.status === "aguardando_aprovacao_cliente" || doc.status === "alteracao_solicitada") return 4;
+  if (doc.status === "aprovado_pelo_cliente") return 5;
+  return 6; // assinado_e_arquivado
 }
 
 /**
@@ -121,6 +136,7 @@ export function DocumentoContratualPage() {
   const [salvando, setSalvando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [gerando, setGerando] = useState(false);
+  const [aprovandoInternamente, setAprovandoInternamente] = useState(false);
   const [erro, setErro] = useState("");
   const [camposFaltando, setCamposFaltando] = useState<string[]>([]);
 
@@ -220,6 +236,20 @@ export function DocumentoContratualPage() {
       setCamposFaltando(camposFaltandoDoErro(err) ?? []);
     } finally {
       setGerando(false);
+    }
+  }
+
+  async function handleAprovarInternamente() {
+    if (!atual || !token) return;
+    setAprovandoInternamente(true);
+    setErro("");
+    try {
+      const atualizado = await aprovarInternamente(atual.id, token);
+      setAtual(atualizado);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao aprovar internamente");
+    } finally {
+      setAprovandoInternamente(false);
     }
   }
 
@@ -367,8 +397,10 @@ export function DocumentoContratualPage() {
   const dadosTravados = STATUS_DADOS_TRAVADOS.has(atual.status);
   const podeConfirmar = atual.status === "aguardando_preenchimento" && !atual.confirmado;
   const podeApagar = atual.status === "aguardando_preenchimento" && !atual.confirmado;
-  const podeExportar = atual.status === "em_revisao_interna" && !!atual.ultima_versao;
-  const podeGerar = STATUS_GERACAO_PERMITIDA.has(atual.status) && !podeConfirmar && !podeExportar;
+  const podeAprovarInternamente = atual.status === "em_revisao_interna" && !!atual.ultima_versao;
+  const podeExportar = atual.status === "aprovado_internamente" && !!atual.ultima_versao;
+  const podeGerar =
+    STATUS_GERACAO_PERMITIDA.has(atual.status) && !podeConfirmar && !podeAprovarInternamente && !podeExportar;
   const podeEditarRascunho = STATUS_EDICAO_TEXTO.has(atual.status) && !!atual.ultima_versao;
   const ehTep = atual.tipo === "tep";
   const podeRecusarAssinatura = ehTep && atual.status === "aprovado_pelo_cliente";
@@ -606,6 +638,11 @@ export function DocumentoContratualPage() {
           {podeGerar && (
             <PageButton type="button" disabled={gerando} onClick={handleGerar}>
               {gerando ? "Gerando..." : "Gerar rascunho"}
+            </PageButton>
+          )}
+          {podeAprovarInternamente && (
+            <PageButton type="button" disabled={aprovandoInternamente} onClick={handleAprovarInternamente}>
+              {aprovandoInternamente ? "Aprovando..." : "Aprovar internamente"}
             </PageButton>
           )}
           {podeExportar && (

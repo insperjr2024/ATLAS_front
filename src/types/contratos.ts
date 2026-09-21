@@ -6,6 +6,7 @@ export type TipoDocumentoContratual = "contrato" | "tep" | "nda" | "uso_imagem" 
 export type StatusDocumentoContratual =
   | "aguardando_preenchimento"
   | "em_revisao_interna"
+  | "aprovado_internamente"
   | "aguardando_aprovacao_cliente"
   | "alteracao_solicitada"
   | "aprovado_pelo_cliente"
@@ -23,6 +24,7 @@ export const ROTULO_TIPO_DOCUMENTO: Record<TipoDocumentoContratual, string> = {
 export const ROTULO_STATUS_DOCUMENTO: Record<StatusDocumentoContratual, string> = {
   aguardando_preenchimento: "Aguardando preenchimento",
   em_revisao_interna: "Em revisão interna",
+  aprovado_internamente: "Aprovado internamente",
   aguardando_aprovacao_cliente: "Aguardando aprovação do cliente",
   alteracao_solicitada: "Alteração solicitada",
   aprovado_pelo_cliente: "Aprovado pelo cliente",

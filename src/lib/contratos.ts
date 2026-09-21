@@ -65,6 +65,13 @@ export function gerarDocumento(documentoId: number, token: string) {
   });
 }
 
+export function aprovarInternamente(documentoId: number, token: string) {
+  return apiFetch<DocumentoContratual>(`/documentos-contratuais/${documentoId}/aprovar-internamente`, {
+    method: "POST",
+    token,
+  });
+}
+
 export function deletarDocumento(documentoId: number, token: string) {
   return apiFetch<void>(`/documentos-contratuais/${documentoId}`, { method: "DELETE", token });
 }
