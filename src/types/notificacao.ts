@@ -36,7 +36,17 @@ export type TipoNotificacao =
   | "tarefa_vencida"
   | "banca_nao_marcada"
   | "projeto_sem_reuniao"
-  | "banca_hoje";
+  | "banca_hoje"
+  // § Contratos — o documento jurídico e o projeto que ele traz junto
+  // (§ Contratos, 2026-09-21; ver `notificar_documento_contratual.py` e
+  // `notificar_projeto.py` no backend)
+  | "documento_contratual_pronto_para_gerar"
+  | "documento_contratual_aprovado_internamente"
+  | "documento_contratual_liberado"
+  | "documento_contratual_cliente_aprovou"
+  | "documento_contratual_cliente_pediu_alteracao"
+  | "projeto_criado_em_contrato"
+  | "projeto_vendido";
 
 export interface Notificacao {
   /** Só o evento tem linha no banco. Condição vem com `null` e é

@@ -14,11 +14,15 @@ import {
   CheckCircle2,
   ChevronDown,
   ClipboardCheck,
+  FileSignature,
   Flag,
   GraduationCap,
   ListChecks,
   Megaphone,
+  MessageSquareWarning,
   NotebookPen,
+  Send,
+  ShieldCheck,
   SlidersHorizontal,
   Star,
   Trash2,
@@ -116,6 +120,28 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   },
   pdi_prazo_proximo: { icone: GraduationCap, rotulo: "Prazo de PDI próximo", alerta: true },
   pdi_prazo_vencido: { icone: GraduationCap, rotulo: "Prazo de PDI vencido", alerta: true },
+  // § Contratos — o alerta acompanha quem tem o que fazer a seguir: gerar,
+  // mandar, ou responder ao cliente. "Cliente aprovou"/os dois de projeto
+  // são notícia, não cobrança.
+  documento_contratual_pronto_para_gerar: {
+    icone: FileSignature,
+    rotulo: "Documento pronto para gerar",
+    alerta: true,
+  },
+  documento_contratual_aprovado_internamente: {
+    icone: ShieldCheck,
+    rotulo: "Documento aprovado internamente",
+    alerta: true,
+  },
+  documento_contratual_liberado: { icone: Send, rotulo: "Documento pronto para o cliente", alerta: true },
+  documento_contratual_cliente_aprovou: { icone: CheckCheck, rotulo: "Cliente aprovou o documento", alerta: false },
+  documento_contratual_cliente_pediu_alteracao: {
+    icone: MessageSquareWarning,
+    rotulo: "Cliente pediu alteração",
+    alerta: true,
+  },
+  projeto_criado_em_contrato: { icone: FileSignature, rotulo: "Projeto em contrato", alerta: false },
+  projeto_vendido: { icone: CheckCircle2, rotulo: "Projeto vendido", alerta: false },
 };
 
 /**
@@ -165,6 +191,13 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "pdi_prazo_proximo",
   "pdi_prazo_vencido",
   "banca_aviso",
+  "projeto_criado_em_contrato",
+  "projeto_vendido",
+  "documento_contratual_pronto_para_gerar",
+  "documento_contratual_aprovado_internamente",
+  "documento_contratual_liberado",
+  "documento_contratual_cliente_aprovou",
+  "documento_contratual_cliente_pediu_alteracao",
 ];
 
 /** O filtro só oferece o que aquela pessoa é capaz de receber, sem isso, o
