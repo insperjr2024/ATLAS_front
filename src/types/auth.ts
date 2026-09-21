@@ -100,6 +100,11 @@ export interface Permissoes {
   pode_marcar_documento_assinado: boolean;
   /** Ver o Repositório — todo documento final assinado, organizado por gestão. */
   pode_ver_repositorio_contratos: boolean;
+  /** A aba Contratos — painel cross-projeto de documentos jurídicos EM
+   *  ANDAMENTO (diferente do Repositório acima, que é só arquivado). Ajuste
+   *  pra dar acesso a quem está fora da régua padrão (diretoria/Jurídico/
+   *  vendedor/coordenador do projeto). */
+  pode_ver_painel_contratos: boolean;
   /** Cadastrar documento já assinado fora do fluxo normal. */
   pode_importar_documento_antigo: boolean;
   /** Abrir o TEP dentro de um projeto que já tem Contrato de Prestação. */

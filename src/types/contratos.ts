@@ -99,6 +99,22 @@ export interface ItemRepositorioContratual {
   arquivado_em: string | null;
 }
 
+/** Uma linha da aba Contratos (`GET /contratos-painel`) — documento jurídico
+ *  ainda em andamento, de qualquer projeto. Diferente de `ItemRepositorioContratual`
+ *  (só arquivado); o recorte de quem vê qual linha já vem filtrado do back. */
+export interface ItemPainelContratual {
+  id: number;
+  projeto_id: number;
+  projeto_nome: string;
+  cliente: string | null;
+  tipo: TipoDocumentoContratual;
+  tipo_rotulo: string;
+  status: StatusDocumentoContratual;
+  ultima_versao: number | null;
+  criado_em: string;
+  atualizado_em: string;
+}
+
 export interface IdentidadeInstitucional {
   presidente_nome: string;
   presidente_cpf: string;

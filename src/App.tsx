@@ -9,6 +9,7 @@ import { Login } from "@/pages/Login";
 import { EsqueciSenha } from "@/pages/EsqueciSenha";
 import { RedefinirSenha } from "@/pages/RedefinirSenha";
 import { AprovacaoContratual } from "@/pages/AprovacaoContratual";
+import { ContratosPainel } from "@/pages/ContratosPainel";
 import { RepositorioContratual } from "@/pages/RepositorioContratual";
 import { IdentidadeInstitucional } from "@/pages/IdentidadeInstitucional";
 import { DefinirSenha } from "@/pages/DefinirSenha";
@@ -92,6 +93,11 @@ export default function App() {
               <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
+              {/* Sem guard: o backend já recorta as linhas por vendedor/
+                  coordenador/diretoria/Jurídico/`pode_ver_painel_contratos`
+                  (`PainelContratualUseCase`) — quem não se encaixa em nada
+                  disso só vê a lista vazia, não precisa de 403 aqui. */}
+              <Route path="/contratos" element={<ContratosPainel />} />
               <Route path="/vagas" element={<Vagas />} />
               {/* Criar projeto é a caixa de permissão `pode_criar_projeto` —
                   a mesma que decide o botão em `ProjetosList` e que o backend

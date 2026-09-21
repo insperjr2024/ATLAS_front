@@ -5,6 +5,7 @@ import type {
   DocumentoContratual,
   ExtracaoColeta,
   IdentidadeInstitucional,
+  ItemPainelContratual,
   ItemRepositorioContratual,
   LinkAprovacao,
   ParagrafoEditavel,
@@ -247,6 +248,12 @@ export function atualizarIdentidadeInstitucional(
     body: JSON.stringify({ dados }),
     token,
   });
+}
+
+// ---------- Painel (aba Contratos) ----------
+
+export function getPainelContratual(token: string) {
+  return apiFetch<{ itens: ItemPainelContratual[] }>("/contratos-painel", { token });
 }
 
 // ---------- Repositório ----------

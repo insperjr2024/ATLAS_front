@@ -242,6 +242,12 @@ const PERMISSOES = [
       "Todo documento jurídico final assinado, de qualquer projeto, organizado por gestão. Só leitura.",
   },
   {
+    campo: "pode_ver_painel_contratos" as const,
+    titulo: "Ver a aba Contratos",
+    descricao:
+      "O painel de documentos jurídicos EM ANDAMENTO de todo projeto (diferente do Repositório, que é só o arquivado). Diretoria, Jurídico, vendedor e coordenador já veem os documentos que lhes cabem sem esta caixa — ela é o ajuste pra dar acesso à aba a mais alguém, como um consultor alocado no Jurídico.",
+  },
+  {
     campo: "pode_importar_documento_antigo" as const,
     titulo: "Importar documento jurídico antigo",
     descricao:

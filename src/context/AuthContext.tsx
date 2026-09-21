@@ -68,6 +68,7 @@ const PERMISSOES_PLACEHOLDER: Permissoes = {
   pode_editar_documento_juridico: false,
   pode_marcar_documento_assinado: false,
   pode_ver_repositorio_contratos: false,
+  pode_ver_painel_contratos: false,
   pode_importar_documento_antigo: false,
   pode_solicitar_tep: false,
 };
