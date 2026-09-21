@@ -29,6 +29,10 @@ export interface ProjetoResumo {
   cliente: string | null;
   criado_em: string;
   status: StatusProjeto;
+  /** Contrato institucional (Agro etc.) — sem frente/equipe/escopo, só
+   *  existe pra pendurar um documento jurídico. Fica fora da lista/Kanban
+   *  geral de projetos e do Monitoramento pra sempre. */
+  institucional: boolean;
   frente_ids: number[];
   /** 2 frentes = projeto sinérgico; aparece para os dois gerentes. */
   sinergico: boolean;

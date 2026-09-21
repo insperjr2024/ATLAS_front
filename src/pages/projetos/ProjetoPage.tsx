@@ -35,7 +35,7 @@ import type { ProjetoCompleto, StatusProjeto } from "@/types/projeto";
 import { Ponto } from "@/components/kanban/Kanban.styled";
 import { FotoCircular } from "@/components/Avatar";
 import { corDaPessoa, iniciais } from "@/lib/avatar";
-import { pode, veTodosOsProjetos } from "@/utils/permissoes";
+import { pode } from "@/utils/permissoes";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { EditarProjetoModal } from "./EditarProjetoModal";
 import {
@@ -347,12 +347,6 @@ export function ProjetoPage() {
   // Abre o modal "Editar projeto". O vendedor entra no modo enxuto.
   const podeEditarProjeto = podeEditarTudo || ehVendedorDesteProjeto;
   const temKickoff = !!projeto.data_kickoff;
-  // ⭐ 2026-09-21 — a pedido: Contratos não é aba de consultor. Só quem
-  // vendeu o projeto (mesmo sendo consultor), o coordenador DESTE projeto,
-  // gerência ou diretoria.
-  const meuPapelNesteProjeto = projeto.equipe.find((m) => m.usuario_id === usuario?.id)?.papel;
-  const podeVerContratos =
-    ehVendedorDesteProjeto || meuPapelNesteProjeto === "coordenador" || veTodosOsProjetos(usuario);
 
   /**
    * As etapas para onde ESTE projeto pode ir agora — livre entre as ativas,
@@ -544,14 +538,6 @@ export function ProjetoPage() {
             <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
             <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
             <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
-            {/* ⭐ 2026-09-17 — § integração com a Contratos, ainda Fase 1
-                (só em contratos-implementacao, nunca em produção). Por
-                último: é a aba mais nova, e ninguém depende da posição dela
-                ainda. ⭐ 2026-09-21: só quem vendeu, coordenador deste
-                projeto, gerência ou diretoria — ver `podeVerContratos`. */}
-            {podeVerContratos && (
-              <TabLink to={`/projetos/${projeto.id}/contratos`}>Contratos</TabLink>
-            )}
           </>
         )}
       </TabBar>

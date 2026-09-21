@@ -86,6 +86,20 @@ export function createProjeto(dados: CreateProjetoPayload, token: string) {
   });
 }
 
+/** Contrato institucional (Agro etc.) — só nome (+ cliente opcional), sem
+ *  frente/equipe/escopo. Usado pelo assistente "+ Novo Contrato" da aba
+ *  Contratos quando o contrato não é ligado a um projeto de entrega. */
+export function createProjetoInstitucional(
+  dados: { nome: string; cliente?: string | null },
+  token: string,
+) {
+  return apiFetch<ProjetoResumo>("/projetos/institucional", {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
 /** A proposta é ou link (mandado junto no `createProjeto`), ou este PDF, nunca os dois. */
 export function uploadAnexoProposta(projetoId: number, arquivo: File, token: string) {
   const formData = new FormData();

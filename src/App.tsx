@@ -30,7 +30,6 @@ import { ProjetoVisaoGeral } from "@/pages/projetos/ProjetoVisaoGeral";
 import { ProjetoCronograma } from "@/pages/projetos/ProjetoCronograma";
 import { ProjetoBanca } from "@/pages/projetos/ProjetoBanca";
 import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
-import { ProjetoContratos } from "@/pages/projetos/ProjetoContratos";
 import { DocumentoContratualPage } from "@/pages/projetos/DocumentoContratualPage";
 import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
 import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
@@ -119,7 +118,9 @@ export default function App() {
                 <Route path="banca" element={<ProjetoBanca />} />
                 <Route path="tarefas" element={<ProjetoTarefas />} />
                 <Route path="historico" element={<ProjetoHistorico />} />
-                <Route path="contratos" element={<ProjetoContratos />} />
+                {/* Sem lista de documentos por projeto — a aba Contratos de
+                    nível de menu (Kanban, `/contratos`) é o único ponto de
+                    entrada; esta rota só serve a PÁGINA de um documento. */}
                 <Route path="contratos/:documentoId" element={<DocumentoContratualPage />} />
               </Route>
 

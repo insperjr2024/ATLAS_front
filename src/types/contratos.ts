@@ -107,9 +107,13 @@ export interface ItemPainelContratual {
   projeto_id: number;
   projeto_nome: string;
   cliente: string | null;
+  frente_ids: number[];
   tipo: TipoDocumentoContratual;
   tipo_rotulo: string;
   status: StatusDocumentoContratual;
+  /** Junto com `status`, decide em qual das 7 colunas da Kanban o card cai
+   *  (`indiceDaEtapaDocumento`, `lib/contratos-etapas.ts`). */
+  confirmado: boolean;
   ultima_versao: number | null;
   criado_em: string;
   atualizado_em: string;

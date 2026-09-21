@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { getFrentes } from "@/lib/bancas";
 import { getPainelContratual } from "@/lib/contratos";
+import { tonsDaColuna } from "@/lib/colunas-tarefa";
+import { ETAPAS_DOCUMENTO, indiceDaEtapaDocumento } from "@/lib/contratos-etapas";
 import type { ItemPainelContratual } from "@/types/contratos";
-import { ROTULO_STATUS_DOCUMENTO } from "@/types/contratos";
+import type { Frente } from "@/types/banca";
 import {
   PageStack,
   PageCard,
@@ -11,96 +14,173 @@ import {
   PageCardTitle,
   PageCardContent,
   PageButton,
-  PageBadge,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
-  EmptyText,
 } from "@/styles/page.styled";
-import { AcoesLinha, DocumentoLista, DocumentoLinha, DocumentoTipo, DocumentoMeta } from "./projetos/ProjetoContratos.styled";
+import { FieldInput } from "./Bancas.styled";
+import {
+  Board,
+  Coluna,
+  ColunaTitulo,
+  ColunaRotuloTexto,
+  Ponto,
+  Contador,
+  Card,
+  CardTitulo,
+  CardMeta,
+  CardFrentes,
+  CardFrenteTag,
+  ColunaVazia,
+} from "@/components/kanban/Kanban.styled";
+import { StatusPilula } from "./projetos/Projetos.styled";
+import { NovoContratoModal } from "./NovoContratoModal";
 
-function tomDoStatus(status: ItemPainelContratual["status"]): "default" | "success" | "muted" | "warning" | "danger" {
-  if (status === "aprovado_pelo_cliente") return "success";
-  if (status === "alteracao_solicitada") return "warning";
-  if (status === "aguardando_preenchimento") return "muted";
-  return "default";
-}
+/** Uma cor por etapa — mesma ideia de `CORES_STATUS` (`lib/projetos.ts`),
+ *  só que pro ciclo de vida do DOCUMENTO, não do projeto. Progressão
+ *  neutra → âmbar (esperando alguém agir) → verde (resolvido). */
+const CORES_ETAPA = [
+  "#9CA3AF", // Preenchimento — cinza, ainda começando
+  "#6366F1", // Geração — índigo
+  "#F59E0B", // Revisão interna — âmbar, esperando o Jurídico
+  "#8B5CF6", // Aprovado internamente — roxo, pronto pra mandar
+  "#F97316", // Aprovação do cliente — laranja, esperando resposta de fora
+  "#10B981", // Aprovado — verde
+  "#6B7280", // Arquivado — cinza escuro, encerrado
+];
 
 /**
- * ⭐ 2026-09-21 — a pedido: a aba Contratos, fila de trabalho cross-projeto
- * (diferente do Repositório, que é só arquivado). Cada linha abre a MESMA
- * tela de documento que já existe dentro do projeto — este painel só junta
- * tudo num lugar só, pra quem cuida de contrato não precisar abrir projeto
- * por projeto pra achar o que está esperando aprovação. O recorte de quem
- * vê qual linha já vem filtrado do backend (`GET /contratos-painel`).
+ * ⭐ 2026-09-21 — a aba Contratos: Kanban por ETAPA DO DOCUMENTO (não etapa
+ * de projeto), cross-projeto — substitui a lista simples de antes e a aba
+ * "Contratos" que existia dentro de cada projeto (removida). Sem arrastar:
+ * cada ação (aprovar internamente, gerar, exportar...) tem validação e
+ * permissão própria, então o card só abre a página do documento, que já
+ * tem todos os botões certos — a mudança de coluna acontece sozinha.
  */
 export function ContratosPainel() {
   const { token } = useAuth();
   const navigate = useNavigate();
   const [itens, setItens] = useState<ItemPainelContratual[]>([]);
+  const [frentes, setFrentes] = useState<Frente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
+  const [mostrarNovoContrato, setMostrarNovoContrato] = useState(false);
+
+  const [frenteSelecionada, setFrenteSelecionada] = useState<number | "">("");
+  const [buscaProjeto, setBuscaProjeto] = useState("");
 
   useEffect(() => {
     if (!token) return;
-    getPainelContratual(token)
-      .then(({ itens: lista }) => setItens(lista))
+    Promise.all([getPainelContratual(token), getFrentes(token)])
+      .then(([{ itens: lista }, listaFrentes]) => {
+        setItens(lista);
+        setFrentes(listaFrentes);
+      })
       .catch((err) => setErro(err instanceof Error ? err.message : "Erro ao carregar"))
       .finally(() => setCarregando(false));
   }, [token]);
 
-  if (carregando) return <PageLoadingBlock />;
+  const nomeFrente = useMemo(() => {
+    const mapa = new Map(frentes.map((f) => [f.id, f.nome]));
+    return (id: number) => mapa.get(id) ?? `Frente ${id}`;
+  }, [frentes]);
 
-  const ordenados = [...itens].sort((a, b) => b.atualizado_em.localeCompare(a.atualizado_em));
+  const tons = useMemo(() => CORES_ETAPA.map((cor) => tonsDaColuna(cor)), []);
+
+  const itensFiltrados = itens.filter((item) => {
+    if (frenteSelecionada !== "" && !item.frente_ids.includes(frenteSelecionada)) return false;
+    if (buscaProjeto && !item.projeto_nome.toLowerCase().includes(buscaProjeto.toLowerCase())) return false;
+    return true;
+  });
+
+  if (carregando) return <PageLoadingBlock />;
 
   return (
     <PageStack>
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>Contratos</PageCardTitle>
-          <PageButton type="button" onClick={() => navigate("/projetos/novo")}>
-            + Novo projeto
+          <PageButton type="button" onClick={() => setMostrarNovoContrato(true)}>
+            + Novo Contrato
           </PageButton>
         </PageCardHeader>
         <PageCardContent>
-          <p style={{ marginTop: 0, fontSize: "0.85rem", color: "var(--muted-foreground, inherit)" }}>
-            Todo documento jurídico em andamento — o que está esperando aprovação, o que já foi
-            mandado pro cliente. Documento assinado e arquivado fica no Repositório.
-          </p>
-
           {erro && (
             <ErrorBlock>
               <ErrorText>{erro}</ErrorText>
             </ErrorBlock>
           )}
 
-          {ordenados.length === 0 ? (
-            <EmptyText>Nenhum documento em andamento.</EmptyText>
-          ) : (
-            <DocumentoLista>
-              {ordenados.map((item) => (
-                <DocumentoLinha
-                  key={item.id}
-                  type="button"
-                  onClick={() => navigate(`/projetos/${item.projeto_id}/contratos/${item.id}`)}
-                >
-                  <div>
-                    <DocumentoTipo>{item.projeto_nome}</DocumentoTipo>
-                    <DocumentoMeta>
-                      {item.tipo_rotulo}
-                      {item.cliente && ` · ${item.cliente}`}
-                    </DocumentoMeta>
-                  </div>
-                  <AcoesLinha>
-                    {!!item.ultima_versao && <span>v{item.ultima_versao}</span>}
-                    <PageBadge $tone={tomDoStatus(item.status)}>{ROTULO_STATUS_DOCUMENTO[item.status]}</PageBadge>
-                  </AcoesLinha>
-                </DocumentoLinha>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
+            <FieldInput
+              as="select"
+              value={frenteSelecionada}
+              onChange={(e) => setFrenteSelecionada(e.target.value ? Number(e.target.value) : "")}
+              style={{ maxWidth: "14rem" }}
+            >
+              <option value="">Todas as frentes</option>
+              {frentes.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nome}
+                </option>
               ))}
-            </DocumentoLista>
-          )}
+            </FieldInput>
+            <FieldInput
+              placeholder="Buscar por projeto..."
+              value={buscaProjeto}
+              onChange={(e) => setBuscaProjeto(e.target.value)}
+              style={{ maxWidth: "16rem" }}
+            />
+          </div>
+
+          <Board $colunas={ETAPAS_DOCUMENTO.length}>
+            {ETAPAS_DOCUMENTO.map((rotulo, i) => {
+              const itensDaColuna = itensFiltrados.filter((item) => indiceDaEtapaDocumento(item) === i);
+              return (
+                <Coluna key={rotulo} $cor={tons[i]}>
+                  <ColunaTitulo>
+                    <StatusPilula $cor={tons[i]}>
+                      <Ponto $cor={tons[i].ponto} />
+                      <ColunaRotuloTexto>{rotulo}</ColunaRotuloTexto>
+                    </StatusPilula>
+                    <Contador>{itensDaColuna.length}</Contador>
+                  </ColunaTitulo>
+
+                  {itensDaColuna.length === 0 && <ColunaVazia>—</ColunaVazia>}
+                  {itensDaColuna.map((item) => (
+                    <Card
+                      key={item.id}
+                      $cor={tons[i]}
+                      role="button"
+                      tabIndex={0}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => navigate(`/projetos/${item.projeto_id}/contratos/${item.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") navigate(`/projetos/${item.projeto_id}/contratos/${item.id}`);
+                      }}
+                    >
+                      <CardTitulo>{item.tipo_rotulo}</CardTitulo>
+                      <CardMeta title={item.cliente ?? undefined}>
+                        {item.projeto_nome}
+                        {item.cliente ? ` · ${item.cliente}` : ""}
+                      </CardMeta>
+                      {item.frente_ids.length > 0 && (
+                        <CardFrentes>
+                          {item.frente_ids.map((fid) => (
+                            <CardFrenteTag key={fid}>{nomeFrente(fid)}</CardFrenteTag>
+                          ))}
+                        </CardFrentes>
+                      )}
+                    </Card>
+                  ))}
+                </Coluna>
+              );
+            })}
+          </Board>
         </PageCardContent>
       </PageCard>
+
+      {mostrarNovoContrato && <NovoContratoModal onClose={() => setMostrarNovoContrato(false)} />}
     </PageStack>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { camposFaltandoDoErro } from "@/lib/api";
+import { ETAPAS_DOCUMENTO, indiceDaEtapaDocumento } from "@/lib/contratos-etapas";
 import {
   analisarSolicitacao,
   aprovarInternamente,
@@ -94,27 +95,8 @@ const STATUS_GERACAO_PERMITIDA = new Set([
   "alteracao_solicitada",
 ]);
 
-const ETAPAS = [
-  "Preenchimento",
-  "Geração",
-  "Revisão interna",
-  "Aprovado internamente",
-  "Aprovação do cliente",
-  "Aprovado",
-  "Arquivado",
-];
-
-/** Em que das 7 etapas o documento está — mesma sequência visual do stepper
- *  do sistema antigo, pra orientar de cara sem precisar decifrar o rótulo
- *  cru do status. */
-function indiceDaEtapa(doc: DocumentoContratual): number {
-  if (doc.status === "aguardando_preenchimento") return doc.confirmado ? 1 : 0;
-  if (doc.status === "em_revisao_interna") return 2;
-  if (doc.status === "aprovado_internamente") return 3;
-  if (doc.status === "aguardando_aprovacao_cliente" || doc.status === "alteracao_solicitada") return 4;
-  if (doc.status === "aprovado_pelo_cliente") return 5;
-  return 6; // assinado_e_arquivado
-}
+const ETAPAS = ETAPAS_DOCUMENTO;
+const indiceDaEtapa = indiceDaEtapaDocumento;
 
 /**
  * ⭐ 2026-09-21 — a tela de um documento jurídico, como página própria (não
@@ -182,7 +164,9 @@ export function DocumentoContratualPage() {
   }, [atual, token]);
 
   function voltar() {
-    navigate(`/projetos/${projeto.id}/contratos`);
+    // A aba Contratos por projeto não existe mais — o único ponto de
+    // entrada é a Kanban de nível de menu (`/contratos`).
+    navigate("/contratos");
   }
 
   async function handleSalvar() {

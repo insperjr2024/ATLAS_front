@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Paperclip, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
+import { abrirDocumento, getDocumentosDoProjeto } from "@/lib/contratos";
 import {
   createProjeto,
   DIAS_REUNIAO,
@@ -285,7 +286,25 @@ export function ProjetoNovo() {
         await uploadAnexoProposta(projetoId, anexoProposta, token);
       }
 
-      navigate(`/projetos/${projetoId}`, { replace: true });
+      // ⭐ 2026-09-21 — a pedido: todo projeto nasce por um contrato. Criar
+      // o projeto já abre o Contrato de Prestação dele na hora, em vez de
+      // cair na Visão Geral — fecha o loop "criei o projeto, já tô com o
+      // contrato aberto pra preencher".
+      //
+      // ⚠ Reenvio depois de o anexo falhar numa tentativa anterior já criou
+      // o projeto E o documento — `abrirDocumento` recusaria um segundo
+      // (só um Contrato de Prestação por projeto). Busca o que já existe em
+      // vez de tratar isso como erro.
+      let documentoId: number;
+      try {
+        documentoId = (await abrirDocumento(projetoId, "contrato", token)).id;
+      } catch {
+        const { documentos } = await getDocumentosDoProjeto(projetoId, token);
+        const existente = documentos.find((d) => d.tipo === "contrato");
+        if (!existente) throw new Error("Não foi possível abrir o Contrato de Prestação do projeto.");
+        documentoId = existente.id;
+      }
+      navigate(`/projetos/${projetoId}/contratos/${documentoId}`, { replace: true });
     } catch (err) {
       setErro(
         projetoId
