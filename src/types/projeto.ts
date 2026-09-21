@@ -8,8 +8,9 @@
 
 import type { ResultadoBanca, StatusBanca } from "@/types/banca";
 
-/** Os 7 status do ciclo de vida + Pausado, que é um estado à parte. */
+/** Os 8 status do ciclo de vida + Pausado, que é um estado à parte. */
 export type StatusProjeto =
+  | "contrato_em_elaboracao"
   | "vendido"
   | "ambientacao"
   | "em_andamento"
