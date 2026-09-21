@@ -189,7 +189,7 @@ function ContratanteSecao({ dados, set }: { dados: Dados; set: Setter }) {
         <Texto dados={dados} set={set} caminho={["contratante", "cnpj"]} label="CNPJ / CPF" />
       </FormGrid>
       <FormGrid $colunas={2} style={{ marginTop: "0.75rem" }}>
-        <Texto dados={dados} set={set} caminho={["contratante", "endereco"]} label="Endereço" />
+        <TextoLongo dados={dados} set={set} caminho={["contratante", "endereco"]} label="Endereço" />
         <Texto dados={dados} set={set} caminho={["contratante", "email_cobranca"]} label="E-mail de cobrança" />
       </FormGrid>
 
@@ -202,7 +202,7 @@ function ContratanteSecao({ dados, set }: { dados: Dados; set: Setter }) {
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "profissao"]} label="Profissão" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "rg"]} label="RG (nº e órgão emissor)" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "cpf"]} label="CPF" />
-        <Texto dados={dados} set={set} caminho={["contratante", "representante", "endereco"]} label="Endereço" />
+        <TextoLongo dados={dados} set={set} caminho={["contratante", "representante", "endereco"]} label="Endereço" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "email"]} label="E-mail" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "telefone"]} label="Telefone" />
       </FormGrid>

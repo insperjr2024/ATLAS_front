@@ -221,15 +221,26 @@ export const FormGrid = styled.div<{ $colunas?: 2 | 3 }>`
 /** Dia/Mês/Ano da assinatura cabem em poucos caracteres — no `FormGrid`
  *  normal (colunas 1fr) cada um esticava pra 1/3 da largura da tela, o que
  *  ficava ainda mais estranho depois de destacar o campo vazio em vermelho
- *  (a caixa vermelha, gigante, sem relação com o tamanho do valor). */
+ *  (a caixa vermelha, gigante, sem relação com o tamanho do valor).
+ *
+ *  ⚠ 2026-09-20, corrigido: "Mês (número ou nome)" quebra em duas linhas
+ *  num campo de 9rem, mas "Dia"/"Ano" não — sem reservar a mesma altura de
+ *  rótulo pros três, o input do Mês ficava mais baixo que os outros dois,
+ *  desalinhado. `min-height` no rótulo (não no campo) resolve isso não
+ *  importa quantas linhas o texto ocupar. */
 export const FormGridEstreito = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: ${theme.spacing.md};
 
   > * {
-    width: 9rem;
+    width: 10rem;
     max-width: 100%;
+  }
+
+  label {
+    display: block;
+    min-height: 2.4em;
   }
 `;
 
@@ -280,8 +291,24 @@ export const ListaAdicionarBotao = styled.button`
 
 /** Contorno vermelho ao redor de um campo apontado como obrigatório vazio —
  *  envolve o `<FieldInput>`/`<FieldTextarea>` sem precisar mexer neles (são
- *  compartilhados com o resto do app). */
+ *  compartilhados com o resto do app).
+ *
+ *  ⚠ 2026-09-20, corrigido: `<FieldInput>` (diferente de `<FieldTextarea>`)
+ *  não tem `width: 100%` — contava com ser filho direto de um grid/flex que
+ *  estica os itens por padrão. Ao virar filho de UM DIV COMUM aqui, essa
+ *  esticada some e o input renderiza na largura intrínseca do navegador
+ *  (bem menor) — o contorno (em volta do div, que ainda ocupa a coluna
+ *  inteira) sobra visivelmente maior que a caixa cinza do campo. */
 export const CampoDestacadoWrapper = styled.div<{ $destacar?: boolean }>`
+  display: block;
+
+  input,
+  textarea,
+  select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   ${({ $destacar }) =>
     $destacar &&
     `

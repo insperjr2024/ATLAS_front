@@ -102,7 +102,13 @@ export interface IdentidadeInstitucional {
   presidente_cpf: string;
   presidente_rg: string;
   presidente_orgao_emissor: string;
-  presidente_endereco: string;
+  presidente_endereco_rua: string;
+  presidente_endereco_numero: string;
+  presidente_endereco_complemento: string | null;
+  presidente_endereco_bairro: string;
+  presidente_endereco_cidade: string;
+  presidente_endereco_estado: string;
+  presidente_endereco_cep: string;
   presidente_estado_civil: string;
   presidente_nacionalidade: string;
   presidente_profissao: string;

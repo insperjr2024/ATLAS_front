@@ -23,7 +23,19 @@ const CAMPOS_PRESIDENTE: { campo: keyof IdentidadeInstitucionalType; label: stri
   { campo: "presidente_estado_civil", label: "Estado civil" },
   { campo: "presidente_nacionalidade", label: "Nacionalidade" },
   { campo: "presidente_profissao", label: "Profissão" },
-  { campo: "presidente_endereco", label: "Endereço" },
+];
+
+/** Endereço em partes — o documento gerado precisa da frase inteira, mas
+ *  quem cadastra digita rua/número/etc. separados (backend junta em
+ *  `endereco_presidente_completo`). */
+const CAMPOS_ENDERECO: { campo: keyof IdentidadeInstitucionalType; label: string }[] = [
+  { campo: "presidente_endereco_rua", label: "Rua" },
+  { campo: "presidente_endereco_numero", label: "Número" },
+  { campo: "presidente_endereco_complemento", label: "Complemento (opcional)" },
+  { campo: "presidente_endereco_bairro", label: "Bairro" },
+  { campo: "presidente_endereco_cidade", label: "Cidade" },
+  { campo: "presidente_endereco_estado", label: "Estado (UF)" },
+  { campo: "presidente_endereco_cep", label: "CEP" },
 ];
 
 function camposTestemunha(n: 1 | 2): { campo: keyof IdentidadeInstitucionalType; label: string }[] {
@@ -97,6 +109,18 @@ export function IdentidadeInstitucional() {
               <FormSecaoTitulo>Presidente</FormSecaoTitulo>
               <FormGrid $colunas={2}>
                 {CAMPOS_PRESIDENTE.map(({ campo, label }) => (
+                  <FieldGroup key={campo}>
+                    <FieldLabel htmlFor={campo}>{label}</FieldLabel>
+                    <FieldInput
+                      id={campo}
+                      value={identidade[campo] ?? ""}
+                      onChange={(e) => set(campo, e.target.value)}
+                    />
+                  </FieldGroup>
+                ))}
+              </FormGrid>
+              <FormGrid $colunas={2} style={{ marginTop: "0.75rem" }}>
+                {CAMPOS_ENDERECO.map(({ campo, label }) => (
                   <FieldGroup key={campo}>
                     <FieldLabel htmlFor={campo}>{label}</FieldLabel>
                     <FieldInput

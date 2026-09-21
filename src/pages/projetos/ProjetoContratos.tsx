@@ -114,7 +114,6 @@ export function ProjetoContratos() {
                 >
                   <DocumentoTipo>{ROTULO_TIPO_DOCUMENTO[doc.tipo]}</DocumentoTipo>
                   <DocumentoMeta>
-                    {doc.confirmado && <PageBadge $tone="success">confirmado</PageBadge>}
                     {!!doc.ultima_versao && <span>v{doc.ultima_versao}</span>}
                     <PageBadge $tone={tomDoStatus(doc.status)}>{ROTULO_STATUS_DOCUMENTO[doc.status]}</PageBadge>
                   </DocumentoMeta>
