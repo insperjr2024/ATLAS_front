@@ -89,6 +89,13 @@ export const DropdownPainel = styled.div`
   box-shadow: ${theme.shadows.md};
 `;
 
+/** Lista de tipos rola sozinha — já passa de 25 opções, e o painel não pode
+ *  crescer pra fora da tela nem empurrar o rodapé ("Limpar") pra baixo dele. */
+export const OpcoesLista = styled.div`
+  max-height: 16rem;
+  overflow-y: auto;
+`;
+
 export const OpcaoLinha = styled.button<{ $vazio: boolean }>`
   display: flex;
   align-items: center;

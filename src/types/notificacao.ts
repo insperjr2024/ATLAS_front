@@ -41,6 +41,7 @@ export type TipoNotificacao =
   // (§ Contratos, 2026-09-21; ver `notificar_documento_contratual.py` e
   // `notificar_projeto.py` no backend)
   | "documento_contratual_pronto_para_gerar"
+  | "documento_contratual_pronto_para_revisao_interna"
   | "documento_contratual_aprovado_internamente"
   | "documento_contratual_liberado"
   | "documento_contratual_cliente_aprovou"

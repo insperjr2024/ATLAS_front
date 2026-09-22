@@ -66,6 +66,7 @@ import {
   DropdownBotao,
   DropdownContagem,
   DropdownPainel,
+  OpcoesLista,
   OpcaoLinha,
   OpcaoCaixa,
   OpcaoTexto,
@@ -126,6 +127,11 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   documento_contratual_pronto_para_gerar: {
     icone: FileSignature,
     rotulo: "Documento pronto para gerar",
+    alerta: true,
+  },
+  documento_contratual_pronto_para_revisao_interna: {
+    icone: ShieldCheck,
+    rotulo: "Documento pendente de revisão interna",
     alerta: true,
   },
   documento_contratual_aprovado_internamente: {
@@ -194,6 +200,7 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "projeto_criado_em_contrato",
   "projeto_vendido",
   "documento_contratual_pronto_para_gerar",
+  "documento_contratual_pronto_para_revisao_interna",
   "documento_contratual_aprovado_internamente",
   "documento_contratual_liberado",
   "documento_contratual_cliente_aprovou",
@@ -432,26 +439,28 @@ export function Notificacoes() {
                   chegaram faria o filtro sumir junto com o problema
                   resolvido. O que É filtrado por cargo é se aquele tipo
                   chega pra essa pessoa, ver `tipoVisivelPara`. */}
-              {ORDEM_FILTROS.filter((tipo) => tipoVisivelPara(tipo, usuario)).map((tipo) => {
-                const total = contagemPorTipo[tipo] ?? 0;
-                const marcada = tipos.includes(tipo);
-                return (
-                  <OpcaoLinha
-                    key={tipo}
-                    type="button"
-                    role="menuitemcheckbox"
-                    aria-checked={marcada}
-                    $vazio={total === 0}
-                    onClick={() => alternarTipo(tipo)}
-                  >
-                    <OpcaoCaixa $marcada={marcada}>
-                      {marcada && <Check size={11} strokeWidth={3} />}
-                    </OpcaoCaixa>
-                    <OpcaoTexto>{aparenciaDe(tipo).rotulo}</OpcaoTexto>
-                    <OpcaoContagem>{total}</OpcaoContagem>
-                  </OpcaoLinha>
-                );
-              })}
+              <OpcoesLista>
+                {ORDEM_FILTROS.filter((tipo) => tipoVisivelPara(tipo, usuario)).map((tipo) => {
+                  const total = contagemPorTipo[tipo] ?? 0;
+                  const marcada = tipos.includes(tipo);
+                  return (
+                    <OpcaoLinha
+                      key={tipo}
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={marcada}
+                      $vazio={total === 0}
+                      onClick={() => alternarTipo(tipo)}
+                    >
+                      <OpcaoCaixa $marcada={marcada}>
+                        {marcada && <Check size={11} strokeWidth={3} />}
+                      </OpcaoCaixa>
+                      <OpcaoTexto>{aparenciaDe(tipo).rotulo}</OpcaoTexto>
+                      <OpcaoContagem>{total}</OpcaoContagem>
+                    </OpcaoLinha>
+                  );
+                })}
+              </OpcoesLista>
               <PainelRodape>
                 <PainelLimpar
                   type="button"
