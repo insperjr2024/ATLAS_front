@@ -109,27 +109,52 @@ export function deletarDocumento(documentoId: number, token: string) {
 }
 
 /**
- * A rota exige Bearer token, então um `<a href>` direto não funciona — baixa
- * como blob e dispara o download via um link temporário (mesmo padrão de
- * `baixarAnexoProposta` em `lib/projetos.ts`).
+ * A rota exige Bearer token, então nem um `<a href>` nem um `<iframe src>`
+ * direto funcionam (nenhum dos dois manda o header Authorization) — busca
+ * como blob, e quem chama decide o que fazer com ele (baixar ou exibir).
  */
+async function buscarArquivoDocumento(
+  documentoId: number,
+  formato: "pdf" | "docx",
+  token: string,
+): Promise<Blob> {
+  const response = await fetch(`${API_URL}/documentos-contratuais/${documentoId}/arquivo?formato=${formato}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error("Erro ao carregar o arquivo do documento");
+  return response.blob();
+}
+
+/** Baixa o arquivo via um link temporário (mesmo padrão de
+ *  `baixarAnexoProposta` em `lib/projetos.ts`). */
 export async function baixarArquivoDocumento(
   documentoId: number,
   formato: "pdf" | "docx",
   nomeArquivo: string,
   token: string,
 ) {
-  const response = await fetch(`${API_URL}/documentos-contratuais/${documentoId}/arquivo?formato=${formato}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error("Erro ao baixar o arquivo do documento");
-  const blob = await response.blob();
+  const blob = await buscarArquivoDocumento(documentoId, formato, token);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = nomeArquivo;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Pré-visualização embutida na página do documento — mesma ideia da tela
+ * pública de aprovação (`urlArquivoAprovacao`), só que autenticada: em vez
+ * de uma URL direta num `<iframe src>` (que não carrega o Authorization),
+ * busca o PDF como blob e devolve uma Object URL pra colocar no `src`.
+ *
+ * ⚠ Quem chama é responsável por `URL.revokeObjectURL` na URL devolvida
+ * quando não precisar mais dela (troca de documento, unmount) — senão o
+ * blob fica preso em memória pelo resto da sessão.
+ */
+export async function visualizarArquivoDocumento(documentoId: number, token: string): Promise<string> {
+  const blob = await buscarArquivoDocumento(documentoId, "pdf", token);
+  return URL.createObjectURL(blob);
 }
 
 /** Rota pública (sem token) — o link direto serve tanto pro `<iframe>` da

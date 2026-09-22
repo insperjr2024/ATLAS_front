@@ -27,6 +27,7 @@ import {
   montarLinkWhatsapp,
   reanexarDocumento,
   recusarAssinaturaTep,
+  visualizarArquivoDocumento,
 } from "@/lib/contratos";
 import type { DocumentoContratual, LinkAprovacao, ParagrafoEditavel, SolicitacaoAlteracao } from "@/types/contratos";
 import { ROTULO_STATUS_DOCUMENTO, ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
@@ -48,6 +49,7 @@ import {
 } from "@/styles/page.styled";
 import { FieldInput, FieldLabel, FieldTextarea } from "../Bancas.styled";
 import { ModalOverlay } from "@/styles/ModalOverlay";
+import { VisualizadorPdf } from "../AprovacaoContratual.styled";
 import { ModalContent, ModalHeader, ModalTitle, ModalClose, ModalBody, ModalFooter } from "@/styles/modal.styled";
 import {
   AcoesLinha,
@@ -134,6 +136,8 @@ export function DocumentoContratualPage() {
   const [considerandoAceito, setConsiderandoAceito] = useState(false);
   const [mostrarConfirmarApagar, setMostrarConfirmarApagar] = useState(false);
   const [baixando, setBaixando] = useState<"pdf" | "docx" | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [erroPreview, setErroPreview] = useState("");
 
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAlteracao[]>([]);
   const [analisando, setAnalisando] = useState<number | null>(null);
@@ -162,6 +166,34 @@ export function DocumentoContratualPage() {
       .catch((err) => setErro(err instanceof Error ? err.message : "Erro ao carregar documento"))
       .finally(() => setCarregando(false));
   }, [documentoId, token]);
+
+  // Pré-visualização em PDF do rascunho gerado — qualquer um que abra o
+  // documento vê, não só quem pode aprovar internamente: ver o conteúdo não
+  // deveria exigir baixar o arquivo primeiro (mesma experiência que o
+  // cliente já tem na tela pública de aprovação).
+  useEffect(() => {
+    if (!atual?.ultima_versao || !token) {
+      setPreviewUrl(null);
+      return;
+    }
+    let cancelado = false;
+    let url: string | null = null;
+    setErroPreview("");
+    visualizarArquivoDocumento(atual.id, token)
+      .then((objectUrl) => {
+        if (cancelado) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        url = objectUrl;
+        setPreviewUrl(objectUrl);
+      })
+      .catch((err) => setErroPreview(err instanceof Error ? err.message : "Erro ao carregar a pré-visualização"));
+    return () => {
+      cancelado = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [atual?.id, atual?.ultima_versao, token]);
 
   useEffect(() => {
     if (!atual || !token) return;
@@ -548,6 +580,13 @@ export function DocumentoContratualPage() {
                 </PageButtonSm>
               </AcoesLinha>
             </VersaoLinha>
+            {erroPreview ? (
+              <ErrorText>{erroPreview}</ErrorText>
+            ) : previewUrl ? (
+              <VisualizadorPdf src={previewUrl} title="Pré-visualização do documento" />
+            ) : (
+              <EmptyText>Carregando pré-visualização...</EmptyText>
+            )}
             {podeEditarRascunho && (
               <AcoesLinha style={{ marginTop: "0.75rem" }}>
                 <PageButtonSm type="button" $variant="outline" onClick={() => setMostrarEditorTexto(true)}>
