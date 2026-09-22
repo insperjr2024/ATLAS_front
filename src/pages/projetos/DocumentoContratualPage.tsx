@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { camposFaltandoDoErro } from "@/lib/api";
@@ -27,7 +27,6 @@ import {
 } from "@/lib/contratos";
 import type { DocumentoContratual, LinkAprovacao, ParagrafoEditavel, SolicitacaoAlteracao } from "@/types/contratos";
 import { ROTULO_STATUS_DOCUMENTO, ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
-import { useProjeto } from "./ProjetoPage";
 import { DadosDocumentoForm } from "./DadosDocumentoForm";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import {
@@ -108,7 +107,6 @@ const indiceDaEtapa = indiceDaEtapaDocumento;
 export function DocumentoContratualPage() {
   const { documentoId: documentoIdParam } = useParams<{ documentoId: string }>();
   const documentoId = Number(documentoIdParam);
-  const { projeto } = useProjeto();
   const { token } = useAuth();
   const navigate = useNavigate();
 
@@ -354,7 +352,7 @@ export function DocumentoContratualPage() {
     setErro("");
     setPendenciasColeta(null);
     try {
-      const resultado = await extrairColeta(projeto.id, atual.tipo, arquivo, token);
+      const resultado = await extrairColeta(atual.projeto_id, atual.tipo, arquivo, token);
       setDados(resultado.dados);
       setPendenciasColeta(resultado.pendencias);
     } catch (err) {
@@ -402,6 +400,10 @@ export function DocumentoContratualPage() {
               <ArrowLeft size={14} /> Contratos
             </VoltarLink>
             <h1>{ROTULO_TIPO_DOCUMENTO[atual.tipo]}</h1>
+            <LinkDiscreto as={Link} to={`/projetos/${atual.projeto_id}`}>
+              {atual.projeto_nome}
+              {atual.projeto_cliente ? ` · ${atual.projeto_cliente}` : ""}
+            </LinkDiscreto>
           </div>
         </DocumentoPaginaTitulo>
         <AcoesLinha>
@@ -482,7 +484,14 @@ export function DocumentoContratualPage() {
           {dadosTravados ? (
             <EmptyText>O cliente já aprovou este documento — os dados não podem mais ser editados.</EmptyText>
           ) : (
-            <DadosDocumentoForm tipo={atual.tipo} dados={dados} onChange={setDados} camposFaltando={camposFaltando} />
+            <DadosDocumentoForm
+              tipo={atual.tipo}
+              dados={dados}
+              onChange={setDados}
+              camposFaltando={camposFaltando}
+              projetoId={atual.projeto_id}
+              token={token}
+            />
           )}
         </PageCardContent>
       </PageCard>

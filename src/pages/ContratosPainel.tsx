@@ -168,9 +168,9 @@ export function ContratosPainel() {
                       role="button"
                       tabIndex={0}
                       style={{ cursor: "pointer" }}
-                      onClick={() => navigate(`/projetos/${item.projeto_id}/contratos/${item.id}`)}
+                      onClick={() => navigate(`/contratos/${item.id}`)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") navigate(`/projetos/${item.projeto_id}/contratos/${item.id}`);
+                        if (e.key === "Enter") navigate(`/contratos/${item.id}`);
                       }}
                     >
                       <CardTitulo>{item.tipo_rotulo}</CardTitulo>

@@ -60,7 +60,7 @@ export function NovoContratoModal({ onClose }: { onClose: () => void }) {
     setErro("");
     try {
       const documento = await abrirDocumento(projetoId, tipo, token);
-      navigate(`/projetos/${projetoId}/contratos/${documento.id}`);
+      navigate(`/contratos/${documento.id}`);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao abrir o documento");
     } finally {
@@ -78,7 +78,7 @@ export function NovoContratoModal({ onClose }: { onClose: () => void }) {
         token,
       );
       const documento = await abrirDocumento(projeto.id, tipo, token);
-      navigate(`/projetos/${projeto.id}/contratos/${documento.id}`);
+      navigate(`/contratos/${documento.id}`);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao criar o contrato institucional");
     } finally {

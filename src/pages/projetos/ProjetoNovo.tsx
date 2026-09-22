@@ -304,7 +304,7 @@ export function ProjetoNovo() {
         if (!existente) throw new Error("Não foi possível abrir o Contrato de Prestação do projeto.");
         documentoId = existente.id;
       }
-      navigate(`/projetos/${projetoId}/contratos/${documentoId}`, { replace: true });
+      navigate(`/contratos/${documentoId}`, { replace: true });
     } catch (err) {
       setErro(
         projetoId

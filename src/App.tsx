@@ -97,6 +97,12 @@ export default function App() {
                   (`PainelContratualUseCase`) — quem não se encaixa em nada
                   disso só vê a lista vazia, não precisa de 403 aqui. */}
               <Route path="/contratos" element={<ContratosPainel />} />
+              {/* ⭐ 2026-09-21 — a página do documento é standalone, fora da
+                  aba do projeto: não herda cabeçalho/abas/avisos de
+                  `ProjetoPage` (que não fazem sentido pra quem chega pela
+                  Kanban de Contratos), e não depende de um projeto de
+                  verdade existir por trás (contrato institucional). */}
+              <Route path="/contratos/:documentoId" element={<DocumentoContratualPage />} />
               <Route path="/vagas" element={<Vagas />} />
               {/* Criar projeto é a caixa de permissão `pode_criar_projeto` —
                   a mesma que decide o botão em `ProjetosList` e que o backend
@@ -118,10 +124,6 @@ export default function App() {
                 <Route path="banca" element={<ProjetoBanca />} />
                 <Route path="tarefas" element={<ProjetoTarefas />} />
                 <Route path="historico" element={<ProjetoHistorico />} />
-                {/* Sem lista de documentos por projeto — a aba Contratos de
-                    nível de menu (Kanban, `/contratos`) é o único ponto de
-                    entrada; esta rota só serve a PÁGINA de um documento. */}
-                <Route path="contratos/:documentoId" element={<DocumentoContratualPage />} />
               </Route>
 
               {/* monitoramento é por CARGO (`pode_ver_monitoramento`), não
