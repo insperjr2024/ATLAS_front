@@ -10,16 +10,12 @@ import { ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
 import type { Frente } from "@/types/banca";
 import {
   PageStack,
-  PageCard,
-  PageCardHeader,
-  PageCardTitle,
-  PageCardContent,
   PageButton,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
 } from "@/styles/page.styled";
-import { FieldInput, FieldSelect } from "./Bancas.styled";
+import { FieldInput, FieldSelect, PageHeaderRow, PageHeaderText, PageHeading } from "./Bancas.styled";
 import {
   Board,
   Coluna,
@@ -100,99 +96,98 @@ export function ContratosPainel() {
 
   return (
     <PageStack>
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>Contratos</PageCardTitle>
-          <PageButton type="button" onClick={() => setMostrarNovoContrato(true)}>
-            + Novo Contrato
-          </PageButton>
-        </PageCardHeader>
-        <PageCardContent>
-          {erro && (
-            <ErrorBlock>
-              <ErrorText>{erro}</ErrorText>
-            </ErrorBlock>
-          )}
+      <PageHeaderRow>
+        <PageHeaderText>
+          <PageHeading>Contratos</PageHeading>
+        </PageHeaderText>
+        <PageButton type="button" onClick={() => setMostrarNovoContrato(true)}>
+          + Novo Contrato
+        </PageButton>
+      </PageHeaderRow>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
-            <FieldSelect
-              value={frenteSelecionada}
-              onChange={(e) => setFrenteSelecionada(e.target.value ? Number(e.target.value) : "")}
-              style={{ maxWidth: "14rem" }}
-            >
-              <option value="">Todas as frentes</option>
-              {frentes.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.nome}
-                </option>
+      {erro && (
+        <ErrorBlock>
+          <ErrorText>{erro}</ErrorText>
+        </ErrorBlock>
+      )}
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+        <FieldSelect
+          value={frenteSelecionada}
+          onChange={(e) => setFrenteSelecionada(e.target.value ? Number(e.target.value) : "")}
+          style={{ maxWidth: "14rem" }}
+        >
+          <option value="">Todas as frentes</option>
+          {frentes.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.nome}
+            </option>
+          ))}
+        </FieldSelect>
+        <FieldSelect
+          value={tipoSelecionado}
+          onChange={(e) => setTipoSelecionado(e.target.value as TipoDocumentoContratual | "")}
+          style={{ maxWidth: "14rem" }}
+        >
+          <option value="">Todos os tipos</option>
+          {Object.entries(ROTULO_TIPO_DOCUMENTO).map(([tipo, rotulo]) => (
+            <option key={tipo} value={tipo}>
+              {rotulo}
+            </option>
+          ))}
+        </FieldSelect>
+        <FieldInput
+          placeholder="Buscar por projeto..."
+          value={buscaProjeto}
+          onChange={(e) => setBuscaProjeto(e.target.value)}
+          style={{ maxWidth: "16rem" }}
+        />
+      </div>
+
+      <Board $colunas={ETAPAS_DOCUMENTO.length}>
+        {ETAPAS_DOCUMENTO.map((rotulo, i) => {
+          const itensDaColuna = itensFiltrados.filter((item) => indiceDaEtapaDocumento(item) === i);
+          return (
+            <Coluna key={rotulo} $cor={tons[i]}>
+              <ColunaTitulo>
+                <StatusPilula $cor={tons[i]}>
+                  <Ponto $cor={tons[i].ponto} />
+                  <ColunaRotuloTexto>{rotulo}</ColunaRotuloTexto>
+                </StatusPilula>
+                <Contador>{itensDaColuna.length}</Contador>
+              </ColunaTitulo>
+
+              {itensDaColuna.length === 0 && <ColunaVazia>—</ColunaVazia>}
+              {itensDaColuna.map((item) => (
+                <Card
+                  key={item.id}
+                  $cor={tons[i]}
+                  role="button"
+                  tabIndex={0}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate(`/contratos/${item.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") navigate(`/contratos/${item.id}`);
+                  }}
+                >
+                  <CardTitulo>{item.tipo_rotulo}</CardTitulo>
+                  <CardMeta title={item.cliente ?? undefined}>
+                    {item.projeto_nome}
+                    {item.cliente ? ` · ${item.cliente}` : ""}
+                  </CardMeta>
+                  {item.frente_ids.length > 0 && (
+                    <CardFrentes>
+                      {item.frente_ids.map((fid) => (
+                        <CardFrenteTag key={fid}>{nomeFrente(fid)}</CardFrenteTag>
+                      ))}
+                    </CardFrentes>
+                  )}
+                </Card>
               ))}
-            </FieldSelect>
-            <FieldSelect
-              value={tipoSelecionado}
-              onChange={(e) => setTipoSelecionado(e.target.value as TipoDocumentoContratual | "")}
-              style={{ maxWidth: "14rem" }}
-            >
-              <option value="">Todos os tipos</option>
-              {Object.entries(ROTULO_TIPO_DOCUMENTO).map(([tipo, rotulo]) => (
-                <option key={tipo} value={tipo}>
-                  {rotulo}
-                </option>
-              ))}
-            </FieldSelect>
-            <FieldInput
-              placeholder="Buscar por projeto..."
-              value={buscaProjeto}
-              onChange={(e) => setBuscaProjeto(e.target.value)}
-              style={{ maxWidth: "16rem" }}
-            />
-          </div>
-
-          <Board $colunas={ETAPAS_DOCUMENTO.length}>
-            {ETAPAS_DOCUMENTO.map((rotulo, i) => {
-              const itensDaColuna = itensFiltrados.filter((item) => indiceDaEtapaDocumento(item) === i);
-              return (
-                <Coluna key={rotulo} $cor={tons[i]}>
-                  <ColunaTitulo>
-                    <StatusPilula $cor={tons[i]}>
-                      <Ponto $cor={tons[i].ponto} />
-                      <ColunaRotuloTexto>{rotulo}</ColunaRotuloTexto>
-                    </StatusPilula>
-                    <Contador>{itensDaColuna.length}</Contador>
-                  </ColunaTitulo>
-
-                  {itensDaColuna.length === 0 && <ColunaVazia>—</ColunaVazia>}
-                  {itensDaColuna.map((item) => (
-                    <Card
-                      key={item.id}
-                      $cor={tons[i]}
-                      role="button"
-                      tabIndex={0}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => navigate(`/contratos/${item.id}`)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") navigate(`/contratos/${item.id}`);
-                      }}
-                    >
-                      <CardTitulo>{item.tipo_rotulo}</CardTitulo>
-                      <CardMeta title={item.cliente ?? undefined}>
-                        {item.projeto_nome}
-                        {item.cliente ? ` · ${item.cliente}` : ""}
-                      </CardMeta>
-                      {item.frente_ids.length > 0 && (
-                        <CardFrentes>
-                          {item.frente_ids.map((fid) => (
-                            <CardFrenteTag key={fid}>{nomeFrente(fid)}</CardFrenteTag>
-                          ))}
-                        </CardFrentes>
-                      )}
-                    </Card>
-                  ))}
-                </Coluna>
-              );
-            })}
-          </Board>
-        </PageCardContent>
-      </PageCard>
+            </Coluna>
+          );
+        })}
+      </Board>
 
       {mostrarNovoContrato && <NovoContratoModal onClose={() => setMostrarNovoContrato(false)} />}
     </PageStack>
