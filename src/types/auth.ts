@@ -91,17 +91,15 @@ export interface Permissoes {
   /** ⭐ 2026-09-18 — as caixas da integração com a Contratos. "Criar
    *  documento"/"enviar ao cliente" não têm caixa própria: reaproveitam
    *  `pode_criar_projeto` e `pode_responsavel_por_vendas`. */
-  /** Editar o texto do rascunho e regerar depois de confirmado — a partir
-   *  daqui a palavra sobre o documento passa a ser de quem tem esta caixa. */
-  pode_editar_documento_juridico: boolean;
-  /** ⭐ 2026-09-22 — separada de `pode_editar_documento_juridico`: a
-   *  aprovação jurídica de verdade (fecha a revisão interna). */
+  /** ⭐ 2026-09-22 — a aprovação jurídica de verdade (fecha a revisão
+   *  interna). `pode_editar_documento_juridico`/`pode_marcar_documento_
+   *  assinado` foram removidas no mesmo pedido: quem já elabora/gerencia o
+   *  contrato (`pode_elaborar_contratos_proprios`/`pode_elaborar_qualquer_
+   *  contrato`, ou diretoria) também edita o texto pós-confirmação e marca
+   *  como assinado — não precisava de caixa à parte pra cada ação. */
   pode_aprovar_contrato_internamente: boolean;
-  /** Fechar o ciclo: marcar como assinado (fora da plataforma) e arquivar. */
-  pode_marcar_documento_assinado: boolean;
   /** Cadastrar documento já assinado fora do fluxo normal. */
   pode_importar_documento_antigo: boolean;
-  /** Abrir o TEP dentro de um projeto que já tem Contrato de Prestação. */
   /** Quem assina PELA Insper Jr — antes só diretoria de projetos, agora
    *  delegável. */
   pode_editar_identidade_institucional: boolean;

@@ -102,9 +102,9 @@ const navItems: NavItemConfig[] = [
     path: "/contratos",
     grupo: "trabalho",
     // Aproximação: o backend recorta por LINHA (vendedor/coordenador do
-    // projeto, além de diretoria/Jurídico/`pode_elaborar_*`, que são
-    // globais) — não tem como saber aqui "sou vendedor de algum projeto"
-    // sem uma chamada extra só pra decidir se mostra o item.
+    // projeto, além de diretoria/`pode_elaborar_*`, que são globais) — não
+    // tem como saber aqui "sou vendedor de algum projeto" sem uma chamada
+    // extra só pra decidir se mostra o item.
     // `pode_criar_projeto`/`pode_responsavel_por_vendas` já é a mesma
     // dupla que abre o Contrato de Prestação (ver docstring de
     // `_pode_abrir_documento` no back). Diretoria já tem
@@ -112,7 +112,6 @@ const navItems: NavItemConfig[] = [
     visible: (c) =>
       c.pode_criar_projeto ||
       c.pode_responsavel_por_vendas ||
-      c.pode_editar_documento_juridico ||
       c.pode_elaborar_contratos_proprios ||
       c.pode_elaborar_qualquer_contrato,
   },

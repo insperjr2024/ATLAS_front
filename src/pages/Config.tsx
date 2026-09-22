@@ -218,22 +218,10 @@ const PERMISSOES = [
       "Continua contando como liderança — vai à banca, soma no total — mas não cobre o mínimo de liderança nem de membros da frente em que está cadastrado.",
   },
   {
-    campo: "pode_editar_documento_juridico" as const,
-    titulo: "Editar documentos jurídicos (Contratos)",
-    descricao:
-      "A partir de confirmado, a palavra sobre os dados e o texto do documento passa a ser de quem tem esta caixa: editar dados, editar o texto do rascunho, reanexar um .docx externo e analisar pedido de alteração do cliente.",
-  },
-  {
     campo: "pode_aprovar_contrato_internamente" as const,
     titulo: "Aprovar contratos internamente",
     descricao:
       "A revisão jurídica de verdade: fecha a etapa de revisão interna e libera o documento pra ser exportado e mandado ao cliente.",
-  },
-  {
-    campo: "pode_marcar_documento_assinado" as const,
-    titulo: "Marcar documento jurídico como assinado",
-    descricao:
-      "Fechar o ciclo de um documento jurídico: marcar como assinado fora da plataforma e arquivar, incluindo o aceite tácito do TEP.",
   },
   {
     campo: "pode_importar_documento_antigo" as const,
@@ -251,13 +239,13 @@ const PERMISSOES = [
     campo: "pode_elaborar_contratos_proprios" as const,
     titulo: "Acessar e elaborar contratos de projetos vendidos por ela",
     descricao:
-      "Abre a aba Contratos com todos os documentos visíveis, mas só elabora (abre, preenche, confirma, gera) os documentos jurídicos dos projetos em que a própria pessoa consta como vendedora. No assistente \"+ Novo Contrato\", só aparecem os projetos que ela vendeu.",
+      "Abre a aba Contratos com todos os documentos visíveis, mas só elabora (abre, preenche, confirma, gera, edita o texto pós-confirmação, marca como assinado) os documentos jurídicos dos projetos em que a própria pessoa consta como vendedora. No assistente \"+ Novo Contrato\", só aparecem os projetos que ela vendeu.",
   },
   {
     campo: "pode_elaborar_qualquer_contrato" as const,
     titulo: "Acessar e elaborar qualquer contrato",
     descricao:
-      "Mesma coisa que a caixa acima, sem o recorte por vendedor — elabora o documento jurídico de qualquer projeto, igual diretoria/Jurídico.",
+      "Mesma coisa que a caixa acima, sem o recorte por vendedor — elabora o documento jurídico de qualquer projeto, igual diretoria.",
   },
 ];
 
