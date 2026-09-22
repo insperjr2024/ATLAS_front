@@ -121,7 +121,9 @@ export const EtapaMarca = styled.span<{ $estado: "concluida" | "atual" | "penden
 
 /** A ação que de fato move o processo pra frente, visualmente separada das
  *  ações secundárias (editar, baixar, apagar) — numa barra própria, maior,
- *  em vez de competir por atenção com o resto. */
+ *  em vez de competir por atenção com o resto. Fundo branco, igual o resto
+ *  da página — quem chama a atenção é o botão vermelho, não uma caixa
+ *  cinza por trás dele. */
 export const AcaoPrincipalBarra = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -131,7 +133,7 @@ export const AcaoPrincipalBarra = styled.div`
   padding: ${theme.spacing.md} ${theme.spacing.lg};
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${theme.colors.border};
-  background: ${theme.colors.muted};
+  background: ${theme.colors.card};
 `;
 
 export const AcoesSecundariasLinha = styled.div`
