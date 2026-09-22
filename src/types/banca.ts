@@ -114,11 +114,8 @@ export interface Banca extends BancaBase {
    *  projeto avaliado, editável até 1h antes. Nulo enquanto ninguém registrou. */
   local: string | null;
   /** Link da entrega anexado por consultor/coord do projeto, para acesso
-   *  antes ou depois da banca. Nulo, ou some quando um arquivo é enviado. */
+   *  antes ou depois da banca. Nulo até alguém salvar. */
   entrega_link: string | null;
-  /** Nome do arquivo da entrega (o conteúdo baixa por
-   *  `GET /bancas/{id}/entrega-arquivo`). Nulo, ou some quando um link é salvo. */
-  entrega_arquivo_nome: string | null;
   resultado: ResultadoBanca | null;
   /** O relato do coordenador do projeto sobre a banca, texto livre, no
    *  lugar do formulário de avaliação (ele não é avaliador da própria
@@ -147,8 +144,6 @@ export interface BancaDetalhes {
   local: string | null;
   /** Ver `BancaBase.entrega_link`. */
   entrega_link: string | null;
-  /** Ver `BancaBase.entrega_arquivo_nome`. */
-  entrega_arquivo_nome: string | null;
   resultado: ResultadoBanca | null;
   status: StatusBanca;
   /** Plural: uma banca pode cobrir vários escopos do projeto de uma sentada. */

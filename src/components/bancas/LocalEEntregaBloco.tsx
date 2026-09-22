@@ -1,18 +1,10 @@
 import { useState } from "react";
 import styled from "styled-components";
-import { Paperclip } from "lucide-react";
 import { theme } from "@/styles/theme";
-import {
-  baixarEntregaArquivoBanca,
-  registrarEntregaLinkBanca,
-  registrarLocalBanca,
-  removerEntregaBanca,
-  subirEntregaArquivoBanca,
-} from "@/lib/bancas";
+import { registrarEntregaLinkBanca, registrarLocalBanca, removerEntregaBanca } from "@/lib/bancas";
 import { paraDataUtc } from "@/lib/projetos";
 import { PageButtonSm } from "@/styles/page.styled";
 import { FieldInput, FormErrorText } from "@/pages/Bancas.styled";
-import { ArquivoBotao } from "@/pages/projetos/ProjetoNovo.styled";
 
 /** O mínimo que o bloco precisa da banca — serve tanto o `Banca` da lista
  *  quanto o `BancaDetalhes` da ficha. */
@@ -20,7 +12,6 @@ export interface BancaLocalEntrega {
   id: number;
   local: string | null;
   entrega_link: string | null;
-  entrega_arquivo_nome: string | null;
   data_hora: string | null;
 }
 
@@ -117,7 +108,7 @@ export function LocalEEntregaBloco({
   const localTrancado =
     !!banca.data_hora && paraDataUtc(banca.data_hora).getTime() - agoraMs < 60 * 60 * 1000;
   const localMudou = local.trim() !== (banca.local ?? "").trim();
-  const temEntrega = !!banca.entrega_link || !!banca.entrega_arquivo_nome;
+  const temEntrega = !!banca.entrega_link;
   const podeEditarLocal = podeMexer && !localTrancado;
 
   async function comErro(fn: () => Promise<unknown>, setBusy: (v: boolean) => void, fallback: string) {
@@ -181,17 +172,6 @@ export function LocalEEntregaBloco({
               {banca.entrega_link}
             </a>
           </Valor>
-        ) : banca.entrega_arquivo_nome ? (
-          <Acao
-            type="button"
-            onClick={() => {
-              if (token && banca.entrega_arquivo_nome) {
-                void baixarEntregaArquivoBanca(banca.id, banca.entrega_arquivo_nome, token);
-              }
-            }}
-          >
-            baixar {banca.entrega_arquivo_nome}
-          </Acao>
         ) : (
           <Valor>nada anexado</Valor>
         )}
@@ -245,30 +225,6 @@ export function LocalEEntregaBloco({
           >
             Salvar link
           </PageButtonSm>
-          <Rotulo>ou</Rotulo>
-          <ArquivoBotao htmlFor={`entrega-arq-${banca.id}`}>
-            <Paperclip size={13} aria-hidden="true" />
-            Escolher arquivo
-            <input
-              id={`entrega-arq-${banca.id}`}
-              type="file"
-              disabled={salvandoEntrega}
-              onChange={(e) => {
-                const arquivo = e.target.files?.[0];
-                if (arquivo) {
-                  void comErro(
-                    async () => {
-                      await subirEntregaArquivoBanca(banca.id, arquivo, token as string);
-                      setAnexoAberto(false);
-                    },
-                    setSalvandoEntrega,
-                    "Não foi possível enviar o arquivo",
-                  );
-                }
-                e.target.value = "";
-              }}
-            />
-          </ArquivoBotao>
         </Linha>
       )}
 
