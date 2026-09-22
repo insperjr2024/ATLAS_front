@@ -41,6 +41,9 @@ export interface DocumentoContratual {
    *  aba do projeto) — antes vinham do contexto do `ProjetoPage`. */
   projeto_nome: string;
   projeto_cliente: string | null;
+  /** Vazio pra institucional (sem projeto). Pro destaque de frente no
+   *  cabeçalho da página do documento. */
+  frente_ids: number[];
   tipo: TipoDocumentoContratual;
   status: StatusDocumentoContratual;
   /** O shape muda por `tipo` (ver `render_template.py` no backend) — ainda

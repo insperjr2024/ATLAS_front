@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { camposFaltandoDoErro } from "@/lib/api";
+import { getFrentes } from "@/lib/bancas";
+import type { Frente } from "@/types/banca";
 import { ETAPAS_DOCUMENTO, indiceDaEtapaDocumento } from "@/lib/contratos-etapas";
 import {
   analisarSolicitacao,
@@ -55,6 +57,8 @@ import {
   ArquivoNome,
   DocumentoPaginaHeader,
   DocumentoPaginaTitulo,
+  ProjetoDestaque,
+  ProjetoLinha,
   VoltarLink,
   Etapas,
   Etapa,
@@ -67,6 +71,7 @@ import {
   TrechoCitado,
   VersaoLinha,
 } from "./ProjetoContratos.styled";
+import { FrenteTag } from "./Projetos.styled";
 
 function tomDoStatus(status: DocumentoContratual["status"]): "default" | "success" | "muted" | "warning" | "danger" {
   if (status === "assinado_e_arquivado") return "success";
@@ -138,6 +143,13 @@ export function DocumentoContratualPage() {
   const coletaRef = useRef<HTMLInputElement>(null);
   const [extraindoColeta, setExtraindoColeta] = useState(false);
   const [pendenciasColeta, setPendenciasColeta] = useState<string[] | null>(null);
+
+  const [frentes, setFrentes] = useState<Frente[]>([]);
+  useEffect(() => {
+    if (!token) return;
+    getFrentes(token).then(setFrentes).catch(() => {});
+  }, [token]);
+  const nomeFrente = (frenteId: number) => frentes.find((f) => f.id === frenteId)?.nome ?? `Frente ${frenteId}`;
 
   useEffect(() => {
     if (!token || !documentoId) return;
@@ -400,18 +412,23 @@ export function DocumentoContratualPage() {
               <ArrowLeft size={14} /> Contratos
             </VoltarLink>
             <h1>{ROTULO_TIPO_DOCUMENTO[atual.tipo]}</h1>
-            {atual.projeto_id ? (
-              <LinkDiscreto as={Link} to={`/projetos/${atual.projeto_id}`}>
-                {atual.projeto_nome}
-                {atual.projeto_cliente ? ` · ${atual.projeto_cliente}` : ""}
-              </LinkDiscreto>
-            ) : (
-              // Institucional: sem projeto de verdade, sem link — só o texto.
-              <span>
-                {atual.projeto_nome}
-                {atual.projeto_cliente ? ` · ${atual.projeto_cliente}` : ""}
-              </span>
-            )}
+            <ProjetoLinha>
+              {atual.projeto_id ? (
+                <ProjetoDestaque as={Link} to={`/projetos/${atual.projeto_id}`}>
+                  {atual.projeto_nome}
+                  {atual.projeto_cliente ? ` · ${atual.projeto_cliente}` : ""}
+                </ProjetoDestaque>
+              ) : (
+                // Institucional: sem projeto de verdade, sem link — só o texto.
+                <ProjetoDestaque>
+                  {atual.projeto_nome}
+                  {atual.projeto_cliente ? ` · ${atual.projeto_cliente}` : ""}
+                </ProjetoDestaque>
+              )}
+              {atual.frente_ids.map((fid) => (
+                <FrenteTag key={fid}>{nomeFrente(fid)}</FrenteTag>
+              ))}
+            </ProjetoLinha>
           </div>
         </DocumentoPaginaTitulo>
         <AcoesLinha>

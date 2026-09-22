@@ -23,6 +23,33 @@ export const DocumentoPaginaTitulo = styled.div`
   }
 `;
 
+/** Nome do projeto por baixo do título do documento — precisa se destacar
+ *  mais que um link discreto comum: é o que diz DE QUE PROJETO é este
+ *  documento, a primeira coisa que se quer confirmar ao abrir a página. */
+export const ProjetoLinha = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  margin-top: 0.125rem;
+`;
+
+export const ProjetoDestaque = styled.span`
+  display: inline-flex;
+  align-items: center;
+  font-size: ${theme.fontSize.base};
+  font-weight: ${theme.fontWeight.semibold};
+  color: ${theme.colors.primary};
+
+  &:is(a) {
+    text-decoration: none;
+    cursor: pointer;
+  }
+  &:is(a):hover {
+    text-decoration: underline;
+  }
+`;
+
 export const VoltarLink = styled.button`
   display: inline-flex;
   align-items: center;
