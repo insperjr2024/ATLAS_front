@@ -224,12 +224,6 @@ const PERMISSOES = [
       "A revisão jurídica de verdade: fecha a etapa de revisão interna e libera o documento pra ser exportado e mandado ao cliente.",
   },
   {
-    campo: "pode_importar_documento_antigo" as const,
-    titulo: "Importar documento jurídico antigo",
-    descricao:
-      "Cadastrar um documento já assinado fora do fluxo normal da plataforma, direto como arquivado.",
-  },
-  {
     campo: "pode_editar_identidade_institucional" as const,
     titulo: "Editar identidade institucional",
     descricao:

@@ -65,7 +65,6 @@ const PERMISSOES_PLACEHOLDER: Permissoes = {
   pode_responsavel_por_vendas: false,
   pode_coordenar_vendas: false,
   pode_aprovar_contrato_internamente: false,
-  pode_importar_documento_antigo: false,
   pode_editar_identidade_institucional: false,
   pode_elaborar_contratos_proprios: false,
   pode_elaborar_qualquer_contrato: false,

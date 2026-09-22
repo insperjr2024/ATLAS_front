@@ -98,8 +98,6 @@ export interface Permissoes {
    *  contrato`, ou diretoria) também edita o texto pós-confirmação e marca
    *  como assinado — não precisava de caixa à parte pra cada ação. */
   pode_aprovar_contrato_internamente: boolean;
-  /** Cadastrar documento já assinado fora do fluxo normal. */
-  pode_importar_documento_antigo: boolean;
   /** Quem assina PELA Insper Jr — antes só diretoria de projetos, agora
    *  delegável. */
   pode_editar_identidade_institucional: boolean;
