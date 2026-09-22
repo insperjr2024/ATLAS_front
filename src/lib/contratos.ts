@@ -40,6 +40,16 @@ export function getDocumento(documentoId: number, token: string) {
   return apiFetch<DocumentoContratual>(`/documentos-contratuais/${documentoId}`, { token });
 }
 
+/** Dias tipo "prova" do calendário acadêmico da(s) frente(s) do projeto,
+ *  dentro de [inicio, fim] — só sugestão pro campo "Dias de exceção", quem
+ *  preenche decide o que de fato entra. */
+export function sugerirDiasExcecao(projetoId: number, inicio: string, fim: string, token: string) {
+  return apiFetch<{ dias: { inicio: string; fim: string }[] }>(
+    `/projetos/${projetoId}/documentos-contratuais/sugerir-dias-excecao?inicio=${inicio}&fim=${fim}`,
+    { token },
+  );
+}
+
 export function atualizarDadosDocumento(
   documentoId: number,
   dados: Record<string, unknown>,

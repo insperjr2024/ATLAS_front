@@ -1,7 +1,10 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import type { TipoDocumentoContratual } from "@/types/contratos";
-import { FieldGroup, FieldLabel, FieldInput, FieldTextarea, CheckboxLabel } from "../Bancas.styled";
+import { formatarCpfDigitado, formatarRgDigitado } from "@/lib/mascaras";
+import { sugerirDiasExcecao } from "@/lib/contratos";
+import { FieldGroup, FieldLabel, FieldInput, FieldSelect, FieldTextarea, CheckboxLabel } from "../Bancas.styled";
+import { ErrorText, PageButtonSm } from "@/styles/page.styled";
 import {
   FormSecoes,
   FormSecaoTitulo,
@@ -96,6 +99,29 @@ function Texto({ dados, set, caminho, label }: { dados: Dados; set: Setter; cami
   );
 }
 
+/** Mesmo `Texto`, mas formatando a cada tecla (`mascara`) — CPF e RG, que
+ *  ninguém digita já com pontos e traço. */
+function TextoComMascara({
+  dados,
+  set,
+  caminho,
+  label,
+  mascara,
+}: {
+  dados: Dados;
+  set: Setter;
+  caminho: Caminho;
+  label: string;
+  mascara: (valor: string) => string;
+}) {
+  const valor = obter(dados, caminho);
+  return (
+    <Campo label={label} caminho={caminho} valor={valor}>
+      <FieldInput value={valor ?? ""} onChange={(e) => set(caminho, mascara(e.target.value))} />
+    </Campo>
+  );
+}
+
 function Numero({ dados, set, caminho, label }: { dados: Dados; set: Setter; caminho: Caminho; label: string }) {
   const valor = obter(dados, caminho);
   return (
@@ -123,6 +149,27 @@ function TextoLongo({ dados, set, caminho, label }: { dados: Dados; set: Setter;
   return (
     <Campo label={label} caminho={caminho} valor={valor}>
       <FieldTextarea value={valor ?? ""} onChange={(e) => set(caminho, e.target.value)} />
+    </Campo>
+  );
+}
+
+/** Opções fixas — a pedido, pra não ter "boleto" e "boleto bancário" como
+ *  respostas diferentes pro mesmo meio de pagamento. */
+const OPCOES_FORMA_PAGAMENTO = ["Pix", "Boleto", "Cartão"] as const;
+
+function FormaPagamentoCampo({ dados, set }: { dados: Dados; set: Setter }) {
+  const caminho: Caminho = ["financeiro", "forma_pagamento"];
+  const valor = obter(dados, caminho);
+  return (
+    <Campo label="Forma de pagamento" caminho={caminho} valor={valor}>
+      <FieldSelect value={valor ?? ""} onChange={(e) => set(caminho, e.target.value)}>
+        <option value="">Selecione</option>
+        {OPCOES_FORMA_PAGAMENTO.map((opcao) => (
+          <option key={opcao} value={opcao}>
+            {opcao}
+          </option>
+        ))}
+      </FieldSelect>
     </Campo>
   );
 }
@@ -200,8 +247,21 @@ function ContratanteSecao({ dados, set }: { dados: Dados; set: Setter }) {
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "nacionalidade"]} label="Nacionalidade" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "estado_civil"]} label="Estado civil" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "profissao"]} label="Profissão" />
-        <Texto dados={dados} set={set} caminho={["contratante", "representante", "rg"]} label="RG (nº e órgão emissor)" />
-        <Texto dados={dados} set={set} caminho={["contratante", "representante", "cpf"]} label="CPF" />
+        <TextoComMascara
+          dados={dados}
+          set={set}
+          caminho={["contratante", "representante", "rg_numero"]}
+          label="RG (número)"
+          mascara={formatarRgDigitado}
+        />
+        <Texto dados={dados} set={set} caminho={["contratante", "representante", "rg_orgao_emissor"]} label="RG (órgão emissor)" />
+        <TextoComMascara
+          dados={dados}
+          set={set}
+          caminho={["contratante", "representante", "cpf"]}
+          label="CPF"
+          mascara={formatarCpfDigitado}
+        />
         <TextoLongo dados={dados} set={set} caminho={["contratante", "representante", "endereco"]} label="Endereço" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "email"]} label="E-mail" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "telefone"]} label="Telefone" />
@@ -220,7 +280,13 @@ function TestemunhasSecao({ dados, set }: { dados: Dados; set: Setter }) {
         {[0, 1].map((i) => (
           <FormGrid key={i} $colunas={2}>
             <Texto dados={dados} set={set} caminho={["testemunhas", i, "nome"]} label={`Testemunha ${i + 1}`} />
-            <Texto dados={dados} set={set} caminho={["testemunhas", i, "cpf"]} label="CPF" />
+            <TextoComMascara
+              dados={dados}
+              set={set}
+              caminho={["testemunhas", i, "cpf"]}
+              label="CPF"
+              mascara={formatarCpfDigitado}
+            />
           </FormGrid>
         ))}
       </FormGrid>
@@ -243,10 +309,41 @@ function AssinaturaSecao({ dados, set }: { dados: Dados; set: Setter }) {
 
 // ---------- Seções específicas por tipo ----------
 
-function ContratoSecoes({ dados, set }: { dados: Dados; set: Setter }) {
-  const escopos: { nome: string; prazo_dias_uteis: number }[] = obter(dados, ["projeto", "escopos"]) ?? [];
+function ContratoSecoes({
+  dados,
+  set,
+  projetoId,
+  token,
+}: {
+  dados: Dados;
+  set: Setter;
+  projetoId?: number | null;
+  token?: string | null;
+}) {
+  const escopos: { nome: string; prazo_dias_uteis: number | null }[] = obter(dados, ["projeto", "escopos"]) ?? [];
   const diasExcecao: { inicio: string; fim: string }[] = obter(dados, ["projeto", "dias_excecao"]) ?? [];
   const parcelado = !!obter(dados, ["financeiro", "parcelado"]);
+  const dataInicio = obter(dados, ["projeto", "data_inicio"]) as string | undefined;
+  const dataTermino = obter(dados, ["projeto", "data_termino"]) as string | undefined;
+  const [sugerindo, setSugerindo] = useState(false);
+  const [erroSugestao, setErroSugestao] = useState("");
+
+  async function sugerirAutomaticamente() {
+    if (!projetoId || !token || !dataInicio || !dataTermino) return;
+    setSugerindo(true);
+    setErroSugestao("");
+    try {
+      const { dias } = await sugerirDiasExcecao(projetoId, dataInicio, dataTermino, token);
+      // Merge sem duplicar — não apaga o que já foi editado à mão.
+      const existentes = new Set(diasExcecao.map((d) => `${d.inicio}|${d.fim}`));
+      const novos = dias.filter((d) => !existentes.has(`${d.inicio}|${d.fim}`));
+      if (novos.length > 0) set(["projeto", "dias_excecao"], [...diasExcecao, ...novos]);
+    } catch (err) {
+      setErroSugestao(err instanceof Error ? err.message : "Erro ao sugerir dias de exceção");
+    } finally {
+      setSugerindo(false);
+    }
+  }
 
   return (
     <>
@@ -274,7 +371,12 @@ function ContratoSecoes({ dados, set }: { dados: Dados; set: Setter }) {
                 style={{ maxWidth: "9rem" }}
                 value={escopo?.prazo_dias_uteis ?? ""}
                 placeholder="Dias úteis"
-                onChange={(e) => set(["projeto", "escopos", i, "prazo_dias_uteis"], Number(e.target.value))}
+                onChange={(e) =>
+                  set(
+                    ["projeto", "escopos", i, "prazo_dias_uteis"],
+                    e.target.value === "" ? null : Number(e.target.value),
+                  )
+                }
               />
               <ListaRemoverBotao
                 type="button"
@@ -287,13 +389,31 @@ function ContratoSecoes({ dados, set }: { dados: Dados; set: Setter }) {
           ))}
           <ListaAdicionarBotao
             type="button"
-            onClick={() => set(["projeto", "escopos"], [...escopos, { nome: "", prazo_dias_uteis: 0 }])}
+            onClick={() => set(["projeto", "escopos"], [...escopos, { nome: "", prazo_dias_uteis: null }])}
           >
             + adicionar escopo
           </ListaAdicionarBotao>
         </FieldGroup>
 
         <FormSubsecaoTitulo>Dias de exceção</FormSubsecaoTitulo>
+        {erroSugestao && <ErrorText>{erroSugestao}</ErrorText>}
+        {projetoId && (
+          <div style={{ marginBottom: "0.5rem" }}>
+            <PageButtonSm
+              type="button"
+              $variant="outline"
+              disabled={sugerindo || !dataInicio || !dataTermino}
+              title={
+                !dataInicio || !dataTermino
+                  ? "Preencha início e término do projeto antes de sugerir"
+                  : undefined
+              }
+              onClick={sugerirAutomaticamente}
+            >
+              {sugerindo ? "Sugerindo…" : "Sugerir a partir do calendário"}
+            </PageButtonSm>
+          </div>
+        )}
         <FieldGroup>
           {diasExcecao.map((dia, i) => (
             <ListaLinha key={i}>
@@ -329,7 +449,7 @@ function ContratoSecoes({ dados, set }: { dados: Dados; set: Setter }) {
         <FormSecaoTitulo>Financeiro</FormSecaoTitulo>
         <FormGrid $colunas={2}>
           <Numero dados={dados} set={set} caminho={["financeiro", "valor_total"]} label="Valor total (R$)" />
-          <Texto dados={dados} set={set} caminho={["financeiro", "forma_pagamento"]} label="Forma de pagamento" />
+          <FormaPagamentoCampo dados={dados} set={set} />
         </FormGrid>
         <div style={{ marginTop: "0.75rem" }}>
           <Marcar dados={dados} set={set} caminho={["financeiro", "parcelado"]} label="Pagamento parcelado" />
@@ -459,8 +579,10 @@ function AditivoSecoes({ dados, set }: { dados: Dados; set: Setter }) {
   );
 }
 
+// `contrato` fica de fora deste mapa: `ContratoSecoes` precisa de
+// `projetoId`/`token` (sugestão de dias de exceção), que os outros tipos não
+// usam — é renderizado à parte em `DadosDocumentoForm`, não por aqui.
 const SECOES_ESPECIFICAS: Partial<Record<TipoDocumentoContratual, ComponentType<{ dados: Dados; set: Setter }>>> = {
-  contrato: ContratoSecoes,
   tep: TepSecoes,
   uso_imagem: UsoImagemSecoes,
   aditivo: AditivoSecoes,
@@ -472,6 +594,8 @@ export function DadosDocumentoForm({
   dados,
   onChange,
   camposFaltando,
+  projetoId,
+  token,
 }: {
   tipo: TipoDocumentoContratual;
   dados: Dados;
@@ -481,12 +605,16 @@ export function DadosDocumentoForm({
    *  em `lib/api.ts`. Cada `<Texto>`/`<Numero>`/etc. nesse caminho ganha
    *  destaque; some assim que o campo é preenchido e reenviado. */
   camposFaltando?: string[];
+  /** Só usados pelo Contrato de Prestação, pra "sugerir dias de exceção a
+   *  partir do calendário" (`ContratoSecoes`). */
+  projetoId?: number | null;
+  token?: string | null;
 }) {
   function set(caminho: Caminho, valor: unknown) {
     onChange(setPath(dados, caminho, valor));
   }
 
-  const Especifica = SECOES_ESPECIFICAS[tipo];
+  const Especifica = tipo === "contrato" ? null : SECOES_ESPECIFICAS[tipo];
 
   if (tipo === "outro") {
     return null;
@@ -496,6 +624,9 @@ export function DadosDocumentoForm({
     <CamposFaltandoContext.Provider value={new Set(camposFaltando ?? [])}>
       <FormSecoes>
         <ContratanteSecao dados={dados} set={set} />
+        {tipo === "contrato" && (
+          <ContratoSecoes dados={dados} set={set} projetoId={projetoId} token={token} />
+        )}
         {Especifica && <Especifica dados={dados} set={set} />}
         <TestemunhasSecao dados={dados} set={set} />
         <AssinaturaSecao dados={dados} set={set} />

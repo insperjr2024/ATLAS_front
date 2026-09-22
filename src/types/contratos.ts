@@ -34,6 +34,10 @@ export const ROTULO_STATUS_DOCUMENTO: Record<StatusDocumentoContratual, string> 
 export interface DocumentoContratual {
   id: number;
   projeto_id: number;
+  /** Trazidos junto pro cabeçalho da página própria do documento (fora da
+   *  aba do projeto) — antes vinham do contexto do `ProjetoPage`. */
+  projeto_nome: string;
+  projeto_cliente: string | null;
   tipo: TipoDocumentoContratual;
   status: StatusDocumentoContratual;
   /** O shape muda por `tipo` (ver `render_template.py` no backend) — ainda
@@ -164,7 +168,8 @@ export interface Representante {
   estado_civil: string;
   profissao: string;
   cargo: string;
-  rg: string;
+  rg_numero: string;
+  rg_orgao_emissor: string;
   cpf: string;
   endereco: string;
   email: string;
