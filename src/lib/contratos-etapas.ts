@@ -12,8 +12,8 @@ export const ETAPAS_DOCUMENTO = [
   "Revisão interna",
   "Aprovado internamente",
   "Aprovação do cliente",
-  "Aprovado",
-  "Arquivado",
+  "Aguardando assinatura",
+  "Assinado e Arquivado",
 ] as const;
 
 /** Em que das 7 etapas um documento está. Só precisa do `status` e do

@@ -19,7 +19,7 @@ import {
   ErrorBlock,
   ErrorText,
 } from "@/styles/page.styled";
-import { FieldInput } from "./Bancas.styled";
+import { FieldInput, FieldSelect } from "./Bancas.styled";
 import {
   Board,
   Coluna,
@@ -115,8 +115,7 @@ export function ContratosPainel() {
           )}
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", marginBottom: "1rem" }}>
-            <FieldInput
-              as="select"
+            <FieldSelect
               value={frenteSelecionada}
               onChange={(e) => setFrenteSelecionada(e.target.value ? Number(e.target.value) : "")}
               style={{ maxWidth: "14rem" }}
@@ -127,9 +126,8 @@ export function ContratosPainel() {
                   {f.nome}
                 </option>
               ))}
-            </FieldInput>
-            <FieldInput
-              as="select"
+            </FieldSelect>
+            <FieldSelect
               value={tipoSelecionado}
               onChange={(e) => setTipoSelecionado(e.target.value as TipoDocumentoContratual | "")}
               style={{ maxWidth: "14rem" }}
@@ -140,7 +138,7 @@ export function ContratosPainel() {
                   {rotulo}
                 </option>
               ))}
-            </FieldInput>
+            </FieldSelect>
             <FieldInput
               placeholder="Buscar por projeto..."
               value={buscaProjeto}

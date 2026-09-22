@@ -347,6 +347,12 @@ export function ProjetoPage() {
   // Abre o modal "Editar projeto". O vendedor entra no modo enxuto.
   const podeEditarProjeto = podeEditarTudo || ehVendedorDesteProjeto;
   const temKickoff = !!projeto.data_kickoff;
+  // ⭐ 2026-09-21 — a pedido: nada nas abas (Visão geral, Cronograma, Banca,
+  // Tarefas, Histórico) vale antes de o projeto ser VENDIDO — não tem
+  // equipe, não tem escopo, não tem cronograma pra mostrar ainda, só o
+  // Contrato de Prestação sendo preenchido (que já tem sua própria página,
+  // fora daqui). As abas liberam sozinhas assim que ele assina.
+  const aindaEmElaboracao = projeto.status === "contrato_em_elaboracao";
 
   /**
    * As etapas para onde ESTE projeto pode ir agora — livre entre as ativas,
@@ -488,7 +494,7 @@ export function ProjetoPage() {
 
       {erroStatus && <FormErrorText>{erroStatus}</FormErrorText>}
 
-      {pedidosPendentes > 0 && (
+      {!aindaEmElaboracao && pedidosPendentes > 0 && (
         <AvisoBanner>
           {pedidosPendentes} {pedidosPendentes === 1 ? "pedido de entrada" : "pedidos de entrada"}{" "}
           aguardando resposta.{" "}
@@ -519,30 +525,39 @@ export function ProjetoPage() {
         </AvisoBanner>
       )}
 
-      {/* ⭐ Visitante da banca: quem foi ESCALADO para avaliar entra aqui para
-          votar, mas o §3 não lhe dá visão do projeto. Mostrar as outras abas
-          seria oferecer cinco portas e abrir uma — as quatro restantes
-          devolvem 404. */}
-      <TabBar>
-        {projeto.apenas_banca ? (
-          <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
-        ) : (
-          <>
-            <TabLink to={`/projetos/${projeto.id}`} end>
-              Visão geral
-            </TabLink>
-            <TabLink to={`/projetos/${projeto.id}/cronograma`}>Cronograma</TabLink>
-            {/* Depois do Cronograma: é lá que a banca é marcada, e daqui se vê
-                como ela foi. Antes de Tarefas porque a banca é marco do projeto,
-                não rotina de execução. */}
-            <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
-            <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
-            <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
-          </>
-        )}
-      </TabBar>
+      {aindaEmElaboracao ? (
+        <AvisoBanner>
+          Este projeto ainda não foi vendido — as abas liberam depois da assinatura do Contrato de
+          Prestação de Serviços.
+        </AvisoBanner>
+      ) : (
+        <>
+          {/* ⭐ Visitante da banca: quem foi ESCALADO para avaliar entra aqui para
+              votar, mas o §3 não lhe dá visão do projeto. Mostrar as outras abas
+              seria oferecer cinco portas e abrir uma — as quatro restantes
+              devolvem 404. */}
+          <TabBar>
+            {projeto.apenas_banca ? (
+              <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
+            ) : (
+              <>
+                <TabLink to={`/projetos/${projeto.id}`} end>
+                  Visão geral
+                </TabLink>
+                <TabLink to={`/projetos/${projeto.id}/cronograma`}>Cronograma</TabLink>
+                {/* Depois do Cronograma: é lá que a banca é marcada, e daqui se vê
+                    como ela foi. Antes de Tarefas porque a banca é marco do projeto,
+                    não rotina de execução. */}
+                <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
+                <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
+                <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
+              </>
+            )}
+          </TabBar>
 
-      <Outlet context={contexto} />
+          <Outlet context={contexto} />
+        </>
+      )}
 
       {editandoProjeto && token && (
         <EditarProjetoModal
