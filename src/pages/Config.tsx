@@ -242,12 +242,6 @@ const PERMISSOES = [
       "Cadastrar um documento já assinado fora do fluxo normal da plataforma, direto como arquivado.",
   },
   {
-    campo: "pode_solicitar_tep" as const,
-    titulo: "Solicitar TEP",
-    descricao:
-      "Abrir o Termo de Encerramento de Projeto dentro de um projeto — quem acompanha a entrega, não a venda.",
-  },
-  {
     campo: "pode_editar_identidade_institucional" as const,
     titulo: "Editar identidade institucional",
     descricao:

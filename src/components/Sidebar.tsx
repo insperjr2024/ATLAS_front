@@ -107,13 +107,12 @@ const navItems: NavItemConfig[] = [
     // sem uma chamada extra só pra decidir se mostra o item.
     // `pode_criar_projeto`/`pode_responsavel_por_vendas` já é a mesma
     // dupla que abre o Contrato de Prestação (ver docstring de
-    // `_pode_abrir_documento` no back); `pode_solicitar_tep` cobre quem
-    // normalmente coordena. Diretoria já tem `pode_criar_projeto` = true.
+    // `_pode_abrir_documento` no back). Diretoria já tem
+    // `pode_criar_projeto` = true.
     visible: (c) =>
       c.pode_criar_projeto ||
       c.pode_responsavel_por_vendas ||
       c.pode_editar_documento_juridico ||
-      c.pode_solicitar_tep ||
       c.pode_elaborar_contratos_proprios ||
       c.pode_elaborar_qualquer_contrato,
   },

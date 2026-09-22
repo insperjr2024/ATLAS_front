@@ -102,7 +102,6 @@ export interface Permissoes {
   /** Cadastrar documento já assinado fora do fluxo normal. */
   pode_importar_documento_antigo: boolean;
   /** Abrir o TEP dentro de um projeto que já tem Contrato de Prestação. */
-  pode_solicitar_tep: boolean;
   /** Quem assina PELA Insper Jr — antes só diretoria de projetos, agora
    *  delegável. */
   pode_editar_identidade_institucional: boolean;
