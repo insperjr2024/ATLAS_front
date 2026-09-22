@@ -55,6 +55,10 @@ export interface DocumentoContratual {
   atualizado_em: string;
   /** 0 = nenhuma versão gerada ainda. */
   ultima_versao: number | null;
+  /** Registro de auditoria — "Aprovado por Fulana às 14h32". `null` até
+   *  passar por "Aprovar internamente". */
+  aprovado_internamente_por_nome: string | null;
+  aprovado_internamente_em: string | null;
   /** Só não-`null` pro TEP em "aprovado_pelo_cliente" — libera o botão
    *  "Considerar assinado (prazo vencido)" quando `<= 0`. */
   dias_restantes_aceite_tacito: number | null;

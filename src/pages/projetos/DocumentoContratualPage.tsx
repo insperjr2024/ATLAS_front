@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { camposFaltandoDoErro } from "@/lib/api";
 import { getFrentes } from "@/lib/bancas";
+import { formatarDataHora } from "@/lib/projetos";
 import type { Frente } from "@/types/banca";
 import { ETAPAS_DOCUMENTO, indiceDaEtapaDocumento } from "@/lib/contratos-etapas";
 import {
@@ -450,6 +451,12 @@ export function DocumentoContratualPage() {
               );
             })}
           </Etapas>
+          {atual.aprovado_internamente_por_nome && (
+            <EmptyText style={{ marginTop: "0.75rem", marginBottom: 0 }}>
+              Aprovado internamente por {atual.aprovado_internamente_por_nome} em{" "}
+              {formatarDataHora(atual.aprovado_internamente_em)}.
+            </EmptyText>
+          )}
         </PageCardContent>
       </PageCard>
 
