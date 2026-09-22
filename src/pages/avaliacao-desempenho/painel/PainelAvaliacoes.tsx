@@ -27,7 +27,7 @@ import {
   PageCardTitle,
   PageLoadingBlock,
 } from "@/styles/page.styled";
-import { FieldSelect } from "@/pages/Bancas.styled";
+import { FieldInput, FieldSelect } from "@/pages/Bancas.styled";
 import { ViewToggleRow, ViewToggleBtn } from "@/pages/projetos/Projetos.styled";
 import { theme } from "@/styles/theme";
 import {
@@ -97,6 +97,7 @@ export function PainelAvaliacoes() {
   const [expandido, setExpandido] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<DesempenhoTipo | "todos">("todos");
   const [filtroFrente, setFiltroFrente] = useState<string>("todas");
+  const [busca, setBusca] = useState("");
   // "pessoas" = agrupa avaliação por avaliador/avaliado (o de sempre).
   // "escopo" = só as Avaliações do Escopo, agrupadas pelo ESCOPO avaliado
   // (2026-09-10) — "Análise Mercadológica · BLEND I (média 4)".
@@ -205,6 +206,7 @@ export function PainelAvaliacoes() {
   // na visão "pessoas" — o contexto (frente/semestre) sai dele no render.
   type Grupo = { chave: string; titulo: string; pessoaId?: number; lista: DesempenhoAvaliacao[] };
   const grupos = useMemo<Grupo[]>(() => {
+    let base: Grupo[];
     if (visao === "escopo") {
       const mapa = new Map<number, Grupo>();
       for (const a of avaliacoesFiltradas) {
@@ -217,34 +219,39 @@ export function PainelAvaliacoes() {
         atual.lista.push(a);
         mapa.set(a.escopo.escopo_id, atual);
       }
-      return Array.from(mapa.values()).sort((a, b) => b.lista.length - a.lista.length);
+      base = Array.from(mapa.values());
+    } else {
+      const mapa = new Map<number, DesempenhoAvaliacao[]>();
+      for (const a of avaliacoesFiltradas) {
+        if (a.escopo) continue; // a auto-avaliação de escopo tem visão própria
+        const chave = modo === "avaliador" ? a.avaliador_id : a.avaliado_id;
+        const lista = mapa.get(chave) ?? [];
+        lista.push(a);
+        mapa.set(chave, lista);
+      }
+      // O filtro de frente é sobre a PESSOA do agrupamento, aplicado depois de
+      // agrupar — senão removeria linhas soltas e deixaria a contagem errada.
+      base = Array.from(mapa.entries())
+        .filter(([pessoaId]) => {
+          if (filtroFrente !== "todas" && !frenteIdsPorUsuario.get(pessoaId)?.has(Number(filtroFrente))) {
+            return false;
+          }
+          return true;
+        })
+        .map(([pessoaId, lista]) => ({
+          chave: `pessoa-${pessoaId}`,
+          titulo: nomes.get(pessoaId) ?? `Usuário ${pessoaId}`,
+          pessoaId,
+          lista,
+        }));
     }
-
-    const mapa = new Map<number, DesempenhoAvaliacao[]>();
-    for (const a of avaliacoesFiltradas) {
-      if (a.escopo) continue; // a auto-avaliação de escopo tem visão própria
-      const chave = modo === "avaliador" ? a.avaliador_id : a.avaliado_id;
-      const lista = mapa.get(chave) ?? [];
-      lista.push(a);
-      mapa.set(chave, lista);
-    }
-    // O filtro de frente é sobre a PESSOA do agrupamento, aplicado depois de
-    // agrupar — senão removeria linhas soltas e deixaria a contagem errada.
-    return Array.from(mapa.entries())
-      .filter(([pessoaId]) => {
-        if (filtroFrente !== "todas" && !frenteIdsPorUsuario.get(pessoaId)?.has(Number(filtroFrente))) {
-          return false;
-        }
-        return true;
-      })
-      .sort(([, a], [, b]) => b.length - a.length)
-      .map(([pessoaId, lista]) => ({
-        chave: `pessoa-${pessoaId}`,
-        titulo: nomes.get(pessoaId) ?? `Usuário ${pessoaId}`,
-        pessoaId,
-        lista,
-      }));
-  }, [avaliacoesFiltradas, filtroFrente, frenteIdsPorUsuario, modo, visao, nomes]);
+    // ⭐ 2026-09-22 — a pedido: ordem alfabética (era por quantidade de
+    // avaliações, decrescente) e busca por nome, mesmo padrão de
+    // `PainelRelatorio.tsx`/`Membros.tsx`.
+    return base
+      .filter((g) => g.titulo.toLowerCase().includes(busca.trim().toLowerCase()))
+      .sort((a, b) => a.titulo.localeCompare(b.titulo));
+  }, [avaliacoesFiltradas, filtroFrente, frenteIdsPorUsuario, modo, visao, nomes, busca]);
 
   async function toggleDetalhe(avaliacaoId: number) {
     if (!token) return;
@@ -317,6 +324,13 @@ export function PainelAvaliacoes() {
       </PageCardHeader>
       <PageCardContent>
         <FiltrosRow>
+          <FieldInput
+            type="text"
+            placeholder="Buscar por nome..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            aria-label="Buscar por nome"
+          />
           <FieldSelect value={visao} onChange={(e) => setVisao(e.target.value as "pessoas" | "escopo")}>
             <option value="pessoas">Avaliação de pessoas</option>
             <option value="escopo">Avaliação de escopo</option>
@@ -340,9 +354,11 @@ export function PainelAvaliacoes() {
 
         {grupos.length === 0 ? (
           <EmptyText>
-            {visao === "escopo"
-              ? "Nenhuma Avaliação do Escopo registrada ainda."
-              : "Nenhuma avaliação registrada ainda."}
+            {busca.trim()
+              ? `Nenhum resultado para "${busca.trim()}".`
+              : visao === "escopo"
+                ? "Nenhuma Avaliação do Escopo registrada ainda."
+                : "Nenhuma avaliação registrada ainda."}
           </EmptyText>
         ) : (
           <ListaExpansivel>
