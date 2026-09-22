@@ -85,6 +85,14 @@ export interface Banca extends BancaBase {
   vagas: number;
   alocados: number;
   /**
+   * ⭐ 2026-09-18: "tem vaga" PRA QUEM ESTÁ OLHANDO — pode ser `false` mesmo
+   * com `alocados < vagas`, quando a última vaga é reservada pro piso de
+   * uma frente que esta pessoa não cobre (ex.: falta 1 de Tech, e quem está
+   * logado é de Business). É por isso que a mesma banca aparece "com vaga"
+   * pra um consultor de Tech e "lotada" pra um de Business.
+   */
+  vaga_disponivel_para_mim: boolean;
+  /**
    * quem NÃO pode avaliar esta banca por ser do grupo dela —
    * coordenador + equipe do projeto dos escopos que ela cobre.
    *

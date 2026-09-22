@@ -788,6 +788,69 @@ export function decidirRemarcacao(
 }
 
 /**
+ * Pedir para entrar numa banca sem vaga livre pra quem pede (2026-09-18).
+ *
+ * ⚠ `alocado_direto: true` quando a vaga na verdade estava aberta — a
+ * autoinscrição normal já resolveu, sem pedido nenhum indo pra fila da
+ * diretoria (a vaga pode ter aberto entre abrir a tela e clicar).
+ */
+export function solicitarEntradaBanca(bancaId: number, justificativa: string, token: string) {
+  return apiFetch<{ alocado_direto: boolean; candidatura?: Candidatura; pedido?: { id: number; status: string } }>(
+    "/bancas/entrada",
+    {
+      method: "POST",
+      token,
+      body: JSON.stringify({ banca_id: bancaId, justificativa }),
+    },
+  );
+}
+
+/** Um pedido de entrada em banca, esperando a diretoria. */
+export interface EntradaBancaPendente {
+  id: number;
+  banca_id: number;
+  projeto_id: number | null;
+  projeto_nome: string;
+  data_hora: string | null;
+  frentes: string[];
+  vagas: number;
+  alocados: number;
+  justificativa: string;
+  usuario_id: number;
+  usuario_nome: string | null;
+  criado_em: string;
+}
+
+export function getEntradaBancaPendentes(token: string) {
+  return apiFetch<EntradaBancaPendente[]>("/bancas/entrada/pendentes", { token });
+}
+
+/** O que EU pedi e ainda espera decisão (2026-09-18) — troca "Solicitar
+ *  entrada" por "Aguardando aprovação" nas bancas já pedidas. */
+export interface MinhaEntradaBancaPendente {
+  id: number;
+  banca_id: number;
+  criado_em: string;
+}
+
+export function getMinhasEntradaBancaPendentes(token: string) {
+  return apiFetch<MinhaEntradaBancaPendente[]>("/bancas/entrada/minhas", { token });
+}
+
+/** A decisão da diretoria — aprovar cria a candidatura, acima do teto normal. */
+export function decidirEntradaBanca(
+  pedidoId: number,
+  dados: { aprovar: boolean; resposta: string },
+  token: string,
+) {
+  return apiFetch(`/bancas/entrada/${pedidoId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+/**
  * ⭐ Todas as bancas de um PROJETO, cada uma com a ficha completa.
  *
  * É o que a aba "Banca" do projeto consome. Rota própria, e não N chamadas a

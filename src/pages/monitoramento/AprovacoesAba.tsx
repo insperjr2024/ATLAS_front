@@ -4,6 +4,7 @@ import { getAprovacoes, type Aprovacoes } from "@/lib/monitoramento";
 import { AtrasosSemJustificativaCard } from "./AtrasosSemJustificativaCard";
 import { BancasForaDaJanelaCard } from "./BancasForaDaJanelaCard";
 import { BancasSemResultadoCard } from "./BancasSemResultadoCard";
+import { EntradasEmBancaCard } from "./EntradasEmBancaCard";
 import { EntradasEmProjetoCard } from "./EntradasEmProjetoCard";
 import { ExcecoesDeChoqueCard } from "./ExcecoesDeChoqueCard";
 import { PedidosDeDiasCard } from "./PedidosDeDiasCard";
@@ -36,10 +37,10 @@ const VOLTAR_PARA_AQUI = { voltarPara: "/monitoramento/aprovacoes", voltarRotulo
  * ela. O critério é ter alguém do outro lado bloqueado enquanto não houver
  * resposta.
  *
- * ⭐ **As sete filas aparecem sempre, mesmo vazias.** Uma tela que só surge
+ * ⭐ **As oito filas aparecem sempre, mesmo vazias.** Uma tela que só surge
  * quando há problema não ensina o que ela cobre.
  *
- * ⭐ **As sete decidem AQUI.** A maioria mandava a pessoa para outra tela — o
+ * ⭐ **As oito decidem AQUI.** A maioria mandava a pessoa para outra tela — o
  * projeto, Vagas, Bancas — com o argumento de que decidir sem contexto é
  * decidir no escuro. O argumento estava certo e a conclusão errada: o
  * caminho não era exportar a decisão, era importar o contexto. Cada linha
@@ -95,12 +96,13 @@ export function AprovacoesAba() {
     { rotulo: "Dias de ajuste", n: dados.dias_de_ajuste.length, id: "fila-dias" },
     { rotulo: "Bancas sem veredito", n: dados.bancas_sem_resultado.length, id: "fila-bancas" },
     { rotulo: "Pedidos de entrada", n: dados.solicitacoes_de_entrada.length, id: "fila-entradas" },
+    { rotulo: "Entradas em banca", n: dados.entradas_em_banca.length, id: "fila-entradas-em-banca" },
     { rotulo: "Atrasos sem porquê", n: dados.atrasos_sem_justificativa.length, id: "fila-atrasos" },
   ];
 
   return (
     <PageStack>
-      {/* ⭐ "Quantos, sem rolar". A página tem sete cards e cresce com a fila;
+      {/* ⭐ "Quantos, sem rolar". A página tem oito cards e cresce com a fila;
           sem a faixa, saber se há algo esperando exigia percorrer a tela
           inteira. Os números ficam NEUTROS de propósito — a mesma decisão da
           aba Atrasos: contagem é volume, não gravidade, e tingi-la faria a
@@ -117,7 +119,7 @@ export function AprovacoesAba() {
       </FaixaResumo>
 
       {dados.total === 0 && (
-        <EmptyText>Nada esperando por você. As sete filas estão limpas.</EmptyText>
+        <EmptyText>Nada esperando por você. As oito filas estão limpas.</EmptyText>
       )}
 
       <ExcecoesDeChoqueCard itens={dados.excecoes_de_choque} onDecidiu={carregar} />
@@ -131,6 +133,7 @@ export function AprovacoesAba() {
       />
       <BancasSemResultadoCard itens={dados.bancas_sem_resultado} onDecidiu={carregar} />
       <EntradasEmProjetoCard itens={dados.solicitacoes_de_entrada} onDecidiu={carregar} />
+      <EntradasEmBancaCard itens={dados.entradas_em_banca} onDecidiu={carregar} />
       <AtrasosSemJustificativaCard
         itens={dados.atrasos_sem_justificativa}
         onDecidiu={carregar}

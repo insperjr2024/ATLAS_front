@@ -28,10 +28,13 @@ import {
   registrarDescricaoCoordenador,
   resumoDoQueFalta,
   ROTULO_STATUS_BANCA,
+  getMinhasEntradaBancaPendentes,
+  solicitarEntradaBanca,
   totalFaltando,
   tomDoStatusBanca,
 } from "@/lib/bancas";
-import type { BancaEsperandoAprovacao } from "@/lib/bancas";
+import { codigoDoErro, CODIGO_BANCA_LOTADA } from "@/lib/api";
+import type { BancaEsperandoAprovacao, MinhaEntradaBancaPendente } from "@/lib/bancas";
 import { getUsuarios } from "@/lib/usuarios";
 import {
   createAvaliacao,
@@ -202,6 +205,9 @@ interface Contexto {
   equipesProjeto: EquipeProjeto[];
   candidaturas: Candidatura[];
   solicitacoesTroca: SolicitacaoTroca[];
+  /** ⭐ 2026-09-18: meus próprios pedidos de entrada em banca ainda
+   *  pendentes — troca "Solicitar entrada" por "Aguardando aprovação". */
+  minhasEntradasPendentes: MinhaEntradaBancaPendente[];
   /** banca_id → prazo de avaliação, separado de `Banca` porque
    *  `paraAvaliar` funde `BancaParaAvaliar` com a `Banca` cheia e descarta os
    *  campos extras (ver `recarregar`). */
@@ -269,6 +275,7 @@ export function Bancas() {
   const [avisoErro, setAvisoErro] = useState("");
   const [bancaParaExcluir, setBancaParaExcluir] = useState<Banca | null>(null);
   const [bancaConvidar, setBancaConvidar] = useState<Banca | null>(null);
+  const [bancaSolicitarEntrada, setBancaSolicitarEntrada] = useState<Banca | null>(null);
   const [distribuindo, setDistribuindo] = useState(false);
   /** O que a distribuição fez — dito em números, não em "pronto!". */
   const [resultadoPush, setResultadoPush] = useState("");
@@ -317,7 +324,7 @@ export function Bancas() {
     setCarregando(true);
     setErro("");
     try {
-      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca, esperandoAprovacaoResp] =
+      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca, esperandoAprovacaoResp, minhasEntradasPendentes] =
         await Promise.all([
           getBancas(token),
           getCandidaturas(token),
@@ -334,6 +341,7 @@ export function Bancas() {
           // Só quem decide (diretoria ou gerente) tem acesso à rota —
           // pedir para os outros só devolveria 403 à toa.
           podeAprovar ? getBancasEsperandoAprovacao(token) : Promise.resolve([]),
+          getMinhasEntradaBancaPendentes(token),
         ]);
       setBancas(bancasResp);
       setCandidaturas(candidaturasResp);
@@ -374,6 +382,7 @@ export function Bancas() {
         equipesProjeto,
         candidaturas: candidaturasResp,
         solicitacoesTroca,
+        minhasEntradasPendentes,
         prazosAvaliacao: Object.fromEntries(
           avaliarResp.map((item) => [
             item.banca_id,
@@ -494,14 +503,27 @@ export function Bancas() {
   const jaAlocado = bancas
     .filter((b) => aceitaInscricao(b.status) && candidaturaDe(b.id))
     .sort(porDataMaisProxima);
+  // ⚠ 2026-09-18: "lotada" não é mais só `alocados >= vagas` — o backend
+  // (`vaga_disponivel_para_mim`) já considera a reserva das últimas vagas
+  // pro piso por frente. A MESMA banca cai em seções diferentes pra pessoas
+  // diferentes: falta 1 de Tech, então ela é "lotada" pra quem é de
+  // Business e "disponível" pra quem é de Tech.
   const lotadas = bancas
     .filter(
-      (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados >= b.vagas && !ehDoProprioGrupo(b),
+      (b) =>
+        aceitaInscricao(b.status) &&
+        !candidaturaDe(b.id) &&
+        !b.vaga_disponivel_para_mim &&
+        !ehDoProprioGrupo(b),
     )
     .sort(porDataMaisProxima);
   const disponiveisParaAlocacao = bancas
     .filter(
-      (b) => aceitaInscricao(b.status) && !candidaturaDe(b.id) && b.alocados < b.vagas && !ehDoProprioGrupo(b),
+      (b) =>
+        aceitaInscricao(b.status) &&
+        !candidaturaDe(b.id) &&
+        b.vaga_disponivel_para_mim &&
+        !ehDoProprioGrupo(b),
     )
     .sort(porDataMaisProxima);
 
@@ -550,8 +572,37 @@ export function Bancas() {
       await alocar(bancaId, token);
       recarregar();
     } catch (err) {
+      // ⚠ 2026-09-18, a pedido: a recusa por falta de vaga (teto cheio, ou a
+      // última reservada pro piso por frente) não é mais um beco sem saída —
+      // em vez do aviso de erro sozinho, abre "Solicitar entrada", que manda
+      // o pedido pra diretoria decidir.
+      if (codigoDoErro(err) === CODIGO_BANCA_LOTADA) {
+        const banca = bancas.find((b) => b.id === bancaId);
+        if (banca) {
+          setBancaSolicitarEntrada(banca);
+          return;
+        }
+      }
       setAvisoErro(err instanceof Error ? err.message : "Não foi possível se alocar");
     }
+  }
+
+  /**
+   * ⭐ 2026-09-18: pedir para entrar numa banca lotada.
+   *
+   * `alocado_direto` é o caso raro em que a vaga abriu entre abrir o modal e
+   * confirmar — a pessoa já entra, sem pedido nenhum indo pra fila.
+   */
+  async function handleSolicitarEntrada(bancaId: number, justificativa: string) {
+    if (!token) return;
+    const resultado = await solicitarEntradaBanca(bancaId, justificativa, token);
+    setBancaSolicitarEntrada(null);
+    recarregar();
+    setAvisoErro(
+      resultado.alocado_direto
+        ? "A vaga estava livre — você já foi alocado, sem precisar de aprovação."
+        : "Pedido enviado à diretoria. Você recebe uma notificação quando ela decidir.",
+    );
   }
 
   /** ⭐ Roda na hora o mesmo rodízio do agendador das 6h (§8).
@@ -819,6 +870,7 @@ export function Bancas() {
             onRegistrarResultado={setBancaResultado}
           podeAprovarLista={podeAprovar}
             onVerMais={setBancaDetalhe}
+            onSolicitarEntrada={setBancaSolicitarEntrada}
           />
           <SecaoTrocas
             solicitacoes={contexto.solicitacoesTroca}
@@ -922,6 +974,14 @@ export function Bancas() {
           usuarioId={usuario.id}
           onConvidar={(usuarioConvidadoId) => handleConvidarTroca(bancaConvidar.id, usuarioConvidadoId)}
           onClose={() => setBancaConvidar(null)}
+        />
+      )}
+
+      {bancaSolicitarEntrada && (
+        <SolicitarEntradaBancaModal
+          banca={bancaSolicitarEntrada}
+          onSolicitar={(justificativa) => handleSolicitarEntrada(bancaSolicitarEntrada.id, justificativa)}
+          onClose={() => setBancaSolicitarEntrada(null)}
         />
       )}
 
@@ -1076,6 +1136,7 @@ function SecaoBancas({
   onPedirTroca,
   onConvidar,
   onCancelarTroca,
+  onSolicitarEntrada,
   filtrarPorFrente,
   bancaDestacada,
   refDestacada,
@@ -1110,6 +1171,11 @@ function SecaoBancas({
   /** Abre o picker de convite específico, alternativa ao pedido aberto. */
   onConvidar?: (banca: Banca) => void;
   onCancelarTroca?: (solicitacaoId: number) => void;
+  /** ⭐ 2026-09-18: pedir para entrar mesmo com a banca lotada. Só nas bancas
+   *  que já chegam aqui aceitando inscrição e sem ser do próprio grupo (a
+   *  seção "Com alocação máxima" já filtra isso) — a checagem de sobra fica
+   *  no backend de qualquer forma. */
+  onSolicitarEntrada?: (banca: Banca) => void;
   /** Liga o filtro por frente e a separação da lista em blocos de frente.
    *  Só faz sentido em fila de ESCOLHA — quem procura banca para se alocar
    *  procura a da frente dele. Nas outras seções a lista é curta e já é
@@ -1179,11 +1245,22 @@ function SecaoBancas({
     const hora = dataHora
       ? dataHora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
       : "";
-    const lotada = acao === "alocar" && banca.alocados >= banca.vagas;
+    // ⚠ 2026-09-18: não é mais só o teto — `vaga_disponivel_para_mim` já
+    // considera a reserva das últimas vagas pro piso por frente. A seção
+    // "Disponíveis" só lista banca com vaga PRA ESTA PESSOA, então `lotada`
+    // aqui deveria vir sempre `false` por construção; a fórmula fica pela
+    // mesma pessoa, não pela bucketização de fora.
+    const lotada = acao === "alocar" && !banca.vaga_disponivel_para_mim;
     // Independe da `acao`: a seção "Com alocação máxima" mostra o selo de
     // ESTADO (`acao === "nenhuma"`), e "Aberta para inscrições" numa banca
     // cheia se contradiz. Aqui a inscrição está fechada de fato.
     const alocacaoCompleta = banca.alocados >= banca.vagas;
+    // ⭐ 2026-09-18, a pedido: quem já pediu não vê o botão de pedir de
+    // novo — a tela mostra que o pedido está esperando decisão, em vez de
+    // deixar parecer que nada foi enviado.
+    const minhaEntradaPendente = contexto.minhasEntradasPendentes.some(
+      (p) => p.banca_id === banca.id,
+    );
     const podeGerenciar =
       gerenciar &&
       usuarioId != null &&
@@ -1314,7 +1391,16 @@ function SecaoBancas({
                   <PageBadge $tone="success">{banca.vagas - banca.alocados} vaga(s)</PageBadge>
                 ))}
               {acao === "nenhuma" &&
-                (alocacaoCompleta && banca.status === "aberta" ? (
+                (onSolicitarEntrada ? (
+                  // ⚠ 2026-09-18, corrigido: esta seção é SEMPRE "sem vaga
+                  // pra você" (é a bucketização de fora que garante isso,
+                  // via `vaga_disponivel_para_mim`) — mostrar o status cru
+                  // da banca aqui ("Aberta para inscrições") contradizia o
+                  // próprio card quando ela não estava no teto cheio, só
+                  // com a última vaga reservada pra outra frente. A mesma
+                  // frase da mensagem do modal de "Solicitar entrada".
+                  <PageBadge $tone="danger">Sem vaga para você</PageBadge>
+                ) : alocacaoCompleta && banca.status === "aberta" ? (
                   <PageBadge $tone="default">Lotada</PageBadge>
                 ) : (
                   <PageBadge $tone={tomDoStatusBanca(banca.status)}>
@@ -1478,6 +1564,23 @@ function SecaoBancas({
               </PageButtonSm>
             </MotivoDesabilitado>
           )}
+          {onSolicitarEntrada &&
+            (minhaEntradaPendente ? (
+              <PageBadge
+                $tone="warning"
+                title="Você já pediu para entrar nesta banca — a diretoria ainda não decidiu."
+              >
+                Aguardando aprovação
+              </PageBadge>
+            ) : (
+              <PageButtonSm
+                type="button"
+                $variant="outline"
+                onClick={pararPropagacao(() => onSolicitarEntrada(banca))}
+              >
+                Solicitar entrada
+              </PageButtonSm>
+            ))}
         </BancaCardFooter>
       </BancaCard>
     );
@@ -1507,6 +1610,15 @@ function SecaoBancas({
         <PageBadge $tone="muted">{visiveis.length}</PageBadge>
       </PageCardHeader>
       <PageCardContent>
+        {/* ⭐ 2026-09-18, a pedido: sem isto, quem cai aqui via a banca
+            lotada e parava — nada dizia que dava pra pedir entrada mesmo
+            assim. O aviso é do CARD (aparece uma vez), não de cada linha,
+            porque é uma explicação da seção, não de uma banca específica. */}
+        {onSolicitarEntrada && bancas.length > 0 && (
+          <EmptyText style={{ marginBottom: "0.75rem" }}>
+            Mesmo lotada, dá pra pedir entrada — a diretoria decide.
+          </EmptyText>
+        )}
         {bancas.length === 0 && <EmptyText>Nenhuma banca aqui.</EmptyText>}
         {bancas.length > 0 && visiveis.length === 0 && (
           <EmptyText>Nenhuma banca desta frente.</EmptyText>
@@ -2255,6 +2367,85 @@ function ConvidarTrocaModal({
   );
 }
 
+/**
+ * ⭐ 2026-09-18, a pedido: pedir para entrar numa banca sem vaga livre.
+ *
+ * Abre em dois momentos — clicando direto no botão de uma banca lotada, ou
+ * automaticamente quando "Alocar-se" recusa por falta de vaga
+ * (`CODIGO_BANCA_LOTADA`, ver `handleAlocar`). Nos dois casos o pedido vai
+ * pra fila da diretoria; aprovar cria a candidatura acima do teto normal.
+ */
+function SolicitarEntradaBancaModal({
+  banca,
+  onSolicitar,
+  onClose,
+}: {
+  banca: Banca;
+  onSolicitar: (justificativa: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [justificativa, setJustificativa] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function enviar() {
+    setErro("");
+    setEnviando(true);
+    try {
+      await onSolicitar(justificativa.trim());
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível enviar o pedido");
+      setEnviando(false);
+    }
+    // No sucesso quem chamou fecha o modal — mexer no estado depois seria
+    // atualizar um componente que já morreu.
+  }
+
+  return (
+    <ModalOverlay onClick={onClose} role="presentation">
+      <NarrowModalContent onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="solicitar-entrada-titulo">
+        <ModalHeader>
+          <ModalTitle id="solicitar-entrada-titulo">Solicitar entrada, {banca.nome_projeto}</ModalTitle>
+          <ModalClose type="button" aria-label="Fechar" onClick={onClose}>
+            <X size={18} />
+          </ModalClose>
+        </ModalHeader>
+        <ModalBody>
+          <p style={{ marginTop: 0 }}>
+            {/* ⚠ 2026-09-18, corrigido: liderar com "X/Y avaliadores" ficava
+                incoerente quando a banca não estava no teto (ex: 7/8) e a
+                vaga que falta é reservada pra outra frente — não é "falta
+                gente", é "falta gente da sua frente". A mesma frase do
+                badge em "Com alocação máxima". */}
+            Não há vaga disponível para você nesta banca ({banca.alocados}/{banca.vagas} avaliadores).
+            O pedido vai para a diretoria decidir — se aprovado, você entra acima do máximo normal.
+          </p>
+          <FieldGroup>
+            <FieldLabel htmlFor="justificativa-entrada">Por que você quer entrar nesta banca?</FieldLabel>
+            <FieldInput
+              as="textarea"
+              id="justificativa-entrada"
+              rows={3}
+              autoFocus
+              value={justificativa}
+              onChange={(e) => setJustificativa(e.target.value)}
+            />
+          </FieldGroup>
+          {erro && <ErrorText>{erro}</ErrorText>}
+        </ModalBody>
+        <ModalFooter>
+          <PageButton $variant="outline" type="button" onClick={onClose} disabled={enviando}>
+            Cancelar
+          </PageButton>
+          <PageButton type="button" disabled={enviando || !justificativa.trim()} onClick={enviar}>
+            {enviando ? "Enviando…" : "Enviar pedido"}
+          </PageButton>
+        </ModalFooter>
+      </NarrowModalContent>
+    </ModalOverlay>
+  );
+}
+
 const OUTRO = "outro" as const;
 
 interface RascunhoAvaliacao {
@@ -2425,6 +2616,19 @@ function AvaliarModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form) return;
+    // ⚠ 2026-09-18, corrigido: `faltando` checa só as perguntas que ENTRARAM
+    // no envio (`perguntasNota`, filtradas por escopo) — com a lista vazia
+    // (ex.: `escopoSelecionado` de um rascunho antigo não casando com
+    // nenhum critério do escopo certo), `.some(...)` dá `false` e a
+    // validação passava em branco. Foi assim que a avaliação refeita da
+    // Marcella Canozo na banca do ATLAS I foi enviada só com o comentário,
+    // sem nota nenhuma. Bloqueia aqui, antes de checar nota por nota.
+    if (perguntasNota.length === 0) {
+      setErro(
+        "Nenhum critério encontrado para o escopo selecionado — confira o escopo antes de enviar.",
+      );
+      return;
+    }
     const faltando = perguntasNota.some((p) => notas[p.id] == null);
     if (faltando) {
       setErro("Selecione uma nota de 1 a 5 para todos os critérios.");

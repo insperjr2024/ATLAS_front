@@ -50,7 +50,6 @@ const COLUNAS_PRESENCA: Colunas<LinhaPresenca> = {
   // Quem nunca teve banca realizada não tem percentual: fica no fim nas duas
   // direções, porque "—" não é 0%.
   percentual: { valor: (l) => l.percentual, inicial: "desc" },
-  futuras: { valor: (l) => l.futuras, inicial: "desc" },
 };
 
 /**
@@ -133,9 +132,11 @@ export function PresencaBancas({ usuarios, candidaturas, bancas, avaliacoes }: P
           <EmptyText>Ninguém se inscreveu em bancas ainda.</EmptyText>
         ) : (
           <ConteudoPaginado estado={pagina}>
-            {/* 5 colunas de números curtos, mas "Ainda vai ter" e "Compareceu"
-                não cabem em 375px sem quebrar cada rótulo em três linhas. */}
-            <TabelaRolagem $min="44rem">
+            {/* "Ainda vai ter" saiu (2026-09-18): a mesma pergunta ("quantas
+                bancas futuras esta pessoa tem") já aparece em "Carga de
+                bancas por pessoa", com o filtro "só futuras" — repetir aqui
+                era o mesmo número em dois lugares. */}
+            <TabelaRolagem $min="36rem">
               <DataTable>
                 <TableHead>
                   <TableRow>
@@ -150,9 +151,6 @@ export function PresencaBancas({ usuarios, candidaturas, bancas, avaliacoes }: P
                     </Th>
                     <Th coluna="percentual" ordem={ordem} onOrdenar={ordenarPor}>
                       Presença
-                    </Th>
-                    <Th coluna="futuras" ordem={ordem} onOrdenar={ordenarPor}>
-                      Ainda vai ter
                     </Th>
                   </TableRow>
                 </TableHead>
@@ -173,7 +171,6 @@ export function PresencaBancas({ usuarios, candidaturas, bancas, avaliacoes }: P
                       <TableCell>
                         {l.percentual === null ? "—" : `${l.percentual}%`}
                       </TableCell>
-                      <TableCell>{l.futuras > 0 ? l.futuras : "—"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -746,6 +746,29 @@ export interface AprovacaoRemarcacao {
 }
 
 /**
+ * 2026-09-18, a pedido: alguém pediu para entrar numa banca sem vaga livre
+ * pra ela (banca no teto, ou a última vaga reservada pro piso por frente que
+ * ela não cobre). Aprovar cria a candidatura, acima do teto normal.
+ *
+ * ⚠ Não confundir com `AprovacaoEntrada` (pedido pra entrar num PROJETO, via
+ * Vagas) — esta é sobre entrar como avaliador numa BANCA já marcada.
+ */
+export interface AprovacaoEntradaBanca {
+  id: number;
+  banca_id: number;
+  projeto_id: number | null;
+  projeto_nome: string;
+  data_hora: string | null;
+  frentes: string[];
+  vagas: number;
+  alocados: number;
+  justificativa: string;
+  usuario_id: number;
+  usuario_nome: string | null;
+  criado_em: string;
+}
+
+/**
  * Havia uma terceira fila, `entregas_sem_classificacao` (entregas atrasadas
  * sem o rótulo interno/agenda do cliente). Removida em 2026-08-12 junto com o
  * atraso de ENTREGA nos insights: sem a métrica que separava os dois tipos, a
@@ -762,6 +785,8 @@ export interface Aprovacoes {
   bancas_fora_da_janela: AprovacaoForaDaJanela[];
   /** §13, 2026-09-10: pedidos para remarcar uma banca que já tem data. */
   remarcacoes_de_banca: AprovacaoRemarcacao[];
+  /** 2026-09-18: pedidos para entrar como avaliador numa banca sem vaga. */
+  entradas_em_banca: AprovacaoEntradaBanca[];
   /** Servido pronto pelo backend — o badge da aba precisa dele antes de
    *  qualquer render, e somar no front duplicaria a conta. */
   total: number;
