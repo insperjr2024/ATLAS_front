@@ -29,32 +29,39 @@ function rotuloPosicao(posicoes: PosicaoPermissao[], posicao: string): string {
 }
 
 /** O par de cargo que a pessoa tem agora — sempre uma `posicao` principal,
- *  mais `bdr` (o `cargo_extra`) opcional em cima de "consultor". */
+ *  mais um `cargoExtra` opcional (`cargo_extra` no backend). ⭐ 2026-09-22 —
+ *  generalizado: antes só existia "bdr" em cima de "consultor", hardcoded;
+ *  agora qualquer cargo marcado `sobreponivel` no catálogo pode ser o extra
+ *  de qualquer posição principal (ver `posicao_permissao.sobreponivel`). */
 interface EstadoCargo {
   posicao: Posicao;
-  bdr: boolean;
+  cargoExtra: string | null;
 }
 
 /** ⭐ 2026-09-16, a pedido — a lista de cargos vira múltipla seleção de
- *  verdade (não select + checkbox à parte), mas com UMA regra: o único par
- *  que pode ficar marcado junto é "consultor" + "bdr" (ver `usuario_model.py`
- *  no backend, `cargo_extra`). Clicar em qualquer outra posição troca a
- *  seleção pra ela sozinha; clicar em "bdr" sem "consultor" marcado já traz
- *  o consultor junto, porque BDR nunca existe sozinho. */
-function alternarCargo(atual: EstadoCargo, clicado: string): EstadoCargo {
-  if (clicado === "bdr") {
-    return atual.bdr ? { ...atual, bdr: false } : { posicao: "consultor", bdr: true };
+ *  verdade (não select + checkbox à parte). ⭐ 2026-09-22 — a regra virou:
+ *  cargos marcados `sobreponivel` (catálogo de permissões) podem ficar
+ *  marcados JUNTO da posição principal, soma as permissões das duas; os
+ *  demais são mutuamente exclusivos — marcar um troca a seleção pra ele
+ *  sozinho, e desmarca o extra se ele coincidir com a nova posição. */
+function alternarCargo(posicoes: PosicaoPermissao[], atual: EstadoCargo, clicado: string): EstadoCargo {
+  const ehSobreponivel = posicoes.find((p) => p.posicao === clicado)?.sobreponivel ?? false;
+  if (ehSobreponivel && clicado !== atual.posicao) {
+    return { ...atual, cargoExtra: atual.cargoExtra === clicado ? null : clicado };
   }
-  return { posicao: clicado, bdr: clicado === "consultor" ? atual.bdr : false };
+  return {
+    posicao: clicado,
+    cargoExtra: atual.cargoExtra === clicado ? null : atual.cargoExtra,
+  };
 }
 
 function cargoMarcado(atual: EstadoCargo, posicaoDaLinha: string): boolean {
-  return posicaoDaLinha === "bdr" ? atual.bdr : atual.posicao === posicaoDaLinha;
+  return atual.posicao === posicaoDaLinha || atual.cargoExtra === posicaoDaLinha;
 }
 
 /** A lista de cargos como checkboxes — substitui o `<select>` único de
  *  posição. Compartilhada entre cadastro e edição de membro para as duas
- *  telas não divergirem na regra do par consultor+BDR. */
+ *  telas não divergirem na regra de cargo sobreponível. */
 function SeletorDeCargo({
   posicoes,
   estado,
@@ -71,7 +78,7 @@ function SeletorDeCargo({
           <input
             type="checkbox"
             checked={cargoMarcado(estado, p.posicao)}
-            onChange={() => onMudar(alternarCargo(estado, p.posicao))}
+            onChange={() => onMudar(alternarCargo(posicoes, estado, p.posicao))}
           />
           {p.nome}
         </CheckboxLabel>
@@ -908,7 +915,7 @@ function NovoMembroModal({
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [posicao, setPosicao] = useState<Posicao>("consultor");
-  const [bdr, setBdr] = useState(false);
+  const [cargoExtra, setCargoExtra] = useState<string | null>(null);
   const [frenteIds, setFrenteIds] = useState<number[]>([]);
   const [semestreGraduacao, setSemestreGraduacao] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -924,11 +931,12 @@ function NovoMembroModal({
   const frenteObrigatoria = posicao === "gerente";
 
   function trocarCargo(novo: EstadoCargo) {
-    setBdr(novo.bdr);
+    setCargoExtra(novo.cargoExtra);
     // Muda o que a frente SIGNIFICA (trava de acesso pro gerente vs. mero
     // metadado de alocação pros outros), a seleção anterior não deveria
-    // sobreviver a essa troca sem a pessoa confirmar de novo. BDR ligando ou
-    // desligando sozinho não mexe na posição principal, então não reseta.
+    // sobreviver a essa troca sem a pessoa confirmar de novo. O cargo extra
+    // ligando ou desligando sozinho não mexe na posição principal, então
+    // não reseta.
     if (novo.posicao !== posicao) setFrenteIds([]);
     setPosicao(novo.posicao);
   }
@@ -955,7 +963,7 @@ function NovoMembroModal({
           nome: nome.trim(),
           email_insper: email.trim(),
           posicao,
-          cargo_extra: bdr ? "bdr" : null,
+          cargo_extra: cargoExtra,
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
@@ -1034,13 +1042,14 @@ function NovoMembroModal({
               </FieldGroup>
 
               <FieldGroup>
-                {/* Multi-seleção de verdade (2026-09-16, a pedido): o único
-                    par que pode ficar marcado junto é consultor + BDR — ver
-                    `alternarCargo`. Substitui o antigo select único. */}
+                {/* Multi-seleção de verdade (2026-09-16, a pedido): cargos
+                    marcados sobreponível no catálogo podem ficar marcados
+                    junto da posição principal — ver `alternarCargo`.
+                    Substitui o antigo select único. */}
                 <FieldLabel>Posição na plataforma</FieldLabel>
                 <SeletorDeCargo
                   posicoes={contexto.posicoes}
-                  estado={{ posicao, bdr }}
+                  estado={{ posicao, cargoExtra }}
                   onMudar={trocarCargo}
                 />
               </FieldGroup>
@@ -1128,7 +1137,7 @@ function MembroModal({
   const [semestreGraduacao, setSemestreGraduacao] = useState(
     membro.semestre_graduacao ? String(membro.semestre_graduacao) : "",
   );
-  const [bdr, setBdr] = useState(membro.cargo_extra === "bdr");
+  const [cargoExtra, setCargoExtra] = useState<string | null>(membro.cargo_extra);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -1139,9 +1148,9 @@ function MembroModal({
   const frenteObrigatoria = posicao === "gerente";
 
   function trocarCargo(novo: EstadoCargo) {
-    setBdr(novo.bdr);
-    // BDR ligando/desligando sozinho não muda a posição principal, então não
-    // reseta frentes — só quando a posição de fato troca.
+    setCargoExtra(novo.cargoExtra);
+    // O cargo extra ligando/desligando sozinho não muda a posição principal,
+    // então não reseta frentes — só quando a posição de fato troca.
     if (novo.posicao !== posicao) setFrenteIds([]);
     setPosicao(novo.posicao);
   }
@@ -1173,10 +1182,9 @@ function MembroModal({
           // `ativo` é espelho de `status` (F2), mandado junto para o front
           // legado que ainda lê o booleano não divergir.
           ativo: status === "ativo",
-          // Só o consultor pode acumular o cargo extra BDR. Fora disso manda
-          // `null` para não deixar a marca pendurada se a pessoa deixou de
-          // ser consultor.
-          cargo_extra: posicao === "consultor" && bdr ? "bdr" : null,
+          // `alternarCargo` já garante que `cargoExtra` nunca coincide com a
+          // posição principal selecionada — manda como está.
+          cargo_extra: cargoExtra,
           semestre_graduacao: semestreGraduacao ? Number(semestreGraduacao) : null,
         },
         token,
@@ -1223,7 +1231,7 @@ function MembroModal({
                   <DetailTerm>Posição</DetailTerm>
                   <DetailValue>
                     {rotuloPosicao(contexto.posicoes, membro.posicao)}
-                    {membro.posicao === "consultor" && membro.cargo_extra === "bdr" && " · BDR"}
+                    {membro.cargo_extra && ` · ${rotuloPosicao(contexto.posicoes, membro.cargo_extra)}`}
                   </DetailValue>
                 </DetailRow>
                 <DetailRow>
@@ -1312,18 +1320,19 @@ function MembroModal({
                   {/* "na troca de gestão, muitos consultores viram
                       coordenadores ou gerentes", a promoção da virada é
                       feita por aqui. Multi-seleção de verdade (2026-09-16, a
-                      pedido): o único par que pode ficar marcado junto é
-                      consultor + BDR — ver `alternarCargo`. */}
+                      pedido): cargos marcados sobreponível no catálogo podem
+                      ficar marcados junto da posição principal — ver
+                      `alternarCargo`. */}
                   <FieldLabel>Posição na plataforma</FieldLabel>
                   <SeletorDeCargo
                     posicoes={contexto.posicoes}
-                    estado={{ posicao, bdr }}
+                    estado={{ posicao, cargoExtra }}
                     onMudar={trocarCargo}
                   />
                   <EmptyText style={{ fontSize: "0.7rem" }}>
-                    BDR é o único cargo que acumula com Consultor — marcar os dois deixa a
-                    pessoa com o acesso de consultor e, além disso, na lista "quem vendeu o
-                    projeto" do cadastro.
+                    Cargos marcados "sobreponível" no catálogo de permissões (ex.: BDR)
+                    acumulam com a posição principal em vez de substituí-la — soma as
+                    permissões das duas.
                   </EmptyText>
                 </FieldGroup>
 
@@ -1395,7 +1404,7 @@ function MembroModal({
                   setEmail(membro.email_insper);
                   setPosicao(membro.posicao);
                   setStatus(membro.status);
-                  setBdr(membro.cargo_extra === "bdr");
+                  setCargoExtra(membro.cargo_extra);
                   setFrenteIds(
                     contexto.usuariosFrentes.filter((uf) => uf.usuario_id === membro.id).map((uf) => uf.frente_id),
                   );

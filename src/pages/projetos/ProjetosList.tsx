@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Archive,
   AlertTriangle,
@@ -10,7 +10,6 @@ import {
   ChevronDown,
   LayoutGrid,
   KanbanSquare,
-  Plus,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
@@ -79,7 +78,6 @@ type ModoVisualizacao = "lista" | "kanban" | "arquivados";
 
 export function ProjetosList() {
   const { usuario, token } = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [projetos, setProjetos] = useState<ProjetoResumo[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
@@ -314,10 +312,24 @@ export function ProjetosList() {
   // "Arquivados" é a MESMA tela de Lista, só trocando o recorte de conteúdo
   //, nunca uma rota/página à parte. Fora dela, o checkbox "Mostrar"
   // é quem decide se os arquivados aparecem misturados aos ativos.
+  // ⚠ 2026-09-21 — a pedido: "Contrato em elaboração" não é venda de
+  // verdade ainda, e a diretora não quer esses projetos aparecendo na lista
+  // geral (kanban ou tabela) — eles ficam só na aba Contratos
+  // (`ContratosPainel.tsx`) até o contrato ser assinado e o projeto virar
+  // "Vendido" de verdade, quando entram aqui como qualquer outro.
+  //
+  // Institucional (Agro etc.) fica fora pra SEMPRE, mesmo depois de
+  // "vendido" — não é entrega de consultoria, misturar poluiria a lista
+  // geral (a aba Contratos é o lugar dele).
   const projetosVisiveis =
     modo === "arquivados"
-      ? projetos.filter((p) => p.arquivado_em)
-      : projetos.filter((p) => mostrarArquivados || !p.arquivado_em);
+      ? projetos.filter((p) => p.arquivado_em && !p.institucional)
+      : projetos.filter(
+          (p) =>
+            (mostrarArquivados || !p.arquivado_em) &&
+            p.status !== "contrato_em_elaboracao" &&
+            !p.institucional,
+        );
 
   const projetosFiltrados =
     frentesSelecionadas.length === 0
@@ -496,12 +508,6 @@ export function ProjetosList() {
               {selecaoAtiva ? "Cancelar seleção" : "Selecionar"}
             </PageButton>
           )}
-          {podeCriar && (
-            <PageButton type="button" onClick={() => navigate("/projetos/novo")}>
-              <Plus size={16} />
-              Criar projeto
-            </PageButton>
-          )}
         </FiltersRow>
       </PageHeaderRow>
 
@@ -546,11 +552,16 @@ export function ProjetosList() {
           </EmptyText>
         ) : (
           <EmptyText>
-            {modo === "arquivados"
-              ? "Nenhum projeto arquivado."
-              : frentesSelecionadas.length > 0
-                ? "Nenhum projeto nas frentes selecionadas."
-                : "Nenhum projeto ainda. Crie o primeiro."}
+            {modo === "arquivados" ? (
+              "Nenhum projeto arquivado."
+            ) : frentesSelecionadas.length > 0 ? (
+              "Nenhum projeto nas frentes selecionadas."
+            ) : (
+              <>
+                Nenhum projeto ainda. Todo projeto começa por um contrato — veja a{" "}
+                <Link to="/contratos">aba Contratos</Link>.
+              </>
+            )}
           </EmptyText>
         )
       ) : modo === "kanban" ? (

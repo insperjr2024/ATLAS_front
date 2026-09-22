@@ -8,8 +8,9 @@
 
 import type { ResultadoBanca, StatusBanca } from "@/types/banca";
 
-/** Os 7 status do ciclo de vida + Pausado, que é um estado à parte. */
+/** Os 8 status do ciclo de vida + Pausado, que é um estado à parte. */
 export type StatusProjeto =
+  | "contrato_em_elaboracao"
   | "vendido"
   | "ambientacao"
   | "em_andamento"
@@ -28,6 +29,10 @@ export interface ProjetoResumo {
   cliente: string | null;
   criado_em: string;
   status: StatusProjeto;
+  /** Contrato institucional (Agro etc.) — sem frente/equipe/escopo, só
+   *  existe pra pendurar um documento jurídico. Fica fora da lista/Kanban
+   *  geral de projetos e do Monitoramento pra sempre. */
+  institucional: boolean;
   frente_ids: number[];
   /** 2 frentes = projeto sinérgico; aparece para os dois gerentes. */
   sinergico: boolean;
@@ -45,6 +50,10 @@ export interface ProjetoResumo {
   /** Teto de consultores da equipe, escolhido na criação do projeto. O
    *  backend já mandava; faltava declarar aqui. */
   max_consultores: number | null;
+  /** ⭐ 2026-09-22 — a pedido: se a declaração de interesse deste projeto
+   *  está aberta em Vagas em Projetos. Abre sozinho ao assinar o Contrato
+   *  de PS; fecha/abre manualmente quem lidera o projeto. */
+  vagas_abertas: boolean;
   data_kickoff: string | null;
   kickoff_pendente: boolean;
   /** `null` = ambientação começa no próprio kickoff, o padrão. Só não-nulo

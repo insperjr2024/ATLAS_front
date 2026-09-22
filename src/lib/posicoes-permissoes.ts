@@ -8,7 +8,7 @@ export function getPosicoesPermissoes(token: string) {
 
 export function updatePosicaoPermissao(
   posicao: Posicao,
-  dados: Partial<Permissoes> & { nome?: string },
+  dados: Partial<Permissoes> & { nome?: string; sobreponivel?: boolean },
   token: string,
 ) {
   return apiFetch<PosicaoPermissao>(`/posicoes-permissoes/${posicao}`, {
@@ -18,14 +18,19 @@ export function updatePosicaoPermissao(
   });
 }
 
-/** Cargo novo, nascendo com todas as caixas desligadas — quem criou marca o
- *  que quiser depois em "Editar". Não entra em nenhuma regra de identidade
- *  hardcoded (mentor, composição de banca, portfólio inteiro), de propósito. */
-export function createPosicaoPermissao(nome: string, token: string) {
+/** Cargo novo, nascendo com todas as caixas de permissão desligadas — quem
+ *  criou marca o que quiser depois em "Editar". Não entra em nenhuma regra
+ *  de identidade hardcoded (mentor, composição de banca, portfólio
+ *  inteiro), de propósito.
+ *
+ *  `sobreponivel` é a EXCEÇÃO — perguntada já na criação (não uma permissão
+ *  de ação, é sobre como o cargo se combina com outros: pode ser
+ *  `cargo_extra` de qualquer pessoa?). */
+export function createPosicaoPermissao(nome: string, sobreponivel: boolean, token: string) {
   return apiFetch<PosicaoPermissao>("/posicoes-permissoes", {
     method: "POST",
     token,
-    body: JSON.stringify({ nome }),
+    body: JSON.stringify({ nome, sobreponivel }),
   });
 }
 

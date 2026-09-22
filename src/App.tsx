@@ -8,6 +8,9 @@ import { Layout } from "@/components/Layout";
 import { Login } from "@/pages/Login";
 import { EsqueciSenha } from "@/pages/EsqueciSenha";
 import { RedefinirSenha } from "@/pages/RedefinirSenha";
+import { AprovacaoContratual } from "@/pages/AprovacaoContratual";
+import { ContratosPainel } from "@/pages/ContratosPainel";
+import { IdentidadeInstitucional } from "@/pages/IdentidadeInstitucional";
 import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
@@ -26,6 +29,7 @@ import { ProjetoVisaoGeral } from "@/pages/projetos/ProjetoVisaoGeral";
 import { ProjetoCronograma } from "@/pages/projetos/ProjetoCronograma";
 import { ProjetoBanca } from "@/pages/projetos/ProjetoBanca";
 import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
+import { DocumentoContratualPage } from "@/pages/projetos/DocumentoContratualPage";
 import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
 import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
 import { VisaoGeralAba } from "@/pages/monitoramento/VisaoGeralAba";
@@ -61,6 +65,10 @@ export default function App() {
               que vai no e-mail, e quem clica nele está justamente sem conseguir
               logar. Caindo no `*` iria para /projetos e de lá para /login. */}
           <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+          {/* Pública: quem recebe o link de aprovação (o representante do
+              cliente) não tem conta no ATLAS. Ver `aprovacao_contratual.py`
+              no backend — o token de uso único é a única credencial. */}
+          <Route path="/aprovacao/:token" element={<AprovacaoContratual />} />
           <Route element={<PrivateRoute />}>
             {/* Primeiro acesso: dentro do PrivateRoute (exige sessão) e
                 FORA do Layout, quem ainda não definiu a senha não deve ver o
@@ -83,6 +91,17 @@ export default function App() {
               <Route path="/notificacoes" element={<Notificacoes />} />
 
               <Route path="/projetos" element={<ProjetosList />} />
+              {/* Sem guard: o backend já recorta as linhas por vendedor/
+                  coordenador/diretoria/Jurídico/`pode_elaborar_*`
+                  (`PainelContratualUseCase`) — quem não se encaixa em nada
+                  disso só vê a lista vazia, não precisa de 403 aqui. */}
+              <Route path="/contratos" element={<ContratosPainel />} />
+              {/* ⭐ 2026-09-21 — a página do documento é standalone, fora da
+                  aba do projeto: não herda cabeçalho/abas/avisos de
+                  `ProjetoPage` (que não fazem sentido pra quem chega pela
+                  Kanban de Contratos), e não depende de um projeto de
+                  verdade existir por trás (contrato institucional). */}
+              <Route path="/contratos/:documentoId" element={<DocumentoContratualPage />} />
               <Route path="/vagas" element={<Vagas />} />
               {/* Criar projeto é a caixa de permissão `pode_criar_projeto` —
                   a mesma que decide o botão em `ProjetosList` e que o backend
@@ -199,6 +218,11 @@ export default function App() {
               </Route>
               <Route element={<AdminRoute permissao="pode_gerir_membros" />}>
                 <Route path="/membros" element={<Membros />} />
+              </Route>
+              {/* ⭐ 2026-09-22 — a pedido: era hardcoded pra diretor_projetos
+                  (quem assina PELA Insper Jr), virou caixa delegável. */}
+              <Route element={<AdminRoute permissao="pode_editar_identidade_institucional" />}>
+                <Route path="/identidade-institucional" element={<IdentidadeInstitucional />} />
               </Route>
             </Route>
           </Route>

@@ -277,6 +277,15 @@ export function updateMaxConsultores(projetoId: number, maxConsultores: number, 
   );
 }
 
+/** Abrir/fechar a declaração de interesse em Vagas em Projetos — só quem
+ *  lidera o projeto (diretoria de projetos, gerente, coordenador). */
+export function updateVagasAbertas(projetoId: number, vagasAbertas: boolean, token: string) {
+  return apiFetch<{ id: number; vagas_abertas: boolean }>(
+    `/projetos/${projetoId}/vagas-abertas`,
+    { method: "PATCH", token, body: JSON.stringify({ vagas_abertas: vagasAbertas }) },
+  );
+}
+
 export function getHistoricoProjeto(projetoId: number, token: string) {
   return apiFetch<HistoricoEntrada[]>(`/projetos/${projetoId}/historico`, { token });
 }
@@ -574,6 +583,7 @@ export const ROTULO_MOTIVO_ATRASO: Record<string, string> = {
 /* ------------------------------------------------------------------ */
 
 export const ROTULO_STATUS: Record<StatusProjeto, string> = {
+  contrato_em_elaboracao: "Contrato em elaboração",
   vendido: "Vendido",
   ambientacao: "Ambientação",
   em_andamento: "Em andamento",
@@ -603,6 +613,7 @@ const STATUS_PAUSAVEIS: StatusProjeto[] = [
  * do funil.
  */
 export const STATUS_ORDEM: StatusProjeto[] = [
+  "contrato_em_elaboracao",
   "vendido",
   "ambientacao",
   "em_andamento",
@@ -619,13 +630,17 @@ export const STATUS_ORDEM: StatusProjeto[] = [
  * (`transicao_manual_valida`), aqui é só pra montar a lista.
  *
  * Vendido só oferece Ambientação, e só quando `temKickoff`, sem data de
- * kickoff marcada não tem o que confirmar. `pausado` não tem destino por
- * aqui: sai pelo retomar.
+ * kickoff marcada não tem o que confirmar. Contrato em elaboração só
+ * oferece Vendido — escape de diretoria pra quando o contrato foi
+ * resolvido fora da plataforma; o back revalida que só diretoria pode usar
+ * esse destino a partir deste status. `pausado` não tem destino por aqui:
+ * sai pelo retomar.
  */
 export function destinosValidos(atual: StatusProjeto, temKickoff: boolean): StatusProjeto[] {
   if (atual === "pausado") return [];
+  if (atual === "contrato_em_elaboracao") return ["vendido"];
   if (atual === "vendido") return temKickoff ? ["ambientacao"] : [];
-  return STATUS_ORDEM.slice(1).filter((s) => s !== atual);
+  return STATUS_ORDEM.slice(2).filter((s) => s !== atual);
 }
 
 export function podePausar(atual: StatusProjeto): boolean {
@@ -645,6 +660,7 @@ export function tomDoStatus(status: StatusProjeto): "success" | "muted" | "defau
  * paleta e os dois acabarem discordando da cor de uma fase.
  */
 export const CORES_STATUS: Record<StatusProjeto, string> = {
+  contrato_em_elaboracao: "#A8A29E", // pedra, nem venda ainda
   vendido: "#9CA3AF", // cinza, ainda não começou de fato
   ambientacao: "#6366F1", // índigo
   em_andamento: "#3B82F6", // azul

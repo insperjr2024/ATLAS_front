@@ -217,6 +217,30 @@ const PERMISSOES = [
     descricao:
       "Continua contando como liderança — vai à banca, soma no total — mas não cobre o mínimo de liderança nem de membros da frente em que está cadastrado.",
   },
+  {
+    campo: "pode_aprovar_contrato_internamente" as const,
+    titulo: "Aprovar contratos internamente",
+    descricao:
+      "A revisão jurídica de verdade: fecha a etapa de revisão interna e libera o documento pra ser exportado e mandado ao cliente.",
+  },
+  {
+    campo: "pode_editar_identidade_institucional" as const,
+    titulo: "Editar identidade institucional",
+    descricao:
+      "Abre a aba Identidade Institucional (quem assina PELA Insper Jr nos documentos jurídicos) — antes só diretoria de projetos, agora delegável.",
+  },
+  {
+    campo: "pode_elaborar_contratos_proprios" as const,
+    titulo: "Acessar e elaborar contratos de projetos vendidos por ela",
+    descricao:
+      "Abre a aba Contratos com todos os documentos visíveis, mas só elabora (abre, preenche, confirma, gera, edita o texto pós-confirmação, marca como assinado) os documentos jurídicos dos projetos em que a própria pessoa consta como vendedora. No assistente \"+ Novo Contrato\", só aparecem os projetos que ela vendeu.",
+  },
+  {
+    campo: "pode_elaborar_qualquer_contrato" as const,
+    titulo: "Acessar e elaborar qualquer contrato",
+    descricao:
+      "Mesma coisa que a caixa acima, sem o recorte por vendedor — elabora o documento jurídico de qualquer projeto, igual diretoria.",
+  },
 ];
 
 type CampoPermissao = (typeof PERMISSOES)[number]["campo"];
@@ -552,8 +576,8 @@ export function Config() {
       {modalNovoCargo && (
         <ModalNovoCargo
           onClose={() => setModalNovoCargo(false)}
-          onSalvar={async (nome) => {
-            await createPosicaoPermissao(nome, token);
+          onSalvar={async (nome, sobreponivel) => {
+            await createPosicaoPermissao(nome, sobreponivel, token);
             setModalNovoCargo(false);
             buscar();
           }}
@@ -800,9 +824,10 @@ function ModalNovoCargo({
   onSalvar,
 }: {
   onClose: () => void;
-  onSalvar: (nome: string) => Promise<void>;
+  onSalvar: (nome: string, sobreponivel: boolean) => Promise<void>;
 }) {
   const [nome, setNome] = useState("");
+  const [sobreponivel, setSobreponivel] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -812,7 +837,7 @@ function ModalNovoCargo({
     setSalvando(true);
     setErro("");
     try {
-      await onSalvar(nome.trim());
+      await onSalvar(nome.trim(), sobreponivel);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao criar o cargo");
     } finally {
@@ -851,6 +876,28 @@ function ModalNovoCargo({
                 "Editar" na linha dele para escolher o que ele pode fazer.
               </EmptyText>
             </FieldGroup>
+            <FieldGroup>
+              <FieldLabel>Pode ser cargo extra?</FieldLabel>
+              <PermissoesGrid>
+                <PermissaoItem>
+                  <input
+                    type="checkbox"
+                    checked={sobreponivel}
+                    onChange={() => setSobreponivel((v) => !v)}
+                  />
+                  <PermissaoTexto>
+                    <PermissaoTitulo>Sobreponível</PermissaoTitulo>
+                    <PermissaoDesc>
+                      Se marcado, este cargo pode ser dado como uma SEGUNDA posição pra
+                      qualquer pessoa, além do cargo principal dela — soma as permissões das
+                      duas, não substitui (ex.: um(a) consultor(a) que também é BDR). Não
+                      marcar se este cargo só faz sentido como posição principal de alguém
+                      (ex.: consultor).
+                    </PermissaoDesc>
+                  </PermissaoTexto>
+                </PermissaoItem>
+              </PermissoesGrid>
+            </FieldGroup>
             {erro && <FormErrorText>{erro}</FormErrorText>}
           </ModalBody>
           <ModalFooter>
@@ -883,10 +930,13 @@ function ModalPosicaoPermissao({
 }: {
   posicao: PosicaoPermissao;
   onClose: () => void;
-  onSalvar: (dados: Partial<Permissoes> & { nome?: string }) => Promise<void>;
+  onSalvar: (
+    dados: Partial<Permissoes> & { nome?: string; sobreponivel?: boolean },
+  ) => Promise<void>;
   onExcluir: () => void;
 }) {
   const [nome, setNome] = useState(posicao.nome);
+  const [sobreponivel, setSobreponivel] = useState(posicao.sobreponivel);
   const [permissoes, setPermissoes] = useState(permissoesDe(posicao));
   /** A caixa que está esperando confirmação para ser desmarcada. */
   const [campoPendente, setCampoPendente] = useState<CampoPermissao | null>(null);
@@ -938,7 +988,11 @@ function ModalPosicaoPermissao({
       // Só manda `nome` quando de fato mudou — cargo padrão nem mostra o
       // campo editável, então `nome` aqui nunca diverge do original pra ele.
       const nomeMudou = !posicao.e_padrao && nome.trim() !== posicao.nome;
-      await onSalvar(nomeMudou ? { ...permissoes, nome: nome.trim() } : permissoes);
+      await onSalvar({
+        ...permissoes,
+        sobreponivel,
+        ...(nomeMudou ? { nome: nome.trim() } : {}),
+      });
     } catch (err) {
       /* A recusa de última porta é a única que precisa MEXER na tela: o
          backend não gravou, mas o checkbox local já está desmarcado, e deixá-lo
@@ -983,6 +1037,26 @@ function ModalPosicaoPermissao({
                     Os 6 cargos padrão da plataforma não podem ser renomeados.
                   </EmptyText>
                 )}
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel>Pode ser cargo extra?</FieldLabel>
+                <PermissoesGrid>
+                  <PermissaoItem>
+                    <input
+                      type="checkbox"
+                      checked={sobreponivel}
+                      onChange={() => setSobreponivel((v) => !v)}
+                    />
+                    <PermissaoTexto>
+                      <PermissaoTitulo>Sobreponível</PermissaoTitulo>
+                      <PermissaoDesc>
+                        Se marcado, este cargo pode ser dado como uma SEGUNDA posição pra
+                        qualquer pessoa, além do cargo principal dela — soma as permissões
+                        das duas, não substitui.
+                      </PermissaoDesc>
+                    </PermissaoTexto>
+                  </PermissaoItem>
+                </PermissoesGrid>
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel htmlFor="busca-permissao">Permissões na plataforma</FieldLabel>

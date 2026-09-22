@@ -6,7 +6,7 @@ import { pode, rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
 import { ID_MENU_LATERAL } from "./Layout.styled";
@@ -96,6 +96,25 @@ const navItems: NavItemConfig[] = [
   // O rótulo é definido no componente: para coord e consultor é "Meus
   // projetos", porque eles só enxergam onde estão alocados.
   { icon: FolderKanban, label: "Projetos", path: "/projetos", grupo: "trabalho", prefixo: true },
+  {
+    icon: FileSignature,
+    label: "Contratos",
+    path: "/contratos",
+    grupo: "trabalho",
+    // Aproximação: o backend recorta por LINHA (vendedor/coordenador do
+    // projeto, além de diretoria/`pode_elaborar_*`, que são globais) — não
+    // tem como saber aqui "sou vendedor de algum projeto" sem uma chamada
+    // extra só pra decidir se mostra o item.
+    // `pode_criar_projeto`/`pode_responsavel_por_vendas` já é a mesma
+    // dupla que abre o Contrato de Prestação (ver docstring de
+    // `_pode_abrir_documento` no back). Diretoria já tem
+    // `pode_criar_projeto` = true.
+    visible: (c) =>
+      c.pode_criar_projeto ||
+      c.pode_responsavel_por_vendas ||
+      c.pode_elaborar_contratos_proprios ||
+      c.pode_elaborar_qualquer_contrato,
+  },
   { icon: ClipboardList, label: "Bancas", path: "/bancas", grupo: "trabalho" },
   // Sem trava: a página serve os dois lados e decide o que mostrar pelas
   // flags que o back manda, consultor pede para entrar, quem coordena ou
@@ -167,6 +186,15 @@ const navItems: NavItemConfig[] = [
     path: "/calendarios-base",
     grupo: "sistema",
     visible: (c) => c.pode_gerir_calendarios_base,
+  },
+  {
+    icon: Landmark,
+    label: "Identidade Institucional",
+    path: "/identidade-institucional",
+    grupo: "sistema",
+    // ⭐ 2026-09-22 — a pedido: era hardcoded pra diretor_projetos
+    // (`eh_diretoria_de_projetos` no back), virou caixa delegável.
+    visible: (c) => c.pode_editar_identidade_institucional,
   },
   {
     icon: Settings,
