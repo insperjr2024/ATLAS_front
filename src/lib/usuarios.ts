@@ -29,8 +29,9 @@ export interface UpdateUsuarioPayload {
    */
   status?: StatusUsuario;
   ativo?: boolean;
-  /** O cargo extra — hoje só pode ser "bdr", e só quando `posicao` (a atual
-   *  ou a que está sendo enviada junto) é "consultor". `null` para tirar. */
+  /** O cargo extra — qualquer cargo marcado `sobreponivel` no catálogo
+   *  (`posicao_permissao.sobreponivel`, ver `Config.tsx`), desde que
+   *  diferente de `posicao`. `null` para tirar. */
   cargo_extra?: string | null;
   /** 1º a 8º semestre da graduação, ou `null` pra limpar. */
   semestre_graduacao?: number | null;
@@ -83,7 +84,7 @@ export interface RegistrarUsuarioPayload {
   nome: string;
   email_insper: string;
   posicao: Posicao;
-  /** Só "bdr", e só quando `posicao` é "consultor" — ver `UpdateUsuarioPayload`. */
+  /** Ver `UpdateUsuarioPayload.cargo_extra`. */
   cargo_extra?: string | null;
   semestre_graduacao?: number | null;
 }
