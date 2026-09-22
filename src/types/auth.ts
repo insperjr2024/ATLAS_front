@@ -151,6 +151,13 @@ export interface PosicaoPermissao extends Permissoes {
    *  não deixa apagar nem editar o nome desses — ver o docstring de
    *  `PosicaoPermissaoModel` no backend. */
   e_padrao: boolean;
+  /** ⭐ 2026-09-22 — a pedido: decidido na criação do cargo (não é uma
+   *  permissão de ação, é sobre como ele se combina com outros). Se
+   *  `true`, pode ser escolhido como `cargo_extra` de qualquer pessoa,
+   *  além da posição principal dela — soma permissões, não substitui.
+   *  Exemplo dado pela diretoria: "consultor" não seria sobreponível (é
+   *  sempre posição base); "bdr"/"adm jurídico" seriam. */
+  sobreponivel: boolean;
 }
 
 /** , sair por vontade própria (ex_membro) é diferente de ser desligado. */
