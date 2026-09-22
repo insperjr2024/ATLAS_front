@@ -13,13 +13,6 @@ import type {
   VersaoDocumentoContratual,
 } from "@/types/contratos";
 
-export function getTiposDisponiveis(projetoId: number, token: string) {
-  return apiFetch<{ tipos: TipoDocumentoContratual[] }>(
-    `/projetos/${projetoId}/documentos-contratuais/tipos-disponiveis`,
-    { token },
-  );
-}
-
 export function getDocumentosDoProjeto(projetoId: number, token: string) {
   return apiFetch<{ documentos: DocumentoContratual[] }>(
     `/projetos/${projetoId}/documentos-contratuais`,
