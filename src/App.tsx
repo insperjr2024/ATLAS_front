@@ -93,7 +93,7 @@ export default function App() {
 
               <Route path="/projetos" element={<ProjetosList />} />
               {/* Sem guard: o backend já recorta as linhas por vendedor/
-                  coordenador/diretoria/Jurídico/`pode_ver_painel_contratos`
+                  coordenador/diretoria/Jurídico/`pode_elaborar_*`
                   (`PainelContratualUseCase`) — quem não se encaixa em nada
                   disso só vê a lista vazia, não precisa de 403 aqui. */}
               <Route path="/contratos" element={<ContratosPainel />} />
@@ -221,10 +221,10 @@ export default function App() {
                 <Route path="/membros" element={<Membros />} />
               </Route>
               {/* § Contratos: o Repositório é leitura de todo documento
-                  jurídico final assinado — caixa própria, ortogonal a
-                  `pode_editar_documento_juridico` (era permissão opcional no
-                  sistema antigo, não amarrada ao Jurídico). */}
-              <Route element={<AdminRoute permissao="pode_ver_repositorio_contratos" />}>
+                  jurídico final assinado. ⭐ 2026-09-22 — a pedido: a caixa
+                  de permissão saiu do catálogo, volta a ser só diretoria de
+                  projetos (mesma régua do backend). */}
+              <Route element={<RequirePosicao posicoes={["diretor_projetos"]} />}>
                 <Route path="/repositorio-contratual" element={<RepositorioContratual />} />
               </Route>
               {/* ⭐ 2026-09-22 — a pedido: era hardcoded pra diretor_projetos

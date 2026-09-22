@@ -218,34 +218,22 @@ const PERMISSOES = [
       "Continua contando como liderança — vai à banca, soma no total — mas não cobre o mínimo de liderança nem de membros da frente em que está cadastrado.",
   },
   {
-    campo: "pode_gerar_documento_juridico" as const,
-    titulo: "Gerar documentos jurídicos (Contratos)",
-    descricao:
-      "Gerar o rascunho de um documento jurídico (Contrato, TEP, NDA, Uso de Imagem, Aditivo) e exportar o link de aprovação pro cliente. Abrir o documento em si usa outras permissões (criar projeto, TEP, vendas).",
-  },
-  {
     campo: "pode_editar_documento_juridico" as const,
     titulo: "Editar documentos jurídicos (Contratos)",
     descricao:
       "A partir de confirmado, a palavra sobre os dados e o texto do documento passa a ser de quem tem esta caixa: editar dados, editar o texto do rascunho, reanexar um .docx externo e analisar pedido de alteração do cliente.",
   },
   {
+    campo: "pode_aprovar_contrato_internamente" as const,
+    titulo: "Aprovar contratos internamente",
+    descricao:
+      "A revisão jurídica de verdade: fecha a etapa de revisão interna e libera o documento pra ser exportado e mandado ao cliente.",
+  },
+  {
     campo: "pode_marcar_documento_assinado" as const,
     titulo: "Marcar documento jurídico como assinado",
     descricao:
       "Fechar o ciclo de um documento jurídico: marcar como assinado fora da plataforma e arquivar, incluindo o aceite tácito do TEP.",
-  },
-  {
-    campo: "pode_ver_repositorio_contratos" as const,
-    titulo: "Ver o Repositório de Contratos",
-    descricao:
-      "Todo documento jurídico final assinado, de qualquer projeto, organizado por gestão. Só leitura.",
-  },
-  {
-    campo: "pode_ver_painel_contratos" as const,
-    titulo: "Ver a aba Contratos",
-    descricao:
-      "O painel de documentos jurídicos EM ANDAMENTO de todo projeto (diferente do Repositório, que é só o arquivado). Diretoria, Jurídico, vendedor e coordenador já veem os documentos que lhes cabem sem esta caixa — ela é o ajuste pra dar acesso à aba a mais alguém, como um consultor alocado no Jurídico.",
   },
   {
     campo: "pode_importar_documento_antigo" as const,

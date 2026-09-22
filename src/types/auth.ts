@@ -88,23 +88,17 @@ export interface Permissoes {
   /** Continua contando como liderança (vai à banca, soma no total), mas não
    *  cobre `min_lideranca`/`min_membros` da FRENTE em que está cadastrado. */
   pode_coordenar_vendas: boolean;
-  /** ⭐ 2026-09-18 — as seis caixas da integração com a Contratos. "Criar
+  /** ⭐ 2026-09-18 — as caixas da integração com a Contratos. "Criar
    *  documento"/"enviar ao cliente" não têm caixa própria: reaproveitam
    *  `pode_criar_projeto` e `pode_responsavel_por_vendas`. */
-  /** Gerar o rascunho (.docx → PDF) e exportar o link de aprovação. */
-  pode_gerar_documento_juridico: boolean;
   /** Editar o texto do rascunho e regerar depois de confirmado — a partir
    *  daqui a palavra sobre o documento passa a ser de quem tem esta caixa. */
   pode_editar_documento_juridico: boolean;
+  /** ⭐ 2026-09-22 — separada de `pode_editar_documento_juridico`: a
+   *  aprovação jurídica de verdade (fecha a revisão interna). */
+  pode_aprovar_contrato_internamente: boolean;
   /** Fechar o ciclo: marcar como assinado (fora da plataforma) e arquivar. */
   pode_marcar_documento_assinado: boolean;
-  /** Ver o Repositório — todo documento final assinado, organizado por gestão. */
-  pode_ver_repositorio_contratos: boolean;
-  /** A aba Contratos — painel cross-projeto de documentos jurídicos EM
-   *  ANDAMENTO (diferente do Repositório acima, que é só arquivado). Ajuste
-   *  pra dar acesso a quem está fora da régua padrão (diretoria/Jurídico/
-   *  vendedor/coordenador do projeto). */
-  pode_ver_painel_contratos: boolean;
   /** Cadastrar documento já assinado fora do fluxo normal. */
   pode_importar_documento_antigo: boolean;
   /** Abrir o TEP dentro de um projeto que já tem Contrato de Prestação. */
