@@ -19,9 +19,12 @@ type Passo = "tipo" | "projeto" | "institucional";
  * ⭐ 2026-09-21 — a pedido: criar projeto deixou de existir como ação solta
  * em `/projetos` — todo projeto nasce de um contrato. Este assistente é o
  * único ponto de entrada: escolhe o TIPO de contrato primeiro, e só depois
- * pergunta o que ele precisa — projeto novo (Contrato de Prestação), um
- * projeto já existente (TEP/NDA/Uso de Imagem/Aditivo), ou institucional
- * (Agro etc., sem projeto de entrega — só um nome).
+ * pergunta o que ele precisa. Contrato de Prestação também pode ser
+ * institucional (Agro etc. às vezes formaliza a parceria com um Contrato
+ * de PS de verdade, não só NDA/TEP) — por isso ele ganha as MESMAS três
+ * opções dos outros tipos: projeto de entrega novo, projeto já existente
+ * (TEP/NDA/Uso de Imagem/Aditivo apenas — um Contrato de PS não se pendura
+ * num projeto que já tem um), ou institucional (só um nome).
  */
 export function NovoContratoModal({ onClose }: { onClose: () => void }) {
   const { token } = useAuth();
@@ -38,7 +41,7 @@ export function NovoContratoModal({ onClose }: { onClose: () => void }) {
   const [clienteInstitucional, setClienteInstitucional] = useState("");
 
   useEffect(() => {
-    if (passo !== "projeto" || !token || projetos !== null) return;
+    if (passo !== "projeto" || tipo === "contrato" || !token || projetos !== null) return;
     getProjetos(token)
       .then((lista) => setProjetos(lista.filter((p) => !p.institucional)))
       .catch((err) => setErro(err instanceof Error ? err.message : "Erro ao carregar projetos"));
@@ -47,10 +50,6 @@ export function NovoContratoModal({ onClose }: { onClose: () => void }) {
 
   function escolherTipo(tipoEscolhido: TipoDocumentoContratual) {
     setErro("");
-    if (tipoEscolhido === "contrato") {
-      navigate("/projetos/novo");
-      return;
-    }
     setTipo(tipoEscolhido);
     setPasso("projeto");
   }
@@ -118,7 +117,21 @@ export function NovoContratoModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          {passo === "projeto" && (
+          {passo === "projeto" && tipo === "contrato" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <PageButton type="button" $variant="outline" onClick={() => navigate("/projetos/novo")}>
+                Projeto de entrega novo (frentes, equipe, escopos)
+              </PageButton>
+              <PageButton type="button" $variant="outline" onClick={() => setPasso("institucional")}>
+                É um contrato institucional (sem projeto de entrega)
+              </PageButton>
+              <PageButton type="button" $variant="outline" onClick={() => setPasso("tipo")}>
+                Voltar
+              </PageButton>
+            </div>
+          )}
+
+          {passo === "projeto" && tipo !== "contrato" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <FieldInput
                 placeholder="Buscar projeto..."

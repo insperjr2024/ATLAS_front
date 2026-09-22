@@ -5,7 +5,8 @@ import { getFrentes } from "@/lib/bancas";
 import { getPainelContratual } from "@/lib/contratos";
 import { tonsDaColuna } from "@/lib/colunas-tarefa";
 import { ETAPAS_DOCUMENTO, indiceDaEtapaDocumento } from "@/lib/contratos-etapas";
-import type { ItemPainelContratual } from "@/types/contratos";
+import type { ItemPainelContratual, TipoDocumentoContratual } from "@/types/contratos";
+import { ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
 import type { Frente } from "@/types/banca";
 import {
   PageStack,
@@ -67,6 +68,7 @@ export function ContratosPainel() {
   const [mostrarNovoContrato, setMostrarNovoContrato] = useState(false);
 
   const [frenteSelecionada, setFrenteSelecionada] = useState<number | "">("");
+  const [tipoSelecionado, setTipoSelecionado] = useState<TipoDocumentoContratual | "">("");
   const [buscaProjeto, setBuscaProjeto] = useState("");
 
   useEffect(() => {
@@ -89,6 +91,7 @@ export function ContratosPainel() {
 
   const itensFiltrados = itens.filter((item) => {
     if (frenteSelecionada !== "" && !item.frente_ids.includes(frenteSelecionada)) return false;
+    if (tipoSelecionado !== "" && item.tipo !== tipoSelecionado) return false;
     if (buscaProjeto && !item.projeto_nome.toLowerCase().includes(buscaProjeto.toLowerCase())) return false;
     return true;
   });
@@ -122,6 +125,19 @@ export function ContratosPainel() {
               {frentes.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.nome}
+                </option>
+              ))}
+            </FieldInput>
+            <FieldInput
+              as="select"
+              value={tipoSelecionado}
+              onChange={(e) => setTipoSelecionado(e.target.value as TipoDocumentoContratual | "")}
+              style={{ maxWidth: "14rem" }}
+            >
+              <option value="">Todos os tipos</option>
+              {Object.entries(ROTULO_TIPO_DOCUMENTO).map(([tipo, rotulo]) => (
+                <option key={tipo} value={tipo}>
+                  {rotulo}
                 </option>
               ))}
             </FieldInput>
