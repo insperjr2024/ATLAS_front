@@ -10,7 +10,6 @@ import { EsqueciSenha } from "@/pages/EsqueciSenha";
 import { RedefinirSenha } from "@/pages/RedefinirSenha";
 import { AprovacaoContratual } from "@/pages/AprovacaoContratual";
 import { ContratosPainel } from "@/pages/ContratosPainel";
-import { RepositorioContratual } from "@/pages/RepositorioContratual";
 import { IdentidadeInstitucional } from "@/pages/IdentidadeInstitucional";
 import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
@@ -219,13 +218,6 @@ export default function App() {
               </Route>
               <Route element={<AdminRoute permissao="pode_gerir_membros" />}>
                 <Route path="/membros" element={<Membros />} />
-              </Route>
-              {/* § Contratos: o Repositório é leitura de todo documento
-                  jurídico final assinado. ⭐ 2026-09-22 — a pedido: a caixa
-                  de permissão saiu do catálogo, volta a ser só diretoria de
-                  projetos (mesma régua do backend). */}
-              <Route element={<RequirePosicao posicoes={["diretor_projetos"]} />}>
-                <Route path="/repositorio-contratual" element={<RepositorioContratual />} />
               </Route>
               {/* ⭐ 2026-09-22 — a pedido: era hardcoded pra diretor_projetos
                   (quem assina PELA Insper Jr), virou caixa delegável. */}

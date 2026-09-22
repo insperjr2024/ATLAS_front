@@ -6,7 +6,6 @@ import type {
   ExtracaoColeta,
   IdentidadeInstitucional,
   ItemPainelContratual,
-  ItemRepositorioContratual,
   LinkAprovacao,
   ParagrafoEditavel,
   SolicitacaoAlteracao,
@@ -278,22 +277,6 @@ export function atualizarIdentidadeInstitucional(
 
 export function getPainelContratual(token: string) {
   return apiFetch<{ itens: ItemPainelContratual[] }>("/contratos-painel", { token });
-}
-
-// ---------- Repositório ----------
-
-export function getRepositorio(
-  params: { gestao_id?: number; busca?: string },
-  token: string,
-) {
-  const query = new URLSearchParams();
-  if (params.gestao_id != null) query.set("gestao_id", String(params.gestao_id));
-  if (params.busca) query.set("busca", params.busca);
-  const qs = query.toString();
-  return apiFetch<{ itens: ItemRepositorioContratual[] }>(
-    `/repositorio-contratual${qs ? `?${qs}` : ""}`,
-    { token },
-  );
 }
 
 // ---------- WhatsApp ----------

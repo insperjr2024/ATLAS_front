@@ -95,23 +95,10 @@ export interface ParagrafoEditavel {
   texto: string;
 }
 
-export interface ItemRepositorioContratual {
-  id: number;
-  projeto_id: number;
-  projeto_nome: string;
-  cliente: string | null;
-  tipo: TipoDocumentoContratual;
-  tipo_rotulo: string;
-  gestao_id: number | null;
-  gestao_nome: string | null;
-  /** O conteúdo mora no banco — baixa por `item.id` no endpoint dedicado. */
-  tem_arquivo: boolean;
-  arquivado_em: string | null;
-}
-
 /** Uma linha da aba Contratos (`GET /contratos-painel`) — documento jurídico
- *  ainda em andamento, de qualquer projeto. Diferente de `ItemRepositorioContratual`
- *  (só arquivado); o recorte de quem vê qual linha já vem filtrado do back. */
+ *  de qualquer projeto, em qualquer etapa (a Kanban tem uma coluna própria
+ *  pra "Assinado e Arquivado" — não existe mais uma tela de Repositório
+ *  separada). O recorte de quem vê qual linha já vem filtrado do back. */
 export interface ItemPainelContratual {
   id: number;
   /** `null` = contrato institucional, sem projeto de entrega por trás. */

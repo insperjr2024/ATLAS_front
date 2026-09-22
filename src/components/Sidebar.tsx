@@ -6,7 +6,7 @@ import { pode, rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, Archive, FileSignature } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
 import { ID_MENU_LATERAL } from "./Layout.styled";
@@ -188,15 +188,6 @@ const navItems: NavItemConfig[] = [
     path: "/calendarios-base",
     grupo: "sistema",
     visible: (c) => c.pode_gerir_calendarios_base,
-  },
-  {
-    icon: Archive,
-    label: "Repositório de Contratos",
-    path: "/repositorio-contratual",
-    grupo: "sistema",
-    // ⭐ 2026-09-22 — a pedido: caixa de permissão removida do catálogo —
-    // só diretoria de projetos vê (mesma régua do backend).
-    visiblePorPosicao: (u) => u.posicao === "diretor_projetos",
   },
   {
     icon: Landmark,
