@@ -40,6 +40,20 @@ export function getDocumento(documentoId: number, token: string) {
   return apiFetch<DocumentoContratual>(`/documentos-contratuais/${documentoId}`, { token });
 }
 
+/** Contrato institucional (Agro etc.) — documento avulso, sem projeto de
+ *  entrega nenhum por trás. `nomeProjeto` é só um campo de texto no
+ *  formulário, não cria linha nenhuma em projeto. */
+export function criarDocumentoInstitucional(
+  dados: { nome_projeto: string; cliente: string | null; tipo: TipoDocumentoContratual },
+  token: string,
+) {
+  return apiFetch<DocumentoContratual>(`/documentos-contratuais/institucional`, {
+    method: "POST",
+    body: JSON.stringify(dados),
+    token,
+  });
+}
+
 /** Dias tipo "prova" do calendário acadêmico da(s) frente(s) do projeto,
  *  dentro de [inicio, fim] — só sugestão pro campo "Dias de exceção", quem
  *  preenche decide o que de fato entra. */

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { abrirDocumento } from "@/lib/contratos";
-import { createProjetoInstitucional, getProjetos } from "@/lib/projetos";
+import { abrirDocumento, criarDocumentoInstitucional } from "@/lib/contratos";
+import { getProjetos } from "@/lib/projetos";
 import type { TipoDocumentoContratual } from "@/types/contratos";
 import { ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
 import type { ProjetoResumo } from "@/types/projeto";
@@ -73,11 +73,10 @@ export function NovoContratoModal({ onClose }: { onClose: () => void }) {
     setProcessando(true);
     setErro("");
     try {
-      const projeto = await createProjetoInstitucional(
-        { nome: nomeInstitucional.trim(), cliente: clienteInstitucional.trim() || null },
+      const documento = await criarDocumentoInstitucional(
+        { nome_projeto: nomeInstitucional.trim(), cliente: clienteInstitucional.trim() || null, tipo },
         token,
       );
-      const documento = await abrirDocumento(projeto.id, tipo, token);
       navigate(`/contratos/${documento.id}`);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao criar o contrato institucional");

@@ -347,7 +347,7 @@ export function DocumentoContratualPage() {
   }
 
   async function handleExtrairColeta(arquivo: File) {
-    if (!atual || !token) return;
+    if (!atual || !token || !atual.projeto_id) return;
     setExtraindoColeta(true);
     setErro("");
     setPendenciasColeta(null);
@@ -400,10 +400,18 @@ export function DocumentoContratualPage() {
               <ArrowLeft size={14} /> Contratos
             </VoltarLink>
             <h1>{ROTULO_TIPO_DOCUMENTO[atual.tipo]}</h1>
-            <LinkDiscreto as={Link} to={`/projetos/${atual.projeto_id}`}>
-              {atual.projeto_nome}
-              {atual.projeto_cliente ? ` · ${atual.projeto_cliente}` : ""}
-            </LinkDiscreto>
+            {atual.projeto_id ? (
+              <LinkDiscreto as={Link} to={`/projetos/${atual.projeto_id}`}>
+                {atual.projeto_nome}
+                {atual.projeto_cliente ? ` · ${atual.projeto_cliente}` : ""}
+              </LinkDiscreto>
+            ) : (
+              // Institucional: sem projeto de verdade, sem link — só o texto.
+              <span>
+                {atual.projeto_nome}
+                {atual.projeto_cliente ? ` · ${atual.projeto_cliente}` : ""}
+              </span>
+            )}
           </div>
         </DocumentoPaginaTitulo>
         <AcoesLinha>
@@ -439,7 +447,10 @@ export function DocumentoContratualPage() {
           <PageCardTitle>Dados do documento</PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
-          {!dadosTravados && (
+          {/* Coleta de Dados é herança da antiga plataforma externa — só faz
+              sentido com um projeto de verdade por trás. Institucional
+              (sem projeto) não tem de onde vir esse .docx. */}
+          {!dadosTravados && atual.projeto_id && (
             <ArquivoLinha style={{ marginBottom: "1rem" }}>
               <ArquivoBotao htmlFor="coleta-dados-upload">
                 {extraindoColeta ? "Extraindo..." : "Preencher a partir da Coleta de Dados"}

@@ -33,7 +33,10 @@ export const ROTULO_STATUS_DOCUMENTO: Record<StatusDocumentoContratual, string> 
 
 export interface DocumentoContratual {
   id: number;
-  projeto_id: number;
+  /** `null` = contrato institucional (Agro etc.), sem projeto de entrega
+   *  nenhum por trás — `projeto_nome`/`projeto_cliente` vêm do texto
+   *  digitado no próprio documento, não de um cadastro de projeto. */
+  projeto_id: number | null;
   /** Trazidos junto pro cabeçalho da página própria do documento (fora da
    *  aba do projeto) — antes vinham do contexto do `ProjetoPage`. */
   projeto_nome: string;
@@ -108,7 +111,8 @@ export interface ItemRepositorioContratual {
  *  (só arquivado); o recorte de quem vê qual linha já vem filtrado do back. */
 export interface ItemPainelContratual {
   id: number;
-  projeto_id: number;
+  /** `null` = contrato institucional, sem projeto de entrega por trás. */
+  projeto_id: number | null;
   projeto_nome: string;
   cliente: string | null;
   frente_ids: number[];
