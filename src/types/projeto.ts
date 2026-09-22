@@ -50,6 +50,10 @@ export interface ProjetoResumo {
   /** Teto de consultores da equipe, escolhido na criação do projeto. O
    *  backend já mandava; faltava declarar aqui. */
   max_consultores: number | null;
+  /** ⭐ 2026-09-22 — a pedido: se a declaração de interesse deste projeto
+   *  está aberta em Vagas em Projetos. Abre sozinho ao assinar o Contrato
+   *  de PS; fecha/abre manualmente quem lidera o projeto. */
+  vagas_abertas: boolean;
   data_kickoff: string | null;
   kickoff_pendente: boolean;
   /** `null` = ambientação começa no próprio kickoff, o padrão. Só não-nulo

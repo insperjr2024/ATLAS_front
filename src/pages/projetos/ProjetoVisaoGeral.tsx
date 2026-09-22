@@ -24,6 +24,7 @@ import {
   updateEscopoProjeto,
   updateDiaReuniaoPadrao,
   updateDiasAmbientacao,
+  updateVagasAbertas,
 } from "@/lib/projetos";
 import type { CalendariosDaFrente } from "@/lib/projetos";
 import { getCalendariosDaFrente, getSemestres } from "@/lib/calendario-academico";
@@ -249,11 +250,20 @@ function PessoaDaEquipe({ id, nome, foto }: { id: number; nome: string; foto: st
  * gente?" — a pergunta que traz alguém a esta lista.
  */
 function EquipeCard() {
-  const { projeto, usuarios, abrirEdicao } = useProjeto();
-  const { usuario } = useAuth();
+  const { projeto, usuarios, abrirEdicao, recarregar } = useProjeto();
+  const { usuario, token } = useAuth();
+  const [alternandoVagas, setAlternandoVagas] = useState(false);
   // Mesma trava do lápis do cabeçalho: é o mesmo modal, e o front não pode
   // oferecer aqui uma porta que lá está fechada.
   const podeEditarEquipe = !!usuario?.permissoes.pode_editar_equipe;
+  // ⭐ 2026-09-22 — a pedido: quem abre/fecha a declaração de interesse é
+  // "diretoria de projetos, gerente, coordenador" (`require_lideranca` no
+  // back) — gerência/diretoria já cai em `podeEditarEquipe`; falta somar
+  // quem coordena ESTE projeto (coordenador não tem `pode_editar_equipe`).
+  const souCoordenadorDoProjeto = projeto.equipe.some(
+    (m) => m.usuario_id === usuario?.id && m.papel === "coordenador",
+  );
+  const podeAbrirFecharVagas = podeEditarEquipe || souCoordenadorDoProjeto;
 
   const nomeUsuario = (id: number) => usuarios.find((u) => u.id === id)?.nome ?? `Usuário ${id}`;
   const fotoUsuario = (id: number) => usuarios.find((u) => u.id === id)?.foto ?? null;
@@ -264,6 +274,17 @@ function EquipeCard() {
   const vendedores = projeto.vendedor_ids ?? [];
   // Teto cru — ver o comentário em `ProjetoPage.tsx`.
   const teto = projeto.max_consultores ?? 0;
+
+  async function alternarVagasAbertas() {
+    if (!token) return;
+    setAlternandoVagas(true);
+    try {
+      await updateVagasAbertas(projeto.id, !projeto.vagas_abertas, token);
+      await recarregar();
+    } finally {
+      setAlternandoVagas(false);
+    }
+  }
 
   return (
     <PageCard>
@@ -281,6 +302,23 @@ function EquipeCard() {
         )}
       </PageCardHeader>
       <PageCardContent>
+        <EquipeSecao>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <PageBadge $tone={projeto.vagas_abertas ? "success" : "muted"}>
+              Declaração de interesse: {projeto.vagas_abertas ? "aberta" : "fechada"}
+            </PageBadge>
+            {podeAbrirFecharVagas && (
+              <PageButtonSm
+                type="button"
+                $variant="outline"
+                disabled={alternandoVagas}
+                onClick={alternarVagasAbertas}
+              >
+                {alternandoVagas ? "..." : projeto.vagas_abertas ? "Fechar vagas" : "Abrir vagas"}
+              </PageButtonSm>
+            )}
+          </div>
+        </EquipeSecao>
         <EquipeSecao>
           <EquipeSecaoTitulo>Coordenação</EquipeSecaoTitulo>
           {coordenadores.length === 0 ? (

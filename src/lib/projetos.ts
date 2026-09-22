@@ -277,6 +277,15 @@ export function updateMaxConsultores(projetoId: number, maxConsultores: number, 
   );
 }
 
+/** Abrir/fechar a declaração de interesse em Vagas em Projetos — só quem
+ *  lidera o projeto (diretoria de projetos, gerente, coordenador). */
+export function updateVagasAbertas(projetoId: number, vagasAbertas: boolean, token: string) {
+  return apiFetch<{ id: number; vagas_abertas: boolean }>(
+    `/projetos/${projetoId}/vagas-abertas`,
+    { method: "PATCH", token, body: JSON.stringify({ vagas_abertas: vagasAbertas }) },
+  );
+}
+
 export function getHistoricoProjeto(projetoId: number, token: string) {
   return apiFetch<HistoricoEntrada[]>(`/projetos/${projetoId}/historico`, { token });
 }
