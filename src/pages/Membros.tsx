@@ -28,6 +28,16 @@ function rotuloPosicao(posicoes: PosicaoPermissao[], posicao: string): string {
   return posicoes.find((p) => p.posicao === posicao)?.nome ?? ROTULO_POSICAO[posicao] ?? posicao;
 }
 
+/** Os cargos da pessoa, por extenso — a principal e, se houver, o cargo
+ *  extra (⭐ 2026-09-22: qualquer cargo sobreponível, não só "bdr"), juntos
+ *  com vírgula. Usado tanto na coluna "Posição" da tabela quanto na busca,
+ *  senão quem só tem o cargo extra em comum com o termo buscado não aparece. */
+function rotulosDeCargo(posicoes: PosicaoPermissao[], membro: { posicao: string; cargo_extra: string | null }): string {
+  const rotulos = [rotuloPosicao(posicoes, membro.posicao)];
+  if (membro.cargo_extra) rotulos.push(rotuloPosicao(posicoes, membro.cargo_extra));
+  return rotulos.join(", ");
+}
+
 /** O par de cargo que a pessoa tem agora — sempre uma `posicao` principal,
  *  mais um `cargoExtra` opcional (`cargo_extra` no backend). ⭐ 2026-09-22 —
  *  generalizado: antes só existia "bdr" em cima de "consultor", hardcoded;
@@ -299,7 +309,7 @@ export function Membros() {
     if (!termo) return true;
     const frentes = frentesDoUsuario(usuariosFrentes, frentesCadastradas, membro.id).join(" ");
     const texto = normalizarTexto(
-      `${membro.nome} ${membro.email_insper ?? ""} ${rotuloPosicao(posicoesCadastradas, membro.posicao)} ${frentes}`,
+      `${membro.nome} ${membro.email_insper ?? ""} ${rotulosDeCargo(posicoesCadastradas, membro)} ${frentes}`,
     );
     return texto.includes(termo);
   });
@@ -442,7 +452,7 @@ export function Membros() {
                     <TableRow key={membro.id}>
                       <NameCell>{membro.nome}</NameCell>
                       <TableCell>{membro.email_insper}</TableCell>
-                      <TableCell>{rotuloPosicao(posicoesCadastradas, membro.posicao)}</TableCell>
+                      <TableCell>{rotulosDeCargo(posicoesCadastradas, membro)}</TableCell>
                       <TableCell>{frentes.length > 0 ? frentes.join(", ") : "—"}</TableCell>
                       <TableCell>{membro.semestre_graduacao ? `${membro.semestre_graduacao}º` : "—"}</TableCell>
                       <TableCell>
