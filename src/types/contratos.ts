@@ -166,8 +166,11 @@ export interface Representante {
   estado_civil: string;
   profissao: string;
   cargo: string;
-  rg_numero: string;
-  rg_orgao_emissor: string;
+  /** RG e órgão emissor num campo só ("2.027.163 SSP/SC") — é como a pessoa
+   *  escreve naturalmente e como a Coleta de Dados também pede; separar os
+   *  dois pra dentro do documento é conta de `separar_rg` no backend, na
+   *  hora de gerar (`render_template.py`), não deste formulário. */
+  rg: string;
   cpf: string;
   endereco: string;
   email: string;

@@ -12,17 +12,3 @@ export function formatarCpfDigitado(valor: string): string {
   return r;
 }
 
-/** RG não é padronizado nacionalmente (SC emite com 7 dígitos, SP com 8-9,
- *  RJ com 10) — agrupa nos moldes do padrão mais comum (2.3.3-1, de SP) só
- *  nos primeiros 9 caracteres, e o que passar disso entra sem mais pontos,
- *  em vez de inventar posição pra um número que não segue esse padrão. */
-export function formatarRgDigitado(valor: string): string {
-  const limpo = valor.replace(/[^0-9Xx]/g, "").toUpperCase();
-  const d = limpo.slice(0, 9);
-  const resto = limpo.slice(9);
-  let r = d;
-  if (d.length > 2) r = `${d.slice(0, 2)}.${d.slice(2)}`;
-  if (d.length > 5) r = `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
-  if (d.length > 8) r = `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}-${d.slice(8)}`;
-  return r + resto;
-}

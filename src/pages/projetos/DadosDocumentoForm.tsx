@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import type { TipoDocumentoContratual } from "@/types/contratos";
-import { formatarCpfDigitado, formatarRgDigitado } from "@/lib/mascaras";
+import { formatarCpfDigitado } from "@/lib/mascaras";
 import { sugerirDiasExcecao } from "@/lib/contratos";
 import { FieldGroup, FieldLabel, FieldInput, FieldSelect, FieldTextarea, CheckboxLabel } from "../Bancas.styled";
 import { ErrorText, PageButtonSm } from "@/styles/page.styled";
@@ -247,14 +247,7 @@ function ContratanteSecao({ dados, set }: { dados: Dados; set: Setter }) {
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "nacionalidade"]} label="Nacionalidade" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "estado_civil"]} label="Estado civil" />
         <Texto dados={dados} set={set} caminho={["contratante", "representante", "profissao"]} label="Profissão" />
-        <TextoComMascara
-          dados={dados}
-          set={set}
-          caminho={["contratante", "representante", "rg_numero"]}
-          label="RG (número)"
-          mascara={formatarRgDigitado}
-        />
-        <Texto dados={dados} set={set} caminho={["contratante", "representante", "rg_orgao_emissor"]} label="RG (órgão emissor)" />
+        <Texto dados={dados} set={set} caminho={["contratante", "representante", "rg"]} label="RG (com órgão emissor)" />
         <TextoComMascara
           dados={dados}
           set={set}
