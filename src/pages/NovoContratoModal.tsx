@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { abrirDocumento, criarDocumentoInstitucional } from "@/lib/contratos";
-import { getProjetos } from "@/lib/projetos";
+import {
+  abrirDocumento,
+  criarDocumentoInstitucional,
+  getProjetosDisponiveisParaDocumento,
+} from "@/lib/contratos";
 import type { TipoDocumentoContratual } from "@/types/contratos";
 import { ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
-import type { ProjetoResumo } from "@/types/projeto";
 import { ModalOverlay } from "@/styles/ModalOverlay";
 import { ModalContent, ModalHeader, ModalTitle, ModalClose, ModalBody } from "@/styles/modal.styled";
 import { PageButton, ErrorText, EmptyText } from "@/styles/page.styled";
 import { FieldGroup, FieldLabel, FieldInput } from "./Bancas.styled";
+import { ListaProjetos, ProjetoOpcao, ProjetoNome, ProjetoCliente } from "./NovoContratoModal.styled";
 
 const TIPOS: TipoDocumentoContratual[] = ["contrato", "tep", "nda", "uso_imagem", "aditivo"];
 
@@ -34,19 +37,21 @@ export function NovoContratoModal({ onClose }: { onClose: () => void }) {
   const [erro, setErro] = useState("");
   const [processando, setProcessando] = useState(false);
 
-  const [projetos, setProjetos] = useState<ProjetoResumo[] | null>(null);
+  const [projetos, setProjetos] = useState<{ id: number; nome: string; cliente: string | null }[] | null>(
+    null,
+  );
   const [busca, setBusca] = useState("");
 
   const [nomeInstitucional, setNomeInstitucional] = useState("");
   const [clienteInstitucional, setClienteInstitucional] = useState("");
 
   useEffect(() => {
-    if (passo !== "projeto" || tipo === "contrato" || !token || projetos !== null) return;
-    getProjetos(token)
-      .then((lista) => setProjetos(lista.filter((p) => !p.institucional)))
+    if (passo !== "projeto" || tipo === "contrato" || !tipo || !token || projetos !== null) return;
+    getProjetosDisponiveisParaDocumento(tipo, token)
+      .then((resposta) => setProjetos(resposta.projetos))
       .catch((err) => setErro(err instanceof Error ? err.message : "Erro ao carregar projetos"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passo, token]);
+  }, [passo, tipo, token]);
 
   function escolherTipo(tipoEscolhido: TipoDocumentoContratual) {
     setErro("");
@@ -138,27 +143,25 @@ export function NovoContratoModal({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setBusca(e.target.value)}
                 autoFocus
               />
-              <div style={{ maxHeight: "16rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                {projetos === null ? (
-                  <EmptyText>Carregando...</EmptyText>
-                ) : projetosFiltrados.length === 0 ? (
-                  <EmptyText>Nenhum projeto encontrado.</EmptyText>
-                ) : (
-                  projetosFiltrados.map((p) => (
-                    <PageButton
+              {projetos === null ? (
+                <EmptyText>Carregando...</EmptyText>
+              ) : projetosFiltrados.length === 0 ? (
+                <EmptyText>Nenhum projeto encontrado.</EmptyText>
+              ) : (
+                <ListaProjetos>
+                  {projetosFiltrados.map((p) => (
+                    <ProjetoOpcao
                       key={p.id}
                       type="button"
-                      $variant="outline"
                       disabled={processando}
                       onClick={() => abrirNoProjeto(p.id)}
-                      style={{ justifyContent: "flex-start" }}
                     >
-                      {p.nome}
-                      {p.cliente ? ` · ${p.cliente}` : ""}
-                    </PageButton>
-                  ))
-                )}
-              </div>
+                      <ProjetoNome>{p.nome}</ProjetoNome>
+                      {p.cliente && <ProjetoCliente>· {p.cliente}</ProjetoCliente>}
+                    </ProjetoOpcao>
+                  ))}
+                </ListaProjetos>
+              )}
               <PageButton type="button" $variant="outline" onClick={() => setPasso("institucional")}>
                 É um contrato institucional (sem projeto de entrega)
               </PageButton>

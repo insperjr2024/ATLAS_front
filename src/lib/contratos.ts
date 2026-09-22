@@ -32,6 +32,21 @@ export function getDocumento(documentoId: number, token: string) {
   return apiFetch<DocumentoContratual>(`/documentos-contratuais/${documentoId}`, { token });
 }
 
+/** A lista de projetos do passo "escolher projeto" do assistente de Novo
+ *  Contrato — NÃO é `getProjetos` (recorte geral de visão de projeto, só
+ *  ampliado por `pode_ver_todos_projetos`): aqui o critério é quem pode de
+ *  fato abrir ESTE tipo de documento (`pode_elaborar_qualquer_contrato` vê
+ *  todos, mesmo sem ser membro/vendedor de projeto nenhum). */
+export function getProjetosDisponiveisParaDocumento(
+  tipo: TipoDocumentoContratual,
+  token: string,
+) {
+  return apiFetch<{ projetos: { id: number; nome: string; cliente: string | null }[] }>(
+    `/documentos-contratuais/projetos-disponiveis?tipo=${tipo}`,
+    { token },
+  );
+}
+
 /** Contrato institucional (Agro etc.) — documento avulso, sem projeto de
  *  entrega nenhum por trás. `nomeProjeto` é só um campo de texto no
  *  formulário, não cria linha nenhuma em projeto. */
