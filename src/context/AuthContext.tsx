@@ -71,6 +71,9 @@ const PERMISSOES_PLACEHOLDER: Permissoes = {
   pode_ver_painel_contratos: false,
   pode_importar_documento_antigo: false,
   pode_solicitar_tep: false,
+  pode_editar_identidade_institucional: false,
+  pode_elaborar_contratos_proprios: false,
+  pode_elaborar_qualquer_contrato: false,
 };
 
 /**

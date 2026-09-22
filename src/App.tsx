@@ -227,11 +227,9 @@ export default function App() {
               <Route element={<AdminRoute permissao="pode_ver_repositorio_contratos" />}>
                 <Route path="/repositorio-contratual" element={<RepositorioContratual />} />
               </Route>
-              {/* Identidade Institucional nunca virou caixa de permissão —
-                  é quem assina PELA Insper Jr, identidade organizacional,
-                  não algo delegável. Mesmo padrão de `RequirePosicao` do
-                  resto do app. */}
-              <Route element={<RequirePosicao posicoes={["diretor_projetos"]} />}>
+              {/* ⭐ 2026-09-22 — a pedido: era hardcoded pra diretor_projetos
+                  (quem assina PELA Insper Jr), virou caixa delegável. */}
+              <Route element={<AdminRoute permissao="pode_editar_identidade_institucional" />}>
                 <Route path="/identidade-institucional" element={<IdentidadeInstitucional />} />
               </Route>
             </Route>

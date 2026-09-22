@@ -259,6 +259,24 @@ const PERMISSOES = [
     descricao:
       "Abrir o Termo de Encerramento de Projeto dentro de um projeto — quem acompanha a entrega, não a venda.",
   },
+  {
+    campo: "pode_editar_identidade_institucional" as const,
+    titulo: "Editar identidade institucional",
+    descricao:
+      "Abre a aba Identidade Institucional (quem assina PELA Insper Jr nos documentos jurídicos) — antes só diretoria de projetos, agora delegável.",
+  },
+  {
+    campo: "pode_elaborar_contratos_proprios" as const,
+    titulo: "Acessar e elaborar contratos de projetos vendidos por ela",
+    descricao:
+      "Abre a aba Contratos com todos os documentos visíveis, mas só elabora (abre, preenche, confirma, gera) os documentos jurídicos dos projetos em que a própria pessoa consta como vendedora. No assistente \"+ Novo Contrato\", só aparecem os projetos que ela vendeu.",
+  },
+  {
+    campo: "pode_elaborar_qualquer_contrato" as const,
+    titulo: "Acessar e elaborar qualquer contrato",
+    descricao:
+      "Mesma coisa que a caixa acima, sem o recorte por vendedor — elabora o documento jurídico de qualquer projeto, igual diretoria/Jurídico.",
+  },
 ];
 
 type CampoPermissao = (typeof PERMISSOES)[number]["campo"];

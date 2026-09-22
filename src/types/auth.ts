@@ -109,6 +109,14 @@ export interface Permissoes {
   pode_importar_documento_antigo: boolean;
   /** Abrir o TEP dentro de um projeto que já tem Contrato de Prestação. */
   pode_solicitar_tep: boolean;
+  /** Quem assina PELA Insper Jr — antes só diretoria de projetos, agora
+   *  delegável. */
+  pode_editar_identidade_institucional: boolean;
+  /** Acessar a aba Contratos (vê tudo) e elaborar documento jurídico só dos
+   *  projetos em que a própria pessoa é vendedora. */
+  pode_elaborar_contratos_proprios: boolean;
+  /** Mesma coisa, sem o recorte por vendedor — qualquer projeto. */
+  pode_elaborar_qualquer_contrato: boolean;
 }
 
 /**

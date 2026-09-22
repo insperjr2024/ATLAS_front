@@ -114,7 +114,9 @@ const navItems: NavItemConfig[] = [
       c.pode_responsavel_por_vendas ||
       c.pode_editar_documento_juridico ||
       c.pode_solicitar_tep ||
-      c.pode_ver_painel_contratos,
+      c.pode_ver_painel_contratos ||
+      c.pode_elaborar_contratos_proprios ||
+      c.pode_elaborar_qualquer_contrato,
   },
   { icon: ClipboardList, label: "Bancas", path: "/bancas", grupo: "trabalho" },
   // Sem trava: a página serve os dois lados e decide o que mostrar pelas
@@ -200,10 +202,9 @@ const navItems: NavItemConfig[] = [
     label: "Identidade Institucional",
     path: "/identidade-institucional",
     grupo: "sistema",
-    // Não é caixa de permissão — quem assina PELA Insper Jr é identidade
-    // organizacional, mesma régua do backend (`eh_diretoria_de_projetos`),
-    // não algo delegável por posição comum.
-    visiblePorPosicao: (u) => u.posicao === "diretor_projetos",
+    // ⭐ 2026-09-22 — a pedido: era hardcoded pra diretor_projetos
+    // (`eh_diretoria_de_projetos` no back), virou caixa delegável.
+    visible: (c) => c.pode_editar_identidade_institucional,
   },
   {
     icon: Settings,
