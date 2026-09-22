@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { apiFetch } from "@/lib/api";
-import { getPosicoesPermissoes } from "@/lib/posicoes-permissoes";
+import { getPosicoesPermissoes, mesclarPermissoes } from "@/lib/posicoes-permissoes";
 import type { Usuario, Permissoes, Posicao, StatusUsuario } from "@/types/auth";
 
 // A API devolve `posicao` solto em /auth/me, sem as 13 caixas de permissão
@@ -12,6 +12,9 @@ interface UsuarioResponse {
   nome: string;
   email_insper: string;
   posicao: Posicao;
+  /** Cargo extra opcional, soma permissões à posição base — ver
+   *  `UsuarioResumo.cargo_extra` em `types/auth.ts`. */
+  cargo_extra: Posicao | null;
   status: StatusUsuario;
   ativo: boolean;
   /** Primeiro acesso pendente, ver `Usuario.senha_provisoria`. */
@@ -137,10 +140,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // agora: o PrivateRoute só deixa passar pra /definir-senha até isso
       // resolver, e recarregarUsuario() busca as permissões reais depois,
       // quando já não trava.
-      const permissoes = dados.senha_provisoria
-        ? PERMISSOES_PLACEHOLDER
-        : (await getPosicoesPermissoes(token)).find((p) => p.posicao === dados.posicao) ??
-          PERMISSOES_PLACEHOLDER;
+      let permissoes = PERMISSOES_PLACEHOLDER;
+      if (!dados.senha_provisoria) {
+        const catalogo = await getPosicoesPermissoes(token);
+        const base = catalogo.find((p) => p.posicao === dados.posicao) ?? PERMISSOES_PLACEHOLDER;
+        const extra = dados.cargo_extra
+          ? catalogo.find((p) => p.posicao === dados.cargo_extra) ?? null
+          : null;
+        permissoes = mesclarPermissoes(base, extra);
+      }
       const completo = { ...dados, permissoes };
       setUsuario(completo);
       localStorage.setItem(USUARIO_CACHE_KEY, JSON.stringify(completo));

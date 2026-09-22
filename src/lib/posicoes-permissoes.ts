@@ -42,3 +42,18 @@ export function deletePosicaoPermissao(posicao: Posicao, token: string) {
     token,
   });
 }
+
+/** O `cargo_extra` SOMA permissões à posição base, nunca substitui — mesmo OU
+ *  lógico que `usuario_tem_permissao` faz no backend (`middlewares/
+ *  authorization.py`). Sem isto, uma caixa marcada só no cargo extra (ex.:
+ *  "adm jurídico" com `pode_elaborar_qualquer_contrato`) nunca chegava no
+ *  usuário logado — a aba correspondente ficava escondida mesmo pra quem
+ *  tinha o direito. */
+export function mesclarPermissoes(base: Permissoes, extra: Permissoes | null): Permissoes {
+  if (!extra) return base;
+  const mescladas = { ...base };
+  for (const chave of Object.keys(base) as (keyof Permissoes)[]) {
+    mescladas[chave] = base[chave] || extra[chave];
+  }
+  return mescladas;
+}

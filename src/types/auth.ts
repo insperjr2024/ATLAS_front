@@ -169,6 +169,11 @@ export interface Usuario {
   email_insper: string;
   permissoes: Permissoes;
   posicao: Posicao;
+  /** Cargo extra opcional — suas permissões já vêm somadas (OU lógico) em
+   *  `permissoes` acima, ver `mesclarPermissoes` em `lib/posicoes-permissoes.ts`.
+   *  Guardado aqui à parte só pra telas que precisam mostrar o cargo em si
+   *  (ex.: Membros), não pra recalcular permissão. */
+  cargo_extra: Posicao | null;
   status: StatusUsuario;
   ativo: boolean;
   /**
@@ -199,10 +204,10 @@ export interface UsuarioResumo {
   posicao: Posicao;
   status: StatusUsuario;
   ativo: boolean;
-  /** 2026-09-16 — substitui os antigos `coordenador_vendas`/`bdr`. A ÚNICA
-   *  situação em que a pessoa acumula duas posições: a principal (`posicao`,
-   *  sempre "consultor" na prática) e esta, opcional — hoje só pode ser
-   *  "bdr". `null` pra quase todo mundo. */
+  /** 2026-09-16 — substitui os antigos `coordenador_vendas`/`bdr`. A pessoa
+   *  pode acumular duas posições: a principal (`posicao`) e esta, opcional —
+   *  qualquer cargo marcado `sobreponivel` no catálogo (⭐ 2026-09-22,
+   *  generalizado). `null` pra quase todo mundo. */
   cargo_extra: string | null;
   /** Computado no backend (posição base OU `cargo_extra`, permissão
    *  `pode_responsavel_por_vendas`) — quem tem isto entra na lista "quem
