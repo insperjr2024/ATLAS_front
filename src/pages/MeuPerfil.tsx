@@ -6,7 +6,7 @@ import { getFrentes } from "@/lib/bancas";
 import { getUsuariosFrentes } from "@/lib/usuarios-frentes";
 import { atualizarMinhaFoto, atualizarMinhasNotificacoesEmail, removerMinhaFoto } from "@/lib/usuarios";
 import { redimensionarParaDataUri } from "@/lib/imagem";
-import { ROTULO_POSICAO } from "@/utils/permissoes";
+import { DIRETORIA, ROTULO_POSICAO } from "@/utils/permissoes";
 import { FotoCircular } from "@/components/Avatar";
 import type { Frente } from "@/types/banca";
 import type { FaixaDisponivel, FaixaGrade } from "@/types/grade";
@@ -49,7 +49,6 @@ import { PermissoesGrid, PermissaoItem, PermissaoTexto, PermissaoTitulo, Permiss
 const NOTIFICACOES_OPCIONAIS: { tipo: string; titulo: string; descricao: string }[] = [
   { tipo: "alocado_em_projeto", titulo: "Alocado em projeto", descricao: "Você entrou numa equipe nova." },
   { tipo: "entrega_registrada", titulo: "Entrega registrada", descricao: "Um escopo do seu projeto foi entregue." },
-  { tipo: "escalacao_banca", titulo: "Escalação em banca", descricao: "Você foi escalado para avaliar uma banca." },
   { tipo: "troca_banca", titulo: "Troca de banca", descricao: "Uma troca de banca que envolve você foi decidida." },
   { tipo: "banca_aviso", titulo: "Aviso de banca", descricao: "Avisos gerais sobre bancas em que você participa." },
   { tipo: "entrega_alterada", titulo: "Entrega alterada", descricao: "A data de entrega de um escopo mudou." },
@@ -61,14 +60,34 @@ const NOTIFICACOES_OPCIONAIS: { tipo: string; titulo: string; descricao: string 
 /** Os fixos aparecem na lista pra dar o quadro completo (você vê TUDO que
  *  existe, não só o que dá pra mexer), mas o checkbox vem travado ligado —
  *  espelha o que `enviar_email_notificacao.py` já faz: estes tipos ignoram
- *  a preferência e saem sempre. */
-const NOTIFICACOES_FIXAS: { tipo: string; titulo: string; descricao: string }[] = [
+ *  a preferência e saem sempre.
+ *
+ *  ⭐ 2026-09-22 — a pedido: `reajuste_solicitado` ("Pedido de dias") só
+ *  chega pra quem aprova reajuste — hoje é POSIÇÃO diretor, ver o docstring
+ *  de `notificar_reajuste_solicitado` no backend — nunca um consultor. Sem
+ *  `somenteDiretoria`, a lista mostrava um tipo que a pessoa jamais
+ *  receberia como se fosse relevante pra ela. `solicitacao_projeto`
+ *  ("Pedido de entrada em projeto") continua pra todo mundo de propósito:
+ *  o próprio texto já cobre os dois lados — "alguém pediu" (quem coordena o
+ *  projeto decide) OU "seu pedido foi respondido" (qualquer consultor que
+ *  pediu pra entrar num projeto). */
+const NOTIFICACOES_FIXAS: { tipo: string; titulo: string; descricao: string; somenteDiretoria?: boolean }[] = [
   { tipo: "justificativa_pedida", titulo: "Justificativa de atraso pedida", descricao: "A diretoria perguntou por que um escopo seu atrasou." },
   { tipo: "banca_remarcada", titulo: "Banca remarcada", descricao: "A data de uma banca sua mudou." },
+  {
+    tipo: "escalacao_banca",
+    titulo: "Escalação em banca",
+    descricao: "Você foi escalado para avaliar uma banca.",
+  },
   { tipo: "avaliacao_pendente", titulo: "Avaliação pendente", descricao: "Uma banca foi realizada e você precisa avaliar." },
   { tipo: "descricao_coordenador_pendente", titulo: "Descrição de banca pendente", descricao: "Uma banca sua foi realizada e falta a sua descrição do resultado." },
   { tipo: "solicitacao_projeto", titulo: "Pedido de entrada em projeto", descricao: "Alguém pediu para entrar no seu projeto, ou seu pedido foi respondido." },
-  { tipo: "reajuste_solicitado", titulo: "Pedido de dias", descricao: "Um pedido de dias de ajuste está esperando sua decisão." },
+  {
+    tipo: "reajuste_solicitado",
+    titulo: "Pedido de dias",
+    descricao: "Um pedido de dias de ajuste está esperando sua decisão.",
+    somenteDiretoria: true,
+  },
   { tipo: "reajuste_respondido", titulo: "Pedido de dias respondido", descricao: "Seu pedido de dias de ajuste foi decidido." },
   { tipo: "tarefa_vencida", titulo: "Tarefa vencida", descricao: "Uma tarefa sua passou do prazo." },
   { tipo: "banca_hoje", titulo: "Banca hoje", descricao: "Você tem banca hoje." },
@@ -355,7 +374,7 @@ export function MeuPerfil() {
                   </PermissaoTexto>
                 </PermissaoItem>
               ))}
-              {NOTIFICACOES_FIXAS.map((n) => (
+              {NOTIFICACOES_FIXAS.filter((n) => !n.somenteDiretoria || DIRETORIA.includes(usuario.posicao)).map((n) => (
                 <PermissaoItem key={n.tipo}>
                   <input type="checkbox" checked disabled />
                   <PermissaoTexto>
