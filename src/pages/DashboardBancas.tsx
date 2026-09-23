@@ -128,15 +128,23 @@ function mapaParaResultados(
     .sort((a, b) => b.bancas - a.bancas);
 }
 
-/** Comparecimento de um conjunto de bancas: só as realizadas entram na conta,
- *  e presença = compareceu **E** enviou a avaliação daquela banca (mesma
- *  régua da tabela "Presença por membro"). */
+/** Comparecimento de um conjunto de bancas: só as realizadas HÁ MAIS DE
+ *  {@link PRAZO_AVALIACAO_DIAS} DIAS entram na conta — dentro do prazo de
+ *  graça pra enviar a avaliação, ainda ninguém "faltou" de verdade, é só
+ *  o formulário que acabou de abrir (mesma régua da tabela "Presença por
+ *  membro", `PresencaBancas.tsx`, 2026-09-23). Presença = compareceu **E**
+ *  enviou a avaliação daquela banca. */
 function comparecimento(
   bancas: Banca[],
   candidaturas: Candidatura[],
   avaliacoes: Avaliacao[],
+  agora: number,
 ) {
-  const realizadas = new Set(bancas.filter((b) => b.realizado_em).map((b) => b.id));
+  const realizadas = new Set(
+    bancas
+      .filter((b) => b.realizado_em && agora - new Date(b.realizado_em).getTime() >= PRAZO_AVALIACAO_DIAS * DIA_MS)
+      .map((b) => b.id),
+  );
   const avaliou = new Set(
     avaliacoes
       .filter((a) => a.status === "submetida")
@@ -208,7 +216,7 @@ export function DashboardBancas({
   /* --------------------------------------------------------------- */
 
   const presencaNucleo = useMemo(() => {
-    const atual = comparecimento(bancasSemestre, candidaturas, avaliacoes);
+    const atual = comparecimento(bancasSemestre, candidaturas, avaliacoes, agora);
 
     // O semestre anterior é o de maior início antes do atual, não "id - 1",
     // que quebraria se um semestre fosse cadastrado fora de ordem.
@@ -222,6 +230,7 @@ export function DashboardBancas({
           bancas.filter((b) => b.semestre_id === anterior.id),
           candidaturas,
           avaliacoes,
+          agora,
         )
       : null;
 
@@ -233,7 +242,7 @@ export function DashboardBancas({
           ? atual.percentual - anteriorDados.percentual
           : null,
     };
-  }, [bancasSemestre, bancas, candidaturas, avaliacoes, semestre, semestres]);
+  }, [bancasSemestre, bancas, candidaturas, avaliacoes, semestre, semestres, agora]);
 
   const abaixoDoMinimo = useMemo(
     () => bancasSemestre.filter((b) => b.realizado_em && b.alocados < b.piso_minimo),
