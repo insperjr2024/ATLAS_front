@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Avaliacao, Banca, Candidatura } from "@/types/banca";
 import type { UsuarioResumo } from "@/types/auth";
+import { formatarData } from "@/lib/projetos";
 import {
   PageCard,
   PageCardHeader,
@@ -41,6 +42,21 @@ interface LinhaPresenca {
   futuras: number;
   faltas: number;
   percentual: number | null;
+  /** ⭐ 2026-09-23 — a pedido: cada falta com a banca e a data, pro
+   *  detalhamento (tooltip/clique) na tabela. */
+  bancasFaltadas: { banca: Banca; realizadoEm: string }[];
+}
+
+/** ⭐ 2026-09-23 — a pedido: só conta como falta depois de 1 SEMANA sem
+ *  enviar a avaliação — logo depois da banca, ninguém preencheu ainda (o
+ *  formulário acabou de abrir), e contar falta nesse momento é falso
+ *  positivo pra todo mundo. Até completar a semana, a banca não entra em
+ *  NADA da conta (nem presença, nem falta) — só passa a valer depois. */
+const PRAZO_FALTA_DIAS = 7;
+
+function dentroDoPrazoDeGraca(realizadoEm: string): boolean {
+  const passados = (Date.now() - new Date(realizadoEm).getTime()) / (1000 * 60 * 60 * 24);
+  return passados < PRAZO_FALTA_DIAS;
 }
 
 const COLUNAS_PRESENCA: Colunas<LinhaPresenca> = {
@@ -66,10 +82,15 @@ const COLUNAS_PRESENCA: Colunas<LinhaPresenca> = {
  * A conta só olha bancas JÁ REALIZADAS: numa banca futura ninguém faltou —
  * misturar as duas faria todo mundo parecer ausente por estar inscrito no que
  * ainda vai acontecer.
+ *
+ * ⭐ 2026-09-23 — a pedido: dentro da primeira semana depois da banca, ela
+ * nem entra na conta (nem presença, nem falta) — é o prazo normal pra
+ * enviar a avaliação, e contar falta antes disso é falso positivo de todo
+ * mundo assim que o formulário abre.
  */
 export function PresencaBancas({ usuarios, candidaturas, bancas, avaliacoes }: Props) {
   const linhas = useMemo(() => {
-    const realizadas = new Set(bancas.filter((b) => b.realizado_em).map((b) => b.id));
+    const porId = new Map(bancas.map((b) => [b.id, b] as const));
     // `banca:avaliador` de quem enviou a avaliação — a outra metade da
     // presença.
     const avaliou = new Set(
@@ -78,25 +99,39 @@ export function PresencaBancas({ usuarios, candidaturas, bancas, avaliacoes }: P
         .map((a) => `${a.banca_id}:${a.avaliador_id}`),
     );
 
-    const porUsuario = new Map<number, { inscrito: number; presente: number; futuras: number }>();
+    const porUsuario = new Map<
+      number,
+      { inscrito: number; presente: number; futuras: number; bancasFaltadas: LinhaPresenca["bancasFaltadas"] }
+    >();
     for (const c of candidaturas) {
-      const atual = porUsuario.get(c.usuario_id) ?? { inscrito: 0, presente: 0, futuras: 0 };
-      if (realizadas.has(c.banca_id)) {
-        atual.inscrito += 1;
-        if (c.confirmado && avaliou.has(`${c.banca_id}:${c.usuario_id}`)) atual.presente += 1;
-      } else {
+      const banca = porId.get(c.banca_id);
+      if (!banca) continue;
+      const atual =
+        porUsuario.get(c.usuario_id) ?? { inscrito: 0, presente: 0, futuras: 0, bancasFaltadas: [] };
+      if (!banca.realizado_em) {
+        // Ainda nem aconteceu: banca futura de verdade.
         atual.futuras += 1;
+      } else if (!dentroDoPrazoDeGraca(banca.realizado_em)) {
+        // Realizada há uma semana ou mais: entra na conta de verdade.
+        atual.inscrito += 1;
+        if (c.confirmado && avaliou.has(`${c.banca_id}:${c.usuario_id}`)) {
+          atual.presente += 1;
+        } else {
+          atual.bancasFaltadas.push({ banca, realizadoEm: banca.realizado_em });
+        }
       }
+      // Realizada há menos de uma semana: dentro do prazo de graça, não
+      // conta em nada — nem presença, nem falta, nem futura.
       porUsuario.set(c.usuario_id, atual);
     }
 
     return usuarios
       .map((u) => {
-        const d = porUsuario.get(u.id) ?? { inscrito: 0, presente: 0, futuras: 0 };
+        const d = porUsuario.get(u.id) ?? { inscrito: 0, presente: 0, futuras: 0, bancasFaltadas: [] };
         return {
           usuario: u,
           ...d,
-          faltas: d.inscrito - d.presente,
+          faltas: d.bancasFaltadas.length,
           // Sem banca realizada não há percentual, `null` para a tela mostrar
           // um traço em vez de "0%", que soaria como falta.
           percentual: d.inscrito > 0 ? Math.round((d.presente / d.inscrito) * 100) : null,
@@ -127,6 +162,9 @@ export function PresencaBancas({ usuarios, candidaturas, bancas, avaliacoes }: P
       <PageCardContent>
         <EmptyText style={{ marginBottom: "0.75rem", fontSize: "0.75rem" }}>
           Só conta como presença quem compareceu à banca <strong>e</strong> enviou a avaliação dela.
+          Uma banca só entra nesta conta depois de {PRAZO_FALTA_DIAS} dias da realização — antes
+          disso, ainda dentro do prazo normal de envio, ela não conta como falta. Passe o mouse
+          sobre o número de faltas para ver quais foram.
         </EmptyText>
         {semNenhuma ? (
           <EmptyText>Ninguém se inscreveu em bancas ainda.</EmptyText>
@@ -163,7 +201,14 @@ export function PresencaBancas({ usuarios, candidaturas, bancas, avaliacoes }: P
                       </TableCell>
                       <TableCell>
                         {l.faltas > 0 ? (
-                          <PageBadge $tone="danger">{l.faltas}</PageBadge>
+                          <PageBadge
+                            $tone="danger"
+                            title={l.bancasFaltadas
+                              .map((f) => `${f.banca.nome_projeto} — ${formatarData(f.realizadoEm)}`)
+                              .join("\n")}
+                          >
+                            {l.faltas}
+                          </PageBadge>
                         ) : (
                           "—"
                         )}

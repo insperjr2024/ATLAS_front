@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { NotebookPen, Plus, X } from "lucide-react";
+import { AlertTriangle, NotebookPen, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
   createNovaVersaoFormulario,
@@ -62,6 +62,11 @@ import {
 } from "@/styles/page.styled";
 import {
   ListaExpansivel,
+  PendenciaCard,
+  PendenciaFaltamRotulo,
+  PendenciaIcone,
+  PendenciaNome,
+  PendenciaTexto,
   PessoaContexto,
   PessoaHeader,
   PessoaResumo,
@@ -556,6 +561,7 @@ export function Avaliacoes() {
         <VerAvaliacoesModal
           banca={bancaDetalhe}
           usuarios={usuarios}
+          candidaturas={candidaturas}
           avaliacoes={avaliacoes}
           avaliacoesNotas={avaliacoesNotas}
           token={token}
@@ -583,6 +589,7 @@ export function Avaliacoes() {
 function VerAvaliacoesModal({
   banca,
   usuarios,
+  candidaturas,
   avaliacoes,
   avaliacoesNotas,
   token,
@@ -590,6 +597,7 @@ function VerAvaliacoesModal({
 }: {
   banca: HistoricoBanca;
   usuarios: UsuarioResumo[];
+  candidaturas: Candidatura[];
   avaliacoes: Avaliacao[];
   avaliacoesNotas: AvaliacaoNota[];
   token: string;
@@ -598,6 +606,7 @@ function VerAvaliacoesModal({
   const [medias, setMedias] = useState<NotaPorPergunta[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [avaliadorExpandido, setAvaliadorExpandido] = useState<number | null>(null);
+  const [mostrarPendencias, setMostrarPendencias] = useState(false);
 
   useEffect(() => {
     getNotasPorPergunta(banca.id, token)
@@ -606,6 +615,17 @@ function VerAvaliacoesModal({
   }, [banca.id, token]);
 
   const avaliacoesSubmetidas = avaliacoes.filter((a) => a.banca_id === banca.id && a.status === "submetida");
+
+  // Quem foi escalado e confirmou presença, mas ainda não enviou a
+  // avaliação desta banca — a pergunta que "ver avaliações" não respondia
+  // antes: dava pra ver quem JÁ enviou, não quem falta (2026-09-23, a
+  // pedido, mesmo botão "Pendências" que já existe na Avaliação de
+  // Desempenho). Cálculo 100% client-side: `candidaturas` e `avaliacoes` já
+  // chegam carregadas na página, sem endpoint novo.
+  const avaliadoresQueEnviaram = new Set(avaliacoesSubmetidas.map((a) => a.avaliador_id));
+  const pendentes = candidaturas.filter(
+    (c) => c.banca_id === banca.id && c.confirmado && !avaliadoresQueEnviaram.has(c.usuario_id),
+  );
 
   // pergunta_id -> texto do critério, resolvido pelo backend em `medias`
   // (mesma ordem do formulário). É o que faltava pra cada nota individual
@@ -665,6 +685,34 @@ function VerAvaliacoesModal({
           )}
 
           <SectionTitle>Avaliações individuais ({avaliacoesSubmetidas.length})</SectionTitle>
+          <PreviewToggleRow>
+            <PageButtonSm
+              type="button"
+              $variant="outline"
+              onClick={() => setMostrarPendencias((v) => !v)}
+            >
+              {mostrarPendencias ? "Ocultar pendências" : `Pendências (${pendentes.length})`}
+            </PageButtonSm>
+          </PreviewToggleRow>
+          {mostrarPendencias && (
+            <SubLista>
+              {pendentes.length === 0 ? (
+                <EmptyText>Todo mundo escalado já enviou a avaliação.</EmptyText>
+              ) : (
+                pendentes.map((c) => (
+                  <PendenciaCard key={c.id}>
+                    <PendenciaIcone>
+                      <AlertTriangle size={16} />
+                    </PendenciaIcone>
+                    <PendenciaTexto>
+                      <PendenciaNome>{nomeUsuario(usuarios, c.usuario_id)}</PendenciaNome>{" "}
+                      <PendenciaFaltamRotulo>ainda não enviou a avaliação</PendenciaFaltamRotulo>
+                    </PendenciaTexto>
+                  </PendenciaCard>
+                ))
+              )}
+            </SubLista>
+          )}
           {avaliacoesSubmetidas.length === 0 && <EmptyText>Nenhuma avaliação submetida.</EmptyText>}
           {avaliacoesSubmetidas.length > 0 && (
             <ListaExpansivel>
