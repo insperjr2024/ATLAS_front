@@ -70,8 +70,18 @@ const NOTIFICACOES_OPCIONAIS: { tipo: string; titulo: string; descricao: string 
  *  ("Pedido de entrada em projeto") continua pra todo mundo de propósito:
  *  o próprio texto já cobre os dois lados — "alguém pediu" (quem coordena o
  *  projeto decide) OU "seu pedido foi respondido" (qualquer consultor que
- *  pediu pra entrar num projeto). */
-const NOTIFICACOES_FIXAS: { tipo: string; titulo: string; descricao: string; somenteDiretoria?: boolean }[] = [
+ *  pediu pra entrar num projeto).
+ *
+ *  ⭐ 2026-09-23 — mesma lógica pra `documento_contratual_assinado`
+ *  ("Documento assinado"): só chega pro(s) gerente(s) da(s) frente(s) do
+ *  projeto (ver `_gerentes_das_frentes_do_projeto` no backend). */
+const NOTIFICACOES_FIXAS: {
+  tipo: string;
+  titulo: string;
+  descricao: string;
+  somenteDiretoria?: boolean;
+  somenteGerente?: boolean;
+}[] = [
   { tipo: "justificativa_pedida", titulo: "Justificativa de atraso pedida", descricao: "A diretoria perguntou por que um escopo seu atrasou." },
   { tipo: "banca_remarcada", titulo: "Banca remarcada", descricao: "A data de uma banca sua mudou." },
   {
@@ -89,6 +99,12 @@ const NOTIFICACOES_FIXAS: { tipo: string; titulo: string; descricao: string; som
     somenteDiretoria: true,
   },
   { tipo: "reajuste_respondido", titulo: "Pedido de dias respondido", descricao: "Seu pedido de dias de ajuste foi decidido." },
+  {
+    tipo: "documento_contratual_assinado",
+    titulo: "Documento assinado",
+    descricao: "Um documento jurídico de um projeto da sua frente foi assinado.",
+    somenteGerente: true,
+  },
   { tipo: "tarefa_vencida", titulo: "Tarefa vencida", descricao: "Uma tarefa sua passou do prazo." },
   { tipo: "banca_hoje", titulo: "Banca hoje", descricao: "Você tem banca hoje." },
   { tipo: "lote_desempenho_aberto", titulo: "Avaliação de Desempenho", descricao: "Uma rodada de avaliação abriu com algo para você responder." },
@@ -374,7 +390,11 @@ export function MeuPerfil() {
                   </PermissaoTexto>
                 </PermissaoItem>
               ))}
-              {NOTIFICACOES_FIXAS.filter((n) => !n.somenteDiretoria || DIRETORIA.includes(usuario.posicao)).map((n) => (
+              {NOTIFICACOES_FIXAS.filter(
+                (n) =>
+                  (!n.somenteDiretoria || DIRETORIA.includes(usuario.posicao)) &&
+                  (!n.somenteGerente || usuario.posicao === "gerente"),
+              ).map((n) => (
                 <PermissaoItem key={n.tipo}>
                   <input type="checkbox" checked disabled />
                   <PermissaoTexto>

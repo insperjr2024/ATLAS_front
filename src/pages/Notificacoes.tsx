@@ -146,8 +146,10 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
     rotulo: "Cliente pediu alteração",
     alerta: true,
   },
+  documento_contratual_assinado: { icone: FileSignature, rotulo: "Documento assinado", alerta: false },
   projeto_criado_em_contrato: { icone: FileSignature, rotulo: "Projeto em contrato", alerta: false },
   projeto_vendido: { icone: CheckCircle2, rotulo: "Projeto vendido", alerta: false },
+  vagas_abertas: { icone: UserPlus, rotulo: "Vagas abertas", alerta: false },
 };
 
 /**
@@ -199,12 +201,14 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "banca_aviso",
   "projeto_criado_em_contrato",
   "projeto_vendido",
+  "vagas_abertas",
   "documento_contratual_pronto_para_gerar",
   "documento_contratual_pronto_para_revisao_interna",
   "documento_contratual_aprovado_internamente",
   "documento_contratual_liberado",
   "documento_contratual_cliente_aprovou",
   "documento_contratual_cliente_pediu_alteracao",
+  "documento_contratual_assinado",
 ];
 
 /** O filtro só oferece o que aquela pessoa é capaz de receber, sem isso, o

@@ -46,8 +46,10 @@ export type TipoNotificacao =
   | "documento_contratual_liberado"
   | "documento_contratual_cliente_aprovou"
   | "documento_contratual_cliente_pediu_alteracao"
+  | "documento_contratual_assinado"
   | "projeto_criado_em_contrato"
-  | "projeto_vendido";
+  | "projeto_vendido"
+  | "vagas_abertas";
 
 export interface Notificacao {
   /** Só o evento tem linha no banco. Condição vem com `null` e é
