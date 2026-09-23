@@ -62,6 +62,12 @@ export interface DocumentoContratual {
   /** Só não-`null` pro TEP em "aprovado_pelo_cliente" — libera o botão
    *  "Considerar assinado (prazo vencido)" quando `<= 0`. */
   dias_restantes_aceite_tacito: number | null;
+  /** ⭐ 2026-09-23 — a pedido: o card de "copiar link"/"enviar por
+   *  WhatsApp" não é visualização única — o backend reconstrói a partir do
+   *  token ainda não usado, então sobrevive a sair e voltar da página.
+   *  `null` = nenhum link ativo agora (nunca exportado, ou o cliente já
+   *  respondeu e o token virou usado). */
+  link_aprovacao: LinkAprovacao | null;
 }
 
 /** Resposta de `POST .../exportar-aprovacao` e `.../recusar-assinatura-tep`.

@@ -29,7 +29,7 @@ import {
   recusarAssinaturaTep,
   visualizarArquivoDocumento,
 } from "@/lib/contratos";
-import type { DocumentoContratual, LinkAprovacao, ParagrafoEditavel, SolicitacaoAlteracao } from "@/types/contratos";
+import type { DocumentoContratual, ParagrafoEditavel, SolicitacaoAlteracao } from "@/types/contratos";
 import { ROTULO_STATUS_DOCUMENTO, ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
 import { DadosDocumentoForm } from "./DadosDocumentoForm";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
@@ -128,7 +128,7 @@ export function DocumentoContratualPage() {
   const [erro, setErro] = useState("");
   const [camposFaltando, setCamposFaltando] = useState<string[]>([]);
 
-  const [linkAprovacao, setLinkAprovacao] = useState<LinkAprovacao | null>(null);
+  const linkAprovacao = atual?.link_aprovacao ?? null;
   const [telefoneWhatsapp, setTelefoneWhatsapp] = useState("");
   const [exportando, setExportando] = useState(false);
   const [recusandoAssinatura, setRecusandoAssinatura] = useState(false);
@@ -162,6 +162,10 @@ export function DocumentoContratualPage() {
       .then((doc) => {
         setAtual(doc);
         setDados(doc.dados ?? {});
+        // O card de link de aprovação sobrevive a sair e voltar da página
+        // (ver `link_aprovacao` no backend) — o telefone junto precisa do
+        // mesmo chute inicial que já dava certo logo depois de exportar.
+        if (doc.link_aprovacao) setTelefoneWhatsapp(telefoneRepresentante(doc.dados ?? {}));
       })
       .catch((err) => setErro(err instanceof Error ? err.message : "Erro ao carregar documento"))
       .finally(() => setCarregando(false));
@@ -257,7 +261,6 @@ export function DocumentoContratualPage() {
       const recarregado = await getDocumento(atual.id, token);
       setAtual(recarregado);
       setDados(recarregado.dados ?? {});
-      setLinkAprovacao(null);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao gerar documento");
       setCamposFaltando(camposFaltandoDoErro(err) ?? []);
@@ -285,8 +288,7 @@ export function DocumentoContratualPage() {
     setExportando(true);
     setErro("");
     try {
-      const link = await exportarAprovacao(atual.id, token);
-      setLinkAprovacao(link);
+      await exportarAprovacao(atual.id, token);
       setTelefoneWhatsapp(telefoneRepresentante(dados));
       const recarregado = await getDocumento(atual.id, token);
       setAtual(recarregado);
@@ -302,8 +304,7 @@ export function DocumentoContratualPage() {
     setRecusandoAssinatura(true);
     setErro("");
     try {
-      const link = await recusarAssinaturaTep(atual.id, token);
-      setLinkAprovacao(link);
+      await recusarAssinaturaTep(atual.id, token);
       setTelefoneWhatsapp(telefoneRepresentante(dados));
       const recarregado = await getDocumento(atual.id, token);
       setAtual(recarregado);
@@ -382,7 +383,6 @@ export function DocumentoContratualPage() {
       await reanexarDocumento(atual.id, arquivo, token);
       const recarregado = await getDocumento(atual.id, token);
       setAtual(recarregado);
-      setLinkAprovacao(null);
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao reanexar documento");
     } finally {
