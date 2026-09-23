@@ -15,6 +15,7 @@ import type {
 } from "@/types/banca";
 import type { UsuarioResumo } from "@/types/auth";
 import { DesempenhoChart, type FatiaDonut } from "@/components/DesempenhoChart";
+import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import { PresencaBancas } from "./PresencaBancas";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import {
@@ -648,17 +649,25 @@ export function DashboardBancas({
             ) : (
               <ListScrollWrap $scrollable={avaliacoesVencendo.length > LIST_MAX_VISIVEIS}>
                 {avaliacoesVencendo.map(({ banca, pendentes, prazo, vencido }) => (
-                  <InsightLinha
-                    key={banca.id}
-                    title={`Falta avaliar:\n${pendentes.map((p) => nomeUsuario(usuarios, p.usuario_id)).join("\n")}`}
-                  >
-                    <InsightTexto>
-                      <InsightNome>{banca.nome_projeto}</InsightNome>
-                      <InsightMeta>
-                        {pendentes.length} {pendentes.length === 1 ? "pessoa não avaliou" : "pessoas não avaliaram"} ·
-                        prazo {new Date(prazo).toLocaleDateString("pt-BR")}
-                      </InsightMeta>
-                    </InsightTexto>
+                  <InsightLinha key={banca.id}>
+                    <MotivoDesabilitado
+                      motivo={
+                        <>
+                          <strong>Falta avaliar:</strong>
+                          {pendentes.map((p) => (
+                            <div key={p.id}>{nomeUsuario(usuarios, p.usuario_id)}</div>
+                          ))}
+                        </>
+                      }
+                    >
+                      <InsightTexto>
+                        <InsightNome>{banca.nome_projeto}</InsightNome>
+                        <InsightMeta>
+                          {pendentes.length} {pendentes.length === 1 ? "pessoa não avaliou" : "pessoas não avaliaram"} ·
+                          prazo {new Date(prazo).toLocaleDateString("pt-BR")}
+                        </InsightMeta>
+                      </InsightTexto>
+                    </MotivoDesabilitado>
                     <InsightAcoes>
                       <PageBadge $tone={vencido ? "danger" : "warning"}>
                         {vencido ? "Vencido" : "No prazo"}

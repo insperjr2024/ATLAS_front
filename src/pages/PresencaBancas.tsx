@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { Avaliacao, Banca, Candidatura } from "@/types/banca";
 import type { UsuarioResumo } from "@/types/auth";
 import { formatarData } from "@/lib/projetos";
+import { MotivoDesabilitado } from "@/components/MotivoDesabilitado";
 import {
   PageCard,
   PageCardHeader,
@@ -201,14 +202,15 @@ export function PresencaBancas({ usuarios, candidaturas, bancas, avaliacoes }: P
                       </TableCell>
                       <TableCell>
                         {l.faltas > 0 ? (
-                          <PageBadge
-                            $tone="danger"
-                            title={l.bancasFaltadas
-                              .map((f) => `${f.banca.nome_projeto} — ${formatarData(f.realizadoEm)}`)
-                              .join("\n")}
+                          <MotivoDesabilitado
+                            motivo={l.bancasFaltadas.map((f) => (
+                              <div key={f.banca.id}>
+                                {f.banca.nome_projeto} — {formatarData(f.realizadoEm)}
+                              </div>
+                            ))}
                           >
-                            {l.faltas}
-                          </PageBadge>
+                            <PageBadge $tone="danger">{l.faltas}</PageBadge>
+                          </MotivoDesabilitado>
                         ) : (
                           "—"
                         )}
