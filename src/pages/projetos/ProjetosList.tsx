@@ -489,6 +489,23 @@ export function ProjetosList() {
               </FrenteFilterPanel>
             )}
           </FrenteFilterWrap>
+          {/* ⭐ 2026-09-23 — a pedido: atalho SÓ pra diretoria de projetos
+              (não é a caixa `pode_criar_projeto` — jurídico/gerente também
+              têm essa caixa, mas não este atalho). O fluxo normal é abrir o
+              Contrato de Prestação na aba Contratos e deixar ele levar o
+              projeto a "vendido" sozinho quando assinado; isto aqui pula
+              direto pra "vendido" pra quando esse fluxo não é viável — não é
+              o caminho ideal, só uma exceção. */}
+          {usuario?.posicao === "diretor_projetos" && (
+            <PageButton
+              as={Link}
+              to="/projetos/novo"
+              $variant="outline"
+              title='Atalho — cria o projeto já como "Vendido", sem passar pelo Contrato de Prestação. O fluxo ideal é abrir o contrato na aba Contratos.'
+            >
+              + Novo projeto (atalho)
+            </PageButton>
+          )}
           {podeArquivar && (
             <PageButton
               type="button"

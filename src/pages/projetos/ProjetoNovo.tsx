@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Paperclip, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { theme } from "@/styles/theme";
 import { getFrentes } from "@/lib/bancas";
 import { abrirDocumento, getDocumentosDoProjeto } from "@/lib/contratos";
 import {
@@ -257,6 +258,12 @@ export function ProjetoNovo() {
     // Local, não o state: o state só reflete no próximo render, e o catch
     // logo abaixo precisa saber JÁ nesta chamada se a criação passou.
     let projetoId = projetoCriadoId;
+    // ⭐ 2026-09-23 — a pedido: atalho da diretoria de projetos — o backend
+    // já cria o projeto direto em "Vendido" pra ela (ver
+    // `CreateProjetoUseCase`/`direto_para_vendido`). Não faz sentido abrir o
+    // Contrato de Prestação depois nesse caso: o projeto já "vendeu" sem
+    // ele, então cai direto na Visão Geral em vez do fluxo normal.
+    let jaNasceuVendido = false;
     try {
       // Se o projeto já foi criado numa tentativa anterior (e só o upload do
       // anexo falhou), não cria de novo, só reenvia o anexo.
@@ -280,10 +287,16 @@ export function ProjetoNovo() {
         );
         projetoId = projeto.id;
         setProjetoCriadoId(projeto.id);
+        jaNasceuVendido = projeto.status === "vendido";
       }
 
       if (modoProposta === "anexo" && anexoProposta) {
         await uploadAnexoProposta(projetoId, anexoProposta, token);
+      }
+
+      if (jaNasceuVendido) {
+        navigate(`/projetos/${projetoId}`, { replace: true });
+        return;
       }
 
       // ⭐ 2026-09-21 — a pedido: todo projeto nasce por um contrato. Criar
@@ -344,6 +357,23 @@ export function ProjetoNovo() {
           <PageHeading>Criar projeto</PageHeading>
         </PageHeaderText>
       </PageHeaderRow>
+
+      {/* ⭐ 2026-09-23 — a pedido: atalho só pra diretoria de projetos —
+          avisa que não é o fluxo ideal. */}
+      <div
+        style={{
+          padding: "0.75rem 1rem",
+          borderRadius: theme.borderRadius.md,
+          background: `color-mix(in srgb, ${theme.colors.warning} 20%, white)`,
+          color: theme.colors.warningForeground,
+          fontSize: theme.fontSize.sm,
+        }}
+      >
+        Este é um atalho — o projeto nasce direto como <strong>Vendido</strong>, sem passar pelo
+        Contrato de Prestação de Serviços. O fluxo ideal é abrir o contrato pela aba Contratos e
+        deixar ele levar o projeto a Vendido quando for assinado; use esta tela só quando isso não
+        for viável.
+      </div>
 
       <form onSubmit={handleSubmit} noValidate>
         <SecaoLista>
