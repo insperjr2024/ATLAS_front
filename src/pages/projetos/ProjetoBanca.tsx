@@ -689,6 +689,11 @@ function MeuVotoBloco({
 
   async function enviar() {
     if (!token) return;
+    // ⭐ 2026-09-23 — a pedido: comentário passou a ser obrigatório.
+    if (!comentario.trim()) {
+      setErro("Escreva um comentário antes de enviar.");
+      return;
+    }
     setEnviando(true);
     setErro("");
     try {
@@ -723,13 +728,14 @@ function MeuVotoBloco({
     <MeuVoto>
       <SecaoTitulo>Sua avaliação</SecaoTitulo>
       <FieldGroup>
-        <FieldLabel htmlFor={`comentario-${banca.id}`}>Comentário (opcional)</FieldLabel>
+        <FieldLabel htmlFor={`comentario-${banca.id}`}>Comentário</FieldLabel>
         <FieldTextarea
           id={`comentario-${banca.id}`}
           rows={3}
           value={comentario}
           onChange={(e) => atualizarComentario(e.target.value)}
           placeholder="O que o grupo precisa saber sobre esta avaliação"
+          required
         />
       </FieldGroup>
       {erro && <FormErrorText>{erro}</FormErrorText>}

@@ -2634,6 +2634,11 @@ function AvaliarModal({
       setErro("Selecione uma nota de 1 a 5 para todos os critérios.");
       return;
     }
+    // ⭐ 2026-09-23 — a pedido: comentário passou a ser obrigatório.
+    if (!comentario.trim()) {
+      setErro("Escreva um comentário antes de enviar.");
+      return;
+    }
     setEnviando(true);
     setErro("");
     try {
@@ -2852,8 +2857,13 @@ function AvaliarModal({
                 renderBlocoDeCriterios(perguntasVisiveis)
               )}
               <FieldGroup>
-                <FieldLabel htmlFor="comentario">Comentário (opcional)</FieldLabel>
-                <FieldTextarea id="comentario" value={comentario} onChange={(e) => setComentario(e.target.value)} />
+                <FieldLabel htmlFor="comentario">Comentário</FieldLabel>
+                <FieldTextarea
+                  id="comentario"
+                  value={comentario}
+                  onChange={(e) => setComentario(e.target.value)}
+                  required
+                />
               </FieldGroup>
               {erro && <FormErrorText>{erro}</FormErrorText>}
             </ModalBody>
