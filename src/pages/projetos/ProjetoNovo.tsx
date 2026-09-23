@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Paperclip, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { theme } from "@/styles/theme";
@@ -120,6 +120,11 @@ function BlocoSecao({
 export function ProjetoNovo() {
   const { token } = useAuth();
   const navigate = useNavigate();
+  // ⭐ 2026-09-23 — esta tela também é aberta pelo fluxo normal (assistente
+  // de Novo Contrato → "Projeto de entrega novo") — só é o atalho da
+  // diretoria quando chega daquele botão específico em `ProjetosList`.
+  const location = useLocation();
+  const veioDoAtalho = !!(location.state as { atalho?: boolean } | null)?.atalho;
 
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [catalogo, setCatalogo] = useState<Escopo[]>([]);
@@ -282,6 +287,7 @@ export function ProjetoNovo() {
             dia_reuniao_padrao: diaReuniao ? Number(diaReuniao) : null,
             data_entrega_prevista_cliente: entregaPrevista || null,
             escopos: montarEscoposPayload(escopos),
+            atalho_direto_vendido: veioDoAtalho,
           },
           token,
         );
@@ -358,22 +364,26 @@ export function ProjetoNovo() {
         </PageHeaderText>
       </PageHeaderRow>
 
-      {/* ⭐ 2026-09-23 — a pedido: atalho só pra diretoria de projetos —
-          avisa que não é o fluxo ideal. */}
-      <div
-        style={{
-          padding: "0.75rem 1rem",
-          borderRadius: theme.borderRadius.md,
-          background: `color-mix(in srgb, ${theme.colors.warning} 20%, white)`,
-          color: theme.colors.warningForeground,
-          fontSize: theme.fontSize.sm,
-        }}
-      >
-        Este é um atalho — o projeto nasce direto como <strong>Vendido</strong>, sem passar pelo
-        Contrato de Prestação de Serviços. O fluxo ideal é abrir o contrato pela aba Contratos e
-        deixar ele levar o projeto a Vendido quando for assinado; use esta tela só quando isso não
-        for viável.
-      </div>
+      {/* ⭐ 2026-09-23 — a pedido: avisa que não é o fluxo ideal, só quando
+          chegou aqui pelo botão de atalho — pelo fluxo normal (Contratos →
+          "Projeto de entrega novo") esta tela é o caminho certo, o aviso
+          não se aplica. */}
+      {veioDoAtalho && (
+        <div
+          style={{
+            padding: "0.75rem 1rem",
+            borderRadius: theme.borderRadius.md,
+            background: `color-mix(in srgb, ${theme.colors.warning} 20%, white)`,
+            color: theme.colors.warningForeground,
+            fontSize: theme.fontSize.sm,
+          }}
+        >
+          Este é um atalho — o projeto nasce direto como <strong>Vendido</strong>, sem passar pelo
+          Contrato de Prestação de Serviços. O fluxo ideal é abrir o contrato pela aba Contratos e
+          deixar ele levar o projeto a Vendido quando for assinado; use esta tela só quando isso não
+          for viável.
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate>
         <SecaoLista>

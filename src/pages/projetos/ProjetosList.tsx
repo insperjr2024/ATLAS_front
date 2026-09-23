@@ -500,6 +500,12 @@ export function ProjetosList() {
             <PageButton
               as={Link}
               to="/projetos/novo"
+              // ⭐ 2026-09-23 — `/projetos/novo` também é aberto pelo fluxo
+              // NORMAL (assistente de Novo Contrato → "Projeto de entrega
+              // novo") — sem este estado marcando a origem, a tela não tinha
+              // como saber se devia avisar do atalho/pular pra "Vendido" só
+              // porque quem está logada é diretora de projetos.
+              state={{ atalho: true }}
               $variant="outline"
               title='Atalho — cria o projeto já como "Vendido", sem passar pelo Contrato de Prestação. O fluxo ideal é abrir o contrato na aba Contratos.'
             >

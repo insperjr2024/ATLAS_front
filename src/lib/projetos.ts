@@ -76,6 +76,10 @@ export interface CreateProjetoPayload {
   /** A promessa ao cliente, registrada já na venda. */
   data_entrega_prevista_cliente?: string | null;
   escopos?: EscopoVendidoPayload[];
+  /** ⭐ 2026-09-23 — só o botão de atalho em `ProjetosList` (diretoria de
+   *  projetos) manda `true`. O backend só honra isto se quem chamou
+   *  também for diretor_projetos — ver `CreateProjetoRequest` no backend. */
+  atalho_direto_vendido?: boolean;
 }
 
 export function createProjeto(dados: CreateProjetoPayload, token: string) {
