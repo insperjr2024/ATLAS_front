@@ -293,9 +293,9 @@ export function DashboardBancas({
           (c) => c.banca_id === b.id && !submetidas.has(`${b.id}:${c.usuario_id}`),
         );
         const prazo = new Date(b.realizado_em!).getTime() + PRAZO_AVALIACAO_DIAS * DIA_MS;
-        return { banca: b, pendentes: pendentes.length, prazo, vencido: agora > prazo };
+        return { banca: b, pendentes, prazo, vencido: agora > prazo };
       })
-      .filter((item) => item.pendentes > 0)
+      .filter((item) => item.pendentes.length > 0)
       .sort((a, b) => a.prazo - b.prazo);
   }, [bancasSemestre, candidaturas, avaliacoes, agora]);
 
@@ -642,8 +642,10 @@ export function DashboardBancas({
                   <InsightLinha key={banca.id}>
                     <InsightTexto>
                       <InsightNome>{banca.nome_projeto}</InsightNome>
-                      <InsightMeta>
-                        {pendentes} {pendentes === 1 ? "pessoa não avaliou" : "pessoas não avaliaram"} ·
+                      <InsightMeta
+                        title={pendentes.map((p) => nomeUsuario(usuarios, p.usuario_id)).join("\n")}
+                      >
+                        {pendentes.length} {pendentes.length === 1 ? "pessoa não avaliou" : "pessoas não avaliaram"} ·
                         prazo {new Date(prazo).toLocaleDateString("pt-BR")}
                       </InsightMeta>
                     </InsightTexto>
