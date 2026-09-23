@@ -57,6 +57,11 @@ export interface DocumentoContratual {
   ultima_versao: number | null;
   /** Registro de auditoria — "Aprovado por Fulana às 14h32". `null` até
    *  passar por "Aprovar internamente". */
+  /** ⭐ 2026-09-23 — a pedido: quem abriu este documento (o "Novo
+   *  Contrato") — registro de auditoria que não existia (nem `confirmado_
+   *  por` nem `aprovado_internamente_por` respondem "quem criou"). `null`
+   *  pra documentos de antes desta coluna existir. */
+  criado_por_nome: string | null;
   aprovado_internamente_por_nome: string | null;
   aprovado_internamente_em: string | null;
   /** Só não-`null` pro TEP em "aprovado_pelo_cliente" — libera o botão

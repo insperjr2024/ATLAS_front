@@ -115,7 +115,7 @@ const indiceDaEtapa = indiceDaEtapaDocumento;
 export function DocumentoContratualPage() {
   const { documentoId: documentoIdParam } = useParams<{ documentoId: string }>();
   const documentoId = Number(documentoIdParam);
-  const { token } = useAuth();
+  const { token, usuario } = useAuth();
   const navigate = useNavigate();
 
   const [atual, setAtual] = useState<DocumentoContratual | null>(null);
@@ -138,6 +138,11 @@ export function DocumentoContratualPage() {
   const [baixando, setBaixando] = useState<"pdf" | "docx" | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [erroPreview, setErroPreview] = useState("");
+  // ⭐ 2026-09-23 — a pedido: colapsada por padrão. Só quem realmente quer
+  // olhar o documento paga o custo (visual e de rede — o PDF só é buscado
+  // depois de expandir, ver o efeito abaixo), o resto da página não fica
+  // gigante à toa pra quem só quer aprovar/baixar.
+  const [previewAberta, setPreviewAberta] = useState(false);
 
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAlteracao[]>([]);
   const [analisando, setAnalisando] = useState<number | null>(null);
@@ -172,11 +177,12 @@ export function DocumentoContratualPage() {
   }, [documentoId, token]);
 
   // Pré-visualização em PDF do rascunho gerado — qualquer um que abra o
-  // documento vê, não só quem pode aprovar internamente: ver o conteúdo não
-  // deveria exigir baixar o arquivo primeiro (mesma experiência que o
-  // cliente já tem na tela pública de aprovação).
+  // documento pode ver, não só quem pode aprovar internamente: ver o
+  // conteúdo não deveria exigir baixar o arquivo primeiro (mesma experiência
+  // que o cliente já tem na tela pública de aprovação). Só busca o PDF
+  // depois de expandir (`previewAberta`) — colapsada, não gasta rede.
   useEffect(() => {
-    if (!atual?.ultima_versao || !token) {
+    if (!atual?.ultima_versao || !token || !previewAberta) {
       setPreviewUrl(null);
       return;
     }
@@ -197,7 +203,7 @@ export function DocumentoContratualPage() {
       cancelado = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [atual?.id, atual?.ultima_versao, token]);
+  }, [atual?.id, atual?.ultima_versao, token, previewAberta]);
 
   useEffect(() => {
     if (!atual || !token) return;
@@ -425,6 +431,12 @@ export function DocumentoContratualPage() {
   const podeConfirmar = atual.status === "aguardando_preenchimento" && !atual.confirmado;
   const podeApagar = atual.status === "aguardando_preenchimento" && !atual.confirmado;
   const podeAprovarInternamente = atual.status === "em_revisao_interna" && !!atual.ultima_versao;
+  // ⭐ 2026-09-23 — a pedido: quem não pode aprovar internamente continua
+  // vendo que essa etapa existe (o botão não some), só não consegue clicar
+  // — sem isto, `podeAprovarInternamente` (só por status) deixava o botão
+  // vermelho e clicável pra qualquer um, que descobria só ao clicar (e
+  // tomar 403) que não tinha a caixa.
+  const usuarioPodeAprovarInternamente = !!usuario?.permissoes.pode_aprovar_contrato_internamente;
   const podeExportar = atual.status === "aprovado_internamente" && !!atual.ultima_versao;
   const podeGerar =
     STATUS_GERACAO_PERMITIDA.has(atual.status) && !podeConfirmar && !podeAprovarInternamente && !podeExportar;
@@ -483,8 +495,13 @@ export function DocumentoContratualPage() {
               );
             })}
           </Etapas>
-          {atual.aprovado_internamente_por_nome && (
+          {atual.criado_por_nome && (
             <EmptyText style={{ marginTop: "0.75rem", marginBottom: 0 }}>
+              Criado por {atual.criado_por_nome}.
+            </EmptyText>
+          )}
+          {atual.aprovado_internamente_por_nome && (
+            <EmptyText style={{ marginTop: "0.375rem", marginBottom: 0 }}>
               Aprovado internamente por {atual.aprovado_internamente_por_nome} em{" "}
               {formatarDataHora(atual.aprovado_internamente_em)}.
             </EmptyText>
@@ -572,6 +589,9 @@ export function DocumentoContratualPage() {
             <VersaoLinha>
               <span>v{atual.ultima_versao}</span>
               <AcoesLinha>
+                <PageButtonSm type="button" $variant="outline" onClick={() => setPreviewAberta((a) => !a)}>
+                  {previewAberta ? "Ocultar pré-visualização" : "Pré-visualizar"}
+                </PageButtonSm>
                 <PageButtonSm type="button" $variant="outline" disabled={baixando === "pdf"} onClick={() => handleBaixar("pdf")}>
                   {baixando === "pdf" ? "Baixando..." : "Baixar PDF"}
                 </PageButtonSm>
@@ -580,13 +600,14 @@ export function DocumentoContratualPage() {
                 </PageButtonSm>
               </AcoesLinha>
             </VersaoLinha>
-            {erroPreview ? (
-              <ErrorText>{erroPreview}</ErrorText>
-            ) : previewUrl ? (
-              <VisualizadorPdf src={previewUrl} title="Pré-visualização do documento" />
-            ) : (
-              <EmptyText>Carregando pré-visualização...</EmptyText>
-            )}
+            {previewAberta &&
+              (erroPreview ? (
+                <ErrorText>{erroPreview}</ErrorText>
+              ) : previewUrl ? (
+                <VisualizadorPdf src={previewUrl} title="Pré-visualização do documento" />
+              ) : (
+                <EmptyText>Carregando pré-visualização...</EmptyText>
+              ))}
             {podeEditarRascunho && (
               <AcoesLinha style={{ marginTop: "0.75rem" }}>
                 <PageButtonSm type="button" $variant="outline" onClick={() => setMostrarEditorTexto(true)}>
@@ -707,11 +728,16 @@ export function DocumentoContratualPage() {
               {gerando ? "Gerando..." : "Gerar rascunho"}
             </PageButton>
           )}
-          {podeAprovarInternamente && (
-            <PageButton type="button" disabled={aprovandoInternamente} onClick={handleAprovarInternamente}>
-              {aprovandoInternamente ? "Aprovando..." : "Aprovar internamente"}
-            </PageButton>
-          )}
+          {podeAprovarInternamente &&
+            (usuarioPodeAprovarInternamente ? (
+              <PageButton type="button" disabled={aprovandoInternamente} onClick={handleAprovarInternamente}>
+                {aprovandoInternamente ? "Aprovando..." : "Aprovar internamente"}
+              </PageButton>
+            ) : (
+              <PageButton type="button" $variant="outline" disabled title="Só quem pode aprovar internamente vê este botão liberado.">
+                Aguardando aprovação interna
+              </PageButton>
+            ))}
           {podeExportar && (
             <PageButton type="button" disabled={exportando} onClick={handleExportar}>
               {exportando ? "Preparando..." : "Preparar envio ao cliente"}
