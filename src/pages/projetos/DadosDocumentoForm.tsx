@@ -288,9 +288,20 @@ function TestemunhasSecao({ dados, set }: { dados: Dados; set: Setter }) {
 }
 
 function AssinaturaSecao({ dados, set }: { dados: Dados; set: Setter }) {
+  function preencherHoje() {
+    const hoje = new Date();
+    set(["assinatura", "dia"], hoje.getDate());
+    set(["assinatura", "mes"], String(hoje.getMonth() + 1));
+    set(["assinatura", "ano"], hoje.getFullYear());
+  }
   return (
     <section>
-      <FormSecaoTitulo>Assinatura</FormSecaoTitulo>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+        <FormSecaoTitulo style={{ margin: 0 }}>Assinatura</FormSecaoTitulo>
+        <PageButtonSm type="button" $variant="outline" onClick={preencherHoje}>
+          Hoje
+        </PageButtonSm>
+      </div>
       <FormGridEstreito>
         <Numero dados={dados} set={set} caminho={["assinatura", "dia"]} label="Dia" />
         <Texto dados={dados} set={set} caminho={["assinatura", "mes"]} label="Mês (número ou nome)" />
