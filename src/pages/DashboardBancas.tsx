@@ -648,12 +648,13 @@ export function DashboardBancas({
             ) : (
               <ListScrollWrap $scrollable={avaliacoesVencendo.length > LIST_MAX_VISIVEIS}>
                 {avaliacoesVencendo.map(({ banca, pendentes, prazo, vencido }) => (
-                  <InsightLinha key={banca.id}>
+                  <InsightLinha
+                    key={banca.id}
+                    title={`Falta avaliar:\n${pendentes.map((p) => nomeUsuario(usuarios, p.usuario_id)).join("\n")}`}
+                  >
                     <InsightTexto>
                       <InsightNome>{banca.nome_projeto}</InsightNome>
-                      <InsightMeta
-                        title={pendentes.map((p) => nomeUsuario(usuarios, p.usuario_id)).join("\n")}
-                      >
+                      <InsightMeta>
                         {pendentes.length} {pendentes.length === 1 ? "pessoa não avaliou" : "pessoas não avaliaram"} ·
                         prazo {new Date(prazo).toLocaleDateString("pt-BR")}
                       </InsightMeta>
