@@ -18,7 +18,7 @@ import { CORES_STATUS, destinosValidos, formatarDataHoraBanca, podePausar, ROTUL
 import { StatusPilula } from "@/pages/projetos/Projetos.styled";
 import type { ProjetoResumo, StatusProjeto } from "@/types/projeto";
 import {
-  AlertaKickoff,
+  AlertaCard,
   Board,
   Card,
   CardBanca,
@@ -226,9 +226,9 @@ function CardArrastavel({
       <CardTopo>
         <CardTitulo>{projeto.nome}</CardTitulo>
         {projeto.kickoff_pendente && (
-          <AlertaKickoff title="Kickoff pendente">
+          <AlertaCard title="Kickoff pendente">
             <AlertTriangle size={14} />
-          </AlertaKickoff>
+          </AlertaCard>
         )}
       </CardTopo>
       <CardMeta title={projeto.cliente ?? undefined}>{projeto.cliente}</CardMeta>

@@ -205,9 +205,11 @@ export const BotaoExcluir = styled.button`
   }
 `;
 
-/** Kickoff pendente, o mesmo alerta do card em lista, só que aqui cabe só o
- *  ícone: o card do kanban é compacto demais pro texto "Kickoff pendente". */
-export const AlertaKickoff = styled.span`
+/** Ícone de alerta genérico pro canto do card — kickoff pendente
+ *  (`ProjetoKanbanBoard`), alteração solicitada pelo cliente
+ *  (`ContratosPainel`): o card do kanban é compacto demais pro texto,
+ *  só cabe o ícone (o `title` carrega a explicação). */
+export const AlertaCard = styled.span`
   display: inline-flex;
   flex-shrink: 0;
   color: ${theme.colors.destructive};

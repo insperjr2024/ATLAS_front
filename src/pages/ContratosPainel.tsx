@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { getFrentes } from "@/lib/bancas";
@@ -24,11 +25,13 @@ import {
   Ponto,
   Contador,
   Card,
+  CardTopo,
   CardTitulo,
   CardMeta,
   CardFrentes,
   CardFrenteTag,
   ColunaVazia,
+  AlertaCard,
 } from "@/components/kanban/Kanban.styled";
 import { StatusPilula } from "./projetos/Projetos.styled";
 import { NovoContratoModal } from "./NovoContratoModal";
@@ -170,7 +173,14 @@ export function ContratosPainel() {
                     if (e.key === "Enter") navigate(`/contratos/${item.id}`);
                   }}
                 >
-                  <CardTitulo>{item.tipo_rotulo}</CardTitulo>
+                  <CardTopo>
+                    <CardTitulo>{item.tipo_rotulo}</CardTitulo>
+                    {item.status === "alteracao_solicitada" && (
+                      <AlertaCard title="Cliente pediu alteração — não aprovou como está">
+                        <AlertTriangle size={14} />
+                      </AlertaCard>
+                    )}
+                  </CardTopo>
                   <CardMeta title={item.cliente ?? undefined}>
                     {item.projeto_nome}
                     {item.cliente ? ` · ${item.cliente}` : ""}
