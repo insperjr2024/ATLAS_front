@@ -211,9 +211,16 @@ export function PainelAvaliacoes() {
       const mapa = new Map<number, Grupo>();
       for (const a of avaliacoesFiltradas) {
         if (!a.escopo) continue; // só a Avaliação do Escopo já atribuída a um escopo
+        // ⭐ 2026-09-24, corrigido: `escopo_id` é o CATÁLOGO ("Análise
+        // Mercadológica"), o mesmo em todo projeto que tem esse tipo de
+        // escopo — o grupo já mistura BLEND I, ATLAS I etc. por baixo.
+        // Cravar `projeto_nome` de UM item no título grande lia como "só
+        // deste projeto", quando não é. O projeto de cada avaliação
+        // continua aparecendo por item, em `projetosDaAvaliacao` na lista
+        // expandida — aqui é só o nome do escopo.
         const atual = mapa.get(a.escopo.escopo_id) ?? {
           chave: `escopo-${a.escopo.escopo_id}`,
-          titulo: a.escopo.projeto_nome ? `${a.escopo.nome} · ${a.escopo.projeto_nome}` : a.escopo.nome,
+          titulo: a.escopo.nome,
           lista: [],
         };
         atual.lista.push(a);
