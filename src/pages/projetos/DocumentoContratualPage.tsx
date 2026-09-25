@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { camposFaltandoDoErro } from "@/lib/api";
 import { getFrentes } from "@/lib/bancas";
 import { formatarDataHora } from "@/lib/projetos";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import type { Frente } from "@/types/banca";
 import { ETAPAS_DOCUMENTO, indiceDaEtapaDocumento } from "@/lib/contratos-etapas";
 import {
@@ -16,6 +17,7 @@ import {
   confirmarPreenchimento,
   considerarAceitoPorPrazo,
   deletarDocumento,
+  deletarDocumentoPermanente,
   editarTexto,
   exportarAprovacao,
   extrairColeta,
@@ -135,6 +137,7 @@ export function DocumentoContratualPage() {
   const [marcandoAssinado, setMarcandoAssinado] = useState(false);
   const [considerandoAceito, setConsiderandoAceito] = useState(false);
   const [mostrarConfirmarApagar, setMostrarConfirmarApagar] = useState(false);
+  const [mostrarConfirmarApagarPermanente, setMostrarConfirmarApagarPermanente] = useState(false);
   const [baixando, setBaixando] = useState<"pdf" | "docx" | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [erroPreview, setErroPreview] = useState("");
@@ -355,6 +358,12 @@ export function DocumentoContratualPage() {
     voltar();
   }
 
+  async function handleDeletarPermanente() {
+    if (!atual || !token) return;
+    await deletarDocumentoPermanente(atual.id, token);
+    voltar();
+  }
+
   async function handleAnalisar(solicitacaoId: number) {
     if (!token) return;
     setAnalisando(solicitacaoId);
@@ -430,6 +439,10 @@ export function DocumentoContratualPage() {
   const dadosTravados = STATUS_DADOS_TRAVADOS.has(atual.status);
   const podeConfirmar = atual.status === "aguardando_preenchimento" && !atual.confirmado;
   const podeApagar = atual.status === "aguardando_preenchimento" && !atual.confirmado;
+  // Apagar de vez, em qualquer etapa (inclusive já assinado e arquivado) —
+  // restrito à diretoria; o backend recusa com 403 pra qualquer outra
+  // pessoa, isto aqui só evita mostrar um botão que ia dar erro.
+  const podeApagarPermanente = ehDiretoriaDeProjetos(usuario);
   const podeAprovarInternamente = atual.status === "em_revisao_interna" && !!atual.ultima_versao;
   // ⭐ 2026-09-23 — a pedido: quem não pode aprovar internamente continua
   // vendo que essa etapa existe (o botão não some), só não consegue clicar
@@ -775,6 +788,15 @@ export function DocumentoContratualPage() {
             Apagar documento
           </PageButtonSm>
         )}
+        {podeApagarPermanente && (
+          <PageButtonSm
+            type="button"
+            $variant="outline"
+            onClick={() => setMostrarConfirmarApagarPermanente(true)}
+          >
+            Apagar definitivamente
+          </PageButtonSm>
+        )}
       </AcoesSecundariasLinha>
 
       {mostrarEditorTexto && (
@@ -789,6 +811,18 @@ export function DocumentoContratualPage() {
           rotuloProcessando="Apagando…"
           onConfirmar={handleDeletar}
           onCancelar={() => setMostrarConfirmarApagar(false)}
+        />
+      )}
+
+      {mostrarConfirmarApagarPermanente && (
+        <ConfirmarModal
+          titulo="Apagar definitivamente"
+          mensagem={`Isso apaga de vez o ${ROTULO_TIPO_DOCUMENTO[atual.tipo]} deste projeto — inclusive se já estiver assinado e arquivado, junto com todo o histórico dele (versões, solicitações de alteração, links de aprovação). Não tem como desfazer. O projeto ${atual.projeto_nome} não é afetado — só este documento sai.`}
+          rotuloConfirmar="Apagar definitivamente"
+          rotuloProcessando="Apagando…"
+          confirmacaoTexto="APAGAR"
+          onConfirmar={handleDeletarPermanente}
+          onCancelar={() => setMostrarConfirmarApagarPermanente(false)}
         />
       )}
     </PageStack>

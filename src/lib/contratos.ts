@@ -108,6 +108,13 @@ export function deletarDocumento(documentoId: number, token: string) {
   return apiFetch<void>(`/documentos-contratuais/${documentoId}`, { method: "DELETE", token });
 }
 
+/** Apagar de vez — mesmo já assinado e arquivado. Restrito à diretoria (o
+ *  backend recusa com 403 pra qualquer outra pessoa); nunca apaga o projeto
+ *  que o documento originou, só o documento e o histórico dele. */
+export function deletarDocumentoPermanente(documentoId: number, token: string) {
+  return apiFetch<void>(`/documentos-contratuais/${documentoId}/permanente`, { method: "DELETE", token });
+}
+
 /**
  * A rota exige Bearer token, então nem um `<a href>` nem um `<iframe src>`
  * direto funcionam (nenhum dos dois manda o header Authorization) — busca
