@@ -124,23 +124,28 @@ async function buscarArquivoDocumento(
   documentoId: number,
   formato: "pdf" | "docx",
   token: string,
+  versao?: number,
 ): Promise<Blob> {
-  const response = await fetch(`${API_URL}/documentos-contratuais/${documentoId}/arquivo?formato=${formato}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const query = versao != null ? `&versao=${versao}` : "";
+  const response = await fetch(
+    `${API_URL}/documentos-contratuais/${documentoId}/arquivo?formato=${formato}${query}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
   if (!response.ok) throw new Error("Erro ao carregar o arquivo do documento");
   return response.blob();
 }
 
 /** Baixa o arquivo via um link temporário (mesmo padrão de
- *  `baixarAnexoProposta` em `lib/projetos.ts`). */
+ *  `baixarAnexoProposta` em `lib/projetos.ts`). Sem `versao`, baixa a
+ *  última — com `versao`, baixa aquela específica do histórico. */
 export async function baixarArquivoDocumento(
   documentoId: number,
   formato: "pdf" | "docx",
   nomeArquivo: string,
   token: string,
+  versao?: number,
 ) {
-  const blob = await buscarArquivoDocumento(documentoId, formato, token);
+  const blob = await buscarArquivoDocumento(documentoId, formato, token, versao);
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -159,9 +164,22 @@ export async function baixarArquivoDocumento(
  * quando não precisar mais dela (troca de documento, unmount) — senão o
  * blob fica preso em memória pelo resto da sessão.
  */
-export async function visualizarArquivoDocumento(documentoId: number, token: string): Promise<string> {
-  const blob = await buscarArquivoDocumento(documentoId, "pdf", token);
+export async function visualizarArquivoDocumento(
+  documentoId: number,
+  token: string,
+  versao?: number,
+): Promise<string> {
+  const blob = await buscarArquivoDocumento(documentoId, "pdf", token, versao);
   return URL.createObjectURL(blob);
+}
+
+/** O histórico inteiro de versões geradas (v1, v2, ...), a mais recente
+ *  primeiro — antes só dava pra ver/baixar a última. */
+export function getVersoesDocumento(documentoId: number, token: string) {
+  return apiFetch<{ versoes: VersaoDocumentoContratual[] }>(
+    `/documentos-contratuais/${documentoId}/versoes`,
+    { token },
+  );
 }
 
 /** Rota pública (sem token) — o link direto serve tanto pro `<iframe>` da

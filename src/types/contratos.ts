@@ -291,4 +291,7 @@ export interface VersaoDocumentoContratual {
   versao: number;
   status_arquivo: string;
   criado_em: string;
+  /** Só em `GET .../versoes` (o histórico) — `/gerar` e `/reanexar` não
+   *  mandam, a versão que acabou de nascer nunca está arquivada ainda. */
+  arquivado_em?: string | null;
 }

@@ -25,13 +25,19 @@ import {
   getDocumento,
   getParagrafosEditaveis,
   getSolicitacoesAlteracao,
+  getVersoesDocumento,
   marcarAssinado,
   montarLinkWhatsapp,
   reanexarDocumento,
   recusarAssinaturaTep,
   visualizarArquivoDocumento,
 } from "@/lib/contratos";
-import type { DocumentoContratual, ParagrafoEditavel, SolicitacaoAlteracao } from "@/types/contratos";
+import type {
+  DocumentoContratual,
+  ParagrafoEditavel,
+  SolicitacaoAlteracao,
+  VersaoDocumentoContratual,
+} from "@/types/contratos";
 import { ROTULO_STATUS_DOCUMENTO, ROTULO_TIPO_DOCUMENTO } from "@/types/contratos";
 import { DadosDocumentoForm } from "./DadosDocumentoForm";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
@@ -95,6 +101,10 @@ function telefoneRepresentante(dados: Record<string, unknown>): string {
   return typeof telefone === "string" ? telefone : "";
 }
 
+function rotuloStatusArquivo(status: string): string {
+  return status === "final_assinado" ? "final assinado" : "rascunho";
+}
+
 const STATUS_DADOS_TRAVADOS = new Set(["aprovado_pelo_cliente", "assinado_e_arquivado"]);
 const STATUS_EDICAO_TEXTO = new Set(["em_revisao_interna", "aprovado_internamente", "alteracao_solicitada"]);
 const STATUS_GERACAO_PERMITIDA = new Set([
@@ -146,6 +156,15 @@ export function DocumentoContratualPage() {
   // depois de expandir, ver o efeito abaixo), o resto da página não fica
   // gigante à toa pra quem só quer aprovar/baixar.
   const [previewAberta, setPreviewAberta] = useState(false);
+
+  // O histórico inteiro (v1, v2, ...) — antes só dava pra ver a última
+  // (`atual.ultima_versao`), e um reanexo/regeração fazia a versão anterior
+  // sumir da tela mesmo com o arquivo intacto no banco.
+  const [versoes, setVersoes] = useState<VersaoDocumentoContratual[]>([]);
+  const [versaoAntigaAberta, setVersaoAntigaAberta] = useState<number | null>(null);
+  const [previewAntigoUrl, setPreviewAntigoUrl] = useState<string | null>(null);
+  const [erroPreviewAntigo, setErroPreviewAntigo] = useState("");
+  const [baixandoAntigo, setBaixandoAntigo] = useState<{ versao: number; formato: "pdf" | "docx" } | null>(null);
 
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoAlteracao[]>([]);
   const [analisando, setAnalisando] = useState<number | null>(null);
@@ -207,6 +226,41 @@ export function DocumentoContratualPage() {
       if (url) URL.revokeObjectURL(url);
     };
   }, [atual?.id, atual?.ultima_versao, token, previewAberta]);
+
+  // O histórico inteiro — carrega junto com o documento, é só uma lista
+  // (nomes, números, datas), não o arquivo em si.
+  useEffect(() => {
+    if (!atual?.id || !token) return;
+    getVersoesDocumento(atual.id, token)
+      .then(({ versoes: v }) => setVersoes(v))
+      .catch(() => {});
+  }, [atual?.id, atual?.ultima_versao, token]);
+
+  // Pré-visualização de uma versão ANTIGA (não a última) — mesma ideia do
+  // efeito acima, só que por versão específica, e só uma aberta por vez.
+  useEffect(() => {
+    if (!atual?.id || !token || versaoAntigaAberta == null) {
+      setPreviewAntigoUrl(null);
+      return;
+    }
+    let cancelado = false;
+    let url: string | null = null;
+    setErroPreviewAntigo("");
+    visualizarArquivoDocumento(atual.id, token, versaoAntigaAberta)
+      .then((objectUrl) => {
+        if (cancelado) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        url = objectUrl;
+        setPreviewAntigoUrl(objectUrl);
+      })
+      .catch((err) => setErroPreviewAntigo(err instanceof Error ? err.message : "Erro ao carregar a pré-visualização"));
+    return () => {
+      cancelado = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [atual?.id, token, versaoAntigaAberta]);
 
   useEffect(() => {
     if (!atual || !token) return;
@@ -390,6 +444,19 @@ export function DocumentoContratualPage() {
     }
   }
 
+  async function handleBaixarVersaoAntiga(versao: number, formato: "pdf" | "docx") {
+    if (!atual || !token) return;
+    setBaixandoAntigo({ versao, formato });
+    setErro("");
+    try {
+      await baixarArquivoDocumento(atual.id, formato, `${atual.tipo}_v${versao}.${formato}`, token, versao);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao baixar arquivo");
+    } finally {
+      setBaixandoAntigo(null);
+    }
+  }
+
   async function handleReanexar(arquivo: File) {
     if (!atual || !token) return;
     setReanexando(true);
@@ -443,6 +510,11 @@ export function DocumentoContratualPage() {
   // restrito à diretoria; o backend recusa com 403 pra qualquer outra
   // pessoa, isto aqui só evita mostrar um botão que ia dar erro.
   const podeApagarPermanente = ehDiretoriaDeProjetos(usuario);
+  // A última já aparece no card "Rascunho gerado" acima — aqui só o resto
+  // do histórico, mais recente primeiro.
+  const versoesAnteriores = versoes
+    .filter((v) => v.versao !== atual.ultima_versao)
+    .sort((a, b) => b.versao - a.versao);
   const podeAprovarInternamente = atual.status === "em_revisao_interna" && !!atual.ultima_versao;
   // ⭐ 2026-09-23 — a pedido: quem não pode aprovar internamente continua
   // vendo que essa etapa existe (o botão não some), só não consegue clicar
@@ -642,6 +714,58 @@ export function DocumentoContratualPage() {
                 </ArquivoBotao>
               </AcoesLinha>
             )}
+          </PageCardContent>
+        </PageCard>
+      )}
+
+      {versoesAnteriores.length > 0 && (
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>Versões anteriores</PageCardTitle>
+          </PageCardHeader>
+          <PageCardContent>
+            {versoesAnteriores.map((v) => (
+              <div key={v.id}>
+                <VersaoLinha>
+                  <span>
+                    v{v.versao} · {rotuloStatusArquivo(v.status_arquivo)} · {formatarDataHora(v.criado_em)}
+                  </span>
+                  <AcoesLinha>
+                    <PageButtonSm
+                      type="button"
+                      $variant="outline"
+                      onClick={() => setVersaoAntigaAberta((atual) => (atual === v.versao ? null : v.versao))}
+                    >
+                      {versaoAntigaAberta === v.versao ? "Ocultar pré-visualização" : "Pré-visualizar"}
+                    </PageButtonSm>
+                    <PageButtonSm
+                      type="button"
+                      $variant="outline"
+                      disabled={baixandoAntigo?.versao === v.versao && baixandoAntigo.formato === "pdf"}
+                      onClick={() => handleBaixarVersaoAntiga(v.versao, "pdf")}
+                    >
+                      {baixandoAntigo?.versao === v.versao && baixandoAntigo.formato === "pdf" ? "Baixando..." : "Baixar PDF"}
+                    </PageButtonSm>
+                    <PageButtonSm
+                      type="button"
+                      $variant="outline"
+                      disabled={baixandoAntigo?.versao === v.versao && baixandoAntigo.formato === "docx"}
+                      onClick={() => handleBaixarVersaoAntiga(v.versao, "docx")}
+                    >
+                      {baixandoAntigo?.versao === v.versao && baixandoAntigo.formato === "docx" ? "Baixando..." : "Baixar .docx"}
+                    </PageButtonSm>
+                  </AcoesLinha>
+                </VersaoLinha>
+                {versaoAntigaAberta === v.versao &&
+                  (erroPreviewAntigo ? (
+                    <ErrorText>{erroPreviewAntigo}</ErrorText>
+                  ) : previewAntigoUrl ? (
+                    <VisualizadorPdf src={previewAntigoUrl} title={`Pré-visualização da v${v.versao}`} />
+                  ) : (
+                    <EmptyText>Carregando pré-visualização...</EmptyText>
+                  ))}
+              </div>
+            ))}
           </PageCardContent>
         </PageCard>
       )}
