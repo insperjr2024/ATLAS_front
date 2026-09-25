@@ -51,6 +51,11 @@ export const BotaoOrdenar = styled.button<{ $ativo: boolean }>`
   font: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
+  /* button centraliza texto por padrão (UA stylesheet) — invisível numa
+     linha só ("Bancas"), mas rótulo de duas linhas que quebra ("Nota
+     média recebida") centralizava a linha mais curta em vez de ficar
+     embaixo do valor na coluna, que é left. */
+  text-align: left;
   color: ${({ $ativo }) => ($ativo ? theme.colors.foreground : "inherit")};
 
   &:hover {
