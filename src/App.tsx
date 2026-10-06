@@ -11,6 +11,8 @@ import { RedefinirSenha } from "@/pages/RedefinirSenha";
 import { AprovacaoContratual } from "@/pages/AprovacaoContratual";
 import { ContratosPainel } from "@/pages/ContratosPainel";
 import { IdentidadeInstitucional } from "@/pages/IdentidadeInstitucional";
+import { Sabatina } from "@/pages/sabatina/Sabatina";
+import { SabatinaConfig } from "@/pages/sabatina/SabatinaConfig";
 import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
@@ -51,7 +53,7 @@ import { PainelPdi } from "@/pages/avaliacao-desempenho/painel/PainelPdi";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 import { CronogramasGeraisAba } from "@/pages/monitoramento/CronogramasGeraisAba";
-import { MENTORES_ELEGIVEIS } from "@/utils/permissoes";
+import { DIRETORIA, MENTORES_ELEGIVEIS } from "@/utils/permissoes";
 
 export default function App() {
   return (
@@ -78,6 +80,9 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />
+              {/* A cédula da sabatina: qualquer pessoa logada; o backend só aceita
+                  voto de quem estava entre os eleitores na abertura. */}
+              <Route path="/sabatina" element={<Sabatina />} />
                 <Route path="/meu-perfil" element={<MeuPerfil />} />
               {/* /calendario agora agrega os 4 tipos (§6.5); a visão
                   só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
@@ -225,6 +230,12 @@ export default function App() {
                   (quem assina PELA Insper Jr), virou caixa delegável. */}
               <Route element={<AdminRoute permissao="pode_editar_identidade_institucional" />}>
                 <Route path="/identidade-institucional" element={<IdentidadeInstitucional />} />
+              </Route>
+              {/* Sabatina (2026-10-05): montar, abrir, fechar e apurar é da
+                  diretoria inteira, e de mais ninguém. `require_diretoria`
+                  no backend. */}
+              <Route element={<RequirePosicao posicoes={DIRETORIA} />}>
+                <Route path="/sabatina/config" element={<SabatinaConfig />} />
               </Route>
             </Route>
           </Route>

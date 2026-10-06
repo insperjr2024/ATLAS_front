@@ -2,11 +2,12 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificacoes } from "@/context/NotificacoesContext";
-import { pode, rotuloProjetos } from "@/utils/permissoes";
+import { DIRETORIA, pode, rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
+import { getMinhasEleicoes } from "@/lib/sabatina";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature, Vote, ListChecks } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
 import { ID_MENU_LATERAL } from "./Layout.styled";
@@ -88,6 +89,9 @@ interface NavItemConfig {
   /** Visibilidade por POSIÇÃO direto, pra regra que não é uma caixa
    *  de permissão, como o item de Monitoramento restrito a certas posições. */
   visiblePorPosicao?: (usuario: UsuarioLogado) => boolean;
+  /** Visibilidade por DADO do servidor, não por quem a pessoa é: a aba
+   *  "Sabatina" só existe enquanto há eleição aberta em que ela vota. */
+  visivelDinamico?: "sabatina";
 }
 
 // A ordem DENTRO desta lista só decide a ordem dentro do próprio grupo — o
@@ -121,6 +125,9 @@ const navItems: NavItemConfig[] = [
   // monta equipe responde aos pedidos.
   { icon: UserPlus, label: "Vagas em projetos", path: "/vagas", grupo: "trabalho" },
   { icon: Calendar, label: "Calendário", path: "/calendario", grupo: "trabalho" },
+  // A cédula da sabatina (2026-10-05): aparece só enquanto houver eleição
+  // aberta pra pessoa votar. A configuração fica em "Sistema", pra diretoria.
+  { icon: Vote, label: "Sabatina", path: "/sabatina", grupo: "trabalho", visivelDinamico: "sabatina" },
   {
     icon: Star,
     label: "Avaliação de Desempenho",
@@ -203,6 +210,15 @@ const navItems: NavItemConfig[] = [
     grupo: "sistema",
     visible: (c) => c.pode_administrar_configuracoes,
   },
+  {
+    icon: ListChecks,
+    label: "Configuração de Sabatina",
+    path: "/sabatina/config",
+    grupo: "sistema",
+    // Diretoria inteira (os três cargos), gerente não. Espelha
+    // `require_diretoria` no backend.
+    visiblePorPosicao: (u) => DIRETORIA.includes(u.posicao),
+  },
 ];
 
 interface SidebarProps {
@@ -223,6 +239,29 @@ export function Sidebar({ aberta = false }: SidebarProps) {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [painelAberto, setPainelAberto] = useState(false);
   const notificacoesRef = useRef<HTMLDivElement>(null);
+  // "Sabatina" no menu depende de haver eleição aberta pra mim. Consulta
+  // leve, refeita a cada minuto (mesmo ritmo do contador de notificações) e
+  // ao trocar de rota, pra aba sumir logo depois que a diretoria fecha.
+  const [temSabatina, setTemSabatina] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    let ativo = true;
+    const consultar = () =>
+      getMinhasEleicoes(token)
+        .then((lista) => {
+          if (ativo) setTemSabatina(lista.length > 0);
+        })
+        .catch(() => {
+          /* sem rede ou sem permissão: o item só não aparece */
+        });
+    void consultar();
+    const timer = window.setInterval(consultar, 60_000);
+    return () => {
+      ativo = false;
+      window.clearInterval(timer);
+    };
+  }, [token, location.pathname]);
 
   // Clicar em qualquer lugar fora fecha o painel. Antes só o próprio sino
   // fechava, e quem abria por engano tinha de achar o botão de novo para se
@@ -273,6 +312,7 @@ export function Sidebar({ aberta = false }: SidebarProps) {
   }
 
   const itensVisiveis = navItems.filter((item) => {
+    if (item.visivelDinamico === "sabatina") return temSabatina;
     if (item.visiblePorPosicao) {
       return !!usuario && item.visiblePorPosicao(usuario);
     }
