@@ -124,16 +124,15 @@ export const EtapaMarca = styled.span<{ $estado: "concluida" | "atual" | "penden
  *  em vez de competir por atenção com o resto. Fundo branco, igual o resto
  *  da página — quem chama a atenção é o botão vermelho, não uma caixa
  *  cinza por trás dele. */
+/** Só os botões sobre o fundo da página (2026-10-06, a pedido): o card
+ *  branco em volta de "Aprovar internamente" era uma caixa vazia com um
+ *  botão dentro. */
 export const AcaoPrincipalBarra = styled.div`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: ${theme.spacing.md};
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  border-radius: ${theme.borderRadius.lg};
-  border: 1px solid ${theme.colors.border};
-  background: ${theme.colors.card};
 `;
 
 export const AcoesSecundariasLinha = styled.div`
