@@ -574,14 +574,12 @@ export function PainelLotes() {
                           Voltar ao automático
                         </PageButtonSm>
                       )}
-                      {/* Só faz sentido cobrar "quem não preencheu" depois que o
-                          prazo fechou, com o lote aberto, todo mundo que ainda
-                          não respondeu é só gente que ainda tem tempo. */}
-                      {!lote.aberto && (
-                        <PageButtonSm type="button" onClick={() => handleVerPendencias(lote.id)}>
-                          Pendências
-                        </PageButtonSm>
-                      )}
+                      {/* Também com o lote aberto (2026-10-06, a pedido): a
+                          diretoria quer acompanhar quem ainda não respondeu
+                          antes do prazo fechar, não só cobrar depois. */}
+                      <PageButtonSm type="button" onClick={() => handleVerPendencias(lote.id)}>
+                        Pendências
+                      </PageButtonSm>
                       <PageButtonSm $variant="ghost" type="button" onClick={() => setParaExcluir(lote)}>
                         Excluir
                       </PageButtonSm>
@@ -657,7 +655,7 @@ export function PainelLotes() {
                     </LoteCardMeta>
                   )}
 
-                  {pendenciasLoteId === lote.id && !lote.aberto && (
+                  {pendenciasLoteId === lote.id && (
                     <SubLista>
                       {pendenciasCarregando ? (
                         <EmptyText>Carregando pendências...</EmptyText>
