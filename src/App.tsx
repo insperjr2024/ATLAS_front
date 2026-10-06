@@ -29,6 +29,7 @@ import { ProjetoVisaoGeral } from "@/pages/projetos/ProjetoVisaoGeral";
 import { ProjetoCronograma } from "@/pages/projetos/ProjetoCronograma";
 import { ProjetoBanca } from "@/pages/projetos/ProjetoBanca";
 import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
+import { ProjetoHealthTrack } from "@/pages/projetos/ProjetoHealthTrack";
 import { DocumentoContratualPage } from "@/pages/projetos/DocumentoContratualPage";
 import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
 import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
@@ -123,6 +124,7 @@ export default function App() {
                 <Route path="banca" element={<ProjetoBanca />} />
                 <Route path="tarefas" element={<ProjetoTarefas />} />
                 <Route path="historico" element={<ProjetoHistorico />} />
+                <Route path="health-track" element={<ProjetoHealthTrack />} />
               </Route>
 
               {/* monitoramento é por CARGO (`pode_ver_monitoramento`), não

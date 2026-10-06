@@ -551,6 +551,9 @@ export function ProjetoPage() {
                 <TabLink to={`/projetos/${projeto.id}/banca`}>Banca</TabLink>
                 <TabLink to={`/projetos/${projeto.id}/tarefas`}>Tarefas</TabLink>
                 <TabLink to={`/projetos/${projeto.id}/historico`}>Histórico</TabLink>
+                {/* Por último: é leitura de gestão sobre o projeto, não parte da
+                    execução que as abas anteriores acompanham. */}
+                <TabLink to={`/projetos/${projeto.id}/health-track`}>Health Track</TabLink>
               </>
             )}
           </TabBar>
