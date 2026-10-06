@@ -229,7 +229,8 @@ function CardPesos({
       <PageCardContent>
         <Intro>
           Vale para toda eleição aberta daqui em diante. O voto guarda o peso do momento em que foi dado, então mudar
-          aqui não reescreve eleição passada. Padrão: consultores 1, lideranças 2, diretoria 3.
+          aqui não reescreve eleição passada. Padrão: consultores 1, lideranças 2, diretoria 3. Quem acumula um cargo
+          extra (ex.: consultor e BDR) vota com o maior dos dois pesos.
         </Intro>
         <TabelaSimples style={{ marginTop: "0.75rem" }}>
           <thead>
