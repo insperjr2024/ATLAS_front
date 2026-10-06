@@ -2503,20 +2503,17 @@ function AvaliarModal({
     }
   });
 
-  // Bloco 1, a diretoria pede de novo mesmo o sistema já sabendo quem
-  // está logado e qual o escopo cadastrado da banca: são só o ponto de
-  // partida, o avaliador pode confirmar diferente.
-  const [nomeAvaliador, setNomeAvaliador] = useState(
-    rascunhoInicial?.nomeAvaliador ?? (usuario?.nome ?? ""),
-  );
+  // Bloco 1. Nome e projeto são só leitura (2026-10-05, a pedido): quem
+  // responde é quem está logado e o projeto é o da banca; deixar editar só
+  // abria espaço pra digitar outro nome por engano. Os dois continuam no
+  // estado e no rascunho porque o payload e a leitura de rascunhos antigos
+  // esperam os campos. O tipo (consultor/liderança) e o escopo seguem como
+  // ponto de partida que o avaliador pode confirmar diferente.
+  const nomeAvaliador = usuario?.nome ?? "";
   const [tipoAvaliador, setTipoAvaliador] = useState<"consultor" | "lideranca">(
     rascunhoInicial?.tipoAvaliador ??
       (usuario && usuario.posicao !== "consultor" ? "lideranca" : "consultor"),
   );
-  // Só leitura (2026-10-05, a pedido): o projeto avaliado é o da banca, e
-  // deixar editar só abria espaço pra digitar outro nome por engano. Continua
-  // no estado e no rascunho porque o payload e a leitura de rascunhos antigos
-  // esperam o campo.
   const projetoAvaliado = banca.nome_projeto;
   const [escopoSelecionado, setEscopoSelecionado] = useState<number | typeof OUTRO | "">(
     rascunhoInicial?.escopoSelecionado ?? (banca.escopo_id ?? OUTRO),
@@ -2756,12 +2753,7 @@ function AvaliarModal({
             <AvaliarModalBody>
               <FieldGroup>
                 <FieldLabel htmlFor="bloco1-nome">Nome</FieldLabel>
-                <FieldInput
-                  id="bloco1-nome"
-                  value={nomeAvaliador}
-                  onChange={(e) => setNomeAvaliador(e.target.value)}
-                  required
-                />
+                <FieldInput id="bloco1-nome" value={nomeAvaliador} readOnly aria-readonly />
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel htmlFor="bloco1-tipo">Consultor ou Liderança</FieldLabel>
