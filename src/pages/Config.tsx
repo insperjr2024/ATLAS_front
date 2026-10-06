@@ -225,6 +225,12 @@ const PERMISSOES = [
       "A revisão jurídica de verdade: fecha a etapa de revisão interna e libera o documento pra ser exportado e mandado ao cliente.",
   },
   {
+    campo: "pode_acessar_configuracoes_sabatina" as const,
+    titulo: "Acessar configurações de sabatina",
+    descricao:
+      "Abre a aba Configuração de Sabatina: peso do voto por posição, montar, abrir, fechar e excluir eleições e ver a apuração. Votar não depende disto.",
+  },
+  {
     campo: "pode_editar_identidade_institucional" as const,
     titulo: "Editar identidade institucional",
     descricao:

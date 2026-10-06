@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { getMinhasEleicoes, votar } from "@/lib/sabatina";
 import type { MinhaEleicao } from "@/types/sabatina";
 import {
@@ -92,25 +93,15 @@ function Cedula({
 }) {
   const [escolha, setEscolha] = useState<string>("");
   const [confirmando, setConfirmando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [erro, setErro] = useState("");
 
   const nomeEscolha =
     escolha === BRANCO ? "voto em branco" : eleicao.candidatos.find((c) => String(c.id) === escolha)?.nome;
 
   async function enviar() {
     if (!token || !escolha) return;
-    setEnviando(true);
-    setErro("");
-    try {
-      await votar(eleicao.id, escolha === BRANCO ? null : Number(escolha), token);
-      await onVotou();
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Não foi possível registrar o voto");
-    } finally {
-      setEnviando(false);
-      setConfirmando(false);
-    }
+    await votar(eleicao.id, escolha === BRANCO ? null : Number(escolha), token);
+    await onVotou();
+    setConfirmando(false);
   }
 
   return (
@@ -136,10 +127,7 @@ function Cedula({
                     name={`eleicao-${eleicao.id}`}
                     value={c.id}
                     checked={escolha === String(c.id)}
-                    onChange={() => {
-                      setEscolha(String(c.id));
-                      setConfirmando(false);
-                    }}
+                    onChange={() => setEscolha(String(c.id))}
                   />
                   {c.nome}
                 </Opcao>
@@ -150,35 +138,33 @@ function Cedula({
                   name={`eleicao-${eleicao.id}`}
                   value={BRANCO}
                   checked={escolha === BRANCO}
-                  onChange={() => {
-                    setEscolha(BRANCO);
-                    setConfirmando(false);
-                  }}
+                  onChange={() => setEscolha(BRANCO)}
                 />
                 Voto em branco
               </Opcao>
             </Lista>
 
             <Acoes>
-              {confirmando ? (
-                <>
-                  <Aviso>
-                    Confirmar <strong>{nomeEscolha}</strong>? Depois de enviado não dá pra mudar.
-                  </Aviso>
-                  <PageButton type="button" disabled={enviando} onClick={enviar}>
-                    {enviando ? "Enviando..." : "Confirmar voto"}
-                  </PageButton>
-                  <PageButton type="button" $variant="outline" disabled={enviando} onClick={() => setConfirmando(false)}>
-                    Voltar
-                  </PageButton>
-                </>
-              ) : (
-                <PageButton type="button" disabled={!escolha} onClick={() => setConfirmando(true)}>
-                  Enviar voto
-                </PageButton>
-              )}
+              <PageButton type="button" disabled={!escolha} onClick={() => setConfirmando(true)}>
+                Enviar voto
+              </PageButton>
             </Acoes>
-            {erro && <ErrorText>{erro}</ErrorText>}
+
+            {confirmando && (
+              <ConfirmarModal
+                titulo="Confirmar voto"
+                mensagem={
+                  <>
+                    Registrar <strong>{nomeEscolha}</strong> em "{eleicao.nome}"? Depois de enviado o voto não pode ser
+                    alterado.
+                  </>
+                }
+                rotuloConfirmar="Confirmar voto"
+                rotuloProcessando="Enviando…"
+                onConfirmar={enviar}
+                onCancelar={() => setConfirmando(false)}
+              />
+            )}
           </>
         )}
       </PageCardContent>

@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useNotificacoes } from "@/context/NotificacoesContext";
-import { DIRETORIA, pode, rotuloProjetos } from "@/utils/permissoes";
+import { pode, rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import { getMinhasEleicoes } from "@/lib/sabatina";
 import type { Notificacao } from "@/types/notificacao";
@@ -126,8 +126,9 @@ const navItems: NavItemConfig[] = [
   { icon: UserPlus, label: "Vagas em projetos", path: "/vagas", grupo: "trabalho" },
   { icon: Calendar, label: "Calendário", path: "/calendario", grupo: "trabalho" },
   // A cédula da sabatina (2026-10-05): aparece só enquanto houver eleição
-  // aberta pra pessoa votar. A configuração fica em "Sistema", pra diretoria.
-  { icon: Vote, label: "Sabatina", path: "/sabatina", grupo: "trabalho", visivelDinamico: "sabatina" },
+  // aberta pra pessoa votar. Em "Gestão", a pedido; a configuração fica em
+  // "Sistema", pra diretoria.
+  { icon: Vote, label: "Sabatina", path: "/sabatina", grupo: "gestao", visivelDinamico: "sabatina" },
   {
     icon: Star,
     label: "Avaliação de Desempenho",
@@ -215,9 +216,9 @@ const navItems: NavItemConfig[] = [
     label: "Configuração de Sabatina",
     path: "/sabatina/config",
     grupo: "sistema",
-    // Diretoria inteira (os três cargos), gerente não. Espelha
-    // `require_diretoria` no backend.
-    visiblePorPosicao: (u) => DIRETORIA.includes(u.posicao),
+    // Caixa que nasce marcada pra diretoria. Espelha
+    // `require_pode_acessar_configuracoes_sabatina` no backend.
+    visible: (c) => c.pode_acessar_configuracoes_sabatina,
   },
 ];
 

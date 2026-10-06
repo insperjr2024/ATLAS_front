@@ -106,6 +106,9 @@ export interface Permissoes {
   pode_elaborar_contratos_proprios: boolean;
   /** Mesma coisa, sem o recorte por vendedor — qualquer projeto. */
   pode_elaborar_qualquer_contrato: boolean;
+  /** Abre "Configuração de Sabatina" (pesos, eleições, apuração). Nasce
+   *  marcada pra diretoria. Votar não depende disto. */
+  pode_acessar_configuracoes_sabatina: boolean;
 }
 
 /**

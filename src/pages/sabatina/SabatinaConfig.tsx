@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { MultiSelect } from "@/components/MultiSelect";
 import { getUsuarios } from "@/lib/usuarios";
 import { formatarDataHora } from "@/lib/projetos";
@@ -69,10 +70,15 @@ const ROTULO_STATUS: Record<Eleicao["status"], { texto: string; tom: "default" |
 const ORDEM_STATUS: Record<Eleicao["status"], number> = { aberta: 0, rascunho: 1, fechada: 2 };
 
 /**
- * Configuração de Sabatina (2026-10-05): só a diretoria vê. Peso do voto
- * por posição (vale pra toda eleição que abrir depois), montagem de
+ * Configuração de Sabatina (2026-10-05): quem tem a caixa
+ * `pode_acessar_configuracoes_sabatina` (a diretoria, de saída). Peso do
+ * voto por posição (vale pra toda eleição que abrir depois), montagem de
  * eleições, abrir/fechar e a apuração. O resultado só aparece depois de
  * fechar; enquanto aberta, a tela mostra quem ainda não votou.
+ *
+ * Pra não virar um paredão: pesos recolhidos por padrão, e das eleições
+ * fechadas só a mais recente abre com o resultado, as outras ficam numa
+ * linha até alguém expandir.
  */
 export function SabatinaConfig() {
   const { token } = useAuth();
@@ -121,15 +127,14 @@ export function SabatinaConfig() {
   const ordenadas = [...(eleicoes ?? [])].sort(
     (a, b) => ORDEM_STATUS[a.status] - ORDEM_STATUS[b.status] || b.id - a.id,
   );
+  const fechadaMaisRecente = ordenadas.find((e) => e.status === "fechada")?.id;
 
   return (
     <PageStack>
       <PageHeader>
         <PageHeaderText>
           <PageTitle>Configuração de Sabatina</PageTitle>
-          <PageSubtitle>
-            Monte a eleição, abra a votação para a empresa inteira e feche para apurar. Só a diretoria vê esta página.
-          </PageSubtitle>
+          <PageSubtitle>Monte a eleição, abra a votação para a empresa inteira e feche para apurar.</PageSubtitle>
         </PageHeaderText>
         <PageButton type="button" onClick={() => setNovaAberta((v) => !v)}>
           {novaAberta ? "Cancelar" : "Nova eleição"}
@@ -173,6 +178,7 @@ export function SabatinaConfig() {
             token={token}
             ativos={ativos}
             rotuloPosicao={rotuloPosicao}
+            recolhidaInicial={e.status === "fechada" && e.id !== fechadaMaisRecente}
             onMudou={carregar}
           />
         ))}
@@ -194,6 +200,7 @@ function CardPesos({
   token: string;
   onSalvo: (p: SabatinaPeso[]) => void;
 }) {
+  const [aberto, setAberto] = useState(false);
   const [valores, setValores] = useState<Record<string, string>>(() =>
     Object.fromEntries(pesos.map((p) => [p.posicao, String(p.peso)])),
   );
@@ -225,49 +232,54 @@ function CardPesos({
     <PageCard>
       <PageCardHeader>
         <PageCardTitle>Peso do voto por posição</PageCardTitle>
+        <LinkAcao type="button" onClick={() => setAberto((v) => !v)}>
+          {aberto ? "esconder" : "mostrar"}
+        </LinkAcao>
       </PageCardHeader>
-      <PageCardContent>
-        <Intro>
-          Vale para toda eleição aberta daqui em diante. O voto guarda o peso do momento em que foi dado, então mudar
-          aqui não reescreve eleição passada. Padrão: consultores 1, lideranças 2, diretoria 3. Quem acumula um cargo
-          extra (ex.: consultor e BDR) vota com o maior dos dois pesos.
-        </Intro>
-        <TabelaSimples style={{ marginTop: "0.75rem" }}>
-          <thead>
-            <tr>
-              <th>Posição</th>
-              <th className="num">Peso</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pesos.map((p) => (
-              <tr key={p.posicao}>
-                <td>{ROTULO_POSICAO[p.posicao] ?? p.nome}</td>
-                <td className="num">
-                  <PesoInput
-                    type="number"
-                    min={0}
-                    max={10}
-                    value={valores[p.posicao] ?? ""}
-                    aria-label={`Peso de ${p.nome}`}
-                    onChange={(e) => {
-                      setValores((v) => ({ ...v, [p.posicao]: e.target.value }));
-                      setSalvo(false);
-                    }}
-                  />
-                </td>
+      {aberto && (
+        <PageCardContent>
+          <Intro>
+            Vale para toda eleição aberta daqui em diante. O voto guarda o peso do momento em que foi dado, então
+            mudar aqui não reescreve eleição passada. Quem acumula um cargo extra (ex.: consultor e BDR) vota com o
+            maior dos dois pesos.
+          </Intro>
+          <TabelaSimples style={{ marginTop: "0.75rem" }}>
+            <thead>
+              <tr>
+                <th>Posição</th>
+                <th className="num">Peso</th>
               </tr>
-            ))}
-          </tbody>
-        </TabelaSimples>
-        <Acoes>
-          <PageButton type="button" disabled={!mudou || salvando} onClick={salvar}>
-            {salvando ? "Salvando..." : "Salvar pesos"}
-          </PageButton>
-          {salvo && !mudou && <Meta>Pesos salvos.</Meta>}
-        </Acoes>
-        {erro && <ErrorText>{erro}</ErrorText>}
-      </PageCardContent>
+            </thead>
+            <tbody>
+              {pesos.map((p) => (
+                <tr key={p.posicao}>
+                  <td>{ROTULO_POSICAO[p.posicao] ?? p.nome}</td>
+                  <td className="num">
+                    <PesoInput
+                      type="number"
+                      min={0}
+                      max={10}
+                      value={valores[p.posicao] ?? ""}
+                      aria-label={`Peso de ${p.nome}`}
+                      onChange={(e) => {
+                        setValores((v) => ({ ...v, [p.posicao]: e.target.value }));
+                        setSalvo(false);
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </TabelaSimples>
+          <Acoes>
+            <PageButton type="button" disabled={!mudou || salvando} onClick={salvar}>
+              {salvando ? "Salvando..." : "Salvar pesos"}
+            </PageButton>
+            {salvo && !mudou && <Meta>Pesos salvos.</Meta>}
+          </Acoes>
+          {erro && <ErrorText>{erro}</ErrorText>}
+        </PageCardContent>
+      )}
     </PageCard>
   );
 }
@@ -377,42 +389,40 @@ function FormEleicao({
 
 // ---------------------------------------------------------------- card de uma eleição
 
+type Confirmacao = "abrir" | "fechar" | "apagar";
+
 function CardEleicao({
   eleicao,
   token,
   ativos,
   rotuloPosicao,
+  recolhidaInicial,
   onMudou,
 }: {
   eleicao: Eleicao;
   token: string | null;
   ativos: UsuarioResumo[];
   rotuloPosicao: (p: string | null | undefined) => string;
+  recolhidaInicial: boolean;
   onMudou: () => Promise<void>;
 }) {
+  const [expandida, setExpandida] = useState(!recolhidaInicial);
   const [editando, setEditando] = useState(false);
-  const [confirmando, setConfirmando] = useState<"abrir" | "fechar" | "apagar" | null>(null);
-  const [ocupado, setOcupado] = useState(false);
+  const [confirmando, setConfirmando] = useState<Confirmacao | null>(null);
   const [erro, setErro] = useState("");
   const [mostrarPendentes, setMostrarPendentes] = useState(false);
   const [votos, setVotos] = useState<VotoDetalhe[] | null>(null);
   const [mostrarVotos, setMostrarVotos] = useState(false);
 
   const status = ROTULO_STATUS[eleicao.status];
+  const pct = eleicao.percentual_aprovacao;
 
-  async function agir(fn: () => Promise<unknown>, fallback: string) {
+  async function executar(acao: Confirmacao) {
     if (!token) return;
-    setOcupado(true);
-    setErro("");
-    try {
-      await fn();
-      await onMudou();
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : fallback);
-    } finally {
-      setOcupado(false);
-      setConfirmando(null);
-    }
+    const fn = acao === "abrir" ? abrirEleicao : acao === "fechar" ? fecharEleicao : apagarEleicao;
+    await fn(eleicao.id, token);
+    await onMudou();
+    setConfirmando(null);
   }
 
   async function alternarVotos() {
@@ -420,7 +430,8 @@ function CardEleicao({
     if (mostrarVotos) return setMostrarVotos(false);
     if (votos === null) {
       try {
-        setVotos(await getVotosEleicao(eleicao.id, token));
+        const lista = await getVotosEleicao(eleicao.id, token);
+        setVotos([...lista].sort((a, b) => a.eleitor_nome.localeCompare(b.eleitor_nome, "pt-BR")));
       } catch (err) {
         setErro(err instanceof Error ? err.message : "Não foi possível carregar os votos");
         return;
@@ -429,22 +440,66 @@ function CardEleicao({
     setMostrarVotos(true);
   }
 
-  const pct = eleicao.percentual_aprovacao;
+  const cabecalho = (
+    <CabecalhoEleicao>
+      <TituloEleicao>
+        {eleicao.nome}
+        <PageBadge $tone={status.tom}>{status.texto}</PageBadge>
+      </TituloEleicao>
+      <Meta>
+        Elege com mais de {pct}% dos votos
+        {eleicao.aberta_em && ` · aberta em ${formatarDataHora(eleicao.aberta_em)}`}
+        {eleicao.fechada_em && ` · fechada em ${formatarDataHora(eleicao.fechada_em)}`}
+        {eleicao.status === "fechada" && (
+          <>
+            {" · "}
+            <LinkAcao type="button" onClick={() => setExpandida((v) => !v)}>
+              {expandida ? "recolher" : "ver resultado"}
+            </LinkAcao>
+          </>
+        )}
+      </Meta>
+    </CabecalhoEleicao>
+  );
+
+  // Excluir uma eleição que já tem votos (aberta ou fechada) pede o nome
+  // digitado; rascunho não tem nada a perder, confirma direto.
+  const modalExcluir = confirmando === "apagar" && (
+    <ConfirmarModal
+      titulo="Excluir eleição"
+      mensagem={
+        eleicao.status === "rascunho"
+          ? `Excluir o rascunho "${eleicao.nome}"? Ele ainda não foi aberto, então nenhum voto se perde.`
+          : `Excluir "${eleicao.nome}" para sempre? Os ${eleicao.total_votos} votos registrados e o resultado são apagados junto. Essa ação não pode ser desfeita.`
+      }
+      confirmacaoTexto={eleicao.status === "rascunho" ? undefined : eleicao.nome}
+      rotuloConfirmar="Excluir"
+      rotuloProcessando="Excluindo…"
+      onConfirmar={() => executar("apagar")}
+      onCancelar={() => setConfirmando(null)}
+    />
+  );
+
+  if (!expandida) {
+    return (
+      <PageCard>
+        <PageCardContent>
+          {cabecalho}
+          <Acoes style={{ marginTop: "0.5rem" }}>
+            <PageButtonSm type="button" $variant="ghost" onClick={() => setConfirmando("apagar")}>
+              Excluir
+            </PageButtonSm>
+          </Acoes>
+          {modalExcluir}
+        </PageCardContent>
+      </PageCard>
+    );
+  }
 
   return (
     <PageCard>
       <PageCardContent>
-        <CabecalhoEleicao>
-          <TituloEleicao>
-            {eleicao.nome}
-            <PageBadge $tone={status.tom}>{status.texto}</PageBadge>
-          </TituloEleicao>
-          <Meta>
-            Elege com mais de {pct}% dos votos
-            {eleicao.aberta_em && ` · aberta em ${formatarDataHora(eleicao.aberta_em)}`}
-            {eleicao.fechada_em && ` · fechada em ${formatarDataHora(eleicao.fechada_em)}`}
-          </Meta>
-        </CabecalhoEleicao>
+        {cabecalho}
 
         {editando && token ? (
           <Secao>
@@ -479,7 +534,7 @@ function CardEleicao({
             <SecaoTitulo>Participação</SecaoTitulo>
             <Aviso>
               <strong>{eleicao.total_votos}</strong> de {eleicao.total_eleitores} votaram
-              {eleicao.pendentes.length > 0 && (
+              {eleicao.pendentes.length > 0 ? (
                 <>
                   {" · "}
                   <LinkAcao type="button" onClick={() => setMostrarPendentes((v) => !v)}>
@@ -487,8 +542,9 @@ function CardEleicao({
                     {eleicao.pendentes.length})
                   </LinkAcao>
                 </>
+              ) : (
+                " · todo mundo votou"
               )}
-              {eleicao.pendentes.length === 0 && " · todo mundo votou"}
             </Aviso>
             {mostrarPendentes && (
               <Chips>
@@ -500,15 +556,10 @@ function CardEleicao({
                 ))}
               </Chips>
             )}
-            {eleicao.status === "fechada" && eleicao.pendentes.length > 0 && (
-              <Meta>Quem faltou não entra na conta: o percentual é sobre os votos dados.</Meta>
-            )}
           </Secao>
         )}
 
-        {eleicao.status === "fechada" && eleicao.resultado && (
-          <Resultado eleicao={eleicao} />
-        )}
+        {eleicao.status === "fechada" && eleicao.resultado && <Resultado eleicao={eleicao} />}
 
         {eleicao.status === "fechada" && (
           <Secao>
@@ -542,77 +593,49 @@ function CardEleicao({
 
         {!editando && (
           <Acoes>
-            {eleicao.status === "rascunho" && confirmando === null && (
+            {eleicao.status === "rascunho" && (
               <>
-                <PageButton type="button" disabled={ocupado} onClick={() => setConfirmando("abrir")}>
+                <PageButton type="button" onClick={() => setConfirmando("abrir")}>
                   Abrir votação
                 </PageButton>
-                <PageButton type="button" $variant="outline" disabled={ocupado} onClick={() => setEditando(true)}>
+                <PageButton type="button" $variant="outline" onClick={() => setEditando(true)}>
                   Editar
                 </PageButton>
-                <PageButtonSm type="button" $variant="ghost" disabled={ocupado} onClick={() => setConfirmando("apagar")}>
-                  Excluir
-                </PageButtonSm>
               </>
             )}
-            {eleicao.status === "aberta" && confirmando === null && (
-              <PageButton type="button" disabled={ocupado} onClick={() => setConfirmando("fechar")}>
+            {eleicao.status === "aberta" && (
+              <PageButton type="button" onClick={() => setConfirmando("fechar")}>
                 Fechar votação e apurar
               </PageButton>
             )}
-            {confirmando === "abrir" && (
-              <>
-                <Aviso>
-                  Abrir agora? A cédula aparece para todos os membros ativos (menos os candidatos) e a lista de
-                  candidatos não muda mais.
-                </Aviso>
-                <PageButton
-                  type="button"
-                  disabled={ocupado}
-                  onClick={() => agir(() => abrirEleicao(eleicao.id, token as string), "Não foi possível abrir")}
-                >
-                  {ocupado ? "Abrindo..." : "Confirmar abertura"}
-                </PageButton>
-                <PageButton type="button" $variant="outline" disabled={ocupado} onClick={() => setConfirmando(null)}>
-                  Voltar
-                </PageButton>
-              </>
-            )}
-            {confirmando === "fechar" && (
-              <>
-                <Aviso>
-                  Fechar agora? Quem não votou ({eleicao.pendentes.length}) fica como falta e ninguém mais vota.
-                </Aviso>
-                <PageButton
-                  type="button"
-                  disabled={ocupado}
-                  onClick={() => agir(() => fecharEleicao(eleicao.id, token as string), "Não foi possível fechar")}
-                >
-                  {ocupado ? "Apurando..." : "Confirmar fechamento"}
-                </PageButton>
-                <PageButton type="button" $variant="outline" disabled={ocupado} onClick={() => setConfirmando(null)}>
-                  Voltar
-                </PageButton>
-              </>
-            )}
-            {confirmando === "apagar" && (
-              <>
-                <Aviso>Excluir este rascunho?</Aviso>
-                <PageButton
-                  type="button"
-                  disabled={ocupado}
-                  onClick={() => agir(() => apagarEleicao(eleicao.id, token as string), "Não foi possível excluir")}
-                >
-                  {ocupado ? "Excluindo..." : "Confirmar exclusão"}
-                </PageButton>
-                <PageButton type="button" $variant="outline" disabled={ocupado} onClick={() => setConfirmando(null)}>
-                  Voltar
-                </PageButton>
-              </>
-            )}
+            <PageButtonSm type="button" $variant="ghost" onClick={() => setConfirmando("apagar")}>
+              Excluir
+            </PageButtonSm>
           </Acoes>
         )}
         {erro && <ErrorText>{erro}</ErrorText>}
+
+        {confirmando === "abrir" && (
+          <ConfirmarModal
+            titulo="Abrir votação"
+            mensagem={`Abrir "${eleicao.nome}" agora? A cédula aparece para todos os membros ativos (menos os candidatos) e a lista de candidatos não muda mais.`}
+            rotuloConfirmar="Abrir votação"
+            rotuloProcessando="Abrindo…"
+            onConfirmar={() => executar("abrir")}
+            onCancelar={() => setConfirmando(null)}
+          />
+        )}
+        {confirmando === "fechar" && (
+          <ConfirmarModal
+            titulo="Fechar votação e apurar"
+            mensagem={`Fechar "${eleicao.nome}" agora? ${eleicao.total_votos} de ${eleicao.total_eleitores} votaram. Ninguém mais vota depois disso e o resultado sai na hora.`}
+            rotuloConfirmar="Fechar e apurar"
+            rotuloProcessando="Apurando…"
+            onConfirmar={() => executar("fechar")}
+            onCancelar={() => setConfirmando(null)}
+          />
+        )}
+        {modalExcluir}
       </PageCardContent>
     </PageCard>
   );

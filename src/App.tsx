@@ -53,7 +53,7 @@ import { PainelPdi } from "@/pages/avaliacao-desempenho/painel/PainelPdi";
 import { PainelFormularios } from "@/pages/avaliacao-desempenho/painel/PainelFormularios";
 import { TarefasGeraisAba } from "@/pages/monitoramento/TarefasGeraisAba";
 import { CronogramasGeraisAba } from "@/pages/monitoramento/CronogramasGeraisAba";
-import { DIRETORIA, MENTORES_ELEGIVEIS } from "@/utils/permissoes";
+import { MENTORES_ELEGIVEIS } from "@/utils/permissoes";
 
 export default function App() {
   return (
@@ -231,10 +231,10 @@ export default function App() {
               <Route element={<AdminRoute permissao="pode_editar_identidade_institucional" />}>
                 <Route path="/identidade-institucional" element={<IdentidadeInstitucional />} />
               </Route>
-              {/* Sabatina (2026-10-05): montar, abrir, fechar e apurar é da
-                  diretoria inteira, e de mais ninguém. `require_diretoria`
-                  no backend. */}
-              <Route element={<RequirePosicao posicoes={DIRETORIA} />}>
+              {/* Sabatina (2026-10-05): montar, abrir, fechar e apurar. Caixa
+                  que nasce marcada pra diretoria;
+                  `require_pode_acessar_configuracoes_sabatina` no backend. */}
+              <Route element={<AdminRoute permissao="pode_acessar_configuracoes_sabatina" />}>
                 <Route path="/sabatina/config" element={<SabatinaConfig />} />
               </Route>
             </Route>
