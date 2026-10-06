@@ -116,8 +116,10 @@ interface Rascunho {
   comentarios: string;
 }
 
-function chave(item: Pick<DesempenhoFilaItem, "lote_id" | "avaliado_id">) {
-  return `${item.lote_id}-${item.avaliado_id}`;
+// O escopo entra na chave porque a Avaliação do Escopo é um item POR ESCOPO
+// (2026-10-05): a mesma pessoa, no mesmo lote, pode ter dois.
+function chave(item: Pick<DesempenhoFilaItem, "lote_id" | "avaliado_id" | "projeto_escopo_id">) {
+  return `${item.lote_id}-${item.avaliado_id}-${item.projeto_escopo_id ?? ""}`;
 }
 
 function chaveRascunhos(usuarioId: number) {
@@ -273,7 +275,8 @@ export function AvaliacaoDesempenho() {
    *  próprio rótulo, não o nome de quem responde (o `avaliado_id` dela é o
    *  próprio usuário). */
   function nomeDoItem(item: DesempenhoFilaItem): string {
-    return item.form_type === "escopo" ? "Avaliação do Escopo" : item.avaliado_nome ?? "—";
+    if (item.form_type !== "escopo") return item.avaliado_nome ?? "—";
+    return item.escopo_nome ? `Avaliação do Escopo · ${item.escopo_nome}` : "Avaliação do Escopo";
   }
 
   /** Avaliação do Escopo primeiro na lista (2026-09-09, a pedido: "antes
@@ -390,6 +393,7 @@ export function AvaliacaoDesempenho() {
           {
             lote_id: item.lote_id,
             avaliado_id: item.avaliado_id,
+            projeto_escopo_id: item.projeto_escopo_id,
             nota_geral: rascunho.notaGeral,
             comentarios: rascunho.comentarios,
             notas: Object.values(rascunho.notas),
@@ -650,7 +654,7 @@ export function AvaliacaoDesempenho() {
           <PageCardHeader>
             <PageCardTitle>
               {pessoaAtual.form_type === "escopo"
-                ? `Avaliação do Escopo · ${projetosDaPessoa(pessoaAtual)}`
+                ? `${nomeDoItem(pessoaAtual)} · ${projetosDaPessoa(pessoaAtual)}`
                 : `Avaliando ${pessoaAtual.avaliado_nome} · ${ROTULO_PAPEL[pessoaAtual.form_type]} · ${projetosDaPessoa(pessoaAtual)}`}
             </PageCardTitle>
           </PageCardHeader>

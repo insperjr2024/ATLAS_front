@@ -12,7 +12,14 @@ export function getMinhaFila(usuarioId: number, token: string) {
 }
 
 export function submitAvaliacao(
-  payload: { lote_id: number; avaliado_id: number; nota_geral: number; comentarios: string; notas: DesempenhoNotaInput[] },
+  payload: {
+    lote_id: number;
+    avaliado_id: number;
+    nota_geral: number;
+    comentarios: string;
+    notas: DesempenhoNotaInput[];
+    projeto_escopo_id?: number | null;
+  },
   token: string,
 ) {
   return apiFetch<DesempenhoAvaliacaoSubmissao>("/desempenho/avaliacoes", {

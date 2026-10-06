@@ -53,8 +53,11 @@ const ABAS: { tipo: DesempenhoTipo; papel: DesempenhoPapel; rotulo: string }[] =
   { tipo: "finalizacao", papel: "consultor", rotulo: "Finalização · Consultor" },
   { tipo: "finalizacao", papel: "coordenador", rotulo: "Finalização · Coordenador" },
   // ⭐ 2026-09-09: Avaliação do Escopo — auto-avaliação de cada participante
-  // do projeto na finalização. Editada aqui como as outras.
-  { tipo: "finalizacao", papel: "escopo", rotulo: "Avaliação do Escopo" },
+  // do projeto na finalização. Editada aqui como as outras. Desde 2026-10-05
+  // a periódica tem a sua, sobre o escopo em andamento: perguntas de "como
+  // está indo", não de "como foi".
+  { tipo: "periodico", papel: "escopo", rotulo: "Periódica · Escopo" },
+  { tipo: "finalizacao", papel: "escopo", rotulo: "Finalização · Escopo" },
 ];
 
 export function PainelFormularios() {

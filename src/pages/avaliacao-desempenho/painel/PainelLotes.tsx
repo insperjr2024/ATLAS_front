@@ -163,8 +163,9 @@ export function PainelLotes() {
 
   const [nome, setNome] = useState("");
   const [tipo, setTipo] = useState<DesempenhoTipo>("periodico");
-  // Finalização: a Avaliação do Escopo (auto-avaliação de cada participante)
-  // entra junto? Só é perguntado aqui, no lote aberto à mão.
+  // A Avaliação do Escopo (auto-avaliação de cada participante) entra junto?
+  // Só é perguntado aqui, no lote aberto à mão. Na finalização fala do escopo
+  // que passou pela banca; na periódica (2026-10-05), do escopo em andamento.
   const [incluiEscopo, setIncluiEscopo] = useState(true);
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
@@ -264,7 +265,7 @@ export function PainelLotes() {
           data_inicio: new Date(dataInicio).toISOString(),
           data_fim: new Date(dataFim).toISOString(),
           projeto_ids: projetoIds,
-          inclui_avaliacao_de_escopo: tipo === "finalizacao" ? incluiEscopo : undefined,
+          inclui_avaliacao_de_escopo: incluiEscopo,
         },
         token,
       );
@@ -402,18 +403,18 @@ export function PainelLotes() {
                 <option value="finalizacao">Finalização</option>
               </FieldSelect>
             </FieldGroup>
-            {tipo === "finalizacao" && (
-              <FieldGroup>
-                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
-                  <input
-                    type="checkbox"
-                    checked={incluiEscopo}
-                    onChange={(e) => setIncluiEscopo(e.target.checked)}
-                  />
-                  Incluir a Avaliação do Escopo (cada participante avalia o escopo finalizado)
-                </label>
-              </FieldGroup>
-            )}
+            <FieldGroup>
+              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem" }}>
+                <input
+                  type="checkbox"
+                  checked={incluiEscopo}
+                  onChange={(e) => setIncluiEscopo(e.target.checked)}
+                />
+                {tipo === "finalizacao"
+                  ? "Incluir a Avaliação do Escopo (cada participante avalia o escopo finalizado)"
+                  : "Incluir a Avaliação do Escopo (cada participante avalia o escopo em andamento, ainda sem banca)"}
+              </label>
+            </FieldGroup>
             <FieldGroup>
               <FieldLabel htmlFor="lote-inicio">Início</FieldLabel>
               <CampoInlineRow>
@@ -672,13 +673,14 @@ export function PainelLotes() {
                               <PendenciaNome>{grupo.avaliadorNome}</PendenciaNome>{" "}
                               <PendenciaFaltamRotulo>falta avaliar:</PendenciaFaltamRotulo>{" "}
                               {grupo.itens.map((p, i) => (
-                                <span key={p.avaliado_id}>
+                                <span key={`${p.avaliado_id}-${p.projeto_escopo_id ?? ""}`}>
                                   {/* Avaliação do Escopo é auto (avaliador ==
                                       avaliado): mostrar o nome da própria
                                       pessoa leria como "Fulano falta avaliar
-                                      Fulano". */}
+                                      Fulano". É uma por escopo, daí o nome
+                                      dele no rótulo. */}
                                   {p.form_type === "escopo"
-                                    ? "Avaliação do Escopo"
+                                    ? `Escopo ${p.escopo_nome ?? ""}`.trim()
                                     : p.avaliado_nome}
                                   {p.projeto_nomes.filter(Boolean).length > 0 &&
                                     ` (${p.projeto_nomes.filter(Boolean).join(", ")})`}
