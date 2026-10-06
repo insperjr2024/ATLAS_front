@@ -4,6 +4,7 @@ import { AlocarPessoasModal } from "./AlocarPessoasModal";
 import { Desempenho } from "./Desempenho";
 import { Clock, Plus, ShieldCheck, User, Users, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   alocar,
@@ -130,6 +131,7 @@ import {
   ModalFooter,
   ModalFooterSplit,
   NarrowModalContent,
+  AvaliarModalBody,
   WideModalContent,
   PageHeaderAcoes,
   PageHeaderRow,
@@ -1326,6 +1328,19 @@ function SecaoBancas({
           "A plataforma não aceita mais o envio. Avise a diretoria se esta avaliação ainda precisa entrar."
         : null;
 
+    // 2026-10-05, a pedido: na aba Avaliação, quem clica no card quer
+    // AVALIAR, não ler avaliadores/local/entrega. O "Avaliar" miúdo do
+    // rodapé não devia ser o único caminho. Nas outras abas o card segue
+    // abrindo o detalhe. Com o prazo esgotado não há o que abrir além do
+    // detalhe, então ele volta a ser o destino.
+    function abrirPeloCard() {
+      if (acao === "avaliar" && onAcao && !prazoExpirado) {
+        onAcao(banca.id);
+        return;
+      }
+      onVerMais(banca);
+    }
+
     // Qualquer clique dentro do rodapé de ações não deve também
     // disparar o clique do card inteiro (que abre "Ver mais").
     function pararPropagacao<T extends unknown[]>(fn?: (...args: T) => void) {
@@ -1342,9 +1357,9 @@ function SecaoBancas({
         ref={banca.id === bancaDestacada ? refDestacada : undefined}
         role="button"
         tabIndex={0}
-        onClick={() => onVerMais(banca)}
+        onClick={abrirPeloCard}
         onKeyDown={(e) => {
-          if (e.key === "Enter") onVerMais(banca);
+          if (e.key === "Enter") abrirPeloCard();
         }}
       >
         <BancaData>
@@ -2026,20 +2041,9 @@ function VerMaisModal({
   const [removendo, setRemovendo] = useState<{ candidaturaId: number; nome: string } | null>(null);
 
   // Trava a rolagem do fundo enquanto o modal está aberto — sem isto a roda do
-  // mouse sobre o véu arrasta a página atrás. `overflowY` no `<html>` e não no
-  // `<body>`: `index.css` põe `overflow-x: clip` no `<html>`, o que faz dele o
-  // container de rolagem da viewport — um `overflow` no `<body>` não teria
-  // efeito nenhum. Mesmo motivo do `BancaFormModal`. Chave `bancaId` (não o
+  // mouse sobre o véu arrasta a página atrás. Condicionada a `bancaId` (não ao
   // objeto `banca`): sem isso, todo render do pai desfazia e refazia a trava.
-  useEffect(() => {
-    if (bancaId == null) return;
-    const raiz = document.documentElement;
-    const overflowAnterior = raiz.style.overflowY;
-    raiz.style.overflowY = "hidden";
-    return () => {
-      raiz.style.overflowY = overflowAnterior;
-    };
-  }, [bancaId]);
+  useLockBodyScroll(bancaId != null);
 
   if (!banca) return null;
 
@@ -2509,9 +2513,11 @@ function AvaliarModal({
     rascunhoInicial?.tipoAvaliador ??
       (usuario && usuario.posicao !== "consultor" ? "lideranca" : "consultor"),
   );
-  const [projetoAvaliado, setProjetoAvaliado] = useState(
-    rascunhoInicial?.projetoAvaliado ?? banca.nome_projeto,
-  );
+  // Só leitura (2026-10-05, a pedido): o projeto avaliado é o da banca, e
+  // deixar editar só abria espaço pra digitar outro nome por engano. Continua
+  // no estado e no rascunho porque o payload e a leitura de rascunhos antigos
+  // esperam o campo.
+  const projetoAvaliado = banca.nome_projeto;
   const [escopoSelecionado, setEscopoSelecionado] = useState<number | typeof OUTRO | "">(
     rascunhoInicial?.escopoSelecionado ?? (banca.escopo_id ?? OUTRO),
   );
@@ -2747,7 +2753,7 @@ function AvaliarModal({
           </ModalBody>
         ) : (
           <FormStack onSubmit={handleSubmit}>
-            <ModalBody>
+            <AvaliarModalBody>
               <FieldGroup>
                 <FieldLabel htmlFor="bloco1-nome">Nome</FieldLabel>
                 <FieldInput
@@ -2770,29 +2776,24 @@ function AvaliarModal({
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel htmlFor="bloco1-projeto">Projeto Avaliado</FieldLabel>
-                <FieldInput
-                  id="bloco1-projeto"
-                  value={projetoAvaliado}
-                  onChange={(e) => setProjetoAvaliado(e.target.value)}
-                  placeholder="ex. PROJETO I"
-                  required
-                />
+                <FieldInput id="bloco1-projeto" value={projetoAvaliado} readOnly aria-readonly />
               </FieldGroup>
               {modoMultiEscopo ? (
-                <FieldGroup>
-                  <FieldLabel>Escopos avaliados</FieldLabel>
-                  {/* Com 1 escopo só, o bloco de critérios logo abaixo já
-                      repete este nome no título — a frase toda virava
-                      redundância pura, dizendo a mesma coisa duas vezes
-                      seguidas. Com 2+, ela ainda serve pra listar os dois de
-                      uma vez, algo que os títulos individuais não fazem. */}
-                  {escoposDaBanca.length > 1 && (
+                /* Com 1 escopo só, o bloco de critérios logo abaixo já
+                   repete o nome no título, a frase virava redundância, e o
+                   rótulo "Escopos avaliados" sozinho (2026-10-05, corrigido)
+                   ficava solto entre "Projeto Avaliado" e o nome do escopo.
+                   Com 2+, o grupo lista os dois de uma vez, algo que os
+                   títulos individuais não fazem. */
+                escoposDaBanca.length > 1 && (
+                  <FieldGroup>
+                    <FieldLabel>Escopos avaliados</FieldLabel>
                     <ModalSubtitulo>
                       {escoposDaBanca.map((id) => nomeEscopo(escopos, id)).join(" · ")} — você
                       responde os critérios dos dois abaixo.
                     </ModalSubtitulo>
-                  )}
-                </FieldGroup>
+                  </FieldGroup>
+                )
               ) : (
                 <>
                   <FieldGroup>
@@ -2866,7 +2867,7 @@ function AvaliarModal({
                 />
               </FieldGroup>
               {erro && <FormErrorText>{erro}</FormErrorText>}
-            </ModalBody>
+            </AvaliarModalBody>
             <ModalFooterSplit>
               <PageButton $variant="outline" type="button" onClick={onClose}>
                 Voltar

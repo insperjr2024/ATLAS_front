@@ -192,6 +192,18 @@ export const ModalFooterSplit = styled(BaseModalFooter)`
   justify-content: space-between;
 `;
 
+/** Corpo do formulário de avaliação da banca. O \`ModalBody\` cru é só
+ *  padding: os grupos de campo ficavam encostados, e isso aparecia justo
+ *  onde não há caixa de input pra separar (nome do escopo colado em
+ *  "Projeto Avaliado", "Comentário" colado no último critério). Mesmo
+ *  respiro do \`FormModalBody\`, sem o resto da mecânica de rolagem dele:
+ *  aqui quem rola é o \`WideModalContent\`. */
+export const AvaliarModalBody = styled(BaseModalBody)`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.lg};
+`;
+
 export const PageHeaderRow = styled.div`
   display: flex;
   flex-wrap: wrap;
