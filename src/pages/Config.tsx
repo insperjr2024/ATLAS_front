@@ -13,6 +13,7 @@ import { createFrente, deleteFrente, getFrentes, updateFrente } from "@/lib/fren
 import { normalizarTexto } from "@/lib/nucleo";
 import { CODIGO_ULTIMO_ADMINISTRADOR, codigoDoErro } from "@/lib/api";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
+import { HealthTrackRegraCard } from "./config/HealthTrackRegraCard";
 import { ComposicaoBancaCard } from "./config/ComposicaoBancaCard";
 import { GestaoSemestralCard } from "./config/GestaoSemestralCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
@@ -466,6 +467,8 @@ export function Config() {
         <ComposicaoBancaCard />
 
         <SituacoesCargaCard />
+
+        <HealthTrackRegraCard />
       </SecaoGrupo>
 
       <SecaoGrupo>
