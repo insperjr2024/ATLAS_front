@@ -158,13 +158,12 @@ export default function App() {
               {/* Avaliação de Desempenho (periódica/finalização), não
                   confundir com /avaliacoes (feedback de banca) nem com
                   /dashboard (Desempenho.tsx, % de bancas atendidas).
-                  Só quem pode ser avaliado por um colega (regra 2.3 é
-                  sempre via `projeto_membro.papel` = coordenador/consultor;
-                  diretor e gerente nunca entram nessa tabela, então nunca
-                  teriam nada pra responder aqui). */}
-              <Route element={<RequirePosicao posicoes={["coordenador", "consultor"]} />}>
-                <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenhoHub />} />
-              </Route>
+                  Sem guard por posição (2026-10-06, corrigido): quem
+                  responde é quem está em `projeto_membro` como
+                  coordenador/consultor, e isso independe da posição (um
+                  gerente pode coordenar um projeto). A fila vem do
+                  backend; quem não tem nada vê a tela vazia. */}
+              <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenhoHub />} />
 
               {/* Sem guard e sem link em nenhum menu, igual já era antes do
                   hub existir: ninguém vê o próprio relatório de desempenho,

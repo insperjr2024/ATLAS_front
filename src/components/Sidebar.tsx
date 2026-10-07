@@ -5,6 +5,7 @@ import { useNotificacoes } from "@/context/NotificacoesContext";
 import { pode, rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
 import { getMinhasEleicoes } from "@/lib/sabatina";
+import { getMinhaFila } from "@/lib/desempenho-avaliacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
 import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature, Vote, ListChecks } from "lucide-react";
@@ -90,8 +91,11 @@ interface NavItemConfig {
    *  de permissão, como o item de Monitoramento restrito a certas posições. */
   visiblePorPosicao?: (usuario: UsuarioLogado) => boolean;
   /** Visibilidade por DADO do servidor, não por quem a pessoa é: a aba
-   *  "Sabatina" só existe enquanto há eleição aberta em que ela vota. */
-  visivelDinamico?: "sabatina";
+   *  "Sabatina" só existe enquanto há eleição aberta em que ela vota;
+   *  "Avaliação de Desempenho" aparece pra quem tem algo na fila, seja qual
+   *  for a posição. Quando o item também tem `visiblePorPosicao`, o dado
+   *  SOMA à posição (um OU), não substitui. */
+  visivelDinamico?: "sabatina" | "fila_desempenho";
 }
 
 // A ordem DENTRO desta lista só decide a ordem dentro do próprio grupo — o
@@ -135,12 +139,13 @@ const navItems: NavItemConfig[] = [
     path: "/avaliacao-desempenho",
     grupo: "desempenho",
     prefixo: true,
-    // Só quem pode ser avaliado por um colega (regra 2.3 é sempre via
-    // `projeto_membro.papel` = coordenador/consultor, diretor e gerente
-    // nunca entram nessa tabela, então nunca teriam nada pra responder aqui;
-    // sem isso, diretor via 2 botões "Avaliação de Desempenho" na sidebar —
-    // este e o painel admin, que já usa o mesmo rótulo).
+    // Coordenador e consultor sempre; qualquer outra posição só quando a
+    // fila dela tem algo (2026-10-06, corrigido: um gerente de posição pode
+    // ser coordenador de projeto em `projeto_membro`, e a regra antiga
+    // assumia que gerente nunca entrava nessa tabela). Diretor sem fila
+    // segue sem ver dois botões "Avaliação de Desempenho" na sidebar.
     visiblePorPosicao: (u) => u.posicao === "coordenador" || u.posicao === "consultor",
+    visivelDinamico: "fila_desempenho",
   },
   {
     icon: GraduationCap,
@@ -249,11 +254,16 @@ export function Sidebar({ aberta = false }: SidebarProps) {
   // leve, refeita a cada minuto (mesmo ritmo do contador de notificações) e
   // ao trocar de rota, pra aba sumir logo depois que a diretoria fecha.
   const [temSabatina, setTemSabatina] = useState(false);
+  // Mesma ideia pra fila de avaliação de desempenho: quem não é coordenador
+  // nem consultor de posição ainda pode ter o que responder.
+  const [temFilaDesempenho, setTemFilaDesempenho] = useState(false);
+  const usuarioId = usuario?.id;
+  const posicao = usuario?.posicao;
 
   useEffect(() => {
     if (!token) return;
     let ativo = true;
-    const consultar = () =>
+    const consultar = () => {
       getMinhasEleicoes(token)
         .then((lista) => {
           if (ativo) setTemSabatina(lista.length > 0);
@@ -261,13 +271,25 @@ export function Sidebar({ aberta = false }: SidebarProps) {
         .catch(() => {
           /* sem rede ou sem permissão: o item só não aparece */
         });
+      // Pra coordenador/consultor a posição já decide; a consulta só vale
+      // pras outras posições.
+      if (usuarioId != null && posicao !== "coordenador" && posicao !== "consultor") {
+        getMinhaFila(usuarioId, token)
+          .then((fila) => {
+            if (ativo) setTemFilaDesempenho(fila.length > 0);
+          })
+          .catch(() => {
+            /* idem */
+          });
+      }
+    };
     void consultar();
     const timer = window.setInterval(consultar, 60_000);
     return () => {
       ativo = false;
       window.clearInterval(timer);
     };
-  }, [token, location.pathname]);
+  }, [token, usuarioId, posicao, location.pathname]);
 
   // Clicar em qualquer lugar fora fecha o painel. Antes só o próprio sino
   // fechava, e quem abria por engano tinha de achar o botão de novo para se
@@ -319,6 +341,7 @@ export function Sidebar({ aberta = false }: SidebarProps) {
 
   const itensVisiveis = navItems.filter((item) => {
     if (item.visivelDinamico === "sabatina") return temSabatina;
+    if (item.visivelDinamico === "fila_desempenho" && temFilaDesempenho) return true;
     if (item.visiblePorPosicao) {
       return !!usuario && item.visiblePorPosicao(usuario);
     }
