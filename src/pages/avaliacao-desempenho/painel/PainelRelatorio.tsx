@@ -21,7 +21,8 @@ import {
   PageLoadingBlock,
   PageSubtitle,
 } from "@/styles/page.styled";
-import { FieldInput, FieldSelect } from "@/pages/Bancas.styled";
+import { FieldInput } from "@/pages/Bancas.styled";
+import { MultiSelect } from "@/components/MultiSelect";
 import { MentoradoButton, MentoradoNome, MentoradosList, TituloComAvatar } from "../MeusMentorados.styled";
 import { FiltrosRow, Iniciais } from "./Painel.styled";
 import {
@@ -53,7 +54,8 @@ export function PainelRelatorio() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
-  const [filtroPosicao, setFiltroPosicao] = useState<Posicao | "">("");
+  // Várias posições de uma vez (2026-10-06, a pedido); vazio = todas.
+  const [filtroPosicoes, setFiltroPosicoes] = useState<string[]>([]);
   // Todos os cargos do catálogo (2026-10-06, a pedido): eram só coordenador
   // e consultor fixos no código.
   const [posicoes, setPosicoes] = useState<{ posicao: Posicao; nome: string }[]>([]);
@@ -105,10 +107,10 @@ export function PainelRelatorio() {
 
   const filtrados = useMemo(() => {
     return usuarios
-      .filter((u) => !filtroPosicao || u.posicao === filtroPosicao)
+      .filter((u) => filtroPosicoes.length === 0 || filtroPosicoes.includes(u.posicao))
       .filter((u) => u.nome.toLowerCase().includes(busca.toLowerCase()))
       .sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [usuarios, busca, filtroPosicao]);
+  }, [usuarios, busca, filtroPosicoes]);
 
   function abrirUsuario(usuarioAlvo: UsuarioResumo) {
     setSelecionado(usuarioAlvo);
@@ -306,14 +308,14 @@ export function PainelRelatorio() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
-          <FieldSelect value={filtroPosicao} onChange={(e) => setFiltroPosicao(e.target.value as Posicao | "")}>
-            <option value="">Todas as posições</option>
-            {posicoes.map((p) => (
-              <option key={p.posicao} value={p.posicao}>
-                {p.nome}
-              </option>
-            ))}
-          </FieldSelect>
+          <MultiSelect
+            valores={filtroPosicoes}
+            onChange={setFiltroPosicoes}
+            opcoes={posicoes.map((p) => ({ value: p.posicao, label: p.nome }))}
+            rotuloVazio="Todas as posições"
+            resumo={(n) => `${n} posições`}
+            aria-label="Filtrar por posição"
+          />
         </FiltrosRow>
 
         {filtrados.length === 0 ? (
