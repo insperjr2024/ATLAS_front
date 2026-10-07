@@ -93,6 +93,8 @@ export interface MinhaEleicao {
   candidatos: { id: number; usuario_id: number; nome: string }[];
   sou_candidato: boolean;
   ja_votei: boolean;
+  /** Com que peso meu voto entra, pela posição (e cargo extra) de agora. */
+  meu_peso: number;
 }
 
 export interface EleicaoPayload {

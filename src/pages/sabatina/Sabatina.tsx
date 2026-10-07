@@ -118,7 +118,10 @@ function Cedula({
           <Aviso>Seu voto nesta eleição já foi registrado. O resultado sai quando a diretoria fechar a votação.</Aviso>
         ) : (
           <>
-            <Intro>Escolha uma opção. O voto é secreto.</Intro>
+            <Intro>
+              Escolha uma opção. O voto é secreto. Seu voto tem peso <strong>{eleicao.meu_peso}</strong>; se
+              estiver diferente do esperado, avise a diretoria antes de votar.
+            </Intro>
             <Lista style={{ marginTop: "0.75rem", gap: "0.5rem" }}>
               {eleicao.candidatos.map((c) => (
                 <Opcao key={c.id} $marcada={escolha === String(c.id)}>
