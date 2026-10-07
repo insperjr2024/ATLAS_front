@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import type { TipoDocumentoContratual } from "@/types/contratos";
 import { formatarCpfDigitado } from "@/lib/mascaras";
@@ -614,8 +614,18 @@ export function DadosDocumentoForm({
   projetoId?: number | null;
   token?: string | null;
 }) {
+  // Sempre a partir do estado mais recente, não do `dados` do render: dois
+  // `set` seguidos no mesmo evento (o botão "Hoje" preenche dia, mês e ano
+  // de uma vez) sobrescreviam um ao outro e só o último ficava
+  // (2026-10-07, corrigido).
+  const dadosRef = useRef(dados);
+  useEffect(() => {
+    dadosRef.current = dados;
+  }, [dados]);
   function set(caminho: Caminho, valor: unknown) {
-    onChange(setPath(dados, caminho, valor));
+    const novo = setPath(dadosRef.current, caminho, valor);
+    dadosRef.current = novo;
+    onChange(novo);
   }
 
   const Especifica = tipo === "contrato" ? null : SECOES_ESPECIFICAS[tipo];
