@@ -348,7 +348,16 @@ export function ArquivoContratos() {
                 <Vazio>{naRaiz ? "Nenhuma gestão arquivada ainda." : "Sem subpastas."}</Vazio>
               ) : (
                 conteudo.subpastas.map((p) => (
-                  <CartaoPasta key={p.id} role="button" tabIndex={0} onClick={() => setPastaId(p.id)}>
+                  <CartaoPasta
+                    key={p.id}
+                    role="button"
+                    tabIndex={0}
+                    title="Clique duas vezes para abrir"
+                    onDoubleClick={() => setPastaId(p.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") setPastaId(p.id);
+                    }}
+                  >
                     <Folder className="pasta" size={18} />
                     <span className="nome" title={p.nome}>
                       {p.nome}

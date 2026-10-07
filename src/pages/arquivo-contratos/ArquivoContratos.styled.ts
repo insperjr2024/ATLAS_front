@@ -294,7 +294,8 @@ export const CartaoPasta = styled(Cartao)`
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  cursor: pointer;
+  cursor: default;
+  user-select: none;
 
   svg.pasta {
     color: #691212;
@@ -312,8 +313,10 @@ export const CartaoPasta = styled(Cartao)`
     white-space: nowrap;
   }
 
-  .nome:hover {
-    text-decoration: underline;
+  &:hover {
+    background:
+      linear-gradient(oklch(0.985 0 0), oklch(0.985 0 0)) padding-box,
+      linear-gradient(135deg, #230606 0%, #691212 100%) border-box;
   }
 
   .meta {
