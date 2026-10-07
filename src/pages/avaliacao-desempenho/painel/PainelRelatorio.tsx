@@ -6,6 +6,7 @@ import { getMentorias } from "@/lib/desempenho-mentorias";
 import { RelatorioDesempenho } from "@/components/desempenho/RelatorioDesempenho";
 import { RelatorioPdi } from "@/components/desempenho/RelatorioPdi";
 import type { UsuarioResumo, Posicao } from "@/types/auth";
+import { MENTORES_ELEGIVEIS } from "@/utils/permissoes";
 import type { DesempenhoMentoria, DesempenhoRelatorio } from "@/types/desempenho";
 import {
   EmptyText,
@@ -33,6 +34,10 @@ import {
 type ModoRelatorio = "avaliacoes" | "pdi";
 
 /** "Ana Souza" -> "AS". Mesma regra de `MeusMentorados.tsx`. */
+/** Quem é mentor e nunca mentorado: não tem PDI próprio, tem o dos
+ *  mentorados. Coordenador, gerente, diretoria e a coordenação de vendas. */
+const SEM_PDI_PROPRIO = new Set<Posicao>([...MENTORES_ELEGIVEIS, "vendas", "diretor_de_vendas"]);
+
 function iniciais(nome: string | null | undefined): string {
   const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return "?";
@@ -54,11 +59,12 @@ export function PainelRelatorio() {
   const [relatorio, setRelatorio] = useState<DesempenhoRelatorio | null>(null);
   const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
 
-  // ⭐ 2026-09-26, a pedido: coordenador nunca é mentorado (regra 2.5, mentor
-  // = coordenador) — "Relatórios de PDI" de um coordenador não pode ser o
-  // PDI dele mesmo (não existe), tem que ser o PDI de quem ELE mentora, e
-  // pode ser mais de uma pessoa.
-  const ehCoordenador = selecionado?.posicao === "coordenador";
+  // 2026-09-26, a pedido: coordenador nunca é mentorado (regra 2.5, mentor
+  // = coordenador). "Relatórios de PDI" dele não pode ser o PDI dele mesmo
+  // (não existe), tem que ser o PDI de quem ELE mentora, e pode ser mais de
+  // uma pessoa. 2026-10-06: vale pra todo mundo que não tem PDI próprio
+  // (gerente, coordenação de vendas, diretoria), não só pro coordenador.
+  const semPdiProprio = !!selecionado && SEM_PDI_PROPRIO.has(selecionado.posicao);
   const [mentoradosDoCoordenador, setMentoradosDoCoordenador] = useState<DesempenhoMentoria[]>([]);
   const [carregandoMentorados, setCarregandoMentorados] = useState(false);
   const [mentoradoPdiSelecionado, setMentoradoPdiSelecionado] = useState<DesempenhoMentoria | null>(null);
@@ -118,7 +124,7 @@ export function PainelRelatorio() {
     // `require_self` sem override de admin de propósito — ver o
     // comentário em `authorization.py`): quem está aqui é a diretoria
     // olhando o mentorado de OUTRA pessoa, não os próprios.
-    if (selecionado.posicao === "coordenador") {
+    if (SEM_PDI_PROPRIO.has(selecionado.posicao)) {
       setCarregandoMentorados(true);
       try {
         const todas = await getMentorias(token);
@@ -154,7 +160,7 @@ export function PainelRelatorio() {
 
   if (carregando) return <PageLoadingBlock />;
 
-  if (selecionado && modo === "pdi" && ehCoordenador) {
+  if (selecionado && modo === "pdi" && semPdiProprio) {
     return (
       <PageCard>
         <PageCardHeader>
@@ -261,7 +267,7 @@ export function PainelRelatorio() {
                 <TipoCardTitulo>Relatórios de PDI</TipoCardTitulo>
               </TipoCardHeader>
               <TipoCardDescricao>
-                {ehCoordenador
+                {semPdiProprio
                   ? "Coordenador não tem PDI próprio — dos mentorados dele."
                   : "PDI inicial e encontros de mentoria, com prazo e arquivo."}
               </TipoCardDescricao>

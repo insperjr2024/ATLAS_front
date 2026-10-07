@@ -23,11 +23,6 @@ interface RelatorioPdiProps {
   podeEnviarEncontro: boolean;
 }
 
-const Descricao = styled.p`
-  margin: 0 0 ${theme.spacing.md};
-  font-size: ${theme.fontSize.sm};
-  color: ${theme.colors.mutedForeground};
-`;
 
 /** Uma pasta com só 1 item vira UMA linha (nome + prazo + status + ações),
  *  em vez do card-dentro-de-card de `LoteCard`/`SubLista`: esse aninhamento
@@ -234,10 +229,6 @@ export function RelatorioPdi({ usuarioId, podeEnviarInicial, podeEnviarEncontro 
         <EmptyText>Nenhuma pasta de PDI cadastrada ainda.</EmptyText>
       ) : (
         <>
-          <Descricao>
-            Vem das pastas de PDI que a diretoria cadastra em Avaliação de Desempenho → PDI: um "PDI
-            inicial" e um "Encontro" por marco de mentoria, cada um com prazo e o documento esperado.
-          </Descricao>
           <LotesStack>
             {pastas.map((pasta) => {
               const podeAgir = podeEnviarNestaPasta(pasta);
