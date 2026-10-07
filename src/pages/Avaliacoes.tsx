@@ -16,7 +16,11 @@ import {
 import { NotaEscala, NotaEscalaGrupo } from "@/components/NotaEscala";
 import { DescricaoQuote } from "@/styles/shared.styled";
 import { Th, useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
-import { getEscopos, getFrentes } from "@/lib/bancas";
+import {
+  definirPrazoAvaliacaoBanca,
+  getEscopos,
+  getFrentes,
+} from "@/lib/bancas";
 import { getHistoricoBancas } from "@/lib/historico";
 import {
   getBancas,
@@ -566,6 +570,10 @@ export function Avaliacoes() {
           avaliacoesNotas={avaliacoesNotas}
           token={token}
           onClose={() => setBancaDetalhe(null)}
+          onPrazoMudou={(patch) => {
+            setHistorico((atual) => atual.map((b) => (b.id === bancaDetalhe.id ? { ...b, ...patch } : b)));
+            setBancaDetalhe((atual) => (atual ? { ...atual, ...patch } : atual));
+          }}
         />
       )}
 
@@ -586,6 +594,84 @@ export function Avaliacoes() {
   );
 }
 
+/**
+ * A janela de avaliação da banca, sucinta: abriu na realização, fecha 7
+ * dias depois. Abrir/fechar na mão é pontual (2026-10-06, a pedido): a
+ * diretoria reabre por exceção pra quem esqueceu, ou fecha antes; "voltar
+ * ao automático" tira a exceção.
+ */
+function JanelaAvaliacao({
+  banca,
+  token,
+  onMudou,
+}: {
+  banca: HistoricoBanca;
+  token: string;
+  onMudou: (patch: PatchPrazo) => void;
+}) {
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function definir(override: "aberto" | "fechado" | null) {
+    setSalvando(true);
+    setErro("");
+    try {
+      const r = await definirPrazoAvaliacaoBanca(banca.id, override, token);
+      onMudou({
+        prazo_avaliacao_override: r.prazo_avaliacao_override,
+        prazo_avaliacao: r.prazo_avaliacao,
+        avaliacao_aberta: r.avaliacao_aberta,
+      });
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível alterar");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (!banca.realizado_em) return <>banca ainda não realizada</>;
+
+  const fmt = (iso: string) =>
+    paraDataUtc(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const override = banca.prazo_avaliacao_override;
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem" }}>
+      <span>
+        abriu {fmt(banca.realizado_em)}
+        {banca.prazo_avaliacao && ` · fecha ${fmt(banca.prazo_avaliacao)}`}
+      </span>
+      <PageBadge $tone={banca.avaliacao_aberta ? "success" : "muted"}>
+        {override === "aberto"
+          ? "Aberta manualmente"
+          : override === "fechado"
+            ? "Fechada manualmente"
+            : banca.avaliacao_aberta
+              ? "Aberta"
+              : "Encerrada"}
+      </PageBadge>
+      {override !== "aberto" && (
+        <PageButtonSm type="button" $variant="outline" disabled={salvando} onClick={() => definir("aberto")}>
+          Abrir manualmente
+        </PageButtonSm>
+      )}
+      {override !== "fechado" && banca.avaliacao_aberta && (
+        <PageButtonSm type="button" $variant="outline" disabled={salvando} onClick={() => definir("fechado")}>
+          Fechar
+        </PageButtonSm>
+      )}
+      {override !== null && (
+        <PageButtonSm type="button" $variant="ghost" disabled={salvando} onClick={() => definir(null)}>
+          Voltar ao automático
+        </PageButtonSm>
+      )}
+      {erro && <span style={{ color: "var(--destructive, #c00)", fontSize: "0.8rem" }}>{erro}</span>}
+    </div>
+  );
+}
+
+type PatchPrazo = Pick<HistoricoBanca, "prazo_avaliacao_override" | "prazo_avaliacao" | "avaliacao_aberta">;
+
 function VerAvaliacoesModal({
   banca,
   usuarios,
@@ -594,6 +680,7 @@ function VerAvaliacoesModal({
   avaliacoesNotas,
   token,
   onClose,
+  onPrazoMudou,
 }: {
   banca: HistoricoBanca;
   usuarios: UsuarioResumo[];
@@ -601,6 +688,7 @@ function VerAvaliacoesModal({
   avaliacoes: Avaliacao[];
   avaliacoesNotas: AvaliacaoNota[];
   token: string;
+  onPrazoMudou: (patch: PatchPrazo) => void;
   onClose: () => void;
 }) {
   const [medias, setMedias] = useState<NotaPorPergunta[]>([]);
@@ -656,6 +744,12 @@ function VerAvaliacoesModal({
             <DetailRow>
               <DetailTerm>Semestre</DetailTerm>
               <DetailValue>{banca.semestre_nome ?? "—"}</DetailValue>
+            </DetailRow>
+            <DetailRow>
+              <DetailTerm>Avaliação</DetailTerm>
+              <DetailValue>
+                <JanelaAvaliacao banca={banca} token={token} onMudou={onPrazoMudou} />
+              </DetailValue>
             </DetailRow>
           </DetailList>
 
