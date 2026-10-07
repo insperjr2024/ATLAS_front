@@ -43,7 +43,7 @@ export const Cabecalho = styled.header`
 
 export const CabecalhoGrade = styled.div`
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 1.5rem;
   height: 100%;
@@ -55,41 +55,14 @@ export const CabecalhoGrade = styled.div`
   }
 `;
 
-export const MarcaLink = styled.a`
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: #fff;
-  text-decoration: none;
-
-  img {
-    height: 28px;
-    width: 28px;
-    padding: 3px;
-    border-radius: 6px;
-    background: #fff;
-  }
-
-  span {
-    font-family: "Montserrat", Helvetica, sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    letter-spacing: 0.02em;
-  }
-`;
-
 export const TituloCabecalho = styled.div`
-  justify-self: center;
+  justify-self: start;
   font-family: "Montserrat", Helvetica, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.85);
-
-  @media (max-width: 640px) {
-    display: none;
-  }
+  color: #fff;
 `;
 
 export const AcoesCabecalho = styled.div`
@@ -290,97 +263,6 @@ export const Cartao = styled.div`
   padding: 1rem;
 `;
 
-export const CartaoPasta = styled(Cartao)`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  cursor: default;
-  user-select: none;
-
-  svg.pasta {
-    color: #691212;
-    flex-shrink: 0;
-  }
-
-  .nome {
-    flex: 1;
-    min-width: 0;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: ${cor.texto};
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &:hover {
-    background:
-      linear-gradient(oklch(0.985 0 0), oklch(0.985 0 0)) padding-box,
-      linear-gradient(135deg, #230606 0%, #691212 100%) border-box;
-  }
-
-  .meta {
-    font-size: 0.75rem;
-    color: ${cor.mudo};
-  }
-`;
-
-export const Linha = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  border-radius: 6px;
-  border: 1px solid ${cor.borda};
-  background: ${cor.fundo};
-  padding: 0.5rem 0.75rem;
-
-  & + & {
-    margin-top: 0.5rem;
-  }
-
-  .titulo {
-    margin: 0;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: ${cor.texto};
-  }
-
-  .sub {
-    margin: 0;
-    font-size: 0.75rem;
-    color: ${cor.mudo};
-  }
-`;
-
-export const LinhaAcoes = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  font-size: 0.875rem;
-
-  button {
-    border: none;
-    background: none;
-    padding: 0;
-    font: inherit;
-    color: ${cor.texto};
-    text-decoration: underline;
-    cursor: pointer;
-  }
-
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    text-decoration: none;
-  }
-
-  button.perigo {
-    color: ${cor.destrutivo};
-  }
-`;
-
 export const Etiqueta = styled.span<{ $tom?: "atencao" | "neutro" }>`
   display: inline-block;
   border-radius: 999px;
@@ -476,4 +358,142 @@ export const LinhaInline = styled.div`
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.5rem;
+`;
+
+/* A lista única, como num explorador de arquivos: pastas e arquivos nas
+   mesmas linhas, ícone diz o que é cada um. Um card em volta da lista
+   inteira, nunca em volta de cada arquivo. */
+export const Lista = styled.div`
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    ${GRADIENTE_VINHO} border-box;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 5%);
+  overflow: hidden;
+`;
+
+export const Item = styled.div<{ $pasta?: boolean }>`
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid ${cor.borda};
+  cursor: default;
+  user-select: none;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: ${cor.secundario};
+  }
+
+  > svg {
+    flex-shrink: 0;
+    color: ${({ $pasta }) => ($pasta ? "#691212" : cor.mudo)};
+  }
+
+  .nome {
+    min-width: 0;
+    font-size: 0.875rem;
+    font-weight: ${({ $pasta }) => ($pasta ? 500 : 400)};
+    color: ${cor.texto};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meta {
+    font-size: 0.75rem;
+    color: ${cor.mudo};
+    white-space: nowrap;
+  }
+
+  @media (max-width: 640px) {
+    .meta {
+      display: none;
+    }
+  }
+`;
+
+export const CabecalhoLista = styled.div`
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
+  padding: 0.45rem 0.9rem;
+  border-bottom: 1px solid ${cor.borda};
+  background: ${cor.secundario};
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: ${cor.mudo};
+`;
+
+export const MenuWrap = styled.div`
+  position: relative;
+`;
+
+export const MenuGatilho = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: ${cor.mudo};
+  cursor: pointer;
+
+  &:hover {
+    background: oklch(0.922 0 0);
+    color: ${cor.texto};
+  }
+`;
+
+export const MenuPainel = styled.div`
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  z-index: 20;
+  min-width: 11rem;
+  padding: 0.25rem;
+  border-radius: 8px;
+  border: 1px solid ${cor.borda};
+  background: #fff;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 12%);
+
+  button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    font: inherit;
+    font-size: 0.85rem;
+    color: ${cor.texto};
+    text-align: left;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: ${cor.secundario};
+  }
+
+  button.perigo {
+    color: ${cor.destrutivo};
+  }
+
+  hr {
+    margin: 0.25rem 0;
+    border: none;
+    border-top: 1px solid ${cor.borda};
+  }
 `;

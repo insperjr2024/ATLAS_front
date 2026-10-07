@@ -36,8 +36,9 @@ export function moverPastaArquivo(pastaId: number, paiId: number | null, token: 
   });
 }
 
-export function apagarPastaArquivo(pastaId: number, token: string) {
-  return apiFetch<void>(`/arquivo-contratos/pastas/${pastaId}`, { method: "DELETE", token });
+/** `recursivo`: apaga também tudo que está dentro (a tela confirma antes). */
+export function apagarPastaArquivo(pastaId: number, token: string, recursivo = false) {
+  return apiFetch<void>(`/arquivo-contratos/pastas/${pastaId}?recursivo=${recursivo}`, { method: "DELETE", token });
 }
 
 export function importarItemArquivo(pastaId: number, arquivo: File, token: string) {

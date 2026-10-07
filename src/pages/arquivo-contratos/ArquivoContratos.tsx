@@ -1,10 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Folder, FolderPlus, LogOut, Search, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  ExternalLink,
+  FileText,
+  Folder,
+  FolderInput,
+  FolderPlus,
+  LogOut,
+  MoreHorizontal,
+  Pencil,
+  RefreshCw,
+  Search,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { useParticulas } from "@/hooks/useParticulas";
-import monograma from "@/assets/insperjr.png";
 import {
   abrirItemArquivo,
   apagarItemArquivo,
@@ -28,27 +42,26 @@ import {
   BotaoCabecalho,
   Cabecalho,
   CabecalhoGrade,
+  CabecalhoLista,
   Caixa,
   Caminho,
   CampoBusca,
   Cartao,
-  CartaoPasta,
-  Cartoes,
   Conteudo,
   Descricao,
   Entrada,
   Erro,
   Etiqueta,
-  Linha,
-  LinhaAcoes,
+  Item,
   LinhaInline,
+  Lista,
   ListaEscolha,
-  MarcaLink,
+  MenuGatilho,
+  MenuPainel,
+  MenuWrap,
   NomeUsuario,
   Pagina,
   Particulas,
-  SecaoTitulo,
-  Titulo,
   TituloCabecalho,
   Vazio,
   Veu,
@@ -56,6 +69,8 @@ import {
 
 const PREFIXO_DELETADO = "[DELETADO] ";
 const FONTE_MONTSERRAT = "https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap";
+
+type Alvo = { tipo: "pasta" | "item"; id: number; nome: string };
 
 function tamanhoLegivel(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -78,11 +93,36 @@ function useMontserrat() {
   }, []);
 }
 
+/** O menu "⋯" de uma linha. Fecha ao clicar fora ou ao escolher. */
+function Menu({ children }: { children: (fechar: () => void) => React.ReactNode }) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!aberto) return;
+    function aoClicarFora(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, [aberto]);
+
+  return (
+    <MenuWrap ref={ref} onDoubleClick={(e) => e.stopPropagation()}>
+      <MenuGatilho type="button" aria-label="Ações" onClick={() => setAberto((v) => !v)}>
+        <MoreHorizontal size={16} />
+      </MenuGatilho>
+      {aberto && <MenuPainel>{children(() => setAberto(false))}</MenuPainel>}
+    </MenuWrap>
+  );
+}
+
 /**
  * Arquivo de contratos (2026-10-07, a pedido): a pasta compartilhada da
  * Insper Jr, aberta em aba própria, com o visual do painel de Contratos
- * (cabeçalho em vinho, partículas, cards com borda em degradê). Gestão >
- * Projeto nasce sozinho a cada contrato assinado; o resto é como um drive.
+ * (cabeçalho em vinho, partículas, card com borda em degradê). Pastas e
+ * arquivos numa lista só, como num explorador: clique duplo abre, o menu
+ * "⋯" tem o resto.
  */
 export function ArquivoContratos() {
   const { token, usuario } = useAuth();
@@ -99,9 +139,9 @@ export function ArquivoContratos() {
   const [resultados, setResultados] = useState<ItemArquivo[] | null>(null);
 
   const [novaPasta, setNovaPasta] = useState<string | null>(null);
-  const [renomeando, setRenomeando] = useState<{ tipo: "pasta" | "item"; id: number; nome: string } | null>(null);
-  const [movendo, setMovendo] = useState<{ tipo: "pasta" | "item"; id: number; nome: string } | null>(null);
-  const [apagando, setApagando] = useState<{ tipo: "pasta" | "item"; id: number; nome: string } | null>(null);
+  const [renomeando, setRenomeando] = useState<Alvo | null>(null);
+  const [movendo, setMovendo] = useState<Alvo | null>(null);
+  const [apagando, setApagando] = useState<(Alvo & { comConteudo?: boolean }) | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
   const importarRef = useRef<HTMLInputElement>(null);
@@ -131,8 +171,6 @@ export function ArquivoContratos() {
       .catch((err) => setErro(err instanceof Error ? err.message : "Erro ao carregar a pasta"));
   }, [pastaId, token]);
 
-  // Busca com atraso de digitação. Abaixo de 2 letras não consulta; a tela
-  // decide por `mostrandoBusca` se mostra resultados.
   useEffect(() => {
     if (!token) return;
     const termo = busca.trim();
@@ -176,6 +214,24 @@ export function ArquivoContratos() {
     await agir(() => substituirItemArquivo(id, arquivo, token), "Não foi possível substituir");
   }
 
+  /** Clique duplo num arquivo: PDF abre numa aba, o resto baixa. */
+  function abrirArquivo(i: ItemArquivo) {
+    if (!token) return;
+    const acao = i.mime === "application/pdf" ? abrirItemArquivo(i, token) : baixarItemArquivo(i, token);
+    acao.catch((err) => setErro(err instanceof Error ? err.message : "Não foi possível abrir"));
+  }
+
+  /** Apagar pasta: se tem conteúdo, a confirmação avisa e apaga tudo junto. */
+  async function pedirApagarPasta(p: PastaArquivo) {
+    if (!token) return;
+    try {
+      const c = await getPastaArquivo(p.id, token);
+      setApagando({ tipo: "pasta", id: p.id, nome: p.nome, comConteudo: c.subpastas.length + c.itens.length > 0 });
+    } catch {
+      setApagando({ tipo: "pasta", id: p.id, nome: p.nome, comConteudo: true });
+    }
+  }
+
   // A página abre em aba própria (window.open na página de Contratos):
   // "Sair" fecha a aba; se foi aberta direto pela URL, volta pra Contratos.
   function sair() {
@@ -185,23 +241,13 @@ export function ArquivoContratos() {
 
   const pastaAtual = conteudo?.pasta ?? null;
   const naRaiz = pastaId == null;
+  const vazio = !!conteudo && conteudo.subpastas.length === 0 && conteudo.itens.length === 0;
 
   return (
     <Pagina ref={fundoRef}>
       <Particulas ref={canvasRef} />
       <Cabecalho>
         <CabecalhoGrade>
-          <MarcaLink
-            href="/arquivo-contratos"
-            onClick={(e) => {
-              e.preventDefault();
-              setBusca("");
-              setPastaId(null);
-            }}
-          >
-            <img src={monograma} alt="" />
-            <span>Insper Jr.</span>
-          </MarcaLink>
           <TituloCabecalho>Arquivo de Contratos</TituloCabecalho>
           <AcoesCabecalho>
             {usuario && <NomeUsuario>{usuario.nome}</NomeUsuario>}
@@ -213,10 +259,10 @@ export function ArquivoContratos() {
       </Cabecalho>
 
       <Conteudo>
-        <Titulo>Arquivo de contratos</Titulo>
         <Descricao>
           Os documentos <strong>assinados e arquivados</strong> entram aqui sozinhos, por gestão e projeto, na data em
-          que foram assinados. Além deles, qualquer contrato de fora do Atlas pode ser importado em qualquer pasta.
+          que foram assinados. Contratos de fora do Atlas podem ser importados em qualquer pasta. Clique duas vezes
+          para abrir.
         </Descricao>
 
         <Barra>
@@ -248,40 +294,69 @@ export function ArquivoContratos() {
         {erro && <Erro>{erro}</Erro>}
 
         {mostrandoBusca && resultados ? (
-          <>
-            <SecaoTitulo>Resultados para “{busca.trim()}”</SecaoTitulo>
+          <Lista>
+            <CabecalhoLista>
+              <span />
+              <span>Resultados para “{busca.trim()}”</span>
+              <span>Pasta</span>
+              <span />
+            </CabecalhoLista>
             {resultados.length === 0 ? (
-              <Vazio>Nenhum arquivo com esse nome.</Vazio>
+              <Vazio style={{ padding: "0.75rem 0.9rem" }}>Nenhum arquivo com esse nome.</Vazio>
             ) : (
-              <Cartao>
-                {resultados.map((i) => (
-                  <Linha key={i.id}>
-                    <div>
-                      <p className="titulo">{i.nome}</p>
-                      <p className="sub">{i.caminho}</p>
-                    </div>
-                    <LinhaAcoes>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setBusca("");
-                          setPastaId(i.pasta_id);
-                        }}
-                      >
-                        Abrir pasta
-                      </button>
-                      <button type="button" onClick={() => token && baixarItemArquivo(i, token).catch((err) => setErro(err.message))}>
-                        Baixar
-                      </button>
-                    </LinhaAcoes>
-                  </Linha>
-                ))}
-              </Cartao>
+              resultados.map((i) => (
+                <Item key={i.id} onDoubleClick={() => abrirArquivo(i)}>
+                  <FileText size={16} />
+                  <span className="nome" title={i.nome}>
+                    {i.nome}
+                  </span>
+                  <span className="meta">{i.caminho}</span>
+                  <Menu>
+                    {(fechar) => (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            fechar();
+                            setBusca("");
+                            setPastaId(i.pasta_id);
+                          }}
+                        >
+                          <FolderInput size={14} /> Abrir pasta
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            fechar();
+                            abrirArquivo(i);
+                          }}
+                        >
+                          <ExternalLink size={14} /> Abrir
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            fechar();
+                            if (token) baixarItemArquivo(i, token).catch((err) => setErro(err.message));
+                          }}
+                        >
+                          <Download size={14} /> Baixar
+                        </button>
+                      </>
+                    )}
+                  </Menu>
+                </Item>
+              ))
             )}
-          </>
+          </Lista>
         ) : (
           <>
             <Caminho aria-label="Caminho">
+              {!naRaiz && (
+                <button type="button" onClick={() => setPastaId(pastaAtual?.pai_id ?? null)} title="Voltar">
+                  <ArrowLeft size={14} style={{ verticalAlign: "-3px" }} />
+                </button>
+              )}
               <button type="button" onClick={() => setPastaId(null)}>
                 Arquivo
               </button>
@@ -297,11 +372,6 @@ export function ArquivoContratos() {
                   )}
                 </span>
               ))}
-              {!naRaiz && (
-                <button type="button" style={{ marginLeft: "0.5rem" }} onClick={() => setPastaId(pastaAtual?.pai_id ?? null)}>
-                  <ArrowLeft size={12} style={{ verticalAlign: "-2px" }} /> voltar
-                </button>
-              )}
             </Caminho>
 
             {novaPasta !== null && (
@@ -340,107 +410,170 @@ export function ArquivoContratos() {
               </Cartao>
             )}
 
-            <SecaoTitulo>{naRaiz ? "Gestões" : "Pastas"}</SecaoTitulo>
-            <Cartoes>
+            <Lista>
+              <CabecalhoLista>
+                <span />
+                <span>Nome</span>
+                <span>Detalhes</span>
+                <span />
+              </CabecalhoLista>
               {!conteudo ? (
-                <Vazio>Carregando…</Vazio>
-              ) : conteudo.subpastas.length === 0 ? (
-                <Vazio>{naRaiz ? "Nenhuma gestão arquivada ainda." : "Sem subpastas."}</Vazio>
+                <Vazio style={{ padding: "0.75rem 0.9rem" }}>Carregando…</Vazio>
+              ) : vazio ? (
+                <Vazio style={{ padding: "0.75rem 0.9rem" }}>
+                  {naRaiz ? "Nenhuma gestão arquivada ainda." : "Pasta vazia. Importe um arquivo ou crie uma pasta."}
+                </Vazio>
               ) : (
-                conteudo.subpastas.map((p) => (
-                  <CartaoPasta
-                    key={p.id}
-                    role="button"
-                    tabIndex={0}
-                    title="Clique duas vezes para abrir"
-                    onDoubleClick={() => setPastaId(p.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") setPastaId(p.id);
-                    }}
-                  >
-                    <Folder className="pasta" size={18} />
-                    <span className="nome" title={p.nome}>
-                      {p.nome}
-                    </span>
-                    {p.automatica && <span className="meta">{p.semestre_id ? "gestão" : "projeto"}</span>}
-                    <LinhaAcoes onClick={(e) => e.stopPropagation()}>
-                      <button type="button" onClick={() => setRenomeando({ tipo: "pasta", id: p.id, nome: p.nome })}>
-                        Renomear
-                      </button>
-                      {!p.automatica && (
-                        <button type="button" onClick={() => setMovendo({ tipo: "pasta", id: p.id, nome: p.nome })}>
-                          Mover
-                        </button>
-                      )}
-                      <button type="button" className="perigo" onClick={() => setApagando({ tipo: "pasta", id: p.id, nome: p.nome })}>
-                        Apagar
-                      </button>
-                    </LinhaAcoes>
-                  </CartaoPasta>
-                ))
-              )}
-            </Cartoes>
-
-            {!naRaiz && (
-              <>
-                <SecaoTitulo>Arquivos</SecaoTitulo>
-                {!conteudo ? null : conteudo.itens.length === 0 ? (
-                  <Vazio>Nenhum arquivo nesta pasta. Importe um ou aguarde um contrato assinado.</Vazio>
-                ) : (
-                  <Cartao>
-                    {conteudo.itens.map((i) => {
-                      const deletado = i.nome.startsWith(PREFIXO_DELETADO);
-                      return (
-                        <Linha key={i.id}>
-                          <div>
-                            <p className="titulo">
-                              {i.nome}{" "}
-                              {deletado ? (
-                                <Etiqueta $tom="atencao">apagado no kanban</Etiqueta>
-                              ) : (
-                                <Etiqueta $tom="neutro">{i.origem === "atlas" ? "gerado no Atlas" : "importado"}</Etiqueta>
-                              )}
-                            </p>
-                            <p className="sub">
-                              {tamanhoLegivel(i.tamanho)} — atualizado em {dataCurta(i.atualizado_em)}
-                              {i.criado_por_nome && i.origem === "importado" ? ` por ${i.criado_por_nome}` : ""}
-                            </p>
-                          </div>
-                          <LinhaAcoes>
-                            {i.mime === "application/pdf" && (
-                              <button type="button" onClick={() => token && abrirItemArquivo(i, token).catch((err) => setErro(err.message))}>
-                                Abrir
-                              </button>
-                            )}
-                            <button type="button" onClick={() => token && baixarItemArquivo(i, token).catch((err) => setErro(err.message))}>
-                              Baixar
-                            </button>
-                            <button type="button" onClick={() => setRenomeando({ tipo: "item", id: i.id, nome: i.nome })}>
-                              Renomear
-                            </button>
-                            <button type="button" onClick={() => setMovendo({ tipo: "item", id: i.id, nome: i.nome })}>
-                              Mover
+                <>
+                  {conteudo.subpastas.map((p) => (
+                    <Item
+                      key={`p-${p.id}`}
+                      $pasta
+                      role="button"
+                      tabIndex={0}
+                      onDoubleClick={() => setPastaId(p.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") setPastaId(p.id);
+                      }}
+                    >
+                      <Folder size={16} />
+                      <span className="nome" title={p.nome}>
+                        {p.nome}
+                      </span>
+                      <span className="meta">{p.semestre_id ? "gestão" : p.projeto_id ? "projeto" : "pasta"}</span>
+                      <Menu>
+                        {(fechar) => (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                fechar();
+                                setPastaId(p.id);
+                              }}
+                            >
+                              <FolderInput size={14} /> Abrir
                             </button>
                             <button
                               type="button"
                               onClick={() => {
-                                setSubstituindoId(i.id);
-                                substituirRef.current?.click();
+                                fechar();
+                                setRenomeando({ tipo: "pasta", id: p.id, nome: p.nome });
                               }}
                             >
-                              Substituir
+                              <Pencil size={14} /> Renomear
                             </button>
-                            <button type="button" className="perigo" onClick={() => setApagando({ tipo: "item", id: i.id, nome: i.nome })}>
-                              Apagar
+                            {!p.automatica && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  fechar();
+                                  setMovendo({ tipo: "pasta", id: p.id, nome: p.nome });
+                                }}
+                              >
+                                <FolderInput size={14} /> Mover
+                              </button>
+                            )}
+                            <hr />
+                            <button
+                              type="button"
+                              className="perigo"
+                              onClick={() => {
+                                fechar();
+                                void pedirApagarPasta(p);
+                              }}
+                            >
+                              <Trash2 size={14} /> Apagar
                             </button>
-                          </LinhaAcoes>
-                        </Linha>
-                      );
-                    })}
-                  </Cartao>
-                )}
-              </>
-            )}
+                          </>
+                        )}
+                      </Menu>
+                    </Item>
+                  ))}
+                  {conteudo.itens.map((i) => {
+                    const deletado = i.nome.startsWith(PREFIXO_DELETADO);
+                    return (
+                      <Item key={`i-${i.id}`} onDoubleClick={() => abrirArquivo(i)}>
+                        <FileText size={16} />
+                        <span className="nome" title={i.nome}>
+                          {i.nome}{" "}
+                          {deletado ? (
+                            <Etiqueta $tom="atencao">apagado no kanban</Etiqueta>
+                          ) : (
+                            i.origem === "atlas" && <Etiqueta $tom="neutro">gerado no Atlas</Etiqueta>
+                          )}
+                        </span>
+                        <span className="meta">
+                          {tamanhoLegivel(i.tamanho)} · {dataCurta(i.atualizado_em)}
+                        </span>
+                        <Menu>
+                          {(fechar) => (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  fechar();
+                                  abrirArquivo(i);
+                                }}
+                              >
+                                <ExternalLink size={14} /> Abrir
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  fechar();
+                                  if (token) baixarItemArquivo(i, token).catch((err) => setErro(err.message));
+                                }}
+                              >
+                                <Download size={14} /> Baixar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  fechar();
+                                  setRenomeando({ tipo: "item", id: i.id, nome: i.nome });
+                                }}
+                              >
+                                <Pencil size={14} /> Renomear
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  fechar();
+                                  setMovendo({ tipo: "item", id: i.id, nome: i.nome });
+                                }}
+                              >
+                                <FolderInput size={14} /> Mover
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  fechar();
+                                  setSubstituindoId(i.id);
+                                  substituirRef.current?.click();
+                                }}
+                              >
+                                <RefreshCw size={14} /> Substituir arquivo
+                              </button>
+                              <hr />
+                              <button
+                                type="button"
+                                className="perigo"
+                                onClick={() => {
+                                  fechar();
+                                  setApagando({ tipo: "item", id: i.id, nome: i.nome });
+                                }}
+                              >
+                                <Trash2 size={14} /> Apagar
+                              </button>
+                            </>
+                          )}
+                        </Menu>
+                      </Item>
+                    );
+                  })}
+                </>
+              )}
+            </Lista>
           </>
         )}
       </Conteudo>
@@ -499,15 +632,17 @@ export function ArquivoContratos() {
           titulo={apagando.tipo === "pasta" ? "Apagar pasta" : "Apagar arquivo"}
           mensagem={
             apagando.tipo === "pasta"
-              ? `Apagar a pasta "${apagando.nome}"? Só dá pra apagar pasta vazia.`
+              ? apagando.comConteudo
+                ? `A pasta "${apagando.nome}" tem arquivos ou pastas dentro. Apagar a pasta e tudo que está nela? Essa ação não pode ser desfeita.`
+                : `Apagar a pasta "${apagando.nome}"?`
               : `Apagar "${apagando.nome}" do arquivo? Essa ação não pode ser desfeita.`
           }
-          rotuloConfirmar="Apagar"
+          rotuloConfirmar={apagando.tipo === "pasta" && apagando.comConteudo ? "Apagar tudo" : "Apagar"}
           rotuloProcessando="Apagando…"
           onCancelar={() => setApagando(null)}
           onConfirmar={async () => {
             if (!token) return;
-            if (apagando.tipo === "pasta") await apagarPastaArquivo(apagando.id, token);
+            if (apagando.tipo === "pasta") await apagarPastaArquivo(apagando.id, token, !!apagando.comConteudo);
             else await apagarItemArquivo(apagando.id, token);
             setApagando(null);
             await carregar(pastaId);
