@@ -13,6 +13,8 @@ import {
   updateLote,
 } from "@/lib/desempenho-lotes";
 import { getProjetos, paraDataUtc } from "@/lib/projetos";
+import { getFrentes } from "@/lib/frentes";
+import type { Frente } from "@/types/banca";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
 import type { DesempenhoLote, DesempenhoPendencia, DesempenhoTipo } from "@/types/desempenho";
 import type { ProjetoResumo } from "@/types/projeto";
@@ -32,6 +34,7 @@ import {
 import { FieldGroup, FieldInput, FieldLabel, FieldSelect, FormStack } from "@/pages/Bancas.styled";
 import {
   CampoInlineRow,
+  FiltrosRow,
   LoteCard,
   LoteCardAcoes,
   LoteCardHeader,
@@ -145,6 +148,13 @@ export function PainelLotes() {
   const { token } = useAuth();
   const [lotes, setLotes] = useState<DesempenhoLote[]>([]);
   const [projetos, setProjetos] = useState<ProjetoResumo[]>([]);
+  const [frentes, setFrentes] = useState<Frente[]>([]);
+  // A lista começa só com os abertos (2026-10-06, a pedido); "Mostrar
+  // todos" traz o histórico, em ordem de fechamento, do mais recente pro
+  // mais antigo. Os filtros valem nos dois casos.
+  const [mostrarTodos, setMostrarTodos] = useState(false);
+  const [filtroTipo, setFiltroTipo] = useState<DesempenhoTipo | "todos">("todos");
+  const [filtroFrente, setFiltroFrente] = useState<string>("todas");
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
 
@@ -187,7 +197,8 @@ export function PainelLotes() {
     setCarregando(true);
     setErro("");
     try {
-      const [l, p] = await Promise.all([getLotes(token, false), getProjetos(token)]);
+      const [l, p, f] = await Promise.all([getLotes(token, false), getProjetos(token), getFrentes(token)]);
+      setFrentes(f);
       setLotes(l);
       setProjetos(p);
     } catch (err) {
@@ -203,6 +214,19 @@ export function PainelLotes() {
   }, [token]);
 
   const nomesProjeto = useMemo(() => new Map(projetos.map((p) => [p.id, p.nome])), [projetos]);
+  const frenteIdsPorProjeto = useMemo(() => new Map(projetos.map((p) => [p.id, p.frente_ids])), [projetos]);
+
+  const lotesVisiveis = useMemo(() => {
+    const frenteId = filtroFrente === "todas" ? null : Number(filtroFrente);
+    return lotes
+      .filter((l) => mostrarTodos || l.aberto)
+      .filter((l) => filtroTipo === "todos" || l.tipo === filtroTipo)
+      .filter(
+        (l) => frenteId === null || l.projeto_ids.some((pid) => frenteIdsPorProjeto.get(pid)?.includes(frenteId)),
+      )
+      .sort((a, b) => new Date(b.data_fim).getTime() - new Date(a.data_fim).getTime());
+  }, [lotes, mostrarTodos, filtroTipo, filtroFrente, frenteIdsPorProjeto]);
+  const totalFechados = lotes.filter((l) => !l.aberto).length;
 
   // ⭐ 2026-09-05, a pedido: contorno colorido no chip de cada projeto,
   // indicando quantas rodadas de avaliação (qualquer tipo, já fechadas) ele
@@ -535,14 +559,49 @@ export function PainelLotes() {
 
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Formulários</PageCardTitle>
+          <PageCardTitle>
+            Formulários ({lotesVisiveis.length}
+            {!mostrarTodos && totalFechados > 0 ? ` abertos, ${totalFechados} no histórico` : ""})
+          </PageCardTitle>
         </PageCardHeader>
         <PageCardContent>
+          <FiltrosRow>
+            <FieldSelect
+              aria-label="Filtrar por tipo"
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value as DesempenhoTipo | "todos")}
+            >
+              <option value="todos">Todos os tipos</option>
+              <option value="periodico">Periódica</option>
+              <option value="finalizacao">Finalização</option>
+            </FieldSelect>
+            <FieldSelect
+              aria-label="Filtrar por frente"
+              value={filtroFrente}
+              onChange={(e) => setFiltroFrente(e.target.value)}
+            >
+              <option value="todas">Todas as frentes</option>
+              {frentes.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nome}
+                </option>
+              ))}
+            </FieldSelect>
+            <PageButtonSm type="button" $variant="outline" onClick={() => setMostrarTodos((v) => !v)}>
+              {mostrarTodos ? "Só abertos" : "Mostrar todos"}
+            </PageButtonSm>
+          </FiltrosRow>
           {lotes.length === 0 ? (
             <EmptyText>Nenhum formulário criado ainda.</EmptyText>
+          ) : lotesVisiveis.length === 0 ? (
+            <EmptyText>
+              {mostrarTodos
+                ? "Nenhum formulário com esses filtros."
+                : "Nenhum formulário aberto agora. Use \"Mostrar todos\" pra ver o histórico."}
+            </EmptyText>
           ) : (
             <LotesStack>
-            {lotes.map((lote) => {
+            {lotesVisiveis.map((lote) => {
               const status = statusLote(lote);
               const gruposPendencias =
                 pendenciasLoteId === lote.id ? agruparPendenciasPorAvaliador(pendencias) : [];
