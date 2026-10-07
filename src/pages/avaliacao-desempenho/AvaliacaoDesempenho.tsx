@@ -213,20 +213,22 @@ export function AvaliacaoDesempenho() {
   // inicial, antes de qualquer escolha de tipo.
   const itensFechados = useMemo(() => fila.filter((item) => !item.aberto), [fila]);
 
-  // `getProjetos` já aplica o recorte de visão: pra coordenador e
-  // consultor devolve só os projetos onde eles estão hoje, daí dá pra
-  // derivar o papel de cada um sem endpoint novo (coordenador_ids/
-  // consultor_ids já vêm no resumo).
+  // Só os projetos em que a pessoa ESTÁ (coordenador_ids/consultor_ids do
+  // resumo), não os que ela enxerga: `getProjetos` devolve o portfólio
+  // inteiro pra diretoria e gerência, e a tela dizia que o diretor era
+  // "Consultor(a)" de todos os 19 projetos (2026-10-06, corrigido).
   //
-  // ⚠ `coordenador_ids.includes`, não `coordenador_id ===`: projeto pode
-  // ter mais de um coordenador (2026-08-20), e comparar só com o primeiro
+  // `coordenador_ids.includes`, não `coordenador_id ===`: projeto pode ter
+  // mais de um coordenador (2026-08-20), e comparar só com o primeiro
   // classificaria o segundo coordenador como consultor.
   const minhasParticipacoes = useMemo(() => {
     if (!usuario) return [];
-    return projetos.map((p) => ({
-      projeto: p.nome,
-      papel: (p.coordenador_ids.includes(usuario.id) ? "coordenador" : "consultor") as "coordenador" | "consultor",
-    }));
+    return projetos
+      .filter((p) => p.coordenador_ids.includes(usuario.id) || p.consultor_ids.includes(usuario.id))
+      .map((p) => ({
+        projeto: p.nome,
+        papel: (p.coordenador_ids.includes(usuario.id) ? "coordenador" : "consultor") as "coordenador" | "consultor",
+      }));
   }, [projetos, usuario]);
 
   const textoParticipacoes = useMemo(() => {
