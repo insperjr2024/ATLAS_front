@@ -254,7 +254,7 @@ export function ArquivoContratos() {
           <AcoesCabecalho>
             {usuario && <NomeUsuario>{usuario.nome}</NomeUsuario>}
             <BotaoCabecalho type="button" onClick={sair} title="Fecha esta aba; o Atlas continua aberto na outra">
-              <X size={14} /> Fechar arquivo
+              <X size={14} /> Fechar página
             </BotaoCabecalho>
           </AcoesCabecalho>
         </CabecalhoGrade>
