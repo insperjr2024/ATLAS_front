@@ -52,6 +52,9 @@ export interface DesempenhoFormulario {
   comentarios_descricao: string;
   comentarios_aviso: string;
   secoes: DesempenhoSecao[];
+  /** false = versão congelada que um lote aberto ficou usando. */
+  vigente?: boolean;
+  congelado_em?: string | null;
 }
 
 export interface DesempenhoPendencia {

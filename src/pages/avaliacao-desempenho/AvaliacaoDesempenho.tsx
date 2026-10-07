@@ -308,7 +308,10 @@ export function AvaliacaoDesempenho() {
       return;
     }
     try {
-      const form = await getFormulario(item.lote_tipo, item.form_type, token);
+      // Por lote: se o formulário foi editado com este lote aberto e a
+      // diretoria escolheu "só pra futuros", a versão que vale aqui é a
+      // congelada, a mesma que quem já respondeu usou.
+      const form = await getFormulario(item.lote_tipo, item.form_type, token, item.lote_id);
       const rascunho = rascunhos[chave(item)];
       setPessoaAtual(item);
       setFormulario(form);

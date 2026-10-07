@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Plus, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { getFormulario, updateFormulario } from "@/lib/desempenho-formularios";
+import { getFormulario, getLotesAbertosDoFormulario, updateFormulario } from "@/lib/desempenho-formularios";
+import { ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay, ModalTitle } from "@/styles/modal.styled";
 import type { DesempenhoPapel, DesempenhoTipo, DesempenhoTipoResposta } from "@/types/desempenho";
 import {
   ErrorBlock,
@@ -149,7 +150,29 @@ export function PainelFormularios() {
     );
   }
 
+  // Lotes abertos que a edição afetaria. Quando existem, a tela pergunta
+  // antes de salvar: aplicar ao lote em andamento (quem já respondeu fica
+  // com a versão antiga, quem ainda vai responder vê a nova) ou só a
+  // futuros (o lote aberto congela a versão de agora).
+  const [lotesAbertos, setLotesAbertos] = useState<{ id: number; nome: string }[] | null>(null);
+
   async function handleSalvar() {
+    if (!token) return;
+    setErro("");
+    try {
+      const abertos = await getLotesAbertosDoFormulario(aba.tipo, aba.papel, token);
+      if (abertos.length > 0) {
+        setLotesAbertos(abertos);
+        return;
+      }
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Erro ao verificar lotes abertos");
+      return;
+    }
+    await salvar(true);
+  }
+
+  async function salvar(aplicarEmAbertos: boolean) {
     if (!token) return;
     setSalvando(true);
     setErro("");
@@ -158,6 +181,7 @@ export function PainelFormularios() {
         aba.tipo,
         aba.papel,
         {
+          aplicar_em_abertos: aplicarEmAbertos,
           nota_geral_titulo: notaGeralTitulo,
           nota_geral_descricao: notaGeralDescricao,
           comentarios_titulo: comentariosTitulo,
@@ -182,6 +206,7 @@ export function PainelFormularios() {
       setErro(err instanceof Error ? err.message : "Erro ao salvar o formulário");
     } finally {
       setSalvando(false);
+      setLotesAbertos(null);
     }
   }
 
@@ -336,6 +361,42 @@ export function PainelFormularios() {
             {salvando ? "Salvando..." : "Salvar formulário"}
           </PageButton>
         </>
+      )}
+
+      {lotesAbertos && (
+        <ModalOverlay onMouseDown={() => !salvando && setLotesAbertos(null)}>
+          <ModalContent onMouseDown={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>
+                {lotesAbertos.length === 1 ? "Há uma avaliação rodando" : "Há avaliações rodando"}
+              </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+              <p style={{ margin: 0 }}>
+                {lotesAbertos.length === 1 ? "O lote " : "Os lotes "}
+                <strong>{lotesAbertos.map((l) => l.nome).join(", ")}</strong>
+                {lotesAbertos.length === 1 ? " está aberto e usa" : " estão abertos e usam"} este formulário.
+                Quer aplicar as mudanças ao que está em andamento ou só a lotes futuros?
+              </p>
+              <p style={{ margin: "0.75rem 0 0", fontSize: "0.85rem", opacity: 0.8 }}>
+                Aplicando ao que está em andamento, quem já respondeu fica com as respostas que deu na versão
+                antiga; quem ainda vai responder vê a nova. Só a futuros: o lote aberto continua com a versão de
+                agora até fechar.
+              </p>
+            </ModalBody>
+            <ModalFooter>
+              <PageButton type="button" $variant="outline" disabled={salvando} onClick={() => setLotesAbertos(null)}>
+                Cancelar
+              </PageButton>
+              <PageButton type="button" $variant="outline" disabled={salvando} onClick={() => salvar(false)}>
+                Só para lotes futuros
+              </PageButton>
+              <PageButton type="button" disabled={salvando} onClick={() => salvar(true)}>
+                {salvando ? "Salvando..." : "Aplicar ao lote em andamento"}
+              </PageButton>
+            </ModalFooter>
+          </ModalContent>
+        </ModalOverlay>
       )}
     </PageStack>
   );
