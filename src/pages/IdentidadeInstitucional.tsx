@@ -1,16 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { atualizarIdentidadeInstitucional, getIdentidadeInstitucional } from "@/lib/contratos";
-import type { IdentidadeInstitucional as IdentidadeInstitucionalType } from "@/types/contratos";
 import {
-  PageStack,
+  atualizarIdentidadeInstitucional,
+  baixarModeloContratual,
+  enviarModeloContratual,
+  getIdentidadeInstitucional,
+  getModelosContratuais,
+  removerModeloContratual,
+} from "@/lib/contratos";
+import type { IdentidadeInstitucional as IdentidadeInstitucionalType, ModeloContratual } from "@/types/contratos";
+import {
+  ErrorText,
+  PageButton,
+  PageButtonSm,
   PageCard,
+  PageCardContent,
   PageCardHeader,
   PageCardTitle,
-  PageCardContent,
-  PageButton,
   PageLoadingBlock,
-  ErrorText,
+  PageStack,
 } from "@/styles/page.styled";
 import { FieldGroup, FieldLabel, FieldInput } from "./Bancas.styled";
 import { FormGrid, FormSecoes, FormSecaoTitulo } from "./projetos/ProjetoContratos.styled";
@@ -171,6 +179,113 @@ export function IdentidadeInstitucional() {
           </PageButton>
         </PageCardContent>
       </PageCard>
+
+      {token && <ModelosContratuaisCard token={token} />}
     </PageStack>
+  );
+}
+
+/**
+ * Modelos base dos documentos jurídicos (2026-10-07, a pedido): baixar o que
+ * está em uso, enviar um .docx novo no lugar, voltar ao padrão. O backend
+ * só aceita um modelo que use os mesmos campos do padrão; o texto em volta
+ * pode mudar à vontade.
+ */
+function ModelosContratuaisCard({ token }: { token: string }) {
+  const [modelos, setModelos] = useState<ModeloContratual[] | null>(null);
+  const [erro, setErro] = useState("");
+  const [ocupado, setOcupado] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [tipoEnviando, setTipoEnviando] = useState<string | null>(null);
+
+  useEffect(() => {
+    getModelosContratuais(token)
+      .then(setModelos)
+      .catch((err) => setErro(err instanceof Error ? err.message : "Erro ao carregar os modelos"));
+  }, [token]);
+
+  async function agir(tipo: string, fn: () => Promise<unknown>, fallback: string) {
+    setOcupado(tipo);
+    setErro("");
+    try {
+      await fn();
+      setModelos(await getModelosContratuais(token));
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : fallback);
+    } finally {
+      setOcupado(null);
+    }
+  }
+
+  function escolherArquivo(tipo: string) {
+    setTipoEnviando(tipo);
+    inputRef.current?.click();
+  }
+
+  async function aoEscolherArquivo(e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!arquivo || !tipoEnviando) return;
+    const tipo = tipoEnviando;
+    setTipoEnviando(null);
+    await agir(tipo, () => enviarModeloContratual(tipo, arquivo, token), "Não foi possível enviar o modelo");
+  }
+
+  return (
+    <PageCard>
+      <PageCardHeader>
+        <PageCardTitle>Modelos base dos contratos</PageCardTitle>
+      </PageCardHeader>
+      <PageCardContent>
+        <p style={{ marginTop: 0, fontSize: "0.85rem", color: "var(--muted-foreground, inherit)" }}>
+          O .docx que o sistema preenche ao gerar cada documento. Baixe o atual, edite o texto e envie no lugar.
+          Os campos preenchidos automaticamente (como <code>{"{{ contratante.razao_social }}"}</code>) precisam
+          continuar iguais; o que fica em volta pode mudar à vontade.
+        </p>
+        <input ref={inputRef} type="file" accept=".docx" hidden onChange={aoEscolherArquivo} />
+        {erro && <ErrorText>{erro}</ErrorText>}
+        {!modelos ? (
+          <PageLoadingBlock />
+        ) : (
+          <FormSecoes>
+            {modelos.map((m) => (
+              <div key={m.tipo} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{ flex: "1 1 16rem", fontSize: "0.9rem" }}>
+                  <strong>{m.rotulo}</strong>
+                  <div style={{ fontSize: "0.8rem", color: "var(--muted-foreground, inherit)" }}>
+                    {m.personalizado
+                      ? `${m.arquivo_nome}, enviado${m.enviado_por_nome ? ` por ${m.enviado_por_nome}` : ""}${
+                          m.enviado_em ? ` em ${new Date(m.enviado_em).toLocaleDateString("pt-BR")}` : ""
+                        }`
+                      : `padrão do sistema (${m.arquivo_padrao})`}
+                  </div>
+                </div>
+                <PageButtonSm
+                  type="button"
+                  $variant="outline"
+                  disabled={ocupado === m.tipo}
+                  onClick={() => baixarModeloContratual(m.tipo, m.arquivo_nome, token).catch((err) => setErro(err.message))}
+                >
+                  Baixar atual
+                </PageButtonSm>
+                <PageButtonSm type="button" disabled={ocupado === m.tipo} onClick={() => escolherArquivo(m.tipo)}>
+                  {ocupado === m.tipo ? "Enviando..." : "Enviar novo .docx"}
+                </PageButtonSm>
+                {m.personalizado && (
+                  <PageButtonSm
+                    type="button"
+                    $variant="ghost"
+                    disabled={ocupado === m.tipo}
+                    onClick={() => agir(m.tipo, () => removerModeloContratual(m.tipo, token), "Não foi possível voltar ao padrão")}
+                  >
+                    Voltar ao padrão
+                  </PageButtonSm>
+                )}
+              </div>
+            ))}
+          </FormSecoes>
+        )}
+      </PageCardContent>
+    </PageCard>
   );
 }
