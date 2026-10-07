@@ -127,6 +127,40 @@ const indiceDaEtapa = indiceDaEtapaDocumento;
  * a experiência mais pobre do que o que já existia. O stepper no topo é a
  * mesma ideia visual do `DetalheContrato.tsx` de lá.
  */
+function vazio(v: unknown): boolean {
+  if (v == null || v === "") return true;
+  if (Array.isArray(v)) return v.every(vazio);
+  if (typeof v === "object") return Object.values(v as Record<string, unknown>).every(vazio);
+  return false;
+}
+
+/** `atual` por cima de `fonte`, mas só onde `atual` tem algo preenchido;
+ *  objetos são mesclados campo a campo, arrays vazios cedem lugar. */
+function mesclarPreenchido(fonte: Record<string, unknown>, atual: Record<string, unknown>): Record<string, unknown> {
+  const saida: Record<string, unknown> = { ...fonte };
+  for (const [chave, valorAtual] of Object.entries(atual)) {
+    const valorFonte = fonte[chave];
+    if (vazio(valorAtual)) {
+      if (valorFonte !== undefined) saida[chave] = valorFonte;
+      else saida[chave] = valorAtual;
+      continue;
+    }
+    if (
+      valorAtual &&
+      typeof valorAtual === "object" &&
+      !Array.isArray(valorAtual) &&
+      valorFonte &&
+      typeof valorFonte === "object" &&
+      !Array.isArray(valorFonte)
+    ) {
+      saida[chave] = mesclarPreenchido(valorFonte as Record<string, unknown>, valorAtual as Record<string, unknown>);
+      continue;
+    }
+    saida[chave] = valorAtual;
+  }
+  return saida;
+}
+
 /** "Já tem coleta": o mínimo que a Coleta de Dados sempre traz. */
 function temContratante(dados: unknown): boolean {
   const d = dados as { contratante?: { razao_social?: unknown } } | null | undefined;
@@ -364,11 +398,14 @@ export function DocumentoContratualPage() {
 
   function aplicarReuso() {
     if (!sugestaoReuso) return;
-    // Mantém só o que o documento atual já tinha preenchido; o resto vem
-    // do outro. A assinatura não é reaproveitada: é de outra data.
+    // Mantém só o que o documento atual já tinha PREENCHIDO; o resto vem do
+    // outro. Mesclagem profunda: o documento novo nasce com o esqueleto dos
+    // campos vazio ("" e {}), e um spread raso deixava o vazio ganhar do
+    // preenchido (2026-10-07, corrigido). A assinatura não é reaproveitada:
+    // é de outra data.
     const reaproveitados = { ...((sugestaoReuso.dados ?? {}) as Record<string, unknown>) };
     delete reaproveitados.assinatura;
-    setDados({ ...reaproveitados, ...(dados ?? {}) });
+    setDados(mesclarPreenchido(reaproveitados, (dados ?? {}) as Record<string, unknown>));
     setSugestaoReuso(null);
   }
 
