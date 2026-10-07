@@ -13,6 +13,7 @@ import { ContratosPainel } from "@/pages/ContratosPainel";
 import { IdentidadeInstitucional } from "@/pages/IdentidadeInstitucional";
 import { Sabatina } from "@/pages/sabatina/Sabatina";
 import { SabatinaConfig } from "@/pages/sabatina/SabatinaConfig";
+import { ArquivoContratos } from "@/pages/arquivo-contratos/ArquivoContratos";
 import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
@@ -77,6 +78,11 @@ export default function App() {
                 FORA do Layout, quem ainda não definiu a senha não deve ver o
                 menu de uma plataforma que o backend recusa a servir. */}
             <Route path="/definir-senha" element={<DefinirSenha />} />
+            {/* Arquivo de contratos (2026-10-07): layout próprio, sem a barra
+                lateral, por isso fora do Layout. Quem entra é quem tem a caixa. */}
+            <Route element={<AdminRoute permissao="pode_acessar_arquivo_contratos" />}>
+              <Route path="/arquivo-contratos" element={<ArquivoContratos />} />
+            </Route>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />

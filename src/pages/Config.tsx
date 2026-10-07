@@ -233,6 +233,12 @@ const PERMISSOES = [
   //   Sabatina: peso do voto por posição, montar, abrir, fechar e excluir
   //   eleições e ver a apuração. Votar não depende disto." }
   {
+    campo: "pode_acessar_arquivo_contratos" as const,
+    titulo: "Acessar o arquivo de contratos",
+    descricao:
+      "Abre o Arquivo de Contratos (botão na página Contratos): a pasta compartilhada com os contratos assinados por gestão e projeto, mais o que for importado. Quem entra vê, baixa, importa, renomeia, move e apaga.",
+  },
+  {
     campo: "pode_editar_identidade_institucional" as const,
     titulo: "Editar identidade institucional",
     descricao:
