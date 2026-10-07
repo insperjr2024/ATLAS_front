@@ -86,7 +86,13 @@ const ROTULOS = rotulosDiaSemana(INICIO_SEMANA);
 // "prova" fora de propósito, falta a plataforma ter de onde tirar o curso
 // de cada usuário antes do filtro voltar a fazer sentido (ver
 // `GetEventosCalendarioUseCase`, que também não gera esse tipo hoje).
-const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega"];
+const TIPOS: TipoEvento[] = ["banca", "kickoff", "reuniao", "entrega", "prazo_avaliacao_banca", "prazo_desempenho"];
+
+/** Na pílula, prazo mostra o título ("Prazo: avaliar a banca de X") em vez
+ *  do nome do projeto, senão fica igual à pílula da banca em si. */
+function rotuloPilula(e: EventoCalendario): string {
+  return e.tipo.startsWith("prazo") ? e.titulo : e.projeto_nome || e.titulo;
+}
 /** Reunião é semanal, POR PROJETO. Quem vê o portfólio inteiro (diretor,
  *  gerente) numa grade só leva reunião de TODOS os projetos junto, e ela
  *  sozinha lota todos os dias úteis de todas as semanas: o marco raro
@@ -460,7 +466,7 @@ export function CalendarioGeral() {
                     onClick={() => setDetalhe(e)}
                   >
                     <PilulaHora>{horaDoEvento(e.data)}</PilulaHora>
-                    <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
+                    <PilulaTexto>{rotuloPilula(e)}</PilulaTexto>
                   </Pilula>
                 ),
               }));
@@ -539,7 +545,7 @@ export function CalendarioGeral() {
                                     setDetalhe(e);
                                   }}
                                 >
-                                  <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
+                                  <PilulaTexto>{rotuloPilula(e)}</PilulaTexto>
                                 </Pilula>
                               ))}
                             </PilulasWrap>
@@ -591,7 +597,7 @@ export function CalendarioGeral() {
                   setFlutuante(null);
                 }}
               >
-                <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
+                <PilulaTexto>{rotuloPilula(e)}</PilulaTexto>
               </Pilula>
             ))}
           </FlutuanteEventos>,
@@ -628,7 +634,7 @@ function EventosDoDia({
             onClick={() => onAbrirEvento(e)}
           >
             {hora && <PilulaHora>{hora}</PilulaHora>}
-            <PilulaTexto>{e.projeto_nome || e.titulo}</PilulaTexto>
+            <PilulaTexto>{rotuloPilula(e)}</PilulaTexto>
           </Pilula>
         );
       })}
@@ -722,6 +728,11 @@ function DetalheModal({ evento, onClose }: { evento: EventoCalendario; onClose: 
               state={{ voltarPara: "/calendario", voltarRotulo: "Voltar para o calendário" }}
             >
               Abrir projeto
+            </PageButton>
+          )}
+          {evento.rota && (
+            <PageButton as={Link} to={evento.rota}>
+              Ir responder
             </PageButton>
           )}
         </ModalFooter>
