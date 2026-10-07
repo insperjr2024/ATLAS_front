@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import styled from "styled-components";
+import { theme } from "@/styles/theme";
 import { useAuth } from "@/context/AuthContext";
 import { camposFaltandoDoErro } from "@/lib/api";
 import { getFrentes } from "@/lib/bancas";
@@ -23,6 +25,7 @@ import {
   extrairColeta,
   gerarDocumento,
   getDocumento,
+  getDocumentosDoProjeto,
   getParagrafosEditaveis,
   getSolicitacoesAlteracao,
   getVersoesDocumento,
@@ -124,6 +127,29 @@ const indiceDaEtapa = indiceDaEtapaDocumento;
  * a experiência mais pobre do que o que já existia. O stepper no topo é a
  * mesma ideia visual do `DetalheContrato.tsx` de lá.
  */
+/** "Já tem coleta": o mínimo que a Coleta de Dados sempre traz. */
+function temContratante(dados: unknown): boolean {
+  const d = dados as { contratante?: { razao_social?: unknown } } | null | undefined;
+  return !!d?.contratante?.razao_social;
+}
+
+const AvisoLinha = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.muted};
+  font-size: ${theme.fontSize.sm};
+
+  > span {
+    flex: 1 1 16rem;
+  }
+`;
+
 export function DocumentoContratualPage() {
   const { documentoId: documentoIdParam } = useParams<{ documentoId: string }>();
   const documentoId = Number(documentoIdParam);
@@ -183,12 +209,69 @@ export function DocumentoContratualPage() {
   }, [token]);
   const nomeFrente = (frenteId: number) => frentes.find((f) => f.id === frenteId)?.nome ?? `Frente ${frenteId}`;
 
+  // Rascunho LOCAL do preenchimento (2026-10-07, a pedido): o que a pessoa
+  // digita vai pro localStorage a cada mudança e volta quando ela reabre o
+  // documento, mesmo sem ter clicado em "Salvar dados". Some quando o
+  // servidor confirma (salvar, confirmar, gerar) ou quando ela descarta.
+  const chaveRascunho = documentoId ? `atlas:contrato:rascunho:${documentoId}` : null;
+  const [rascunhoRestaurado, setRascunhoRestaurado] = useState(false);
+  const dadosServidorRef = useRef<string>("");
+
+  function limparRascunho() {
+    if (!chaveRascunho) return;
+    try {
+      localStorage.removeItem(chaveRascunho);
+    } catch {
+      /* sem storage: nada a limpar */
+    }
+    setRascunhoRestaurado(false);
+  }
+
+  useEffect(() => {
+    if (!chaveRascunho || carregando) return;
+    const serializado = JSON.stringify(dados ?? {});
+    try {
+      if (serializado === dadosServidorRef.current) localStorage.removeItem(chaveRascunho);
+      else localStorage.setItem(chaveRascunho, serializado);
+    } catch {
+      /* storage cheio ou bloqueado: segue sem rascunho */
+    }
+  }, [dados, chaveRascunho, carregando]);
+
+  // Sugestão de reutilizar a coleta de outro documento do mesmo projeto
+  // (2026-10-07, a pedido): o TEP costuma ser o último, e os dados do
+  // contratante já foram preenchidos no contrato ou no NDA.
+  const [sugestaoReuso, setSugestaoReuso] = useState<DocumentoContratual | null>(null);
+
   useEffect(() => {
     if (!token || !documentoId) return;
     getDocumento(documentoId, token)
       .then((doc) => {
         setAtual(doc);
-        setDados(doc.dados ?? {});
+        dadosServidorRef.current = JSON.stringify(doc.dados ?? {});
+        let dadosIniciais = doc.dados ?? {};
+        if (chaveRascunho) {
+          try {
+            const salvo = localStorage.getItem(chaveRascunho);
+            if (salvo && salvo !== dadosServidorRef.current) {
+              dadosIniciais = JSON.parse(salvo);
+              setRascunhoRestaurado(true);
+            }
+          } catch {
+            /* rascunho ilegível: ignora */
+          }
+        }
+        setDados(dadosIniciais);
+        if (doc.projeto_id && !temContratante(dadosIniciais)) {
+          getDocumentosDoProjeto(doc.projeto_id, token)
+            .then(({ documentos }) => {
+              const fonte = documentos
+                .filter((d) => d.id !== doc.id && temContratante(d.dados))
+                .sort((a, b) => b.id - a.id)[0];
+              setSugestaoReuso(fonte ?? null);
+            })
+            .catch(() => {});
+        }
         // O card de link de aprovação sobrevive a sair e voltar da página
         // (ver `link_aprovacao` no backend) — o telefone junto precisa do
         // mesmo chute inicial que já dava certo logo depois de exportar.
@@ -279,6 +362,16 @@ export function DocumentoContratualPage() {
     navigate("/contratos");
   }
 
+  function aplicarReuso() {
+    if (!sugestaoReuso) return;
+    // Mantém só o que o documento atual já tinha preenchido; o resto vem
+    // do outro. A assinatura não é reaproveitada: é de outra data.
+    const reaproveitados = { ...((sugestaoReuso.dados ?? {}) as Record<string, unknown>) };
+    delete reaproveitados.assinatura;
+    setDados({ ...reaproveitados, ...(dados ?? {}) });
+    setSugestaoReuso(null);
+  }
+
   async function handleSalvar() {
     if (!atual || !token) return;
     setSalvando(true);
@@ -287,6 +380,8 @@ export function DocumentoContratualPage() {
     try {
       const atualizado = await atualizarDadosDocumento(atual.id, dados, token);
       setAtual(atualizado);
+      dadosServidorRef.current = JSON.stringify(atualizado.dados ?? {});
+      limparRascunho();
       setDados(atualizado.dados ?? {});
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao salvar dados");
@@ -304,6 +399,8 @@ export function DocumentoContratualPage() {
       const salvo = await atualizarDadosDocumento(atual.id, dados, token);
       const atualizado = await confirmarPreenchimento(salvo.id, token);
       setAtual(atualizado);
+      dadosServidorRef.current = JSON.stringify(atualizado.dados ?? {});
+      limparRascunho();
       setDados(atualizado.dados ?? {});
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao confirmar");
@@ -323,6 +420,8 @@ export function DocumentoContratualPage() {
       await gerarDocumento(atual.id, token);
       const recarregado = await getDocumento(atual.id, token);
       setAtual(recarregado);
+      dadosServidorRef.current = JSON.stringify(recarregado.dados ?? {});
+      limparRascunho();
       setDados(recarregado.dados ?? {});
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao gerar documento");
@@ -423,7 +522,12 @@ export function DocumentoContratualPage() {
     setAnalisando(solicitacaoId);
     try {
       const atualizada = await analisarSolicitacao(solicitacaoId, token);
-      setSolicitacoes((atuais) => atuais.map((s) => (s.id === atualizada.id ? atualizada : s)));
+      // A resposta traz só id/documento_id/status; substituir o item inteiro
+      // apagava `texto`/`trechos` e a tela quebrava no render
+      // (2026-10-07, corrigido). Mescla.
+      setSolicitacoes((atuais) =>
+        atuais.map((s) => (s.id === atualizada.id ? { ...s, status: atualizada.status } : s)),
+      );
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao analisar solicitação");
     } finally {
@@ -650,6 +754,36 @@ export function DocumentoContratualPage() {
             </ErrorBlock>
           )}
 
+          {rascunhoRestaurado && !dadosTravados && (
+            <AvisoLinha>
+              <span>Recuperamos o que você tinha digitado e ainda não salvou.</span>
+              <PageButtonSm
+                type="button"
+                $variant="ghost"
+                onClick={() => {
+                  setDados(atual.dados ?? {});
+                  limparRascunho();
+                }}
+              >
+                Descartar e voltar ao salvo
+              </PageButtonSm>
+            </AvisoLinha>
+          )}
+          {sugestaoReuso && !dadosTravados && (
+            <AvisoLinha>
+              <span>
+                Este projeto já tem a coleta de dados preenchida em{" "}
+                <strong>{ROTULO_TIPO_DOCUMENTO[sugestaoReuso.tipo]}</strong>. Quer reutilizar os dados do contratante,
+                representante e testemunhas aqui?
+              </span>
+              <PageButtonSm type="button" onClick={aplicarReuso}>
+                Reutilizar
+              </PageButtonSm>
+              <PageButtonSm type="button" $variant="ghost" onClick={() => setSugestaoReuso(null)}>
+                Agora não
+              </PageButtonSm>
+            </AvisoLinha>
+          )}
           {dadosTravados ? (
             <EmptyText>O cliente já aprovou este documento — os dados não podem mais ser editados.</EmptyText>
           ) : (
