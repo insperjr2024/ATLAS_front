@@ -251,8 +251,9 @@ export function Sidebar({ aberta = false }: SidebarProps) {
   const [painelAberto, setPainelAberto] = useState(false);
   const notificacoesRef = useRef<HTMLDivElement>(null);
   // "Sabatina" no menu depende de haver eleição aberta pra mim. Consulta
-  // leve, refeita a cada minuto (mesmo ritmo do contador de notificações) e
-  // ao trocar de rota, pra aba sumir logo depois que a diretoria fecha.
+  // leve, refeita a cada 5 minutos. Era a cada minuto E a cada troca de
+  // rota (2026-10-06): com a fila de desempenho junto, virava dezenas de
+  // queries por pessoa a cada clique, num pool de 5 conexões no servidor.
   const [temSabatina, setTemSabatina] = useState(false);
   // Mesma ideia pra fila de avaliação de desempenho: quem não é coordenador
   // nem consultor de posição ainda pode ter o que responder.
@@ -284,12 +285,12 @@ export function Sidebar({ aberta = false }: SidebarProps) {
       }
     };
     void consultar();
-    const timer = window.setInterval(consultar, 60_000);
+    const timer = window.setInterval(consultar, 5 * 60_000);
     return () => {
       ativo = false;
       window.clearInterval(timer);
     };
-  }, [token, usuarioId, posicao, location.pathname]);
+  }, [token, usuarioId, posicao]);
 
   // Clicar em qualquer lugar fora fecha o painel. Antes só o próprio sino
   // fechava, e quem abria por engano tinha de achar o botão de novo para se
