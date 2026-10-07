@@ -105,7 +105,11 @@ export function ContratosPainel() {
         </PageHeaderText>
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           {usuario?.permissoes.pode_acessar_arquivo_contratos && (
-            <PageButton type="button" $variant="outline" onClick={() => navigate("/arquivo-contratos")}>
+            <PageButton
+              type="button"
+              $variant="outline"
+              onClick={() => window.open("/arquivo-contratos", "_blank", "noopener")}
+            >
               Arquivo de contratos
             </PageButton>
           )}
