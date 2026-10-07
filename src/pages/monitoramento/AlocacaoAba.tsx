@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getAlocacao, type Alocacao, type LinhaCarga } from "@/lib/monitoramento";
 
@@ -206,7 +206,9 @@ export function AlocacaoAba() {
 
 const COLUNAS_CARGA: Colunas<LinhaCarga> = {
   nome: { valor: (l) => l.nome, inicial: "asc" },
-  total: { valor: (l) => l.total, inicial: "desc" },
+  // Crescente de propósito: quem está com 0 projetos é quem a diretoria
+  // procura primeiro nesta tabela, pra alocar.
+  total: { valor: (l) => l.total, inicial: "asc" },
 };
 
 const COLUNAS_CAPACIDADE: Colunas<Alocacao["capacidade"]["por_frente"][number]> = {
@@ -373,8 +375,15 @@ function TabelaCarga({
      ⚠ Sai de `linhas`, e não da lista ordenada: a barra tem que medir contra
      o maior da tabela inteira, não contra o maior da ordem do momento. */
   const maiorCarga = Math.max(1, ...linhas.map((l) => l.total));
-  // Sem coluna inicial: a lista já chega do backend na ordem de carga.
-  const { itens: ordenadas, ordem, ordenarPor } = useOrdenacao(linhas, COLUNAS_CARGA);
+  // Abre por carga crescente (0, 1, 2...) e, dentro da mesma carga, por nome.
+  // O desempate vem daqui: a lista entra alfabética e o sort da coluna é
+  // estável, então os empates em "total" preservam a ordem dos nomes mesmo
+  // quando a pessoa inverte a direção. Clicar em "Nome" dá o alfabético geral.
+  const alfabeticas = useMemo(
+    () => [...linhas].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    [linhas],
+  );
+  const { itens: ordenadas, ordem, ordenarPor } = useOrdenacao(alfabeticas, COLUNAS_CARGA, "total");
 
   return (
     <PageCard>
