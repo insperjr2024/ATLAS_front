@@ -302,7 +302,8 @@ export function PainelAvaliacoes() {
             ? "Como cada escopo foi avaliado"
             : modo === "avaliador"
               ? "Quem avaliou quem"
-              : "Como cada um foi avaliado"}
+              : "Como cada um foi avaliado"}{" "}
+          ({grupos.length})
         </PageCardTitle>
         {/* O toggle avaliador/avaliado só faz sentido agrupando por PESSOA —
             na visão de escopo o agrupamento é o próprio escopo. */}
@@ -381,7 +382,13 @@ export function PainelAvaliacoes() {
                 <div key={chave}>
                   <PessoaHeader
                     type="button"
-                    onClick={() => setExpandido((atual) => (atual === chave ? null : chave))}
+                    onClick={() => {
+                      // Fechar e reabrir uma pessoa volta à lista inteira de
+                      // avaliações dela, sem o "Detalhes" que estava aberto
+                      // (2026-10-06, a pedido).
+                      setAvaliacaoExpandidaId(null);
+                      setExpandido((atual) => (atual === chave ? null : chave));
+                    }}
                   >
                     <span>
                       {titulo}{" "}
