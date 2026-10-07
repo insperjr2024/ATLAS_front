@@ -36,7 +36,7 @@ const COR_BRANCO = "#9CA3AF";
 const BRANCO = "branco";
 
 /** Com que frequência a corrida ao vivo pergunta de novo ao backend. */
-const INTERVALO_AO_VIVO_MS = 10_000;
+const INTERVALO_AO_VIVO_MS = 5_000;
 
 type Serie = { chave: string; nome: string; cor: string };
 
@@ -87,7 +87,7 @@ function dadosPlacar(g: GraficosEleicao, lista: Serie[]) {
 }
 
 // Sem animação em barra e linha nenhuma: a corrida ao vivo re-renderiza a
-// cada 10 s e a animação recomeçava do zero a cada atualização, deixando as
+// cada 5 s e a animação recomeçava do zero a cada atualização, deixando as
 // barras finas na maior parte do tempo.
 const eixo = { stroke: theme.colors.mutedForeground, fontSize: 12, tickLine: false } as const;
 
@@ -238,7 +238,7 @@ function Participacao({
 
 /**
  * Enquanto a eleição está aberta: o placar e a corrida, atualizados a cada
- * 10 s. Só a diretoria vê, e vê agregado: o voto é anônimo até pra ela.
+ * 5 s. Só a diretoria vê, e vê agregado: o voto é anônimo até pra ela.
  */
 export function CorridaAoVivo({ eleicaoId, token }: { eleicaoId: number; token: string | null }) {
   const [g, setG] = useState<GraficosEleicao | null>(null);
@@ -272,7 +272,7 @@ export function CorridaAoVivo({ eleicaoId, token }: { eleicaoId: number; token: 
         Corrida em tempo real
       </SecaoTitulo>
       <Meta>
-        Só a diretoria vê esta corrida, e só os totais: o voto é anônimo. Atualiza sozinha a cada 10 segundos.
+        Só a diretoria vê esta corrida, e só os totais: o voto é anônimo. Atualiza sozinha a cada 5 segundos.
       </Meta>
       {erro && <ErrorText>{erro}</ErrorText>}
       {g && (
