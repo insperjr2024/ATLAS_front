@@ -1,6 +1,15 @@
 import { apiFetch } from "@/lib/api";
 
-export type TipoEvento = "banca" | "kickoff" | "reuniao" | "entrega" | "prova";
+export type TipoEvento =
+  | "banca"
+  | "kickoff"
+  | "reuniao"
+  | "entrega"
+  | "prova"
+  // Prazos PESSOAIS (2026-10-07): até quando EU tenho que responder. Não
+  // seguem o recorte de projetos e trazem `rota` pra tela certa.
+  | "prazo_avaliacao_banca"
+  | "prazo_desempenho";
 
 export interface EventoCalendario {
   tipo: TipoEvento;
@@ -11,6 +20,8 @@ export interface EventoCalendario {
   titulo: string;
   referencia_id: number;
   status: string | null;
+  /** Só nos prazos: pra onde o botão "Ir responder" leva. */
+  rota?: string;
 }
 
 /**
@@ -36,6 +47,8 @@ export const ROTULO_TIPO: Record<TipoEvento, string> = {
   reuniao: "Reunião",
   entrega: "Entrega",
   prova: "Prova",
+  prazo_avaliacao_banca: "Prazo: avaliação de banca",
+  prazo_desempenho: "Prazo: avaliação de desempenho",
 };
 
 export const COR_TIPO: Record<TipoEvento, string> = {
@@ -44,6 +57,8 @@ export const COR_TIPO: Record<TipoEvento, string> = {
   reuniao: "#39D09E",
   entrega: "#D07539",
   prova: "#7839D0",
+  prazo_avaliacao_banca: "#B91C1C",
+  prazo_desempenho: "#A16207",
 };
 
 const CHAVE_CORES_CUSTOM = "atlas:calendario:cores";
