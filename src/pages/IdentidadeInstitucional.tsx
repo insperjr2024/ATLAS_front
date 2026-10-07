@@ -237,7 +237,7 @@ function ModelosContratuaisCard({ token }: { token: string }) {
         <PageCardTitle>Modelos base dos contratos</PageCardTitle>
       </PageCardHeader>
       <PageCardContent>
-        <p style={{ marginTop: 0, fontSize: "0.85rem", color: "var(--muted-foreground, inherit)" }}>
+        <p style={{ margin: "0 0 1rem", fontSize: "0.85rem", color: "var(--muted-foreground, inherit)" }}>
           O .docx que o sistema preenche ao gerar cada documento. Baixe o atual, edite o texto e envie no lugar.
           Os campos preenchidos automaticamente (como <code>{"{{ contratante.razao_social }}"}</code>) precisam
           continuar iguais; o que fica em volta pode mudar à vontade.
