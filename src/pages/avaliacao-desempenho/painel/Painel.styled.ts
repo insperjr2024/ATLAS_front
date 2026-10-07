@@ -130,20 +130,72 @@ export const SubItemMeta = styled.span`
 // "Quem não preencheu": um card por avaliador (não uma linha por par), com
 // todo mundo que falta avaliar reunido numa frase só, escaneia muito mais
 // rápido que uma lista plana de "Fulano → Beltrano" repetindo o mesmo nome.
-export const PendenciaCard = styled.div`
+/** `$atrasado`: entregou, mas depois do prazo (só no PDI). Fica na lista de
+ *  pendências em âmbar, não em vermelho, porque o arquivo existe. */
+export const PendenciaCard = styled.div<{ $atrasado?: boolean }>`
   display: flex;
   align-items: flex-start;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   border-radius: ${theme.borderRadius.lg};
-  border: 1px solid color-mix(in srgb, ${theme.colors.destructive} 35%, transparent);
-  background: color-mix(in srgb, ${theme.colors.destructive} 6%, ${theme.colors.background});
+  border: 1px solid
+    color-mix(in srgb, ${({ $atrasado }) => ($atrasado ? theme.colors.warning : theme.colors.destructive)} 35%, transparent);
+  background: color-mix(
+    in srgb,
+    ${({ $atrasado }) => ($atrasado ? theme.colors.warning : theme.colors.destructive)} 6%,
+    ${theme.colors.background}
+  );
 `;
 
-export const PendenciaIcone = styled.div`
+export const PendenciaIcone = styled.div<{ $atrasado?: boolean }>`
   flex-shrink: 0;
   margin-top: 0.125rem;
-  color: ${theme.colors.destructive};
+  color: ${({ $atrasado }) => ($atrasado ? theme.colors.warning : theme.colors.destructive)};
+`;
+
+export const PendenciaAtrasoRotulo = styled.span`
+  display: inline-block;
+  margin-left: ${theme.spacing.sm};
+  padding: 0 0.4rem;
+  border-radius: ${theme.borderRadius.full};
+  background: ${theme.colors.warning};
+  color: ${theme.colors.warningForeground};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.medium};
+`;
+
+/** Resultados de uma pasta de PDI: um bloco por mentorado. */
+export const ResultadoPessoa = styled.div`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.lg};
+  background: ${theme.colors.card};
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+`;
+
+export const ResultadoPessoaTitulo = styled.div`
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+
+  strong {
+    color: ${theme.colors.foreground};
+    font-weight: ${theme.fontWeight.semibold};
+  }
+`;
+
+export const ResultadoArquivo = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSize.sm};
+
+  span.meta {
+    color: ${theme.colors.mutedForeground};
+    font-size: ${theme.fontSize.xs};
+  }
 `;
 
 export const PendenciaTexto = styled.p`

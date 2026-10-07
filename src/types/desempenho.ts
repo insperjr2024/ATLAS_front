@@ -183,6 +183,38 @@ export interface DesempenhoPdiPendencia {
   mentorado_nome: string | null;
   mentor_id: number;
   mentor_nome: string | null;
+  /** "pendente" não entregou; "atrasado" entregou depois do prazo da pasta
+   *  e continua na lista, em outra cor (2026-10-06, a pedido). */
+  status: "pendente" | "atrasado";
+  enviado_em: string | null;
+}
+
+/** Resultados de uma pasta: todo mundo que mandou algo nela. */
+export interface DesempenhoPdiResultadoEnvio {
+  item_id: number;
+  item_nome: string;
+  tipo_arquivo: DesempenhoPdiItemTipoArquivo;
+  arquivo_nome: string;
+  enviado_por: number;
+  enviado_por_nome: string | null;
+  enviado_em: string;
+  atrasado: boolean;
+}
+
+export interface DesempenhoPdiResultadoPessoa {
+  mentorado_id: number;
+  mentorado_nome: string | null;
+  mentor_id: number | null;
+  mentor_nome: string | null;
+  envios: DesempenhoPdiResultadoEnvio[];
+}
+
+export interface DesempenhoPdiResultadosPasta {
+  pasta_id: number;
+  pasta_nome: string;
+  prazo: string;
+  total_itens: number;
+  pessoas: DesempenhoPdiResultadoPessoa[];
 }
 
 export interface DesempenhoPdiEnvio {

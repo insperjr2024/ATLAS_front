@@ -7,6 +7,7 @@ import type {
   DesempenhoPdiPastaComItens,
   DesempenhoPdiPastaTipo,
   DesempenhoPdiPendencia,
+  DesempenhoPdiResultadosPasta,
 } from "@/types/desempenho";
 
 export function getPastasPdi(token: string) {
@@ -74,6 +75,10 @@ export function deleteItemPdi(itemId: number, token: string) {
 
 export function getPendenciasPdi(itemId: number, token: string) {
   return apiFetch<DesempenhoPdiPendencia[]>(`/desempenho/pdi/itens/${itemId}/pendencias`, { token });
+}
+
+export function getResultadosPastaPdi(pastaId: number, token: string) {
+  return apiFetch<DesempenhoPdiResultadosPasta>(`/desempenho/pdi/pastas/${pastaId}/resultados`, { token });
 }
 
 export function getEnviosPdi(usuarioId: number, token: string) {
