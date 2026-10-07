@@ -370,7 +370,9 @@ export const Lista = styled.div`
     linear-gradient(#fff, #fff) padding-box,
     ${GRADIENTE_VINHO} border-box;
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 5%);
-  overflow: hidden;
+  /* Sem overflow hidden: o menu "⋯" de cada linha abre pra fora do card e
+     ficava cortado. Os cantos arredondados vão no cabeçalho e na última
+     linha. */
 `;
 
 export const Item = styled.div<{ $pasta?: boolean }>`
@@ -385,6 +387,7 @@ export const Item = styled.div<{ $pasta?: boolean }>`
 
   &:last-child {
     border-bottom: none;
+    border-radius: 0 0 9px 9px;
   }
 
   &:hover {
@@ -425,6 +428,7 @@ export const CabecalhoLista = styled.div`
   gap: 0.75rem;
   padding: 0.45rem 0.9rem;
   border-bottom: 1px solid ${cor.borda};
+  border-radius: 9px 9px 0 0;
   background: ${cor.secundario};
   font-size: 0.7rem;
   font-weight: 500;
