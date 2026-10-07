@@ -14,10 +14,10 @@ import {
   fecharEleicao,
   getEleicoes,
   getPesos,
-  getVotosEleicao,
 } from "@/lib/sabatina";
+import { CorridaAoVivo, GraficosResultado } from "./GraficosEleicao";
 import type { UsuarioResumo } from "@/types/auth";
-import type { Eleicao, EleicaoPayload, SabatinaPeso, VotoDetalhe } from "@/types/sabatina";
+import type { Eleicao, EleicaoPayload, SabatinaPeso } from "@/types/sabatina";
 import { FieldGroup, FieldInput, FieldLabel, FormErrorText } from "@/pages/Bancas.styled";
 import {
   EmptyText,
@@ -409,10 +409,7 @@ function CardEleicao({
   const [expandida, setExpandida] = useState(!recolhidaInicial);
   const [editando, setEditando] = useState(false);
   const [confirmando, setConfirmando] = useState<Confirmacao | null>(null);
-  const [erro, setErro] = useState("");
   const [mostrarPendentes, setMostrarPendentes] = useState(false);
-  const [votos, setVotos] = useState<VotoDetalhe[] | null>(null);
-  const [mostrarVotos, setMostrarVotos] = useState(false);
 
   const status = ROTULO_STATUS[eleicao.status];
   const pct = eleicao.percentual_aprovacao;
@@ -423,21 +420,6 @@ function CardEleicao({
     await fn(eleicao.id, token);
     await onMudou();
     setConfirmando(null);
-  }
-
-  async function alternarVotos() {
-    if (!token) return;
-    if (mostrarVotos) return setMostrarVotos(false);
-    if (votos === null) {
-      try {
-        const lista = await getVotosEleicao(eleicao.id, token);
-        setVotos([...lista].sort((a, b) => a.eleitor_nome.localeCompare(b.eleitor_nome, "pt-BR")));
-      } catch (err) {
-        setErro(err instanceof Error ? err.message : "Não foi possível carregar os votos");
-        return;
-      }
-    }
-    setMostrarVotos(true);
   }
 
   const cabecalho = (
@@ -559,36 +541,12 @@ function CardEleicao({
           </Secao>
         )}
 
+        {eleicao.status === "aberta" && <CorridaAoVivo eleicaoId={eleicao.id} token={token} />}
+
         {eleicao.status === "fechada" && eleicao.resultado && <Resultado eleicao={eleicao} />}
 
         {eleicao.status === "fechada" && (
-          <Secao>
-            <LinkAcao type="button" onClick={alternarVotos}>
-              {mostrarVotos ? "esconder quem votou em quem" : "ver quem votou em quem"}
-            </LinkAcao>
-            {mostrarVotos && votos && (
-              <TabelaSimples>
-                <thead>
-                  <tr>
-                    <th>Eleitor</th>
-                    <th>Posição</th>
-                    <th className="num">Peso</th>
-                    <th>Voto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {votos.map((v) => (
-                    <tr key={v.eleitor_id}>
-                      <td>{v.eleitor_nome}</td>
-                      <td>{rotuloPosicao(v.posicao)}</td>
-                      <td className="num">{v.peso}</td>
-                      <td>{v.candidato_nome ?? "Em branco"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </TabelaSimples>
-            )}
-          </Secao>
+          <GraficosResultado eleicaoId={eleicao.id} token={token} rotuloPosicao={rotuloPosicao} />
         )}
 
         {!editando && (
@@ -613,8 +571,6 @@ function CardEleicao({
             </PageButtonSm>
           </Acoes>
         )}
-        {erro && <ErrorText>{erro}</ErrorText>}
-
         {confirmando === "abrir" && (
           <ConfirmarModal
             titulo="Abrir votação"

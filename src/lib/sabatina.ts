@@ -3,8 +3,8 @@ import type {
   Eleicao,
   EleicaoPayload,
   MinhaEleicao,
+  GraficosEleicao,
   SabatinaPeso,
-  VotoDetalhe,
 } from "@/types/sabatina";
 
 // ---------------------------------------------------------------- todo mundo
@@ -67,6 +67,7 @@ export function fecharEleicao(id: number, token: string) {
   return apiFetch<Eleicao>(`/sabatina/eleicoes/${id}/fechar`, { method: "POST", token });
 }
 
-export function getVotosEleicao(id: number, token: string) {
-  return apiFetch<VotoDetalhe[]>(`/sabatina/eleicoes/${id}/votos`, { token });
+/** Agregado da corrida (aberta) ou da apuração (fechada). Sem eleitor. */
+export function getGraficosEleicao(id: number, token: string) {
+  return apiFetch<GraficosEleicao>(`/sabatina/eleicoes/${id}/graficos`, { token });
 }

@@ -57,14 +57,32 @@ export interface Eleicao {
   resultado: ResultadoEleicao | null;
 }
 
-export interface VotoDetalhe {
-  eleitor_id: number;
-  eleitor_nome: string;
+/** Participação de uma posição: só quantidades, nunca quem. */
+export interface FaixaPosicao {
   posicao: string;
-  peso: number;
+  total: number;
+  votaram: number;
+}
+
+/** Um voto na linha do tempo: quando, em quem e com que peso. Sem eleitor. */
+export interface VotoNoTempo {
+  em: string;
   candidato_id: number | null;
-  candidato_nome: string | null;
-  criado_em: string;
+  peso: number;
+}
+
+/**
+ * O agregado que alimenta a corrida ao vivo (aberta) e os gráficos da
+ * apuração (fechada). O voto é anônimo: nada aqui identifica o eleitor.
+ */
+export interface GraficosEleicao {
+  status: StatusEleicao;
+  aberta_em: string | null;
+  fechada_em: string | null;
+  total_eleitores: number;
+  parcial: ResultadoEleicao & { candidatos: (LinhaResultado & { nome: string })[] };
+  por_posicao: FaixaPosicao[];
+  linha_do_tempo: VotoNoTempo[];
 }
 
 /** A cédula de quem vota. */

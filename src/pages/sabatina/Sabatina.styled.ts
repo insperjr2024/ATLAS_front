@@ -245,3 +245,54 @@ export const LinkAcao = styled.button`
     cursor: default;
   }
 `;
+
+// ---------------------------------------------------------------- gráficos
+
+/** Dois gráficos por linha no desktop, um embaixo do outro no celular. */
+export const GradeGraficos = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: ${theme.spacing.md};
+  margin-top: ${theme.spacing.sm};
+`;
+
+export const CaixaGrafico = styled.div<{ $altura?: string }>`
+  width: 100%;
+  height: ${({ $altura }) => $altura ?? "14rem"};
+`;
+
+export const BlocoGrafico = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm};
+  border: 1px solid ${theme.colors.border};
+  border-radius: ${theme.borderRadius.md};
+  background: ${theme.colors.card};
+`;
+
+export const TituloGrafico = styled.span`
+  font-size: ${theme.fontSize.sm};
+  font-weight: 600;
+  color: ${theme.colors.foreground};
+`;
+
+export const PontoAoVivo = styled.span`
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: ${theme.colors.destructive};
+  animation: pulsar 1.4s ease-in-out infinite;
+
+  @keyframes pulsar {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+`;
