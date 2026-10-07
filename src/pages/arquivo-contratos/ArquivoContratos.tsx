@@ -8,7 +8,7 @@ import {
   Folder,
   FolderInput,
   FolderPlus,
-  LogOut,
+  X,
   MoreHorizontal,
   Pencil,
   RefreshCw,
@@ -233,7 +233,9 @@ export function ArquivoContratos() {
   }
 
   // A página abre em aba própria (window.open na página de Contratos):
-  // "Sair" fecha a aba; se foi aberta direto pela URL, volta pra Contratos.
+  // "Fechar arquivo" fecha a aba (o Atlas segue aberto na outra); se foi
+  // aberta direto pela URL, volta pra Contratos. Chamava "Sair" e parecia
+  // sair do Atlas (2026-10-07, a pedido).
   function sair() {
     window.close();
     window.setTimeout(() => navigate("/contratos"), 150);
@@ -251,8 +253,8 @@ export function ArquivoContratos() {
           <TituloCabecalho>Arquivo de Contratos</TituloCabecalho>
           <AcoesCabecalho>
             {usuario && <NomeUsuario>{usuario.nome}</NomeUsuario>}
-            <BotaoCabecalho type="button" onClick={sair}>
-              <LogOut size={14} /> Sair
+            <BotaoCabecalho type="button" onClick={sair} title="Fecha esta aba; o Atlas continua aberto na outra">
+              <X size={14} /> Fechar arquivo
             </BotaoCabecalho>
           </AcoesCabecalho>
         </CabecalhoGrade>
