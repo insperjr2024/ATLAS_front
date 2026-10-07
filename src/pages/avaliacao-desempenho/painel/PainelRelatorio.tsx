@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getUsuarios } from "@/lib/usuarios";
+import { getPosicoesPermissoes } from "@/lib/posicoes-permissoes";
 import { getRelatorio } from "@/lib/desempenho-relatorio";
 import { getMentorias } from "@/lib/desempenho-mentorias";
 import { RelatorioDesempenho } from "@/components/desempenho/RelatorioDesempenho";
@@ -53,6 +54,21 @@ export function PainelRelatorio() {
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
   const [filtroPosicao, setFiltroPosicao] = useState<Posicao | "">("");
+  // Todos os cargos do catálogo (2026-10-06, a pedido): eram só coordenador
+  // e consultor fixos no código.
+  const [posicoes, setPosicoes] = useState<{ posicao: Posicao; nome: string }[]>([]);
+  useEffect(() => {
+    if (!token) return;
+    getPosicoesPermissoes(token)
+      .then((lista) =>
+        setPosicoes(
+          lista
+            .map((p) => ({ posicao: p.posicao, nome: p.nome }))
+            .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+        ),
+      )
+      .catch(() => {});
+  }, [token]);
 
   const [selecionado, setSelecionado] = useState<UsuarioResumo | null>(null);
   const [modo, setModo] = useState<ModoRelatorio | null>(null);
@@ -292,8 +308,11 @@ export function PainelRelatorio() {
           />
           <FieldSelect value={filtroPosicao} onChange={(e) => setFiltroPosicao(e.target.value as Posicao | "")}>
             <option value="">Todas as posições</option>
-            <option value="coordenador">Coordenador</option>
-            <option value="consultor">Consultor</option>
+            {posicoes.map((p) => (
+              <option key={p.posicao} value={p.posicao}>
+                {p.nome}
+              </option>
+            ))}
           </FieldSelect>
         </FiltrosRow>
 
