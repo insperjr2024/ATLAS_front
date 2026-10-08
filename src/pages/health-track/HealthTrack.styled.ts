@@ -492,3 +492,43 @@ export const Motivos = styled.span`
     color: ${theme.colors.foreground};
   }
 `;
+
+// ---------------------------------------------------------------- por coordenador
+
+export const GradeCoordenadores = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: ${theme.spacing.sm};
+`;
+
+export const CartaoCoordenador = styled.button<{ $ativo: boolean }>`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${({ $ativo }) => ($ativo ? theme.colors.foreground : theme.colors.border)};
+  background: ${({ $ativo }) => ($ativo ? theme.colors.muted : theme.colors.card)};
+  text-align: left;
+  font: inherit;
+  color: ${theme.colors.foreground};
+  cursor: pointer;
+
+  &:hover {
+    border-color: ${theme.colors.foreground};
+  }
+
+  strong {
+    font-size: ${theme.fontSize.sm};
+  }
+`;
+
+export const SubTitulo = styled.p`
+  margin: ${theme.spacing.md} 0 ${theme.spacing.xs};
+  font-size: ${theme.fontSize.xs};
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: ${theme.colors.mutedForeground};
+`;

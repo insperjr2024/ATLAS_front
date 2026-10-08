@@ -46,6 +46,7 @@ import {
 import { RodadaCard } from "./RodadaCard";
 import { EvolucaoCard } from "./EvolucaoCard";
 import { AtencaoCard } from "./AtencaoCard";
+import { CoordenadoresCard } from "./CoordenadoresCard";
 import {
   Celula,
   Contagem,
@@ -482,6 +483,21 @@ export function HealthTrack() {
       )}
 
       <AtencaoCard projetos={emAcompanhamento} pilares={pilares} nomeDaCor={nomeDaCor} />
+
+      <CoordenadoresCard
+        // Sem o filtro de coordenador aplicado: a visão é de TODOS os
+        // coordenadores, e é ela que escolhe o filtro.
+        projetos={carteira.projetos.filter(
+          (p) =>
+            p.bloco === "acompanhamento" &&
+            (!gerenteId || p.gerentes.some((g) => g.id === gerenteId)) &&
+            (!etapas.length || etapas.includes(p.status)),
+        )}
+        pilares={pilares}
+        nomeDaCor={nomeDaCor}
+        coordenadorId={coordenadorId}
+        onEscolher={setCoordenadorId}
+      />
 
       <EvolucaoCard />
 
