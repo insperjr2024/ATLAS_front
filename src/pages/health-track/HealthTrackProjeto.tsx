@@ -142,7 +142,15 @@ export function HealthTrackProjeto() {
         </FaixaRodada>
       )}
 
-      <PainelHealthTrack projetoId={projetoId} onSalvo={carregarRodada} />
+      {/* `key` por projeto: ao ir pro "próximo pendente" a rota troca só o
+          parâmetro, e sem a chave o painel carregava o estado do projeto
+          anterior ("Avaliação registrada", formulário aberto). */}
+      <PainelHealthTrack
+        key={projetoId}
+        projetoId={projetoId}
+        pendenteNaRodada={item?.situacao === "pendente"}
+        onSalvo={carregarRodada}
+      />
 
       <AcoesDoProjeto
         projetoId={projetoId}

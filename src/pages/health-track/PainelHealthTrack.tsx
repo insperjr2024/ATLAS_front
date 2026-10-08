@@ -47,6 +47,7 @@ import {
   ListaPilares,
   Meta,
   NotaRegra,
+  PendenteNaRodada,
   PilarDescricao,
   PilarItem,
   PilarNome,
@@ -97,9 +98,13 @@ function guardarRascunho(projetoId: number, rascunho: Rascunho | null) {
  */
 export function PainelHealthTrack({
   projetoId,
+  pendenteNaRodada = false,
   onSalvo,
 }: {
   projetoId: number;
+  /** Há rodada aberta e este projeto ainda não foi avaliado nela: o status
+   *  mostrado é o da avaliação anterior, e a tela avisa. */
+  pendenteNaRodada?: boolean;
   /** Depois de uma avaliação registrada: a página da rodada atualiza a fila. */
   onSalvo?: () => void;
 }) {
@@ -210,6 +215,12 @@ export function PainelHealthTrack({
                 </Meta>
               </StatusLinha>
               <DivergenciaDeRegra status={status} nomeDaCor={nomeDaCor} atual />
+              {pendenteNaRodada && (
+                <PendenteNaRodada role="status">
+                  Avaliação ainda não registrada nesta rodada. O status acima é da avaliação de{" "}
+                  {formatarDataHora(status.avaliado_em)}.
+                </PendenteNaRodada>
+              )}
             </>
           ) : (
             <EstadoVazio
@@ -363,9 +374,12 @@ function CicloResumo({
           {formatarDataHora(ciclo.avaliado_em)}
           {ciclo.avaliado_por_nome && ` · ${ciclo.avaliado_por_nome}`}
         </Meta>
-        <CorSelo cor={ciclo.status_geral.na_epoca} rotulo={nomeDaCor(ciclo.status_geral.na_epoca)} />
+        <span className="status-geral">
+          <span className="rotulo">Status geral do projeto</span>
+          <CorSelo cor={ciclo.status_geral.na_epoca} rotulo={nomeDaCor(ciclo.status_geral.na_epoca)} />
+        </span>
         {onApagar && (
-          <PageButtonSm type="button" $variant="ghost" onClick={onApagar}>
+          <PageButtonSm type="button" $variant="ghost" className="excluir" onClick={onApagar}>
             Excluir
           </PageButtonSm>
         )}
@@ -373,7 +387,7 @@ function CicloResumo({
       <CoresDoCiclo aria-label="Cor de cada pilar neste ciclo">
         {ciclo.avaliacoes.map((a) => (
           <li key={a.id}>
-            {a.pilar_nome}
+            <span>{a.pilar_nome}</span>
             <CorSelo cor={a.cor} rotulo={nomeDaCor(a.cor)} />
           </li>
         ))}
