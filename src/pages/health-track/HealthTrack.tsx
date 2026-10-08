@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { CorSelo } from "@/components/health-track/CorSelo";
-import { SOLIDO_COR } from "@/components/health-track/HealthTrack.styled";
 import { ICONE_COR } from "@/components/health-track/icones";
 import { SemCor } from "@/components/health-track/HealthTrack.styled";
 import { EstadoVazio } from "@/components/EstadoVazio";
@@ -660,6 +659,8 @@ function MapaTabela({
     </Rolagem>
   );
 }
+
+export type LinhaRanking = { id: number; nome: string; projetos: number; verde: number; amarelo: number; vermelho: number };
 
 /** O pilar com mais vermelho (depois amarelo) na JR inteira: problema
  *  sistêmico, não de um projeto. */
