@@ -12,16 +12,7 @@ import {
   type Pilar,
   type ProjetoNaCarteira,
 } from "@/lib/health-track";
-import {
-  EmptyText,
-  ErrorText,
-  PageBadge,
-  PageButtonSm,
-  PageCard,
-  PageCardContent,
-  PageCardHeader,
-  PageCardTitle,
-} from "@/styles/page.styled";
+import { EmptyText, ErrorText, PageBadge, PageButtonSm } from "@/styles/page.styled";
 import { AcaoModal } from "./AcaoModal";
 import { Mapa, Motivos, NomeProjeto, Rolagem, Secundario } from "./HealthTrack.styled";
 
@@ -103,13 +94,11 @@ export function AtencaoCard({
   }
 
   return (
-    <PageCard>
-      <PageCardHeader>
-        <PageCardTitle>Projetos que exigem atenção</PageCardTitle>
-        <Secundario as="span">Status crítico, pilar crítico, alerta persistente ou piora desde o ciclo anterior.</Secundario>
-      </PageCardHeader>
-      <PageCardContent>
-        {erro && <ErrorText>{erro}</ErrorText>}
+    <>
+      <Secundario style={{ marginBottom: "0.5rem" }}>
+        Entram sozinhos: status crítico, pilar crítico, alerta persistente ou piora desde o ciclo anterior.
+      </Secundario>
+      {erro && <ErrorText>{erro}</ErrorText>}
         {linhas.length === 0 ? (
           <EmptyText>Nenhum projeto em acompanhamento pede atenção agora.</EmptyText>
         ) : (
@@ -185,7 +174,6 @@ export function AtencaoCard({
             Concluir, editar ou excluir uma ação: pela página do projeto (<Link to="/health-track">clique no nome</Link>).
           </Secundario>
         )}
-      </PageCardContent>
 
       {criandoPara && (
         <AcaoModal
@@ -195,6 +183,6 @@ export function AtencaoCard({
           onCancelar={() => setCriandoPara(null)}
         />
       )}
-    </PageCard>
+    </>
   );
 }

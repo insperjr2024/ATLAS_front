@@ -128,7 +128,7 @@ export function RodadaCard({
                   </Secundario>
                   <span className="acoes">
                     {p.situacao === "pendente" && (
-                      <PageButtonSm as={Link} to={`/health-track/projetos/${p.projeto_id}`}>
+                      <PageButtonSm as={Link} to={`/health-track/projetos/${p.projeto_id}?avaliar=1`}>
                         Avaliar
                       </PageButtonSm>
                     )}

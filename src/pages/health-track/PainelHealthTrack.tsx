@@ -99,12 +99,15 @@ function guardarRascunho(projetoId: number, rascunho: Rascunho | null) {
 export function PainelHealthTrack({
   projetoId,
   pendenteNaRodada = false,
+  abrirFormulario = false,
   onSalvo,
 }: {
   projetoId: number;
   /** Há rodada aberta e este projeto ainda não foi avaliado nela: o status
    *  mostrado é o da avaliação anterior, e a tela avisa. */
   pendenteNaRodada?: boolean;
+  /** Já abre no formulário (veio do "Avaliar" da rodada). */
+  abrirFormulario?: boolean;
   /** Depois de uma avaliação registrada: a página da rodada atualiza a fila. */
   onSalvo?: () => void;
 }) {
@@ -117,7 +120,7 @@ export function PainelHealthTrack({
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   // Abre já no formulário se havia um preenchimento no meio.
-  const [editando, setEditando] = useState(() => lerRascunho(projetoId) !== null);
+  const [editando, setEditando] = useState(() => abrirFormulario || lerRascunho(projetoId) !== null);
   const [salvo, setSalvo] = useState(false);
 
   const buscar = useCallback(

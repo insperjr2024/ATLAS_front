@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { getProjeto, ROTULO_STATUS } from "@/lib/projetos";
@@ -34,6 +34,10 @@ import { FaixaRodada, Voltar } from "./HealthTrack.styled";
  */
 export function HealthTrackProjeto() {
   const { id } = useParams();
+  // `?avaliar=1`: quem clicou em "Avaliar" na rodada já quer o formulário
+  // aberto, sem passar por "Nova avaliação".
+  const [busca] = useSearchParams();
+  const abrirFormulario = busca.get("avaliar") === "1";
   const { token, usuario } = useAuth();
   const projetoId = Number(id);
   const [projeto, setProjeto] = useState<ProjetoCompleto | null>(null);
@@ -132,7 +136,7 @@ export function HealthTrackProjeto() {
               </PageButtonSm>
             )}
             {proximo && (
-              <PageButtonSm as={Link} to={`/health-track/projetos/${proximo.projeto_id}`}>
+              <PageButtonSm as={Link} to={`/health-track/projetos/${proximo.projeto_id}?avaliar=1`}>
                 Próximo pendente: {proximo.projeto_nome}
                 <ArrowRight aria-hidden="true" style={{ width: "0.9rem", height: "0.9rem", marginLeft: "0.3rem" }} />
               </PageButtonSm>
@@ -149,6 +153,7 @@ export function HealthTrackProjeto() {
         key={projetoId}
         projetoId={projetoId}
         pendenteNaRodada={item?.situacao === "pendente"}
+        abrirFormulario={abrirFormulario}
         onSalvo={carregarRodada}
       />
 

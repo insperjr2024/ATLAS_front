@@ -25,7 +25,14 @@ import {
 import { podeFiltrarPorFrente } from "@/utils/permissoes";
 import type { Frente } from "@/types/banca";
 import type { StatusProjeto } from "@/types/projeto";
-import { BarraFiltros, FiltroMulti, FiltroSelect, FiltroToggle } from "@/pages/monitoramento/Monitoramento.styled";
+import {
+  BarraFiltros,
+  BotaoAlternativa,
+  FiltroMulti,
+  FiltroSelect,
+  FiltroToggle,
+  GrupoBotoes,
+} from "@/pages/monitoramento/Monitoramento.styled";
 import {
   EmptyText,
   ErrorBlock,
@@ -47,6 +54,7 @@ import { RodadaCard } from "./RodadaCard";
 import { EvolucaoCard } from "./EvolucaoCard";
 import { AtencaoCard } from "./AtencaoCard";
 import { CoordenadoresCard } from "./CoordenadoresCard";
+import { PilaresGrafico } from "./PilaresGrafico";
 import {
   Celula,
   Contagem,
@@ -114,6 +122,9 @@ export function HealthTrack() {
   // a primeira coisa da página. Abre sozinha se há rodada em andamento com
   // pendente, que é quando ela tem trabalho a cobrar.
   const [mostrarRodada, setMostrarRodada] = useState(false);
+  // As três listas de projetos num card só, trocadas por botão (a pedido):
+  // em acompanhamento é o que se abre por padrão.
+  const [visao, setVisao] = useState<"acompanhamento" | "atencao" | "encerrados">("acompanhamento");
 
   const podeFiltrarFrente = podeFiltrarPorFrente(usuario);
 
@@ -211,7 +222,6 @@ export function HealthTrack() {
   // KPIs e rankings só sobre quem está em acompanhamento: o bloco de
   // encerrados é leitura do passado, não entra na conta de hoje.
   const placar = useMemo(() => contar(emAcompanhamento), [emAcompanhamento]);
-  const rankingCoordenadores = useMemo(() => rankearCoordenadores(emAcompanhamento), [emAcompanhamento]);
   const rankingPilares = useMemo(
     () => (carteira ? rankearPilares(emAcompanhamento, carteira.pilares) : []),
     [emAcompanhamento, carteira],
@@ -399,7 +409,32 @@ export function HealthTrack() {
 
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Em acompanhamento</PageCardTitle>
+          <GrupoBotoes role="group" aria-label="Qual lista de projetos">
+            <BotaoAlternativa
+              type="button"
+              $ativo={visao === "acompanhamento"}
+              aria-pressed={visao === "acompanhamento"}
+              onClick={() => setVisao("acompanhamento")}
+            >
+              Em acompanhamento ({emAcompanhamento.length})
+            </BotaoAlternativa>
+            <BotaoAlternativa
+              type="button"
+              $ativo={visao === "atencao"}
+              aria-pressed={visao === "atencao"}
+              onClick={() => setVisao("atencao")}
+            >
+              Exigem atenção
+            </BotaoAlternativa>
+            <BotaoAlternativa
+              type="button"
+              $ativo={visao === "encerrados"}
+              aria-pressed={visao === "encerrados"}
+              onClick={() => setVisao("encerrados")}
+            >
+              Pós-banca e finalizados ({encerrados.length})
+            </BotaoAlternativa>
+          </GrupoBotoes>
           <Legenda aria-label="Legenda das cores">
             {CORES.map((c) => (
               <span key={c}>
@@ -414,91 +449,69 @@ export function HealthTrack() {
           </Legenda>
         </PageCardHeader>
         <PageCardContent>
-          {emAcompanhamento.length === 0 ? (
-            <EstadoVazio
-              causa={filtrando ? "filtro" : "vazio"}
-              titulo="Nenhum projeto em acompanhamento"
-              motivo={
-                filtrando
-                  ? "Nenhum projeto em acompanhamento bate com os filtros escolhidos. Limpe um deles."
-                  : "Não há projeto em ambientação, em andamento ou aguardando banca na carteira que você enxerga."
-              }
-            />
-          ) : (
-            <MapaTabela projetos={emAcompanhamento} pilares={pilares} nomeDaCor={nomeDaCor} pendentes={pendentesNaRodada} />
-          )}
+          {visao === "acompanhamento" &&
+            (emAcompanhamento.length === 0 ? (
+              <EstadoVazio
+                causa={filtrando ? "filtro" : "vazio"}
+                titulo="Nenhum projeto em acompanhamento"
+                motivo={
+                  filtrando
+                    ? "Nenhum projeto em acompanhamento bate com os filtros escolhidos. Limpe um deles."
+                    : "Não há projeto em ambientação, em andamento ou aguardando banca na carteira que você enxerga."
+                }
+              />
+            ) : (
+              <MapaTabela projetos={emAcompanhamento} pilares={pilares} nomeDaCor={nomeDaCor} pendentes={pendentesNaRodada} />
+            ))}
+          {visao === "atencao" && <AtencaoCard projetos={emAcompanhamento} pilares={pilares} nomeDaCor={nomeDaCor} />}
+          {visao === "encerrados" &&
+            (encerrados.length === 0 ? (
+              <EmptyText>Nenhum projeto pós-banca ou finalizado{filtrando ? " com esses filtros" : ""}.</EmptyText>
+            ) : (
+              <>
+                <Secundario style={{ marginBottom: "0.5rem" }}>
+                  Já passaram pela banca: não entram nas rodadas, mas a última leitura fica aqui.
+                </Secundario>
+                <MapaTabela projetos={encerrados} pilares={pilares} nomeDaCor={nomeDaCor} pendentes={new Set()} />
+              </>
+            ))}
         </PageCardContent>
       </PageCard>
 
-      {(rankingCoordenadores.length > 0 || rankingPilares.length > 0) && (
-        <PageGrid $columns={2}>
-          <PageCard>
-            <PageCardHeader>
-              <PageCardTitle>Coordenadores com mais atenção</PageCardTitle>
-            </PageCardHeader>
-            <PageCardContent>
-              {rankingCoordenadores.length === 0 ? (
-                <EmptyText>Sem projeto avaliado em acompanhamento.</EmptyText>
-              ) : (
-                <Ranking>
-                  {rankingCoordenadores.map((c, i) => (
-                    <RankingItem key={c.id}>
-                      <span className="posicao">{i + 1}.</span>
-                      <button
-                        type="button"
-                        className="nome"
-                        onClick={() => setCoordenadorId(coordenadorId === c.id ? null : c.id)}
-                        title="Clique pra filtrar o mapa por este coordenador"
-                      >
-                        {c.nome}
-                        <Secundario as="span" style={{ display: "inline", marginLeft: "0.35rem" }}>
-                          {c.projetos} proj. · {percentual(c.verde, c.projetos)} saudáveis
-                        </Secundario>
-                      </button>
-                      <FaixasCores verde={c.verde} amarelo={c.amarelo} vermelho={c.vermelho} />
-                    </RankingItem>
-                  ))}
-                </Ranking>
-              )}
-            </PageCardContent>
-          </PageCard>
-          <PageCard>
-            <PageCardHeader>
-              <PageCardTitle>Pilares que mais pedem atenção</PageCardTitle>
-            </PageCardHeader>
-            <PageCardContent>
-              {rankingPilares.length === 0 ? (
-                <EmptyText>Sem pilar avaliado em acompanhamento.</EmptyText>
-              ) : (
-                <Ranking>
-                  {rankingPilares.map((p, i) => (
-                    <RankingItem key={p.id}>
-                      <span className="posicao">{i + 1}.</span>
-                      <button
-                        type="button"
-                        className="nome"
-                        onClick={() => {
-                          setPilarId(pilarId === p.id ? null : p.id);
-                          setCorDoPilar([]);
-                        }}
-                        title="Clique pra escolher este pilar no filtro"
-                      >
-                        {p.nome}
-                        <Secundario as="span" style={{ display: "inline", marginLeft: "0.35rem" }}>
-                          {percentual(p.verde, p.verde + p.amarelo + p.vermelho)} saudável
-                        </Secundario>
-                      </button>
-                      <FaixasCores verde={p.verde} amarelo={p.amarelo} vermelho={p.vermelho} />
-                    </RankingItem>
-                  ))}
-                </Ranking>
-              )}
-            </PageCardContent>
-          </PageCard>
-        </PageGrid>
+      {rankingPilares.length > 0 && (
+        <PageCard>
+          <PageCardHeader>
+            <PageCardTitle>Pilares que mais pedem atenção</PageCardTitle>
+            <Secundario as="span">Na JR inteira, só projetos em acompanhamento. Clique num pilar pra escolhê-lo no filtro.</Secundario>
+          </PageCardHeader>
+          <PageCardContent>
+            <PageGrid $columns={2}>
+              <Ranking>
+                {rankingPilares.map((p, i) => (
+                  <RankingItem key={p.id}>
+                    <span className="posicao">{i + 1}.</span>
+                    <button
+                      type="button"
+                      className="nome"
+                      onClick={() => {
+                        setPilarId(pilarId === p.id ? null : p.id);
+                        setCorDoPilar([]);
+                      }}
+                    >
+                      {p.nome}
+                      <Secundario as="span" style={{ display: "inline", marginLeft: "0.35rem" }}>
+                        {percentual(p.verde, p.verde + p.amarelo + p.vermelho)} saudável
+                      </Secundario>
+                    </button>
+                    <FaixasCores verde={p.verde} amarelo={p.amarelo} vermelho={p.vermelho} />
+                  </RankingItem>
+                ))}
+              </Ranking>
+              <PilaresGrafico linhas={rankingPilares} nomeDaCor={nomeDaCor} />
+            </PageGrid>
+          </PageCardContent>
+        </PageCard>
       )}
-
-      <AtencaoCard projetos={emAcompanhamento} pilares={pilares} nomeDaCor={nomeDaCor} />
 
       <CoordenadoresCard
         // Sem o filtro de coordenador aplicado: a visão é de TODOS os
@@ -516,20 +529,6 @@ export function HealthTrack() {
       />
 
       <EvolucaoCard />
-
-      <PageCard>
-        <PageCardHeader>
-          <PageCardTitle>Pós-banca e finalizados</PageCardTitle>
-          <Secundario as="span">Já passaram pela banca: não entram nas rodadas, mas a última leitura fica aqui.</Secundario>
-        </PageCardHeader>
-        <PageCardContent>
-          {encerrados.length === 0 ? (
-            <EmptyText>Nenhum projeto pós-banca ou finalizado{filtrando ? " com esses filtros" : ""}.</EmptyText>
-          ) : (
-            <MapaTabela projetos={encerrados} pilares={pilares} nomeDaCor={nomeDaCor} pendentes={new Set()} />
-          )}
-        </PageCardContent>
-      </PageCard>
     </PageStack>
   );
 }
@@ -633,24 +632,7 @@ function FaixasCores({ verde, amarelo, vermelho }: { verde: number; amarelo: num
   );
 }
 
-type LinhaRanking = { id: number; nome: string; projetos: number; verde: number; amarelo: number; vermelho: number };
-
-/** Quem tem mais projeto crítico (depois em atenção) primeiro; empate pelo nome. */
-function rankearCoordenadores(projetos: ProjetoNaCarteira[]): LinhaRanking[] {
-  const por = new Map<number, LinhaRanking>();
-  for (const p of projetos) {
-    if (!p.status_geral) continue;
-    for (const c of p.coordenadores) {
-      const linha = por.get(c.id) ?? { id: c.id, nome: c.nome, projetos: 0, verde: 0, amarelo: 0, vermelho: 0 };
-      linha.projetos += 1;
-      linha[p.status_geral.pela_regra_atual] += 1;
-      por.set(c.id, linha);
-    }
-  }
-  return [...por.values()].sort(
-    (a, b) => b.vermelho - a.vermelho || b.amarelo - a.amarelo || a.verde - b.verde || a.nome.localeCompare(b.nome, "pt-BR"),
-  );
-}
+export type LinhaRanking = { id: number; nome: string; projetos: number; verde: number; amarelo: number; vermelho: number };
 
 /** O pilar com mais vermelho (depois amarelo) na JR inteira: problema
  *  sistêmico, não de um projeto. */
