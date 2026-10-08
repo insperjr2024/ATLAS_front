@@ -92,6 +92,8 @@ export interface ProjetoNaCarteira {
   nome: string;
   cliente: string | null;
   status: string;
+  /** Em acompanhamento (entra nas rodadas) ou encerrado (pós-banca, só leitura). */
+  bloco: "acompanhamento" | "encerrado";
   frentes: { id: number; nome: string }[];
   coordenadores: { id: number; nome: string }[];
   gerentes: { id: number; nome: string }[];
@@ -108,6 +110,69 @@ export interface ProjetoNaCarteira {
 export interface Carteira {
   pilares: Pilar[];
   projetos: ProjetoNaCarteira[];
+}
+
+// ---------------------------------------------------------------- rodadas
+
+export type SituacaoNaRodada = "pendente" | "avaliada" | "justificada";
+
+export interface ProjetoNaRodada {
+  projeto_id: number;
+  projeto_nome: string;
+  projeto_status: string | null;
+  situacao: SituacaoNaRodada;
+  justificativa: string | null;
+  resolvido_em: string | null;
+  resolvido_por_nome: string | null;
+}
+
+/**
+ * Uma rodada de avaliação (2026-10-08): a diretoria abre quando decide que
+ * é dia, a lista dos projetos em acompanhamento congela, e cada um precisa
+ * ser avaliado ou justificado antes de a rodada concluir.
+ */
+export interface Rodada {
+  id: number;
+  aberta_em: string;
+  aberta_por_nome: string | null;
+  concluida_em: string | null;
+  concluida_por_nome: string | null;
+  total: number;
+  pendente: number;
+  avaliada: number;
+  justificada: number;
+  projetos: ProjetoNaRodada[];
+}
+
+export function getRodadaAtual(token: string) {
+  return apiFetch<Rodada | null>("/health-track/rodadas/atual", { token });
+}
+
+export function getRodadas(token: string) {
+  return apiFetch<Rodada[]>("/health-track/rodadas", { token });
+}
+
+export function abrirRodada(token: string) {
+  return apiFetch<Rodada>("/health-track/rodadas", { method: "POST", token });
+}
+
+export function concluirRodada(id: number, token: string) {
+  return apiFetch<Rodada>(`/health-track/rodadas/${id}/concluir`, { method: "POST", token });
+}
+
+export function justificarProjeto(rodadaId: number, projetoId: number, justificativa: string, token: string) {
+  return apiFetch<Rodada>(`/health-track/rodadas/${rodadaId}/projetos/${projetoId}/justificativa`, {
+    method: "PUT",
+    token,
+    body: JSON.stringify({ justificativa }),
+  });
+}
+
+export function desfazerJustificativa(rodadaId: number, projetoId: number, token: string) {
+  return apiFetch<Rodada>(`/health-track/rodadas/${rodadaId}/projetos/${projetoId}/justificativa`, {
+    method: "DELETE",
+    token,
+  });
 }
 
 export function getCarteira(token: string, frenteId: number | null = null) {

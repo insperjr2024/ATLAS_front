@@ -180,3 +180,209 @@ export const Voltar = styled(RouterLink)`
     height: 1rem;
   }
 `;
+
+// ---------------------------------------------------------------- rodada
+
+export const Progresso = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  font-size: ${theme.fontSize.sm};
+  color: ${theme.colors.mutedForeground};
+
+  strong {
+    color: ${theme.colors.foreground};
+  }
+`;
+
+export const BarraProgresso = styled.div<{ $pct: number }>`
+  flex: 1 1 12rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: ${theme.colors.muted};
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    display: block;
+    height: 100%;
+    width: ${({ $pct }) => $pct}%;
+    background: ${theme.colors.success};
+    transition: width ${theme.transitions.fast};
+  }
+`;
+
+export const FilaRodada = styled.ul`
+  list-style: none;
+  margin: ${theme.spacing.sm} 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+`;
+
+export const ItemRodada = styled.li<{ $situacao: "pendente" | "avaliada" | "justificada" }>`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: 0.45rem 0.6rem;
+  border-radius: ${theme.borderRadius.md};
+  border: 1px solid
+    ${({ $situacao }) =>
+      $situacao === "pendente" ? SOLIDO_COR.vermelho : $situacao === "avaliada" ? SOLIDO_COR.verde : theme.colors.border};
+  background: ${({ $situacao }) =>
+    $situacao === "pendente" ? FUNDO_COR.vermelho : $situacao === "avaliada" ? FUNDO_COR.verde : theme.colors.card};
+  font-size: ${theme.fontSize.sm};
+
+  > a {
+    font-weight: ${theme.fontWeight.medium};
+    color: ${theme.colors.foreground};
+    text-decoration: none;
+  }
+
+  > a:hover {
+    text-decoration: underline;
+  }
+
+  .acoes {
+    margin-left: auto;
+    display: flex;
+    gap: ${theme.spacing.xs};
+  }
+`;
+
+export const Justificativa = styled.span`
+  flex-basis: 100%;
+  font-size: ${theme.fontSize.xs};
+  color: ${theme.colors.mutedForeground};
+  font-style: italic;
+`;
+
+export const PendenteBadge = styled.span`
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: ${theme.fontWeight.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: ${SOLIDO_COR.vermelho};
+  color: white;
+  vertical-align: middle;
+`;
+
+export const Historico = styled.details`
+  margin-top: ${theme.spacing.sm};
+  font-size: ${theme.fontSize.sm};
+
+  summary {
+    cursor: pointer;
+    color: ${theme.colors.mutedForeground};
+  }
+
+  ul {
+    margin: ${theme.spacing.xs} 0 0;
+    padding-left: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+`;
+
+/** A faixa no topo do painel do projeto enquanto há rodada em andamento. */
+export const FaixaRodada = styled.div<{ $pendente: boolean }>`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${({ $pendente }) => ($pendente ? SOLIDO_COR.vermelho : theme.colors.border)};
+  background: ${({ $pendente }) => ($pendente ? FUNDO_COR.vermelho : theme.colors.card)};
+  font-size: ${theme.fontSize.sm};
+
+  .acoes {
+    margin-left: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: ${theme.spacing.xs};
+  }
+`;
+
+// ---------------------------------------------------------------- rankings
+
+export const Ranking = styled.ol`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: ${theme.fontSize.sm};
+`;
+
+export const RankingItem = styled.li`
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+
+  .posicao {
+    color: ${theme.colors.mutedForeground};
+    font-variant-numeric: tabular-nums;
+  }
+
+  .nome {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button.nome {
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    font: inherit;
+    color: ${theme.colors.foreground};
+    cursor: pointer;
+  }
+
+  button.nome:hover {
+    text-decoration: underline;
+  }
+`;
+
+/** Barra empilhada verde/amarelo/vermelho, com os números ao lado. */
+export const Faixas = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  font-size: ${theme.fontSize.xs};
+  font-variant-numeric: tabular-nums;
+`;
+
+export const FaixaBarra = styled.span`
+  display: inline-flex;
+  width: 6rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: ${theme.colors.muted};
+
+  i {
+    display: block;
+    height: 100%;
+  }
+`;
+
+export const Contagem = styled.span<{ $cor: CorHealthTrack }>`
+  color: ${({ $cor }) => TEXTO_COR[$cor]};
+  font-weight: ${theme.fontWeight.semibold};
+  min-width: 1.1rem;
+  text-align: right;
+`;

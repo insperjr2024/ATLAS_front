@@ -68,7 +68,14 @@ type Rascunho = Record<number, { cor: CorHealthTrack | null; comentario: string 
  * projetos ou gerente de uma frente do projeto. A tela não refaz a regra de
  * frente, ela já saiu errada nas vezes em que foi copiada para o front.
  */
-export function PainelHealthTrack({ projetoId }: { projetoId: number }) {
+export function PainelHealthTrack({
+  projetoId,
+  onSalvo,
+}: {
+  projetoId: number;
+  /** Depois de uma avaliação registrada: a página da rodada atualiza a fila. */
+  onSalvo?: () => void;
+}) {
   const { token } = useAuth();
   const [atual, setAtual] = useState<AvaliacaoAtual | null>(null);
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
@@ -200,6 +207,7 @@ export function PainelHealthTrack({ projetoId }: { projetoId: number }) {
                 setEditando(false);
                 setSalvo(true);
                 await carregar();
+                onSalvo?.();
               }}
             />
           ) : (

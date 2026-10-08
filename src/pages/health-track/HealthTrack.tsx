@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { CorSelo } from "@/components/health-track/CorSelo";
+import { SOLIDO_COR } from "@/components/health-track/HealthTrack.styled";
 import { ICONE_COR } from "@/components/health-track/icones";
 import { SemCor } from "@/components/health-track/HealthTrack.styled";
 import { EstadoVazio } from "@/components/EstadoVazio";
@@ -11,20 +12,26 @@ import { formatarDataHora, ROTULO_STATUS } from "@/lib/projetos";
 import {
   getCarteira,
   getClassificacoes,
+  getRodadaAtual,
+  getRodadas,
   ROTULO_COR,
   type Carteira,
   type Classificacao,
   type CorHealthTrack,
+  type Pilar,
   type ProjetoNaCarteira,
+  type Rodada,
 } from "@/lib/health-track";
 import { podeFiltrarPorFrente } from "@/utils/permissoes";
 import type { Frente } from "@/types/banca";
 import type { StatusProjeto } from "@/types/projeto";
 import { BarraFiltros, FiltroMulti, FiltroSelect } from "@/pages/monitoramento/Monitoramento.styled";
 import {
+  EmptyText,
   ErrorBlock,
   ErrorText,
   PageButton,
+  PageGrid,
   PageCard,
   PageCardContent,
   PageCardHeader,
@@ -36,28 +43,35 @@ import {
   PageSubtitle,
   PageTitle,
 } from "@/styles/page.styled";
+import { RodadaCard } from "./RodadaCard";
 import {
   Celula,
+  Contagem,
+  FaixaBarra,
+  Faixas,
   Legenda,
   Mapa,
   NomeProjeto,
+  PendenteBadge,
   Placar,
   PlacarItem,
+  Ranking,
+  RankingItem,
   Rolagem,
   Secundario,
   Tendencia,
 } from "./HealthTrack.styled";
 
 const CORES: CorHealthTrack[] = ["verde", "amarelo", "vermelho"];
-/** As etapas que podem estar no mapa (finalizado e pausado ficam fora no backend). */
+/** As etapas que podem estar no mapa (antes da venda fechar fica fora). */
 const ETAPAS: StatusProjeto[] = [
-  "contrato_em_elaboracao",
-  "vendido",
   "ambientacao",
   "em_andamento",
   "validacao_bancas",
+  "pausado",
   "envio_tep",
   "periodo_ajustes",
+  "finalizado",
 ];
 const SEM_AVALIACAO = "sem";
 const PESO_COR: Record<CorHealthTrack, number> = { verde: 0, amarelo: 1, vermelho: 2 };
@@ -76,8 +90,9 @@ const PESO_COR: Record<CorHealthTrack, number> = { verde: 0, amarelo: 1, vermelh
  */
 export function HealthTrack() {
   const { token, usuario } = useAuth();
-  const navigate = useNavigate();
   const [carteira, setCarteira] = useState<Carteira | null>(null);
+  const [rodada, setRodada] = useState<Rodada | null>(null);
+  const [rodadas, setRodadas] = useState<Rodada[]>([]);
   const [classificacoes, setClassificacoes] = useState<Classificacao[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
   const [erro, setErro] = useState("");
@@ -108,6 +123,28 @@ export function HealthTrack() {
       vivo = false;
     };
   }, [token, podeFiltrarFrente]);
+
+  useEffect(() => {
+    if (!token) return;
+    let vivo = true;
+    Promise.all([getRodadaAtual(token), getRodadas(token)])
+      .then(([atual, todas]) => {
+        if (!vivo) return;
+        setRodada(atual);
+        setRodadas(todas);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [token, tentativa]);
+
+  async function recarregarRodada() {
+    if (!token) return;
+    const [atual, todas] = await Promise.all([getRodadaAtual(token), getRodadas(token)]);
+    setRodada(atual);
+    setRodadas(todas);
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -156,7 +193,20 @@ export function HealthTrack() {
     });
   }, [carteira, coordenadorId, gerenteId, etapas, statusGeral, pilarId, corDoPilar]);
 
-  const placar = useMemo(() => contar(projetos), [projetos]);
+  const emAcompanhamento = useMemo(() => projetos.filter((p) => p.bloco === "acompanhamento"), [projetos]);
+  const encerrados = useMemo(() => projetos.filter((p) => p.bloco === "encerrado"), [projetos]);
+  // KPIs e rankings só sobre quem está em acompanhamento: o bloco de
+  // encerrados é leitura do passado, não entra na conta de hoje.
+  const placar = useMemo(() => contar(emAcompanhamento), [emAcompanhamento]);
+  const rankingCoordenadores = useMemo(() => rankearCoordenadores(emAcompanhamento), [emAcompanhamento]);
+  const rankingPilares = useMemo(
+    () => (carteira ? rankearPilares(emAcompanhamento, carteira.pilares) : []),
+    [emAcompanhamento, carteira],
+  );
+  const pendentesNaRodada = useMemo(
+    () => new Set(rodada?.projetos.filter((p) => p.situacao === "pendente").map((p) => p.projeto_id) ?? []),
+    [rodada],
+  );
 
   if (erro) {
     return (
@@ -172,6 +222,7 @@ export function HealthTrack() {
 
   const pilares = carteira.pilares;
   const filtrando =
+    frenteId !== null ||
     coordenadorId !== null ||
     gerenteId !== null ||
     etapas.length > 0 ||
@@ -274,10 +325,12 @@ export function HealthTrack() {
         )}
       </BarraFiltros>
 
+      <RodadaCard atual={rodada} historico={rodadas} onMudou={recarregarRodada} />
+
       <Placar>
         <PlacarItem>
           <strong>{placar.total}</strong>
-          <span>Projetos em curso</span>
+          <span>Em acompanhamento</span>
           <small>{placar.avaliados} com avaliação</small>
         </PlacarItem>
         {CORES.map((cor) => (
@@ -294,15 +347,9 @@ export function HealthTrack() {
         </PlacarItem>
         <PlacarItem>
           <strong>
-            {placar.pioraram}
-            <Secundario as="span" style={{ display: "inline", marginLeft: "0.25rem" }}>
-              pioraram
-            </Secundario>
+            {placar.pioraram} <Secundario as="span" style={{ display: "inline" }}>pioraram</Secundario>
             {" · "}
-            {placar.melhoraram}
-            <Secundario as="span" style={{ display: "inline", marginLeft: "0.25rem" }}>
-              melhoraram
-            </Secundario>
+            {placar.melhoraram} <Secundario as="span" style={{ display: "inline" }}>melhoraram</Secundario>
           </strong>
           <span>Desde o ciclo anterior</span>
         </PlacarItem>
@@ -310,7 +357,7 @@ export function HealthTrack() {
 
       <PageCard>
         <PageCardHeader>
-          <PageCardTitle>Mapa da carteira</PageCardTitle>
+          <PageCardTitle>Em acompanhamento</PageCardTitle>
           <Legenda aria-label="Legenda das cores">
             {CORES.map((c) => (
               <span key={c}>
@@ -325,87 +372,238 @@ export function HealthTrack() {
           </Legenda>
         </PageCardHeader>
         <PageCardContent>
-          {projetos.length === 0 ? (
+          {emAcompanhamento.length === 0 ? (
             <EstadoVazio
               causa={filtrando ? "filtro" : "vazio"}
-              titulo="Nenhum projeto no mapa"
+              titulo="Nenhum projeto em acompanhamento"
               motivo={
                 filtrando
-                  ? "Nenhum projeto em curso bate com os filtros escolhidos. Limpe um deles."
-                  : "Não há projeto em curso na carteira que você enxerga."
+                  ? "Nenhum projeto em acompanhamento bate com os filtros escolhidos. Limpe um deles."
+                  : "Não há projeto em ambientação, em andamento ou aguardando banca na carteira que você enxerga."
               }
             />
           ) : (
-            <Rolagem>
-              <Mapa>
-                <thead>
-                  <tr>
-                    <th>Projeto</th>
-                    <th>Coordenação</th>
-                    <th>Etapa</th>
-                    <th>Geral</th>
-                    {pilares.map((p) => (
-                      <th key={p.id} className="pilar" title={p.descricao ?? undefined}>
-                        {abreviar(p.nome)}
-                      </th>
-                    ))}
-                    <th>Tendência</th>
-                    <th>Avaliado em</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {projetos.map((p) => (
-                    <tr key={p.id} onClick={() => navigate(`/health-track/projetos/${p.id}`)}>
-                      <td>
-                        <NomeProjeto to={`/health-track/projetos/${p.id}`} onClick={(e) => e.stopPropagation()}>
-                          {p.nome}
-                        </NomeProjeto>
-                        <Secundario>{p.frentes.map((f) => f.nome).join(" + ") || "Sem frente"}</Secundario>
-                      </td>
-                      <td>
-                        {p.coordenadores.map((c) => primeiroNome(c.nome)).join(", ") || <Secundario>Sem coordenador</Secundario>}
-                        {p.gerentes.length > 0 && (
-                          <Secundario>Ger.: {p.gerentes.map((g) => primeiroNome(g.nome)).join(", ")}</Secundario>
-                        )}
-                      </td>
-                      <td>{ROTULO_STATUS[p.status as StatusProjeto] ?? p.status}</td>
-                      <td>
-                        {p.status_geral ? (
-                          <CorSelo cor={p.status_geral.pela_regra_atual} rotulo={nomeDaCor(p.status_geral.pela_regra_atual)} />
-                        ) : (
-                          <SemCor>{p.total_ciclos ? "Pendente" : "Sem avaliação"}</SemCor>
-                        )}
-                      </td>
-                      {pilares.map((pilar) => {
-                        const cor = p.pilares[String(pilar.id)]?.cor ?? null;
-                        return (
-                          <td key={pilar.id} className="pilar">
-                            <Celula
-                              $cor={cor}
-                              title={`${pilar.nome}: ${cor ? nomeDaCor(cor) : "sem avaliação"}`}
-                              aria-label={`${pilar.nome}: ${cor ? nomeDaCor(cor) : "sem avaliação"}`}
-                            >
-                              {cor ? iconeDe(cor) : "·"}
-                            </Celula>
-                          </td>
-                        );
-                      })}
-                      <td>
-                        <TendenciaDoProjeto projeto={p} />
-                      </td>
-                      <td>
-                        {p.avaliado_em ? formatarDataHora(p.avaliado_em) : <Secundario>nunca</Secundario>}
-                      </td>
-                    </tr>
+            <MapaTabela projetos={emAcompanhamento} pilares={pilares} nomeDaCor={nomeDaCor} pendentes={pendentesNaRodada} />
+          )}
+        </PageCardContent>
+      </PageCard>
+
+      {(rankingCoordenadores.length > 0 || rankingPilares.length > 0) && (
+        <PageGrid $columns={2}>
+          <PageCard>
+            <PageCardHeader>
+              <PageCardTitle>Coordenadores com mais atenção</PageCardTitle>
+            </PageCardHeader>
+            <PageCardContent>
+              {rankingCoordenadores.length === 0 ? (
+                <EmptyText>Sem projeto avaliado em acompanhamento.</EmptyText>
+              ) : (
+                <Ranking>
+                  {rankingCoordenadores.map((c, i) => (
+                    <RankingItem key={c.id}>
+                      <span className="posicao">{i + 1}.</span>
+                      <button
+                        type="button"
+                        className="nome"
+                        onClick={() => setCoordenadorId(coordenadorId === c.id ? null : c.id)}
+                        title="Clique pra filtrar o mapa por este coordenador"
+                      >
+                        {c.nome}
+                        <Secundario as="span" style={{ display: "inline", marginLeft: "0.35rem" }}>
+                          {c.projetos} proj. · {percentual(c.verde, c.projetos)} saudáveis
+                        </Secundario>
+                      </button>
+                      <FaixasCores verde={c.verde} amarelo={c.amarelo} vermelho={c.vermelho} />
+                    </RankingItem>
                   ))}
-                </tbody>
-              </Mapa>
-            </Rolagem>
+                </Ranking>
+              )}
+            </PageCardContent>
+          </PageCard>
+          <PageCard>
+            <PageCardHeader>
+              <PageCardTitle>Pilares que mais pedem atenção</PageCardTitle>
+            </PageCardHeader>
+            <PageCardContent>
+              {rankingPilares.length === 0 ? (
+                <EmptyText>Sem pilar avaliado em acompanhamento.</EmptyText>
+              ) : (
+                <Ranking>
+                  {rankingPilares.map((p, i) => (
+                    <RankingItem key={p.id}>
+                      <span className="posicao">{i + 1}.</span>
+                      <button
+                        type="button"
+                        className="nome"
+                        onClick={() => {
+                          setPilarId(pilarId === p.id ? null : p.id);
+                          setCorDoPilar([]);
+                        }}
+                        title="Clique pra escolher este pilar no filtro"
+                      >
+                        {p.nome}
+                        <Secundario as="span" style={{ display: "inline", marginLeft: "0.35rem" }}>
+                          {percentual(p.verde, p.verde + p.amarelo + p.vermelho)} saudável
+                        </Secundario>
+                      </button>
+                      <FaixasCores verde={p.verde} amarelo={p.amarelo} vermelho={p.vermelho} />
+                    </RankingItem>
+                  ))}
+                </Ranking>
+              )}
+            </PageCardContent>
+          </PageCard>
+        </PageGrid>
+      )}
+
+      <PageCard>
+        <PageCardHeader>
+          <PageCardTitle>Pós-banca e finalizados</PageCardTitle>
+          <Secundario as="span">Já passaram pela banca: não entram nas rodadas, mas a última leitura fica aqui.</Secundario>
+        </PageCardHeader>
+        <PageCardContent>
+          {encerrados.length === 0 ? (
+            <EmptyText>Nenhum projeto pós-banca ou finalizado{filtrando ? " com esses filtros" : ""}.</EmptyText>
+          ) : (
+            <MapaTabela projetos={encerrados} pilares={pilares} nomeDaCor={nomeDaCor} pendentes={new Set()} />
           )}
         </PageCardContent>
       </PageCard>
     </PageStack>
   );
+}
+
+function MapaTabela({
+  projetos,
+  pilares,
+  nomeDaCor,
+  pendentes,
+}: {
+  projetos: ProjetoNaCarteira[];
+  pilares: Pilar[];
+  nomeDaCor: (cor: CorHealthTrack) => string;
+  /** Ids pendentes na rodada aberta: ganham o selo vermelho. */
+  pendentes: Set<number>;
+}) {
+  const navigate = useNavigate();
+  return (
+    <Rolagem>
+      <Mapa>
+        <thead>
+          <tr>
+            <th>Projeto</th>
+            <th>Coordenação</th>
+            <th>Etapa</th>
+            <th>Geral</th>
+            {pilares.map((p) => (
+              <th key={p.id} className="pilar" title={p.descricao ?? undefined}>
+                {abreviar(p.nome)}
+              </th>
+            ))}
+            <th>Tendência</th>
+            <th>Avaliado em</th>
+          </tr>
+        </thead>
+        <tbody>
+          {projetos.map((p) => (
+            <tr key={p.id} onClick={() => navigate(`/health-track/projetos/${p.id}`)}>
+              <td>
+                <NomeProjeto to={`/health-track/projetos/${p.id}`} onClick={(e) => e.stopPropagation()}>
+                  {p.nome}
+                </NomeProjeto>
+                {pendentes.has(p.id) && <PendenteBadge title="Pendente na rodada em andamento">Pendente</PendenteBadge>}
+                <Secundario>{p.frentes.map((f) => f.nome).join(" + ") || "Sem frente"}</Secundario>
+              </td>
+              <td>
+                {p.coordenadores.map((c) => primeiroNome(c.nome)).join(", ") || <Secundario>Sem coordenador</Secundario>}
+                {p.gerentes.length > 0 && (
+                  <Secundario>Ger.: {p.gerentes.map((g) => primeiroNome(g.nome)).join(", ")}</Secundario>
+                )}
+              </td>
+              <td>{ROTULO_STATUS[p.status as StatusProjeto] ?? p.status}</td>
+              <td>
+                {p.status_geral ? (
+                  <CorSelo cor={p.status_geral.pela_regra_atual} rotulo={nomeDaCor(p.status_geral.pela_regra_atual)} />
+                ) : (
+                  <SemCor>{p.total_ciclos ? "Pendente" : "Sem avaliação"}</SemCor>
+                )}
+              </td>
+              {pilares.map((pilar) => {
+                const cor = p.pilares[String(pilar.id)]?.cor ?? null;
+                const rotulo = `${pilar.nome}: ${cor ? nomeDaCor(cor) : "sem avaliação"}`;
+                return (
+                  <td key={pilar.id} className="pilar">
+                    <Celula $cor={cor} title={rotulo} aria-label={rotulo}>
+                      {cor ? iconeDe(cor) : "·"}
+                    </Celula>
+                  </td>
+                );
+              })}
+              <td>
+                <TendenciaDoProjeto projeto={p} />
+              </td>
+              <td>{p.avaliado_em ? formatarDataHora(p.avaliado_em) : <Secundario>nunca</Secundario>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Mapa>
+    </Rolagem>
+  );
+}
+
+/** Verde, amarelo e vermelho lado a lado: a barra e os três números. */
+function FaixasCores({ verde, amarelo, vermelho }: { verde: number; amarelo: number; vermelho: number }) {
+  const total = Math.max(1, verde + amarelo + vermelho);
+  return (
+    <Faixas>
+      <FaixaBarra aria-hidden="true">
+        <i style={{ width: `${(verde / total) * 100}%`, background: SOLIDO_COR.verde }} />
+        <i style={{ width: `${(amarelo / total) * 100}%`, background: SOLIDO_COR.amarelo }} />
+        <i style={{ width: `${(vermelho / total) * 100}%`, background: SOLIDO_COR.vermelho }} />
+      </FaixaBarra>
+      <Contagem $cor="verde">{verde}</Contagem>
+      <Contagem $cor="amarelo">{amarelo}</Contagem>
+      <Contagem $cor="vermelho">{vermelho}</Contagem>
+    </Faixas>
+  );
+}
+
+type LinhaRanking = { id: number; nome: string; projetos: number; verde: number; amarelo: number; vermelho: number };
+
+/** Quem tem mais projeto crítico (depois em atenção) primeiro; empate pelo nome. */
+function rankearCoordenadores(projetos: ProjetoNaCarteira[]): LinhaRanking[] {
+  const por = new Map<number, LinhaRanking>();
+  for (const p of projetos) {
+    if (!p.status_geral) continue;
+    for (const c of p.coordenadores) {
+      const linha = por.get(c.id) ?? { id: c.id, nome: c.nome, projetos: 0, verde: 0, amarelo: 0, vermelho: 0 };
+      linha.projetos += 1;
+      linha[p.status_geral.pela_regra_atual] += 1;
+      por.set(c.id, linha);
+    }
+  }
+  return [...por.values()].sort(
+    (a, b) => b.vermelho - a.vermelho || b.amarelo - a.amarelo || a.verde - b.verde || a.nome.localeCompare(b.nome, "pt-BR"),
+  );
+}
+
+/** O pilar com mais vermelho (depois amarelo) na JR inteira: problema
+ *  sistêmico, não de um projeto. */
+function rankearPilares(projetos: ProjetoNaCarteira[], pilares: Pilar[]): LinhaRanking[] {
+  return pilares
+    .map((pilar) => {
+      const linha: LinhaRanking = { id: pilar.id, nome: pilar.nome, projetos: 0, verde: 0, amarelo: 0, vermelho: 0 };
+      for (const p of projetos) {
+        const cor = p.pilares[String(pilar.id)]?.cor;
+        if (cor) {
+          linha[cor] += 1;
+          linha.projetos += 1;
+        }
+      }
+      return linha;
+    })
+    .filter((l) => l.projetos > 0)
+    .sort((a, b) => b.vermelho - a.vermelho || b.amarelo - a.amarelo || a.verde - b.verde);
 }
 
 function iconeDe(cor: CorHealthTrack) {
