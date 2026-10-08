@@ -54,6 +54,29 @@ import {
 
 type Rascunho = Record<number, { cor: CorHealthTrack | null; comentario: string }>;
 
+/** O preenchimento em andamento fica no navegador (a pedido, 2026-10-08):
+ *  sair da aba e voltar não pode perder o que já foi marcado. Some ao
+ *  salvar ou cancelar. Por projeto, pra uma rodada com vários abertos. */
+const chaveRascunho = (projetoId: number) => `atlas:health-track:rascunho:${projetoId}`;
+
+function lerRascunho(projetoId: number): Rascunho | null {
+  try {
+    const bruto = localStorage.getItem(chaveRascunho(projetoId));
+    return bruto ? (JSON.parse(bruto) as Rascunho) : null;
+  } catch {
+    return null;
+  }
+}
+
+function guardarRascunho(projetoId: number, rascunho: Rascunho | null) {
+  try {
+    if (rascunho) localStorage.setItem(chaveRascunho(projetoId), JSON.stringify(rascunho));
+    else localStorage.removeItem(chaveRascunho(projetoId));
+  } catch {
+    // Sem storage (modo privado etc.) o formulário só não lembra.
+  }
+}
+
 /**
  * A saúde de UM projeto em pilares (Health Track §2 a §5).
  *
@@ -82,7 +105,8 @@ export function PainelHealthTrack({
   const [classificacoes, setClassificacoes] = useState<Classificacao[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
-  const [editando, setEditando] = useState(false);
+  // Abre já no formulário se havia um preenchimento no meio.
+  const [editando, setEditando] = useState(() => lerRascunho(projetoId) !== null);
   const [salvo, setSalvo] = useState(false);
 
   const buscar = useCallback(
@@ -202,8 +226,12 @@ export function PainelHealthTrack({
               projetoId={projetoId}
               atual={atual}
               classificacoes={classificacoes}
-              onCancelar={() => setEditando(false)}
+              onCancelar={() => {
+                guardarRascunho(projetoId, null);
+                setEditando(false);
+              }}
               onSalvo={async () => {
+                guardarRascunho(projetoId, null);
                 setEditando(false);
                 setSalvo(true);
                 await carregar();
@@ -360,9 +388,14 @@ function FormularioAvaliacao({
   onSalvo: () => Promise<void>;
 }) {
   const { token } = useAuth();
-  const [rascunho, setRascunho] = useState<Rascunho>(() =>
-    Object.fromEntries(atual.pilares.map(({ pilar }) => [pilar.id, { cor: null, comentario: "" }])),
-  );
+  const [rascunho, setRascunho] = useState<Rascunho>(() => {
+    const guardado = lerRascunho(projetoId) ?? {};
+    // Só os pilares ativos de agora: um pilar desativado desde o rascunho
+    // não pode voltar pelo storage.
+    return Object.fromEntries(
+      atual.pilares.map(({ pilar }) => [pilar.id, guardado[pilar.id] ?? { cor: null, comentario: "" }]),
+    );
+  });
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState("");
 
@@ -372,7 +405,11 @@ function FormularioAvaliacao({
   );
 
   function mudar(pilarId: number, campo: Partial<Rascunho[number]>) {
-    setRascunho((r) => ({ ...r, [pilarId]: { ...r[pilarId], ...campo } }));
+    setRascunho((r) => {
+      const novo = { ...r, [pilarId]: { ...r[pilarId], ...campo } };
+      guardarRascunho(projetoId, novo);
+      return novo;
+    });
   }
 
   async function enviar(e: FormEvent) {
