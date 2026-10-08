@@ -63,12 +63,15 @@ function hora(iso: string) {
  */
 function dadosCorrida(g: GraficosEleicao, lista: Serie[]) {
   const acumulado: Record<string, number> = Object.fromEntries(lista.map((s) => [s.chave, 0]));
-  const pontos = [{ rotulo: g.aberta_em ? hora(g.aberta_em) : "início", ...acumulado }];
-  for (const v of g.linha_do_tempo) {
+  // O eixo é o NÚMERO do voto (1º, 2º, 3º...), não a hora: votos entram em
+  // rajada no mesmo minuto e, por hora, o gráfico virava um degrau só no
+  // canto. A hora de cada voto fica no balão.
+  const pontos = [{ rotulo: "0", hora: g.aberta_em ? `abertura ${hora(g.aberta_em)}` : "abertura", ...acumulado }];
+  g.linha_do_tempo.forEach((v, i) => {
     const chave = v.candidato_id === null ? BRANCO : `c${v.candidato_id}`;
     if (chave in acumulado) acumulado[chave] += v.peso;
-    pontos.push({ rotulo: hora(v.em), ...acumulado });
-  }
+    pontos.push({ rotulo: String(i + 1), hora: `${i + 1}º voto, ${hora(v.em)}`, ...acumulado });
+  });
   return pontos;
 }
 
@@ -126,24 +129,28 @@ function Corrida({ g, lista }: { g: GraficosEleicao; lista: Serie[] }) {
   const dados = useMemo(() => dadosCorrida(g, lista), [g, lista]);
   return (
     <BlocoGrafico>
-      <TituloGrafico>Corrida, voto a voto</TituloGrafico>
+      <TituloGrafico>Corrida: pontos acumulados a cada voto</TituloGrafico>
       <CaixaGrafico>
         <ResponsiveContainer>
           <LineChart data={dados} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid stroke={theme.colors.border} vertical={false} />
-            <XAxis dataKey="rotulo" {...eixo} minTickGap={24} />
+            <XAxis dataKey="rotulo" {...eixo} minTickGap={16} label={{ value: "votos", position: "insideBottomRight", offset: -4, fontSize: 11, fill: theme.colors.mutedForeground }} />
             <YAxis allowDecimals={false} width={28} {...eixo} axisLine={false} />
-            <Tooltip cursor={{ stroke: theme.colors.border }} />
+            <Tooltip
+              cursor={{ stroke: theme.colors.border }}
+              labelFormatter={(_, carga) => (carga?.[0]?.payload as { hora?: string } | undefined)?.hora ?? ""}
+              formatter={(valor, nome) => [`${valor} pts`, nome]}
+            />
             <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
             {lista.map((s) => (
               <Line
                 key={s.chave}
-                type="stepAfter"
+                type="linear"
                 dataKey={s.chave}
                 name={s.nome}
                 stroke={s.cor}
                 strokeWidth={2}
-                dot={false}
+                dot={{ r: 2.5 }}
                 isAnimationActive={false}
               />
             ))}
