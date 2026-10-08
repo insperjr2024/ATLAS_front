@@ -481,7 +481,9 @@ export function HealthTrack() {
         <PageCard>
           <PageCardHeader>
             <PageCardTitle>Pilares que mais pedem atenção</PageCardTitle>
-            <Secundario as="span">Na JR inteira, só projetos em acompanhamento. Clique num pilar pra escolhê-lo no filtro.</Secundario>
+            <Secundario as="span">
+              Na JR inteira, só projetos em acompanhamento. Clique num pilar pra ver no mapa quem está em atenção ou crítico nele.
+            </Secundario>
           </PageCardHeader>
           <PageCardContent>
             <PageGrid $columns={2}>
@@ -492,10 +494,20 @@ export function HealthTrack() {
                     <button
                       type="button"
                       className="nome"
+                      // Escolhe o pilar E as cores de atenção: só escolher o
+                      // pilar não filtrava nada (a cor ficava vazia) e parecia
+                      // que o clique não funcionava. Clicar de novo limpa.
                       onClick={() => {
-                        setPilarId(pilarId === p.id ? null : p.id);
-                        setCorDoPilar([]);
+                        if (pilarId === p.id) {
+                          setPilarId(null);
+                          setCorDoPilar([]);
+                        } else {
+                          setPilarId(p.id);
+                          setCorDoPilar(["amarelo", "vermelho"]);
+                        }
                       }}
+                      aria-pressed={pilarId === p.id}
+                      title={pilarId === p.id ? "Limpar o filtro" : "Mostrar no mapa só os projetos em atenção ou crítico neste pilar"}
                     >
                       {p.nome}
                       <Secundario as="span" style={{ display: "inline", marginLeft: "0.35rem" }}>
