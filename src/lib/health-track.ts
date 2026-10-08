@@ -200,6 +200,19 @@ export function apagarAcao(projetoId: number, acaoId: number, token: string) {
   return apiFetch<void>(`/health-track/projetos/${projetoId}/acoes/${acaoId}`, { method: "DELETE", token });
 }
 
+/** As ações atribuídas a MIM, em qualquer projeto. Sem a caixa do Health
+ *  Track: é a rota pessoal, que leva só a ação. */
+export function getMinhasAcoes(token: string) {
+  return apiFetch<Acao[]>("/health-track/minhas-acoes", { token });
+}
+
+export function concluirMinhaAcao(acaoId: number, concluida: boolean, token: string) {
+  return apiFetch<Acao>(`/health-track/minhas-acoes/${acaoId}/concluir?concluida=${concluida}`, {
+    method: "POST",
+    token,
+  });
+}
+
 export function getEvolucao(token: string) {
   return apiFetch<Evolucao>("/health-track/evolucao", { token });
 }

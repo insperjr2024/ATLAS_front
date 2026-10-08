@@ -98,6 +98,7 @@ import { TabelaRolagem, SegmentedGroup, SegmentedButton } from "@/styles/shared.
 import { FotoCircular } from "@/components/Avatar";
 import { corDaPessoa, iniciais } from "@/lib/avatar";
 import { PendenciasProjeto } from "./PendenciasProjeto";
+import { MinhasAcoesCard } from "./MinhasAcoesCard";
 import { useProjeto } from "./ProjetoPage";
 
 export function ProjetoVisaoGeral() {
@@ -118,6 +119,9 @@ export function ProjetoVisaoGeral() {
           da aba, e ocupa a largura toda. */
     <PageStack>
       <PendenciasProjeto projeto={projeto} />
+      {/* O que a gestão pediu pra MIM neste projeto (ações do Health Track).
+          Só aparece quando existe alguma. */}
+      <MinhasAcoesCard projetoId={projeto.id} />
 
       <PageGrid $columns={2}>
         <EquipeCard />
