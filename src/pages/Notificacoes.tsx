@@ -124,6 +124,8 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   acao_atribuida: { icone: ClipboardCheck, rotulo: "Ação atribuída a você", alerta: true },
   acao_concluida: { icone: ClipboardCheck, rotulo: "Ação concluída", alerta: false },
   acao_prazo_vencido: { icone: ClipboardCheck, rotulo: "Ação com prazo vencido", alerta: true },
+  rodada_health_track_aberta: { icone: ClipboardCheck, rotulo: "Rodada de Health Track", alerta: true },
+  rodada_health_track_pendente: { icone: ClipboardCheck, rotulo: "Rodada de Health Track parada", alerta: true },
   // § Contratos — o alerta acompanha quem tem o que fazer a seguir: gerar,
   // mandar, ou responder ao cliente. "Cliente aprovou"/os dois de projeto
   // são notícia, não cobrança.
@@ -204,6 +206,8 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "acao_atribuida",
   "acao_prazo_vencido",
   "acao_concluida",
+  "rodada_health_track_aberta",
+  "rodada_health_track_pendente",
   "banca_aviso",
   "projeto_criado_em_contrato",
   "projeto_vendido",

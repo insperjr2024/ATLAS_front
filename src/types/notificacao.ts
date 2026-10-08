@@ -30,6 +30,8 @@ export type TipoNotificacao =
   | "acao_atribuida"
   | "acao_concluida"
   | "acao_prazo_vencido"
+  | "rodada_health_track_aberta"
+  | "rodada_health_track_pendente"
   // eventos de bancas, entram por `utils/notificar.py` no backend
   | "escalacao_banca"
   | "troca_banca"

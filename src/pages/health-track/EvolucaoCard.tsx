@@ -97,10 +97,10 @@ export function EvolucaoCard() {
               <TituloGrafico>Saúde da carteira, % dos projetos avaliados</TituloGrafico>
               <CaixaGrafico>
                 <ResponsiveContainer>
-                  <LineChart data={carteira} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                  <LineChart data={carteira} margin={{ top: 8, right: 20, bottom: 0, left: 0 }}>
                     <CartesianGrid stroke={theme.colors.border} vertical={false} />
                     <XAxis dataKey="rotulo" {...eixo} />
-                    <YAxis domain={[0, 100]} width={32} {...eixo} axisLine={false} unit="%" />
+                    <YAxis domain={[0, 100]} width={44} {...eixo} axisLine={false} unit="%" />
                     <Tooltip
                       formatter={(valor) => [`${valor}%`, ""]}
                       labelFormatter={(_, carga) => {
@@ -120,10 +120,10 @@ export function EvolucaoCard() {
               <TituloGrafico>% saudável de cada pilar</TituloGrafico>
               <CaixaGrafico>
                 <ResponsiveContainer>
-                  <LineChart data={pilares} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                  <LineChart data={pilares} margin={{ top: 8, right: 20, bottom: 0, left: 0 }}>
                     <CartesianGrid stroke={theme.colors.border} vertical={false} />
                     <XAxis dataKey="rotulo" {...eixo} />
-                    <YAxis domain={[0, 100]} width={32} {...eixo} axisLine={false} unit="%" />
+                    <YAxis domain={[0, 100]} width={44} {...eixo} axisLine={false} unit="%" />
                     <Tooltip formatter={(valor) => [`${valor}%`, ""]} />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
                     {dados.pilares.map((pilar, i) => (

@@ -113,6 +113,8 @@ const NOTIFICACOES_FIXAS: {
   { tipo: "acao_atribuida", titulo: "Ação atribuída a você", descricao: "Alguém da gestão registrou um problema no seu projeto e você ficou responsável pela próxima ação." },
   { tipo: "acao_concluida", titulo: "Ação concluída", descricao: "Uma ação que você abriu foi concluída." },
   { tipo: "acao_prazo_vencido", titulo: "Ação com prazo vencido", descricao: "Uma ação passou do prazo sem ser concluída." },
+  { tipo: "rodada_health_track_aberta", titulo: "Rodada de Health Track", descricao: "A diretoria abriu uma rodada e há projetos pra avaliar." },
+  { tipo: "rodada_health_track_pendente", titulo: "Rodada de Health Track parada", descricao: "Uma rodada está aberta há uma semana ou mais com projetos pendentes." },
 ];
 
 /** "Heloisa Nogueira" → "HN". Só entra em jogo quando a pessoa não tem foto
