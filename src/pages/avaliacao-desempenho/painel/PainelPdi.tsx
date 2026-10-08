@@ -12,6 +12,8 @@ import {
   getItensPdi,
   getPastasPdi,
   getPendenciasPdi,
+  getResultadosPastaPdi,
+  baixarEnvioPdi,
   updateItemPdi,
   updatePastaPdi,
 } from "@/lib/desempenho-pdi";
@@ -25,6 +27,8 @@ import type {
   DesempenhoPdiPasta,
   DesempenhoPdiPastaTipo,
   DesempenhoPdiPendencia,
+  DesempenhoPdiResultadoEnvio,
+  DesempenhoPdiResultadosPasta,
 } from "@/types/desempenho";
 import {
   EmptyText,
@@ -65,10 +69,14 @@ import {
   PastaNumero,
   PastaNumeroENome,
   PastasGrid,
+  PendenciaAtrasoRotulo,
   PendenciaCard,
   PendenciaIcone,
   PendenciaNome,
   PendenciaTexto,
+  ResultadoArquivo,
+  ResultadoPessoa,
+  ResultadoPessoaTitulo,
   SubItem,
   SubLista,
 } from "./Painel.styled";
@@ -400,6 +408,33 @@ function PastasPdiCard() {
   const [pendenciasItemId, setPendenciasItemId] = useState<number | null>(null);
   const [pendencias, setPendencias] = useState<DesempenhoPdiPendencia[]>([]);
 
+  // "Resultados" de uma pasta (2026-10-06, a pedido): todo mundo que mandou
+  // algo nela, com os arquivos por item, num modal.
+  const [resultadosPasta, setResultadosPasta] = useState<DesempenhoPdiPasta | null>(null);
+  const [resultados, setResultados] = useState<DesempenhoPdiResultadosPasta | null>(null);
+  const [resultadosErro, setResultadosErro] = useState("");
+
+  async function abrirResultados(pasta: DesempenhoPdiPasta) {
+    if (!token) return;
+    setResultadosPasta(pasta);
+    setResultados(null);
+    setResultadosErro("");
+    try {
+      setResultados(await getResultadosPastaPdi(pasta.id, token));
+    } catch (err) {
+      setResultadosErro(err instanceof Error ? err.message : "Erro ao carregar os resultados");
+    }
+  }
+
+  async function baixarResultado(mentoradoId: number, envio: DesempenhoPdiResultadoEnvio) {
+    if (!token) return;
+    try {
+      await baixarEnvioPdi(mentoradoId, envio.item_id, envio.arquivo_nome, token);
+    } catch (err) {
+      setResultadosErro(err instanceof Error ? err.message : "Erro ao baixar o arquivo");
+    }
+  }
+
   async function buscar() {
     if (!token) return;
     setCarregando(true);
@@ -650,9 +685,12 @@ function PastasPdiCard() {
                   <LoteCardMeta>
                     Prazo: {formatarData(pasta.prazo)} · {itens.length} {itens.length === 1 ? "item" : "itens"} exigido(s)
                   </LoteCardMeta>
-                  <div>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                     <PageButtonSm type="button" $variant="outline" onClick={() => handleIniciarEdicao(pasta)}>
                       Editar
+                    </PageButtonSm>
+                    <PageButtonSm type="button" onClick={() => abrirResultados(pasta)}>
+                      Resultados
                     </PageButtonSm>
                   </div>
                 </PastaCard>
@@ -661,6 +699,69 @@ function PastasPdiCard() {
           </PastasGrid>
         )}
       </PageCardContent>
+
+      {resultadosPasta && (
+        <ModalOverlay onClick={() => setResultadosPasta(null)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>
+                Resultados
+                <br />
+                <small>
+                  {resultadosPasta.nome} · prazo {formatarData(resultadosPasta.prazo)}
+                </small>
+              </ModalTitle>
+              <ModalClose type="button" aria-label="Fechar" onClick={() => setResultadosPasta(null)}>
+                <X size={18} />
+              </ModalClose>
+            </ModalHeader>
+            <ModalBody>
+              {resultadosErro && <ErrorText>{resultadosErro}</ErrorText>}
+              {!resultados && !resultadosErro ? (
+                <PageLoadingBlock />
+              ) : resultados && resultados.pessoas.length === 0 ? (
+                <EmptyText>Ninguém enviou nada nesta pasta ainda.</EmptyText>
+              ) : (
+                resultados && (
+                  <SubLista>
+                    <LoteCardMeta>
+                      {resultados.pessoas.length} {resultados.pessoas.length === 1 ? "pessoa enviou" : "pessoas enviaram"}{" "}
+                      · {resultados.total_itens} {resultados.total_itens === 1 ? "item exigido" : "itens exigidos"}
+                    </LoteCardMeta>
+                    {resultados.pessoas.map((pessoa) => (
+                      <ResultadoPessoa key={pessoa.mentorado_id}>
+                        <ResultadoPessoaTitulo>
+                          <strong>{pessoa.mentorado_nome}</strong>
+                          {pessoa.mentor_nome && <> · mentorado(a) de {pessoa.mentor_nome}</>}
+                          {" · "}
+                          {pessoa.envios.length} de {resultados.total_itens}{" "}
+                          {resultados.total_itens === 1 ? "item" : "itens"}
+                        </ResultadoPessoaTitulo>
+                        {pessoa.envios.map((envio) => (
+                          <ResultadoArquivo key={envio.item_id}>
+                            <span>{envio.item_nome}:</span>
+                            <PageButtonSm
+                              type="button"
+                              $variant="outline"
+                              onClick={() => baixarResultado(pessoa.mentorado_id, envio)}
+                            >
+                              {envio.arquivo_nome}
+                            </PageButtonSm>
+                            <span className="meta">
+                              enviado por {envio.enviado_por_nome ?? "?"} em {formatarData(envio.enviado_em)}
+                            </span>
+                            {envio.atrasado && <PendenciaAtrasoRotulo>Entregue com atraso</PendenciaAtrasoRotulo>}
+                          </ResultadoArquivo>
+                        ))}
+                      </ResultadoPessoa>
+                    ))}
+                  </SubLista>
+                )
+              )}
+            </ModalBody>
+          </ModalContent>
+        </ModalOverlay>
+      )}
 
       {editandoId !== null && (() => {
         const pasta = pastas.find((p) => p.id === editandoId);
@@ -792,12 +893,18 @@ function PastasPdiCard() {
                               <EmptyText>Ninguém pendente neste item.</EmptyText>
                             ) : (
                               pendencias.map((p) => (
-                                <PendenciaCard key={p.mentorado_id}>
-                                  <PendenciaIcone>
+                                <PendenciaCard key={p.mentorado_id} $atrasado={p.status === "atrasado"}>
+                                  <PendenciaIcone $atrasado={p.status === "atrasado"}>
                                     <AlertTriangle size={16} />
                                   </PendenciaIcone>
                                   <PendenciaTexto>
                                     <PendenciaNome>{p.mentorado_nome}</PendenciaNome> · mentor: {p.mentor_nome}
+                                    {p.status === "atrasado" && (
+                                      <PendenciaAtrasoRotulo>
+                                        Entregue com atraso
+                                        {p.enviado_em && ` em ${formatarData(p.enviado_em)}`}
+                                      </PendenciaAtrasoRotulo>
+                                    )}
                                   </PendenciaTexto>
                                 </PendenciaCard>
                               ))

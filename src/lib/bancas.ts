@@ -214,6 +214,24 @@ export function getBancaDetalhes(bancaId: number, token: string) {
 // ---------------------------------------------------------------- local e entrega
 
 /** Só quem é do projeto avaliado, e só até 1h antes da banca. Texto livre. */
+/** Abre ou fecha a avaliação da banca na mão; `null` volta ao prazo automático. */
+export function definirPrazoAvaliacaoBanca(
+  bancaId: number,
+  override: "aberto" | "fechado" | null,
+  token: string,
+) {
+  return apiFetch<{
+    id: number;
+    prazo_avaliacao_override: "aberto" | "fechado" | null;
+    prazo_avaliacao: string | null;
+    avaliacao_aberta: boolean;
+  }>(`/bancas/${bancaId}/prazo-avaliacao`, {
+    method: "PUT",
+    token,
+    body: JSON.stringify({ override }),
+  });
+}
+
 export function registrarLocalBanca(bancaId: number, local: string, token: string) {
   return apiFetch<{ id: number; local: string }>(`/bancas/${bancaId}/local`, {
     method: "PUT",

@@ -4,9 +4,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotificacoes } from "@/context/NotificacoesContext";
 import { pode, rotuloProjetos } from "@/utils/permissoes";
 import { getNotificacoes, marcarNotificacaoLida } from "@/lib/notificacoes";
+import { getMinhasEleicoes } from "@/lib/sabatina";
+import { getMinhaFila } from "@/lib/desempenho-avaliacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature, Vote, ListChecks } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
 import { ID_MENU_LATERAL } from "./Layout.styled";
@@ -88,6 +90,12 @@ interface NavItemConfig {
   /** Visibilidade por POSIÇÃO direto, pra regra que não é uma caixa
    *  de permissão, como o item de Monitoramento restrito a certas posições. */
   visiblePorPosicao?: (usuario: UsuarioLogado) => boolean;
+  /** Visibilidade por DADO do servidor, não por quem a pessoa é: a aba
+   *  "Sabatina" só existe enquanto há eleição aberta em que ela vota;
+   *  "Avaliação de Desempenho" aparece pra quem tem algo na fila, seja qual
+   *  for a posição. Quando o item também tem `visiblePorPosicao`, o dado
+   *  SOMA à posição (um OU), não substitui. */
+  visivelDinamico?: "sabatina" | "fila_desempenho";
 }
 
 // A ordem DENTRO desta lista só decide a ordem dentro do próprio grupo — o
@@ -121,18 +129,23 @@ const navItems: NavItemConfig[] = [
   // monta equipe responde aos pedidos.
   { icon: UserPlus, label: "Vagas em projetos", path: "/vagas", grupo: "trabalho" },
   { icon: Calendar, label: "Calendário", path: "/calendario", grupo: "trabalho" },
+  // A cédula da sabatina (2026-10-05): aparece só enquanto houver eleição
+  // aberta pra pessoa votar. Em "Gestão", a pedido; a configuração fica em
+  // "Sistema", pra diretoria.
+  { icon: Vote, label: "Sabatina", path: "/sabatina", grupo: "gestao", visivelDinamico: "sabatina" },
   {
     icon: Star,
     label: "Avaliação de Desempenho",
     path: "/avaliacao-desempenho",
     grupo: "desempenho",
     prefixo: true,
-    // Só quem pode ser avaliado por um colega (regra 2.3 é sempre via
-    // `projeto_membro.papel` = coordenador/consultor, diretor e gerente
-    // nunca entram nessa tabela, então nunca teriam nada pra responder aqui;
-    // sem isso, diretor via 2 botões "Avaliação de Desempenho" na sidebar —
-    // este e o painel admin, que já usa o mesmo rótulo).
+    // Coordenador e consultor sempre; qualquer outra posição só quando a
+    // fila dela tem algo (2026-10-06, corrigido: um gerente de posição pode
+    // ser coordenador de projeto em `projeto_membro`, e a regra antiga
+    // assumia que gerente nunca entrava nessa tabela). Diretor sem fila
+    // segue sem ver dois botões "Avaliação de Desempenho" na sidebar.
     visiblePorPosicao: (u) => u.posicao === "coordenador" || u.posicao === "consultor",
+    visivelDinamico: "fila_desempenho",
   },
   {
     icon: GraduationCap,
@@ -203,6 +216,20 @@ const navItems: NavItemConfig[] = [
     grupo: "sistema",
     visible: (c) => c.pode_administrar_configuracoes,
   },
+  {
+    icon: ListChecks,
+    label: "Configuração de Sabatina",
+    path: "/sabatina/config",
+    grupo: "sistema",
+    // Caixa que nasce marcada pra diretoria. Espelha
+    // `require_pode_acessar_configuracoes_sabatina` no backend.
+    //
+    // ESCONDIDA de todo mundo por enquanto (2026-10-06, a pedido): a rota
+    // /sabatina/config continua funcionando pelo link, mas o item não
+    // aparece até a diretoria querer anunciar. Pra liberar, volte a
+    // `visible: (c) => c.pode_acessar_configuracoes_sabatina`.
+    visible: () => false,
+  },
 ];
 
 interface SidebarProps {
@@ -223,6 +250,47 @@ export function Sidebar({ aberta = false }: SidebarProps) {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [painelAberto, setPainelAberto] = useState(false);
   const notificacoesRef = useRef<HTMLDivElement>(null);
+  // "Sabatina" no menu depende de haver eleição aberta pra mim. Consulta
+  // leve, refeita a cada 5 minutos. Era a cada minuto E a cada troca de
+  // rota (2026-10-06): com a fila de desempenho junto, virava dezenas de
+  // queries por pessoa a cada clique, num pool de 5 conexões no servidor.
+  const [temSabatina, setTemSabatina] = useState(false);
+  // Mesma ideia pra fila de avaliação de desempenho: quem não é coordenador
+  // nem consultor de posição ainda pode ter o que responder.
+  const [temFilaDesempenho, setTemFilaDesempenho] = useState(false);
+  const usuarioId = usuario?.id;
+  const posicao = usuario?.posicao;
+
+  useEffect(() => {
+    if (!token) return;
+    let ativo = true;
+    const consultar = () => {
+      getMinhasEleicoes(token)
+        .then((lista) => {
+          if (ativo) setTemSabatina(lista.length > 0);
+        })
+        .catch(() => {
+          /* sem rede ou sem permissão: o item só não aparece */
+        });
+      // Pra coordenador/consultor a posição já decide; a consulta só vale
+      // pras outras posições.
+      if (usuarioId != null && posicao !== "coordenador" && posicao !== "consultor") {
+        getMinhaFila(usuarioId, token)
+          .then((fila) => {
+            if (ativo) setTemFilaDesempenho(fila.length > 0);
+          })
+          .catch(() => {
+            /* idem */
+          });
+      }
+    };
+    void consultar();
+    const timer = window.setInterval(consultar, 5 * 60_000);
+    return () => {
+      ativo = false;
+      window.clearInterval(timer);
+    };
+  }, [token, usuarioId, posicao]);
 
   // Clicar em qualquer lugar fora fecha o painel. Antes só o próprio sino
   // fechava, e quem abria por engano tinha de achar o botão de novo para se
@@ -273,6 +341,8 @@ export function Sidebar({ aberta = false }: SidebarProps) {
   }
 
   const itensVisiveis = navItems.filter((item) => {
+    if (item.visivelDinamico === "sabatina") return temSabatina;
+    if (item.visivelDinamico === "fila_desempenho" && temFilaDesempenho) return true;
     if (item.visiblePorPosicao) {
       return !!usuario && item.visiblePorPosicao(usuario);
     }

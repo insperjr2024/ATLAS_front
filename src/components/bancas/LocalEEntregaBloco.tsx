@@ -4,6 +4,8 @@ import { theme } from "@/styles/theme";
 import { registrarEntregaLinkBanca, registrarLocalBanca, removerEntregaBanca } from "@/lib/bancas";
 import { paraDataUtc } from "@/lib/projetos";
 import { PageButtonSm } from "@/styles/page.styled";
+import { useAuth } from "@/context/AuthContext";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import { FieldInput, FormErrorText } from "@/pages/Bancas.styled";
 
 /** O mínimo que o bloco precisa da banca — serve tanto o `Banca` da lista
@@ -77,7 +79,8 @@ const InputCurto = styled(FieldInput)`
  *
  * Editam: quem é do PROJETO avaliado (consultor/coordenador) e a DIRETORIA de
  * projetos (`podeMexer`, a mesma conta do backend `_exigir_pode_mexer`). O
- * local tranca 1h antes da banca; a entrega vai a qualquer momento. O resto
+ * local tranca 1h antes da banca, exceto pra diretoria de projetos e admin
+ * (`pode_administrar_permissoes`); a entrega vai a qualquer momento. O resto
  * vê em leitura.
  *
  * Compacto de propósito: uma linha por campo, controles de anexo atrás de um
@@ -101,11 +104,15 @@ export function LocalEEntregaBloco({
   const [salvandoLocal, setSalvandoLocal] = useState(false);
   const [salvandoEntrega, setSalvandoEntrega] = useState(false);
   const [erro, setErro] = useState("");
+  const { usuario } = useAuth();
+  const ignoraPrazo =
+    ehDiretoriaDeProjetos(usuario) || !!usuario?.permissoes.pode_administrar_permissoes;
 
   // Tranca 1h antes — mesma regra do backend. Sem data marcada: livre.
   // `Date.now()` num inicializador preguiçoso (regra `react-hooks/purity`).
   const [agoraMs] = useState(() => Date.now());
   const localTrancado =
+    !ignoraPrazo &&
     !!banca.data_hora && paraDataUtc(banca.data_hora).getTime() - agoraMs < 60 * 60 * 1000;
   const localMudou = local.trim() !== (banca.local ?? "").trim();
   const temEntrega = !!banca.entrega_link;

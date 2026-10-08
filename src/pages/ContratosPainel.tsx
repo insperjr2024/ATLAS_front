@@ -58,7 +58,7 @@ const CORES_ETAPA = [
  * tem todos os botões certos — a mudança de coluna acontece sozinha.
  */
 export function ContratosPainel() {
-  const { token } = useAuth();
+  const { token, usuario } = useAuth();
   const navigate = useNavigate();
   const [itens, setItens] = useState<ItemPainelContratual[]>([]);
   const [frentes, setFrentes] = useState<Frente[]>([]);
@@ -103,9 +103,20 @@ export function ContratosPainel() {
         <PageHeaderText>
           <PageHeading>Contratos</PageHeading>
         </PageHeaderText>
-        <PageButton type="button" onClick={() => setMostrarNovoContrato(true)}>
-          + Novo Contrato
-        </PageButton>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          {usuario?.permissoes.pode_acessar_arquivo_contratos && (
+            <PageButton
+              type="button"
+              $variant="outline"
+              onClick={() => window.open("/arquivo-contratos", "_blank", "noopener")}
+            >
+              Arquivo de contratos
+            </PageButton>
+          )}
+          <PageButton type="button" onClick={() => setMostrarNovoContrato(true)}>
+            + Novo Contrato
+          </PageButton>
+        </div>
       </PageHeaderRow>
 
       {erro && (

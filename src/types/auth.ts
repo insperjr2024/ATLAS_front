@@ -111,6 +111,12 @@ export interface Permissoes {
    *  Preencher e editar a regra continuam com as regras próprias por baixo
    *  desta caixa (o backend decide, ver `pode_preencher`). */
   pode_ver_health_track: boolean;
+  /** Abre "Configuração de Sabatina" (pesos, eleições, apuração). Nasce
+   *  marcada pra diretoria. Votar não depende disto. */
+  pode_acessar_configuracoes_sabatina: boolean;
+  /** Arquivo de contratos: a pasta compartilhada com os contratos assinados
+   *  e o que for importado. A diretoria escolhe quem entra. */
+  pode_acessar_arquivo_contratos: boolean;
 }
 
 /**

@@ -7,6 +7,7 @@ import type {
   IdentidadeInstitucional,
   ItemPainelContratual,
   LinkAprovacao,
+  ModeloContratual,
   ParagrafoEditavel,
   SolicitacaoAlteracao,
   TipoDocumentoContratual,
@@ -348,4 +349,35 @@ export function montarLinkWhatsapp(telefone: string, mensagem: string): string {
   const digitos = telefone.replace(/\D/g, "");
   const numeroCompleto = digitos.startsWith("55") ? digitos : `55${digitos}`;
   return `https://wa.me/${numeroCompleto}?text=${encodeURIComponent(mensagem)}`;
+}
+
+// ---------- Modelos base (.docx) ----------
+
+export function getModelosContratuais(token: string) {
+  return apiFetch<ModeloContratual[]>("/documentos-contratuais/modelos", { token });
+}
+
+/** O modelo em uso (personalizado ou o padrão do deploy), pra baixar. */
+export async function baixarModeloContratual(tipo: string, nomeArquivo: string, token: string) {
+  const response = await fetch(`${API_URL}/documentos-contratuais/modelos/${tipo}/arquivo`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error("Erro ao baixar o modelo");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nomeArquivo;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export function enviarModeloContratual(tipo: string, arquivo: File, token: string) {
+  const body = new FormData();
+  body.append("arquivo", arquivo);
+  return apiFetch<ModeloContratual>(`/documentos-contratuais/modelos/${tipo}`, { method: "PUT", token, body });
+}
+
+export function removerModeloContratual(tipo: string, token: string) {
+  return apiFetch<void>(`/documentos-contratuais/modelos/${tipo}`, { method: "DELETE", token });
 }

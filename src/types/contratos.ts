@@ -295,3 +295,15 @@ export interface VersaoDocumentoContratual {
    *  mandam, a versão que acabou de nascer nunca está arquivada ainda. */
   arquivado_em?: string | null;
 }
+
+/** Modelo base (.docx) de um tipo de documento: o do deploy ou o que a
+ *  diretoria enviou no lugar (2026-10-07). */
+export interface ModeloContratual {
+  tipo: Exclude<TipoDocumentoContratual, "outro">;
+  rotulo: string;
+  arquivo_padrao: string;
+  personalizado: boolean;
+  arquivo_nome: string;
+  enviado_em: string | null;
+  enviado_por_nome: string | null;
+}

@@ -11,6 +11,9 @@ import { RedefinirSenha } from "@/pages/RedefinirSenha";
 import { AprovacaoContratual } from "@/pages/AprovacaoContratual";
 import { ContratosPainel } from "@/pages/ContratosPainel";
 import { IdentidadeInstitucional } from "@/pages/IdentidadeInstitucional";
+import { Sabatina } from "@/pages/sabatina/Sabatina";
+import { SabatinaConfig } from "@/pages/sabatina/SabatinaConfig";
+import { ArquivoContratos } from "@/pages/arquivo-contratos/ArquivoContratos";
 import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
@@ -75,9 +78,17 @@ export default function App() {
                 FORA do Layout, quem ainda não definiu a senha não deve ver o
                 menu de uma plataforma que o backend recusa a servir. */}
             <Route path="/definir-senha" element={<DefinirSenha />} />
+            {/* Arquivo de contratos (2026-10-07): layout próprio, sem a barra
+                lateral, por isso fora do Layout. Quem entra é quem tem a caixa. */}
+            <Route element={<AdminRoute permissao="pode_acessar_arquivo_contratos" />}>
+              <Route path="/arquivo-contratos" element={<ArquivoContratos />} />
+            </Route>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Desempenho />} />
               <Route path="/bancas" element={<Bancas />} />
+              {/* A cédula da sabatina: qualquer pessoa logada; o backend só aceita
+                  voto de quem estava entre os eleitores na abertura. */}
+              <Route path="/sabatina" element={<Sabatina />} />
                 <Route path="/meu-perfil" element={<MeuPerfil />} />
               {/* /calendario agora agrega os 4 tipos (§6.5); a visão
                   só-de-bancas foi RELOCADA para /bancas/calendario, intacta. */}
@@ -155,13 +166,12 @@ export default function App() {
               {/* Avaliação de Desempenho (periódica/finalização), não
                   confundir com /avaliacoes (feedback de banca) nem com
                   /dashboard (Desempenho.tsx, % de bancas atendidas).
-                  Só quem pode ser avaliado por um colega (regra 2.3 é
-                  sempre via `projeto_membro.papel` = coordenador/consultor;
-                  diretor e gerente nunca entram nessa tabela, então nunca
-                  teriam nada pra responder aqui). */}
-              <Route element={<RequirePosicao posicoes={["coordenador", "consultor"]} />}>
-                <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenhoHub />} />
-              </Route>
+                  Sem guard por posição (2026-10-06, corrigido): quem
+                  responde é quem está em `projeto_membro` como
+                  coordenador/consultor, e isso independe da posição (um
+                  gerente pode coordenar um projeto). A fila vem do
+                  backend; quem não tem nada vê a tela vazia. */}
+              <Route path="/avaliacao-desempenho" element={<AvaliacaoDesempenhoHub />} />
 
               {/* Sem guard e sem link em nenhum menu, igual já era antes do
                   hub existir: ninguém vê o próprio relatório de desempenho,
@@ -227,6 +237,12 @@ export default function App() {
                   (quem assina PELA Insper Jr), virou caixa delegável. */}
               <Route element={<AdminRoute permissao="pode_editar_identidade_institucional" />}>
                 <Route path="/identidade-institucional" element={<IdentidadeInstitucional />} />
+              </Route>
+              {/* Sabatina (2026-10-05): montar, abrir, fechar e apurar. Caixa
+                  que nasce marcada pra diretoria;
+                  `require_pode_acessar_configuracoes_sabatina` no backend. */}
+              <Route element={<AdminRoute permissao="pode_acessar_configuracoes_sabatina" />}>
+                <Route path="/sabatina/config" element={<SabatinaConfig />} />
               </Route>
             </Route>
           </Route>

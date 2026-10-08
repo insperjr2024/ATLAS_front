@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getUsuarios } from "@/lib/usuarios";
+import { getPosicoesPermissoes } from "@/lib/posicoes-permissoes";
 import { getRelatorio } from "@/lib/desempenho-relatorio";
 import { getMentorias } from "@/lib/desempenho-mentorias";
 import { RelatorioDesempenho } from "@/components/desempenho/RelatorioDesempenho";
 import { RelatorioPdi } from "@/components/desempenho/RelatorioPdi";
 import type { UsuarioResumo, Posicao } from "@/types/auth";
+import { MENTORES_ELEGIVEIS } from "@/utils/permissoes";
 import type { DesempenhoMentoria, DesempenhoRelatorio } from "@/types/desempenho";
 import {
   EmptyText,
@@ -19,7 +21,8 @@ import {
   PageLoadingBlock,
   PageSubtitle,
 } from "@/styles/page.styled";
-import { FieldInput, FieldSelect } from "@/pages/Bancas.styled";
+import { FieldInput } from "@/pages/Bancas.styled";
+import { MultiSelect } from "@/components/MultiSelect";
 import { MentoradoButton, MentoradoNome, MentoradosList, TituloComAvatar } from "../MeusMentorados.styled";
 import { FiltrosRow, Iniciais } from "./Painel.styled";
 import {
@@ -33,6 +36,10 @@ import {
 type ModoRelatorio = "avaliacoes" | "pdi";
 
 /** "Ana Souza" -> "AS". Mesma regra de `MeusMentorados.tsx`. */
+/** Quem é mentor e nunca mentorado: não tem PDI próprio, tem o dos
+ *  mentorados. Coordenador, gerente, diretoria e a coordenação de vendas. */
+const SEM_PDI_PROPRIO = new Set<Posicao>([...MENTORES_ELEGIVEIS, "vendas", "diretor_de_vendas"]);
+
 function iniciais(nome: string | null | undefined): string {
   const partes = (nome ?? "").trim().split(/\s+/).filter(Boolean);
   if (partes.length === 0) return "?";
@@ -47,18 +54,35 @@ export function PainelRelatorio() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [busca, setBusca] = useState("");
-  const [filtroPosicao, setFiltroPosicao] = useState<Posicao | "">("");
+  // Várias posições de uma vez (2026-10-06, a pedido); vazio = todas.
+  const [filtroPosicoes, setFiltroPosicoes] = useState<string[]>([]);
+  // Todos os cargos do catálogo (2026-10-06, a pedido): eram só coordenador
+  // e consultor fixos no código.
+  const [posicoes, setPosicoes] = useState<{ posicao: Posicao; nome: string }[]>([]);
+  useEffect(() => {
+    if (!token) return;
+    getPosicoesPermissoes(token)
+      .then((lista) =>
+        setPosicoes(
+          lista
+            .map((p) => ({ posicao: p.posicao, nome: p.nome }))
+            .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+        ),
+      )
+      .catch(() => {});
+  }, [token]);
 
   const [selecionado, setSelecionado] = useState<UsuarioResumo | null>(null);
   const [modo, setModo] = useState<ModoRelatorio | null>(null);
   const [relatorio, setRelatorio] = useState<DesempenhoRelatorio | null>(null);
   const [carregandoRelatorio, setCarregandoRelatorio] = useState(false);
 
-  // ⭐ 2026-09-26, a pedido: coordenador nunca é mentorado (regra 2.5, mentor
-  // = coordenador) — "Relatórios de PDI" de um coordenador não pode ser o
-  // PDI dele mesmo (não existe), tem que ser o PDI de quem ELE mentora, e
-  // pode ser mais de uma pessoa.
-  const ehCoordenador = selecionado?.posicao === "coordenador";
+  // 2026-09-26, a pedido: coordenador nunca é mentorado (regra 2.5, mentor
+  // = coordenador). "Relatórios de PDI" dele não pode ser o PDI dele mesmo
+  // (não existe), tem que ser o PDI de quem ELE mentora, e pode ser mais de
+  // uma pessoa. 2026-10-06: vale pra todo mundo que não tem PDI próprio
+  // (gerente, coordenação de vendas, diretoria), não só pro coordenador.
+  const semPdiProprio = !!selecionado && SEM_PDI_PROPRIO.has(selecionado.posicao);
   const [mentoradosDoCoordenador, setMentoradosDoCoordenador] = useState<DesempenhoMentoria[]>([]);
   const [carregandoMentorados, setCarregandoMentorados] = useState(false);
   const [mentoradoPdiSelecionado, setMentoradoPdiSelecionado] = useState<DesempenhoMentoria | null>(null);
@@ -83,10 +107,10 @@ export function PainelRelatorio() {
 
   const filtrados = useMemo(() => {
     return usuarios
-      .filter((u) => !filtroPosicao || u.posicao === filtroPosicao)
+      .filter((u) => filtroPosicoes.length === 0 || filtroPosicoes.includes(u.posicao))
       .filter((u) => u.nome.toLowerCase().includes(busca.toLowerCase()))
       .sort((a, b) => a.nome.localeCompare(b.nome));
-  }, [usuarios, busca, filtroPosicao]);
+  }, [usuarios, busca, filtroPosicoes]);
 
   function abrirUsuario(usuarioAlvo: UsuarioResumo) {
     setSelecionado(usuarioAlvo);
@@ -118,7 +142,7 @@ export function PainelRelatorio() {
     // `require_self` sem override de admin de propósito — ver o
     // comentário em `authorization.py`): quem está aqui é a diretoria
     // olhando o mentorado de OUTRA pessoa, não os próprios.
-    if (selecionado.posicao === "coordenador") {
+    if (SEM_PDI_PROPRIO.has(selecionado.posicao)) {
       setCarregandoMentorados(true);
       try {
         const todas = await getMentorias(token);
@@ -154,7 +178,7 @@ export function PainelRelatorio() {
 
   if (carregando) return <PageLoadingBlock />;
 
-  if (selecionado && modo === "pdi" && ehCoordenador) {
+  if (selecionado && modo === "pdi" && semPdiProprio) {
     return (
       <PageCard>
         <PageCardHeader>
@@ -261,7 +285,7 @@ export function PainelRelatorio() {
                 <TipoCardTitulo>Relatórios de PDI</TipoCardTitulo>
               </TipoCardHeader>
               <TipoCardDescricao>
-                {ehCoordenador
+                {semPdiProprio
                   ? "Coordenador não tem PDI próprio — dos mentorados dele."
                   : "PDI inicial e encontros de mentoria, com prazo e arquivo."}
               </TipoCardDescricao>
@@ -284,11 +308,14 @@ export function PainelRelatorio() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
-          <FieldSelect value={filtroPosicao} onChange={(e) => setFiltroPosicao(e.target.value as Posicao | "")}>
-            <option value="">Todas as posições</option>
-            <option value="coordenador">Coordenador</option>
-            <option value="consultor">Consultor</option>
-          </FieldSelect>
+          <MultiSelect
+            valores={filtroPosicoes}
+            onChange={setFiltroPosicoes}
+            opcoes={posicoes.map((p) => ({ value: p.posicao, label: p.nome }))}
+            rotuloVazio="Todas as posições"
+            resumo={(n) => `${n} posições`}
+            aria-label="Filtrar por posição"
+          />
         </FiltrosRow>
 
         {filtrados.length === 0 ? (

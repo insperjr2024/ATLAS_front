@@ -5,7 +5,8 @@
 export type DesempenhoTipo = "periodico" | "finalizacao";
 // ⭐ "escopo" (2026-09-09) não é papel de pessoa — é o formulário "Avaliação
 // do Escopo", auto-avaliação que cada participante do projeto responde uma
-// vez na finalização. Só existe como (finalizacao, escopo).
+// vez por lote. Na finalização fala do escopo que passou pela banca; na
+// periódica (2026-10-05), do escopo em andamento.
 export type DesempenhoPapel = "consultor" | "coordenador" | "escopo";
 export type DesempenhoOverrideManual = "aberto" | "fechado" | null;
 export type DesempenhoTipoResposta = "nota" | "texto";
@@ -19,8 +20,8 @@ export interface DesempenhoLote {
   override_manual: DesempenhoOverrideManual;
   projeto_ids: number[];
   aberto: boolean;
-  /** Finalização: a Avaliação do Escopo entra junto? Escolhido ao abrir o
-   *  lote à mão; `true` na automática e nos lotes antigos. Periódica ignora. */
+  /** A Avaliação do Escopo entra junto? Escolhido ao abrir o lote à mão;
+   *  `true` na finalização automática e nos lotes antigos. */
   inclui_avaliacao_de_escopo: boolean;
 }
 
@@ -51,6 +52,9 @@ export interface DesempenhoFormulario {
   comentarios_descricao: string;
   comentarios_aviso: string;
   secoes: DesempenhoSecao[];
+  /** false = versão congelada que um lote aberto ficou usando. */
+  vigente?: boolean;
+  congelado_em?: string | null;
 }
 
 export interface DesempenhoPendencia {
@@ -61,6 +65,10 @@ export interface DesempenhoPendencia {
   form_type: DesempenhoPapel;
   projeto_ids: number[];
   projeto_nomes: (string | null)[];
+  /** Só na Avaliação do Escopo (2026-10-05): qual escopo vendido. É uma
+   *  pendência por escopo, então a mesma pessoa pode aparecer mais de uma vez. */
+  projeto_escopo_id: number | null;
+  escopo_nome: string | null;
   respondida: boolean;
 }
 
@@ -76,6 +84,10 @@ export interface DesempenhoFilaItem {
   avaliado_nome: string | null;
   form_type: DesempenhoPapel;
   projeto_ids: number[];
+  /** Só na Avaliação do Escopo (2026-10-05): qual escopo vendido este item
+   *  avalia. Um item por escopo da frente da pessoa; vai de volta no envio. */
+  projeto_escopo_id: number | null;
+  escopo_nome: string | null;
 }
 
 export interface DesempenhoAvaliacaoEscopo {
@@ -90,6 +102,8 @@ export interface DesempenhoAvaliacao {
   formulario_id: number;
   avaliador_id: number;
   avaliado_id: number;
+  /** Só na Avaliação do Escopo a partir de 2026-10-05. */
+  projeto_escopo_id?: number | null;
   nota_geral: number;
   comentarios: string;
   criado_em?: string;
@@ -172,6 +186,38 @@ export interface DesempenhoPdiPendencia {
   mentorado_nome: string | null;
   mentor_id: number;
   mentor_nome: string | null;
+  /** "pendente" não entregou; "atrasado" entregou depois do prazo da pasta
+   *  e continua na lista, em outra cor (2026-10-06, a pedido). */
+  status: "pendente" | "atrasado";
+  enviado_em: string | null;
+}
+
+/** Resultados de uma pasta: todo mundo que mandou algo nela. */
+export interface DesempenhoPdiResultadoEnvio {
+  item_id: number;
+  item_nome: string;
+  tipo_arquivo: DesempenhoPdiItemTipoArquivo;
+  arquivo_nome: string;
+  enviado_por: number;
+  enviado_por_nome: string | null;
+  enviado_em: string;
+  atrasado: boolean;
+}
+
+export interface DesempenhoPdiResultadoPessoa {
+  mentorado_id: number;
+  mentorado_nome: string | null;
+  mentor_id: number | null;
+  mentor_nome: string | null;
+  envios: DesempenhoPdiResultadoEnvio[];
+}
+
+export interface DesempenhoPdiResultadosPasta {
+  pasta_id: number;
+  pasta_nome: string;
+  prazo: string;
+  total_itens: number;
+  pessoas: DesempenhoPdiResultadoPessoa[];
 }
 
 export interface DesempenhoPdiEnvio {

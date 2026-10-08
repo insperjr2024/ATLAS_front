@@ -16,6 +16,7 @@ import {
 } from "@/lib/projetos";
 import { consultoresDoNucleo } from "@/lib/nucleo";
 import { ListaMarcavel } from "@/components/ListaMarcavel";
+import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import type { Banca, BancaFrente, EquipeProjeto, Frente } from "@/types/banca";
 import type { EscopoVendido, ProjetoResumo } from "@/types/projeto";
 import type { UsuarioResumo } from "@/types/auth";
@@ -150,20 +151,17 @@ export function BancaFormModal({
     a.nome.localeCompare(b.nome, "pt-BR"),
   );
 
+  // A página atrás não rola junto: a trava mora no hook (no `<html>`, com
+  // contador), compartilhada com `ModalOverlay` e o detalhe da banca.
+  useLockBodyScroll();
+
   /**
    * O contrato de diálogo que faltava: Esc fecha, o Tab não escapa para a
-   * página atrás, a página atrás não rola junto e o foco volta para o botão
-   * que abriu o modal. É o mesmo Esc que os outros ~15 modais do app já têm.
+   * página atrás e o foco volta para o botão que abriu o modal. É o mesmo
+   * Esc que os outros ~15 modais do app já têm.
    */
   useEffect(() => {
     const focoAnterior = document.activeElement as HTMLElement | null;
-    // Trava no `<html>`, não no `<body>`: `index.css` põe `overflow-x: clip`
-    // no `<html>`, o que o torna a fonte de overflow da viewport — um
-    // `overflow` no `<body>` não tem efeito nenhum na rolagem da página.
-    // Só o eixo Y, para o `clip` do X seguir valendo.
-    const raiz = document.documentElement;
-    const overflowAnterior = raiz.style.overflowY;
-    raiz.style.overflowY = "hidden";
     primeiroCampoRef.current?.focus();
 
     function aoTeclar(e: KeyboardEvent) {
@@ -190,7 +188,6 @@ export function BancaFormModal({
     window.addEventListener("keydown", aoTeclar);
     return () => {
       window.removeEventListener("keydown", aoTeclar);
-      raiz.style.overflowY = overflowAnterior;
       focoAnterior?.focus?.();
     };
   }, []);

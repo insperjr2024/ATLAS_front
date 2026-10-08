@@ -480,4 +480,10 @@ export interface HistoricoBanca {
   descricao_coordenador_enviada_em: string | null;
   /** `null` = aconteceu, mas ainda espera diretoria ou gerente decidir. */
   resultado: ResultadoBanca | null;
+  /** Janela de avaliação (2026-10-06): abre na realização e fecha 7 dias
+   *  depois, salvo quando a diretoria força pelo Dashboard. */
+  realizado_em: string | null;
+  prazo_avaliacao: string | null;
+  prazo_avaliacao_override: "aberto" | "fechado" | null;
+  avaliacao_aberta: boolean;
 }
