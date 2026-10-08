@@ -110,6 +110,9 @@ const NOTIFICACOES_FIXAS: {
   { tipo: "lote_desempenho_aberto", titulo: "Avaliação de Desempenho", descricao: "Uma rodada de avaliação abriu com algo para você responder." },
   { tipo: "pdi_prazo_proximo", titulo: "Prazo de PDI próximo", descricao: "Um item de PDI vence amanhã." },
   { tipo: "pdi_prazo_vencido", titulo: "Prazo de PDI vencido", descricao: "Um item de PDI passou do prazo sem envio." },
+  { tipo: "acao_atribuida", titulo: "Ação atribuída a você", descricao: "Alguém da gestão registrou um problema no seu projeto e você ficou responsável pela próxima ação." },
+  { tipo: "acao_concluida", titulo: "Ação concluída", descricao: "Uma ação que você abriu foi concluída." },
+  { tipo: "acao_prazo_vencido", titulo: "Ação com prazo vencido", descricao: "Uma ação passou do prazo sem ser concluída." },
 ];
 
 /** "Heloisa Nogueira" → "HN". Só entra em jogo quando a pessoa não tem foto

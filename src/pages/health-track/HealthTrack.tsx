@@ -110,6 +110,10 @@ export function HealthTrack() {
   const [pilarId, setPilarId] = useState<number | null>(null);
   const [corDoPilar, setCorDoPilar] = useState<string[]>([]);
   const [soPersistentes, setSoPersistentes] = useState(false);
+  // A rodada só aparece quando chamada (a pedido, 2026-10-08): os KPIs são
+  // a primeira coisa da página. Abre sozinha se há rodada em andamento com
+  // pendente, que é quando ela tem trabalho a cobrar.
+  const [mostrarRodada, setMostrarRodada] = useState(false);
 
   const podeFiltrarFrente = podeFiltrarPorFrente(usuario);
 
@@ -248,6 +252,18 @@ export function HealthTrack() {
             A saúde da carteira, pilar a pilar. Clique num projeto para ver o detalhe e preencher a avaliação.
           </PageSubtitle>
         </PageHeaderText>
+        <PageButton
+          type="button"
+          $variant={rodada ? "primary" : "outline"}
+          aria-expanded={mostrarRodada}
+          onClick={() => setMostrarRodada((v) => !v)}
+        >
+          {mostrarRodada
+            ? "Esconder rodada"
+            : rodada
+              ? `Rodada em andamento${rodada.pendente ? ` · ${rodada.pendente} pendente${rodada.pendente > 1 ? "s" : ""}` : ""}`
+              : "Rodada de avaliação"}
+        </PageButton>
       </PageHeader>
 
       <BarraFiltros>
@@ -344,8 +360,6 @@ export function HealthTrack() {
         </FiltroToggle>
       </BarraFiltros>
 
-      <RodadaCard atual={rodada} historico={rodadas} onMudou={recarregarRodada} />
-
       <Placar>
         <PlacarItem>
           <strong>{placar.total}</strong>
@@ -380,6 +394,8 @@ export function HealthTrack() {
           <span>Desde o ciclo anterior</span>
         </PlacarItem>
       </Placar>
+
+      {mostrarRodada && <RodadaCard atual={rodada} historico={rodadas} onMudou={recarregarRodada} />}
 
       <PageCard>
         <PageCardHeader>

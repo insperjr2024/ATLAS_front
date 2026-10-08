@@ -121,6 +121,9 @@ const APARENCIA: Record<TipoNotificacao, { icone: LucideIcon; rotulo: string; al
   },
   pdi_prazo_proximo: { icone: GraduationCap, rotulo: "Prazo de PDI próximo", alerta: true },
   pdi_prazo_vencido: { icone: GraduationCap, rotulo: "Prazo de PDI vencido", alerta: true },
+  acao_atribuida: { icone: ClipboardCheck, rotulo: "Ação atribuída a você", alerta: true },
+  acao_concluida: { icone: ClipboardCheck, rotulo: "Ação concluída", alerta: false },
+  acao_prazo_vencido: { icone: ClipboardCheck, rotulo: "Ação com prazo vencido", alerta: true },
   // § Contratos — o alerta acompanha quem tem o que fazer a seguir: gerar,
   // mandar, ou responder ao cliente. "Cliente aprovou"/os dois de projeto
   // são notícia, não cobrança.
@@ -198,6 +201,9 @@ const ORDEM_FILTROS: TipoNotificacao[] = [
   "lote_desempenho_aberto",
   "pdi_prazo_proximo",
   "pdi_prazo_vencido",
+  "acao_atribuida",
+  "acao_prazo_vencido",
+  "acao_concluida",
   "banca_aviso",
   "projeto_criado_em_contrato",
   "projeto_vendido",

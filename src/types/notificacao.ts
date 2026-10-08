@@ -25,6 +25,11 @@ export type TipoNotificacao =
   // PDI (relatório de mentoria), mesmo motivo
   | "pdi_prazo_proximo"
   | "pdi_prazo_vencido"
+  // ações do Health Track (§15): o responsável não vê o Health Track,
+  // então o aviso é como ele fica sabendo
+  | "acao_atribuida"
+  | "acao_concluida"
+  | "acao_prazo_vencido"
   // eventos de bancas, entram por `utils/notificar.py` no backend
   | "escalacao_banca"
   | "troca_banca"
