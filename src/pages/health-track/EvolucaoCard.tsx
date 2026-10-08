@@ -95,20 +95,21 @@ export function EvolucaoCard() {
           <PageGrid $columns={2}>
             <div>
               <TituloGrafico>Saúde da carteira, % dos projetos avaliados</TituloGrafico>
-              <CaixaGrafico>
+              <CaixaGrafico $altura="18rem">
                 <ResponsiveContainer>
                   <LineChart data={carteira} margin={{ top: 8, right: 20, bottom: 0, left: 0 }}>
                     <CartesianGrid stroke={theme.colors.border} vertical={false} />
                     <XAxis dataKey="rotulo" {...eixo} />
                     <YAxis domain={[0, 100]} width={44} {...eixo} axisLine={false} unit="%" />
                     <Tooltip
-                      formatter={(valor) => [`${valor}%`, ""]}
+                      formatter={(valor, nome) => [`${valor}%`, nome]}
+                      wrapperStyle={{ zIndex: 2 }}
                       labelFormatter={(_, carga) => {
                         const p = carga?.[0]?.payload as { rotulo: string; em: string; avaliados: number } | undefined;
                         return p ? `${p.rotulo} · ${p.em} · ${p.avaliados} avaliado(s)` : "";
                       }}
                     />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                    <Legend iconType="circle" verticalAlign="top" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
                     <Line type="monotone" dataKey="Saudável" stroke={SOLIDO_COR.verde} strokeWidth={2} isAnimationActive={false} />
                     <Line type="monotone" dataKey="Atenção" stroke={SOLIDO_COR.amarelo} strokeWidth={2} isAnimationActive={false} />
                     <Line type="monotone" dataKey="Crítico" stroke={SOLIDO_COR.vermelho} strokeWidth={2} isAnimationActive={false} />
@@ -118,14 +119,14 @@ export function EvolucaoCard() {
             </div>
             <div>
               <TituloGrafico>% saudável de cada pilar</TituloGrafico>
-              <CaixaGrafico>
+              <CaixaGrafico $altura="18rem">
                 <ResponsiveContainer>
                   <LineChart data={pilares} margin={{ top: 8, right: 20, bottom: 0, left: 0 }}>
                     <CartesianGrid stroke={theme.colors.border} vertical={false} />
                     <XAxis dataKey="rotulo" {...eixo} />
                     <YAxis domain={[0, 100]} width={44} {...eixo} axisLine={false} unit="%" />
-                    <Tooltip formatter={(valor) => [`${valor}%`, ""]} />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                    <Tooltip formatter={(valor, nome) => [`${valor}%`, nome]} wrapperStyle={{ zIndex: 2 }} />
+                    <Legend iconType="circle" verticalAlign="top" wrapperStyle={{ fontSize: 12, paddingBottom: 8 }} />
                     {dados.pilares.map((pilar, i) => (
                       <Line
                         key={pilar.id}
