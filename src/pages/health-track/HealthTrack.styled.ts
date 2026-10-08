@@ -419,3 +419,76 @@ export const Sequencia = styled.span`
   line-height: 1rem;
   text-align: center;
 `;
+
+// ---------------------------------------------------------------- ações (§15)
+
+export const ListaAcoes = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+export const ItemAcao = styled.li<{ $concluida: boolean; $atrasada: boolean }>`
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${({ $atrasada }) => ($atrasada ? SOLIDO_COR.vermelho : theme.colors.border)};
+  background: ${({ $atrasada }) => ($atrasada ? FUNDO_COR.vermelho : theme.colors.card)};
+  opacity: ${({ $concluida }) => ($concluida ? 0.6 : 1)};
+  font-size: ${theme.fontSize.sm};
+
+  .problema {
+    font-weight: ${theme.fontWeight.medium};
+    text-decoration: ${({ $concluida }) => ($concluida ? "line-through" : "none")};
+  }
+
+  .acao {
+    margin-top: 0.15rem;
+  }
+
+  .acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ${theme.spacing.xs};
+    align-items: flex-start;
+    justify-content: flex-end;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm - 1}px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+`;
+
+export const FormAcao = styled.form`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: ${theme.spacing.md};
+
+  .cheio {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm - 1}px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+`;
+
+export const Motivos = styled.span`
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+
+  span {
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: ${theme.fontWeight.medium};
+    background: ${theme.colors.muted};
+    color: ${theme.colors.foreground};
+  }
+`;

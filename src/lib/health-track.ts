@@ -135,6 +135,71 @@ export interface Evolucao {
   pontos: PontoEvolucao[];
 }
 
+// ---------------------------------------------------------------- ações (§15)
+
+/** Problema -> responsável -> próxima ação -> prazo, preso a um projeto. */
+export interface Acao {
+  id: number;
+  projeto_id: number;
+  projeto_nome: string | null;
+  pilar_id: number | null;
+  pilar_nome: string | null;
+  problema: string;
+  proxima_acao: string;
+  responsavel_id: number | null;
+  responsavel_nome: string | null;
+  /** `YYYY-MM-DD`. */
+  prazo: string | null;
+  atrasada: boolean;
+  concluida_em: string | null;
+  concluida_por_nome: string | null;
+  criado_por_nome: string | null;
+  criado_em: string;
+}
+
+export interface AcaoPayload {
+  problema: string;
+  proxima_acao: string;
+  responsavel_id: number | null;
+  prazo: string | null;
+  pilar_id: number | null;
+}
+
+export function getAcoesAbertas(token: string) {
+  return apiFetch<Acao[]>("/health-track/acoes", { token });
+}
+
+export function getAcoesDoProjeto(projetoId: number, token: string) {
+  return apiFetch<Acao[]>(`/health-track/projetos/${projetoId}/acoes`, { token });
+}
+
+export function criarAcao(projetoId: number, dados: AcaoPayload, token: string) {
+  return apiFetch<Acao>(`/health-track/projetos/${projetoId}/acoes`, {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+export function editarAcao(projetoId: number, acaoId: number, dados: AcaoPayload, token: string) {
+  return apiFetch<Acao>(`/health-track/projetos/${projetoId}/acoes/${acaoId}`, {
+    method: "PUT",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+export function concluirAcao(projetoId: number, acaoId: number, concluida: boolean, token: string) {
+  return apiFetch<Acao>(`/health-track/projetos/${projetoId}/acoes/${acaoId}/concluir?concluida=${concluida}`, {
+    method: "POST",
+    token,
+  });
+}
+
+export function apagarAcao(projetoId: number, acaoId: number, token: string) {
+  return apiFetch<void>(`/health-track/projetos/${projetoId}/acoes/${acaoId}`, { method: "DELETE", token });
+}
+
 export function getEvolucao(token: string) {
   return apiFetch<Evolucao>("/health-track/evolucao", { token });
 }

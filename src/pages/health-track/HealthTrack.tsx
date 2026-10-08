@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -45,6 +45,7 @@ import {
 } from "@/styles/page.styled";
 import { RodadaCard } from "./RodadaCard";
 import { EvolucaoCard } from "./EvolucaoCard";
+import { AtencaoCard } from "./AtencaoCard";
 import {
   Celula,
   Contagem,
@@ -164,7 +165,10 @@ export function HealthTrack() {
     };
   }, [token, frenteId, tentativa]);
 
-  const nomeDaCor = (cor: CorHealthTrack) => classificacoes.find((c) => c.cor === cor)?.nome ?? ROTULO_COR[cor];
+  const nomeDaCor = useCallback(
+    (cor: CorHealthTrack) => classificacoes.find((c) => c.cor === cor)?.nome ?? ROTULO_COR[cor],
+    [classificacoes],
+  );
 
   const pessoas = useMemo(() => {
     const coordenadores = new Map<number, string>();
@@ -476,6 +480,8 @@ export function HealthTrack() {
           </PageCard>
         </PageGrid>
       )}
+
+      <AtencaoCard projetos={emAcompanhamento} pilares={pilares} nomeDaCor={nomeDaCor} />
 
       <EvolucaoCard />
 

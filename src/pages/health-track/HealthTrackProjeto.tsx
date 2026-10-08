@@ -17,6 +17,7 @@ import {
   PageTitle,
 } from "@/styles/page.styled";
 import { PainelHealthTrack } from "./PainelHealthTrack";
+import { AcoesDoProjeto } from "./AcoesDoProjeto";
 import { JustificarModal } from "./JustificarModal";
 import { FaixaRodada, Voltar } from "./HealthTrack.styled";
 
@@ -142,6 +143,12 @@ export function HealthTrackProjeto() {
       )}
 
       <PainelHealthTrack projetoId={projetoId} onSalvo={carregarRodada} />
+
+      <AcoesDoProjeto
+        projetoId={projetoId}
+        projetoNome={projeto.nome}
+        equipeIds={projeto.equipe.map((m) => m.usuario_id)}
+      />
 
       {justificando && rodada && (
         <JustificarModal
