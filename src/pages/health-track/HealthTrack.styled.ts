@@ -99,6 +99,22 @@ export const Mapa = styled.table`
     width: 3.5rem;
   }
 
+  /* O cabeçalho é um botão: clicar ordena pela coluna. */
+  th .ordenar {
+    all: unset;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+  }
+
+  th .ordenar:hover,
+  th[aria-sort="ascending"] .ordenar,
+  th[aria-sort="descending"] .ordenar {
+    color: ${theme.colors.foreground};
+  }
+
   tbody tr {
     cursor: pointer;
   }
@@ -138,9 +154,11 @@ export const Celula = styled.span<{ $cor: CorHealthTrack | null; $persistente?: 
   width: 1.75rem;
   height: 1.75rem;
   border-radius: ${theme.borderRadius.md};
-  background: ${({ $cor }) => ($cor ? SOLIDO_COR[$cor] : theme.colors.muted)};
-  color: ${({ $cor }) => ($cor ? "white" : theme.colors.mutedForeground)};
-  border: 1px dashed ${({ $cor }) => ($cor ? "transparent" : theme.colors.border)};
+  /* As mesmas cores do selo "Saudável"/"Atenção"/"Crítico": fundo claro e
+     ícone escuro. O verde cheio com check branco destoava do selo ao lado. */
+  background: ${({ $cor }) => ($cor ? FUNDO_COR[$cor] : theme.colors.muted)};
+  color: ${({ $cor }) => ($cor ? TEXTO_COR[$cor] : theme.colors.mutedForeground)};
+  border: 1px ${({ $cor }) => ($cor ? "solid" : "dashed")} ${({ $cor }) => ($cor ? SOLIDO_COR[$cor] : theme.colors.border)};
   /* Persistente (§7): um anel escuro em volta, além do número no canto. */
   box-shadow: ${({ $persistente }) => ($persistente ? `0 0 0 2px ${theme.colors.foreground}` : "none")};
 

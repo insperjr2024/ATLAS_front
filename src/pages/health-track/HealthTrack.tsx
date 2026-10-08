@@ -25,6 +25,7 @@ import {
 import { podeFiltrarPorFrente } from "@/utils/permissoes";
 import type { Frente } from "@/types/banca";
 import type { StatusProjeto } from "@/types/projeto";
+import { useOrdenacao, type Colunas } from "@/components/tabela/ordenacao";
 import {
   BarraFiltros,
   BotaoAlternativa,
@@ -481,9 +482,6 @@ export function HealthTrack() {
         <PageCard>
           <PageCardHeader>
             <PageCardTitle>Pilares que mais pedem atenção</PageCardTitle>
-            <Secundario as="span">
-              Na JR inteira, só projetos em acompanhamento. Clique num pilar pra ver no mapa quem está em atenção ou crítico nele.
-            </Secundario>
           </PageCardHeader>
           <PageCardContent>
             <PageGrid $columns={2}>
@@ -557,40 +555,73 @@ function MapaTabela({
   pendentes: Set<number>;
 }) {
   const navigate = useNavigate();
+  // Toda coluna ordena (a pedido). Cor vira peso (verde 0, amarelo 1,
+  // vermelho 2) e "sem avaliação" fica em branco, que o hook manda pro fim.
+  const colunas = useMemo<Colunas<ProjetoNaCarteira>>(
+    () => ({
+      nome: { valor: (p) => p.nome, inicial: "asc" },
+      coordenacao: { valor: (p) => p.coordenadores[0]?.nome ?? null, inicial: "asc" },
+      etapa: { valor: (p) => ETAPAS.indexOf(p.status as StatusProjeto), inicial: "asc" },
+      geral: { valor: (p) => (p.status_geral ? PESO_COR[p.status_geral.pela_regra_atual] : null), inicial: "desc" },
+      ...Object.fromEntries(
+        pilares.map((pilar) => [
+          `pilar:${pilar.id}`,
+          {
+            valor: (p: ProjetoNaCarteira) => {
+              const c = p.pilares[String(pilar.id)];
+              return c ? PESO_COR[c.cor] : null;
+            },
+            inicial: "desc" as const,
+          },
+        ]),
+      ),
+      tendencia: { valor: (p) => ({ piorou: 2, igual: 1, melhorou: 0 })[rumo(p) ?? "igual"] ?? null, inicial: "desc" },
+      avaliado_em: { valor: (p) => p.avaliado_em, inicial: "desc" },
+    }),
+    [pilares],
+  );
+  const { itens: ordenados, ordem, ordenarPor } = useOrdenacao(projetos, colunas);
+  const cabecalho = (coluna: string, rotulo: string, className?: string, title?: string) => {
+    const ativo = ordem.coluna === coluna;
+    return (
+      <th
+        key={coluna}
+        className={className}
+        title={title}
+        aria-sort={ativo ? (ordem.dir === "asc" ? "ascending" : "descending") : "none"}
+      >
+        <button type="button" className="ordenar" onClick={() => ordenarPor(coluna)}>
+          {rotulo}
+          {ativo && <span aria-hidden="true"> {ordem.dir === "asc" ? "↑" : "↓"}</span>}
+        </button>
+      </th>
+    );
+  };
+
   return (
     <Rolagem>
       <Mapa>
         <thead>
           <tr>
-            <th>Projeto</th>
-            <th>Coordenação</th>
-            <th>Etapa</th>
-            <th>Geral</th>
-            {pilares.map((p) => (
-              <th key={p.id} className="pilar" title={p.descricao ?? undefined}>
-                {abreviar(p.nome)}
-              </th>
-            ))}
-            <th>Tendência</th>
-            <th>Avaliado em</th>
+            {cabecalho("nome", "Projeto")}
+            {cabecalho("coordenacao", "Coordenação")}
+            {cabecalho("etapa", "Etapa")}
+            {cabecalho("geral", "Geral")}
+            {pilares.map((p) => cabecalho(`pilar:${p.id}`, abreviar(p.nome), "pilar", p.descricao ?? undefined))}
+            {cabecalho("tendencia", "Tendência")}
+            {cabecalho("avaliado_em", "Avaliado em")}
           </tr>
         </thead>
         <tbody>
-          {projetos.map((p) => (
+          {ordenados.map((p) => (
             <tr key={p.id} onClick={() => navigate(`/health-track/projetos/${p.id}`)}>
               <td>
                 <NomeProjeto to={`/health-track/projetos/${p.id}`} onClick={(e) => e.stopPropagation()}>
                   {p.nome}
                 </NomeProjeto>
                 {pendentes.has(p.id) && <PendenteBadge title="Pendente na rodada em andamento">Pendente</PendenteBadge>}
-                <Secundario>{p.frentes.map((f) => f.nome).join(" + ") || "Sem frente"}</Secundario>
               </td>
-              <td>
-                {p.coordenadores.map((c) => primeiroNome(c.nome)).join(", ") || <Secundario>Sem coordenador</Secundario>}
-                {p.gerentes.length > 0 && (
-                  <Secundario>Ger.: {p.gerentes.map((g) => primeiroNome(g.nome)).join(", ")}</Secundario>
-                )}
-              </td>
+              <td>{p.coordenadores.map((c) => primeiroNome(c.nome)).join(", ") || <Secundario>Sem coordenador</Secundario>}</td>
               <td>{ROTULO_STATUS[p.status as StatusProjeto] ?? p.status}</td>
               <td>
                 {p.status_geral ? (

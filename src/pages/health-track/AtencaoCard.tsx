@@ -119,7 +119,6 @@ export function AtencaoCard({
                   <tr key={p.id} style={{ cursor: "default" }}>
                     <td>
                       <NomeProjeto to={`/health-track/projetos/${p.id}`}>{p.nome}</NomeProjeto>
-                      <Secundario>{p.frentes.map((f) => f.nome).join(" + ") || "Sem frente"}</Secundario>
                     </td>
                     <td>{p.coordenadores.map((c) => c.nome.split(" ")[0]).join(", ") || <Secundario>Sem coordenador</Secundario>}</td>
                     <td>
