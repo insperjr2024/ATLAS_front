@@ -14,6 +14,7 @@ import { normalizarTexto } from "@/lib/nucleo";
 import { CODIGO_ULTIMO_ADMINISTRADOR, codigoDoErro } from "@/lib/api";
 import { SituacoesCargaCard } from "./config/SituacoesCargaCard";
 import { HealthTrackRegraCard } from "./config/HealthTrackRegraCard";
+import { HealthTrackPilaresCard } from "./config/HealthTrackPilaresCard";
 import { ComposicaoBancaCard } from "./config/ComposicaoBancaCard";
 import { GestaoSemestralCard } from "./config/GestaoSemestralCard";
 import { ConfirmarModal } from "@/components/ConfirmarModal";
@@ -260,7 +261,7 @@ const PERMISSOES = [
     campo: "pode_ver_health_track" as const,
     titulo: "Ver o Health Track",
     descricao:
-      "A aba Health Track dos projetos e a regra do status geral nesta tela. Só leitura: preencher as cores continua restrito à diretoria de projetos e à gerência da frente, e editar a regra, à diretoria de projetos.",
+      "A página Health Track (Gestão): o mapa da carteira com a cor de cada pilar e o status geral de cada projeto, o painel de cada um, e a regra e os pilares nesta tela. Nasce só na diretoria de projetos; coordenador e consultor não veem. Preencher as cores continua restrito à diretoria de projetos e à gerência da frente, e editar regra e pilares, à diretoria de projetos.",
   },
 ];
 
@@ -488,7 +489,13 @@ export function Config() {
 
         <SituacoesCargaCard />
 
-        {usuario.permissoes.pode_ver_health_track && <HealthTrackRegraCard />}
+        {usuario.permissoes.pode_ver_health_track && (
+          <>
+            <HealthTrackRegraCard />
+
+            <HealthTrackPilaresCard />
+          </>
+        )}
       </SecaoGrupo>
 
       <SecaoGrupo>

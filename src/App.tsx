@@ -32,7 +32,8 @@ import { ProjetoVisaoGeral } from "@/pages/projetos/ProjetoVisaoGeral";
 import { ProjetoCronograma } from "@/pages/projetos/ProjetoCronograma";
 import { ProjetoBanca } from "@/pages/projetos/ProjetoBanca";
 import { ProjetoHistorico } from "@/pages/projetos/ProjetoHistorico";
-import { ProjetoHealthTrack } from "@/pages/projetos/ProjetoHealthTrack";
+import { HealthTrack } from "@/pages/health-track/HealthTrack";
+import { HealthTrackProjeto } from "@/pages/health-track/HealthTrackProjeto";
 import { DocumentoContratualPage } from "@/pages/projetos/DocumentoContratualPage";
 import { ProjetoTarefas } from "@/pages/projetos/ProjetoTarefas";
 import { MonitoramentoLayout } from "@/pages/monitoramento/MonitoramentoLayout";
@@ -135,9 +136,14 @@ export default function App() {
                 <Route path="banca" element={<ProjetoBanca />} />
                 <Route path="tarefas" element={<ProjetoTarefas />} />
                 <Route path="historico" element={<ProjetoHistorico />} />
-                <Route element={<AdminRoute permissao="pode_ver_health_track" />}>
-                  <Route path="health-track" element={<ProjetoHealthTrack />} />
-                </Route>
+              </Route>
+
+              {/* Health Track fora do projeto (2026-10-08, a pedido da
+                  diretoria): coordenador e consultor não veem, então não
+                  pode ser aba do projeto. Página própria, atrás da caixa. */}
+              <Route element={<AdminRoute permissao="pode_ver_health_track" />}>
+                <Route path="/health-track" element={<HealthTrack />} />
+                <Route path="/health-track/projetos/:id" element={<HealthTrackProjeto />} />
               </Route>
 
               {/* monitoramento é por CARGO (`pode_ver_monitoramento`), não

@@ -85,8 +85,58 @@ export interface EditarRegra {
   vermelho_min_vermelhos: number;
 }
 
-export function getPilares(token: string) {
-  return apiFetch<Pilar[]>("/health-track/pilares", { token });
+/** Um projeto no mapa da carteira (§9). `pilares` é indexado pelo id do
+ *  pilar; `null` quando ele ainda não tem cor. */
+export interface ProjetoNaCarteira {
+  id: number;
+  nome: string;
+  cliente: string | null;
+  status: string;
+  frentes: { id: number; nome: string }[];
+  coordenadores: { id: number; nome: string }[];
+  gerentes: { id: number; nome: string }[];
+  pilares: Record<string, { cor: CorHealthTrack; avaliado_em: string } | null>;
+  /** `null` enquanto algum pilar ativo não tem cor. */
+  status_geral: StatusGeral | null;
+  /** O status (pela regra atual) do ciclo completo anterior, pra tendência. */
+  status_anterior: CorHealthTrack | null;
+  avaliado_em: string | null;
+  total_ciclos: number;
+  algum_vermelho: boolean;
+}
+
+export interface Carteira {
+  pilares: Pilar[];
+  projetos: ProjetoNaCarteira[];
+}
+
+export function getCarteira(token: string, frenteId: number | null = null) {
+  const query = frenteId ? `?frente_id=${frenteId}` : "";
+  return apiFetch<Carteira>(`/health-track/carteira${query}`, { token });
+}
+
+export function getPilares(token: string, todos = false) {
+  return apiFetch<Pilar[]>(`/health-track/pilares${todos ? "?todos=true" : ""}`, { token });
+}
+
+export function criarPilar(dados: { nome: string; descricao?: string | null }, token: string) {
+  return apiFetch<Pilar>("/health-track/pilares", {
+    method: "POST",
+    token,
+    body: JSON.stringify(dados),
+  });
+}
+
+export function editarPilar(
+  id: number,
+  dados: Partial<{ nome: string; descricao: string | null; ordem: number; ativo: boolean }>,
+  token: string,
+) {
+  return apiFetch<Pilar>(`/health-track/pilares/${id}`, {
+    method: "PUT",
+    token,
+    body: JSON.stringify(dados),
+  });
 }
 
 export function getClassificacoes(token: string) {

@@ -29,7 +29,6 @@ import {
   ErrorText,
   EmptyText,
 } from "@/styles/page.styled";
-import { useProjeto } from "./ProjetoPage";
 import {
   Anterior,
   CampoPilar,
@@ -51,22 +50,25 @@ import {
   RotuloComentario,
   StatusLinha,
   Sucesso,
-} from "./ProjetoHealthTrack.styled";
+} from "./PainelHealthTrack.styled";
 
 type Rascunho = Record<number, { cor: CorHealthTrack | null; comentario: string }>;
 
 /**
- * A saúde do projeto em pilares (Health Track §2 a §5).
+ * A saúde de UM projeto em pilares (Health Track §2 a §5).
  *
  * Três blocos, do mais lido ao menos lido: o status geral de agora, a cor de
  * cada pilar (onde também se preenche), e os ciclos anteriores.
+ *
+ * Era a aba "Health Track" dentro do projeto; virou painel da página
+ * Health Track (2026-10-08) porque coordenador e consultor não podem ver.
+ * Recebe o id porque não está mais dentro do `ProjetoPage`.
  *
  * Quem pode preencher vem do backend (`pode_preencher`): diretoria de
  * projetos ou gerente de uma frente do projeto. A tela não refaz a regra de
  * frente, ela já saiu errada nas vezes em que foi copiada para o front.
  */
-export function ProjetoHealthTrack() {
-  const { projeto } = useProjeto();
+export function PainelHealthTrack({ projetoId }: { projetoId: number }) {
   const { token } = useAuth();
   const [atual, setAtual] = useState<AvaliacaoAtual | null>(null);
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
@@ -79,11 +81,11 @@ export function ProjetoHealthTrack() {
   const buscar = useCallback(
     () =>
       Promise.all([
-        getAvaliacaoAtual(projeto.id, token!),
-        getCiclos(projeto.id, token!),
+        getAvaliacaoAtual(projetoId, token!),
+        getCiclos(projetoId, token!),
         getClassificacoes(token!),
       ]),
-    [projeto.id, token],
+    [projetoId, token],
   );
 
   const aplicar = useCallback(
@@ -190,7 +192,7 @@ export function ProjetoHealthTrack() {
         <PageCardContent>
           {editando ? (
             <FormularioAvaliacao
-              projetoId={projeto.id}
+              projetoId={projetoId}
               atual={atual}
               classificacoes={classificacoes}
               onCancelar={() => setEditando(false)}

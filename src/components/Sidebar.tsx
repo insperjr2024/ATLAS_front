@@ -8,7 +8,7 @@ import { getMinhasEleicoes } from "@/lib/sabatina";
 import { getMinhaFila } from "@/lib/desempenho-avaliacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature, Vote, ListChecks } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature, Vote, ListChecks, HeartPulse } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
 import { ID_MENU_LATERAL } from "./Layout.styled";
@@ -170,6 +170,17 @@ const navItems: NavItemConfig[] = [
     grupo: "gestao",
     prefixo: true,
     visible: (c) => c.pode_ver_monitoramento,
+  },
+  {
+    icon: HeartPulse,
+    label: "Health Track",
+    path: "/health-track",
+    grupo: "gestao",
+    prefixo: true,
+    // Caixa que nasce marcada só pra diretor de projetos (2026-10-08, a
+    // pedido): coordenador e consultor não veem. Espelha
+    // `require_pode_ver_health_track` no backend.
+    visible: (c) => c.pode_ver_health_track,
   },
   {
     icon: Users,
