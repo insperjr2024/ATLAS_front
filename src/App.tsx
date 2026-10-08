@@ -124,7 +124,9 @@ export default function App() {
                 <Route path="banca" element={<ProjetoBanca />} />
                 <Route path="tarefas" element={<ProjetoTarefas />} />
                 <Route path="historico" element={<ProjetoHistorico />} />
-                <Route path="health-track" element={<ProjetoHealthTrack />} />
+                <Route element={<AdminRoute permissao="pode_ver_health_track" />}>
+                  <Route path="health-track" element={<ProjetoHealthTrack />} />
+                </Route>
               </Route>
 
               {/* monitoramento é por CARGO (`pode_ver_monitoramento`), não

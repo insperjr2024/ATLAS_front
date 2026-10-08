@@ -106,6 +106,11 @@ export interface Permissoes {
   pode_elaborar_contratos_proprios: boolean;
   /** Mesma coisa, sem o recorte por vendedor — qualquer projeto. */
   pode_elaborar_qualquer_contrato: boolean;
+  /** 2026-10-07 — o Health Track inteiro: a aba do projeto e a regra do
+   *  status geral em Configurações. Nasce só no diretor de projetos.
+   *  Preencher e editar a regra continuam com as regras próprias por baixo
+   *  desta caixa (o backend decide, ver `pode_preencher`). */
+  pode_ver_health_track: boolean;
 }
 
 /**
