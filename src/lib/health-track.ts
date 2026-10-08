@@ -97,7 +97,9 @@ export interface ProjetoNaCarteira {
   frentes: { id: number; nome: string }[];
   coordenadores: { id: number; nome: string }[];
   gerentes: { id: number; nome: string }[];
-  pilares: Record<string, { cor: CorHealthTrack; avaliado_em: string } | null>;
+  /** `sequencia`: há quantas avaliações seguidas o pilar tem essa cor;
+   *  `persistente`: amarelo ou vermelho que bateu o limite de Configurações (§7). */
+  pilares: Record<string, { cor: CorHealthTrack; avaliado_em: string; sequencia: number; persistente: boolean } | null>;
   /** `null` enquanto algum pilar ativo não tem cor. */
   status_geral: StatusGeral | null;
   /** O status (pela regra atual) do ciclo completo anterior, pra tendência. */
@@ -105,11 +107,36 @@ export interface ProjetoNaCarteira {
   avaliado_em: string | null;
   total_ciclos: number;
   algum_vermelho: boolean;
+  /** Quantos pilares do projeto estão em alerta de persistência. */
+  alertas_persistentes: number;
 }
 
 export interface Carteira {
   pilares: Pilar[];
+  /** Os limites de §7 vigentes: a partir de quantas avaliações seguidas. */
+  persistencia: { amarelo: number; vermelho: number };
   projetos: ProjetoNaCarteira[];
+}
+
+/** Um ponto da evolução (§16): a carteira numa rodada concluída, ou hoje. */
+export interface PontoEvolucao {
+  rotulo: string;
+  em: string;
+  total: number;
+  avaliados: number;
+  verde: number;
+  amarelo: number;
+  vermelho: number;
+  pilares: Record<string, { verde: number; amarelo: number; vermelho: number }>;
+}
+
+export interface Evolucao {
+  pilares: Pilar[];
+  pontos: PontoEvolucao[];
+}
+
+export function getEvolucao(token: string) {
+  return apiFetch<Evolucao>("/health-track/evolucao", { token });
 }
 
 // ---------------------------------------------------------------- rodadas

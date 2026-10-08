@@ -25,7 +25,7 @@ import {
 import { podeFiltrarPorFrente } from "@/utils/permissoes";
 import type { Frente } from "@/types/banca";
 import type { StatusProjeto } from "@/types/projeto";
-import { BarraFiltros, FiltroMulti, FiltroSelect } from "@/pages/monitoramento/Monitoramento.styled";
+import { BarraFiltros, FiltroMulti, FiltroSelect, FiltroToggle } from "@/pages/monitoramento/Monitoramento.styled";
 import {
   EmptyText,
   ErrorBlock,
@@ -44,6 +44,7 @@ import {
   PageTitle,
 } from "@/styles/page.styled";
 import { RodadaCard } from "./RodadaCard";
+import { EvolucaoCard } from "./EvolucaoCard";
 import {
   Celula,
   Contagem,
@@ -59,6 +60,7 @@ import {
   RankingItem,
   Rolagem,
   Secundario,
+  Sequencia,
   Tendencia,
 } from "./HealthTrack.styled";
 
@@ -105,6 +107,7 @@ export function HealthTrack() {
   const [etapas, setEtapas] = useState<string[]>([]);
   const [pilarId, setPilarId] = useState<number | null>(null);
   const [corDoPilar, setCorDoPilar] = useState<string[]>([]);
+  const [soPersistentes, setSoPersistentes] = useState(false);
 
   const podeFiltrarFrente = podeFiltrarPorFrente(usuario);
 
@@ -189,9 +192,10 @@ export function HealthTrack() {
         const chave = p.pilares[String(pilarId)]?.cor ?? SEM_AVALIACAO;
         if (!corDoPilar.includes(chave)) return false;
       }
+      if (soPersistentes && p.alertas_persistentes === 0) return false;
       return true;
     });
-  }, [carteira, coordenadorId, gerenteId, etapas, statusGeral, pilarId, corDoPilar]);
+  }, [carteira, coordenadorId, gerenteId, etapas, statusGeral, pilarId, corDoPilar, soPersistentes]);
 
   const emAcompanhamento = useMemo(() => projetos.filter((p) => p.bloco === "acompanhamento"), [projetos]);
   const encerrados = useMemo(() => projetos.filter((p) => p.bloco === "encerrado"), [projetos]);
@@ -227,6 +231,7 @@ export function HealthTrack() {
     gerenteId !== null ||
     etapas.length > 0 ||
     statusGeral.length > 0 ||
+    soPersistentes ||
     (pilarId !== null && corDoPilar.length > 0);
 
   return (
@@ -323,6 +328,15 @@ export function HealthTrack() {
             resumo={(n) => `${n} cores`}
           />
         )}
+        <FiltroToggle
+          type="button"
+          $ativo={soPersistentes}
+          aria-pressed={soPersistentes}
+          onClick={() => setSoPersistentes((v) => !v)}
+          title={`Pilar amarelo há ${carteira.persistencia.amarelo}+ ou vermelho há ${carteira.persistencia.vermelho}+ avaliações seguidas`}
+        >
+          Só com alerta persistente
+        </FiltroToggle>
       </BarraFiltros>
 
       <RodadaCard atual={rodada} historico={rodadas} onMudou={recarregarRodada} />
@@ -344,6 +358,13 @@ export function HealthTrack() {
           <strong>{placar.algumVermelho}</strong>
           <span>Com algum pilar crítico</span>
           <small>{placar.semAvaliacao} ainda sem avaliação</small>
+        </PlacarItem>
+        <PlacarItem>
+          <strong>{placar.persistentes}</strong>
+          <span>Com alerta persistente</span>
+          <small>
+            amarelo há {carteira.persistencia.amarelo}+ ou vermelho há {carteira.persistencia.vermelho}+ avaliações
+          </small>
         </PlacarItem>
         <PlacarItem>
           <strong>
@@ -456,6 +477,8 @@ export function HealthTrack() {
         </PageGrid>
       )}
 
+      <EvolucaoCard />
+
       <PageCard>
         <PageCardHeader>
           <PageCardTitle>Pós-banca e finalizados</PageCardTitle>
@@ -529,12 +552,16 @@ function MapaTabela({
                 )}
               </td>
               {pilares.map((pilar) => {
-                const cor = p.pilares[String(pilar.id)]?.cor ?? null;
-                const rotulo = `${pilar.nome}: ${cor ? nomeDaCor(cor) : "sem avaliação"}`;
+                const celula = p.pilares[String(pilar.id)];
+                const cor = celula?.cor ?? null;
+                const rotulo = celula
+                  ? `${pilar.nome}: ${nomeDaCor(celula.cor)} há ${celula.sequencia} avaliaç${celula.sequencia === 1 ? "ão" : "ões"}${celula.persistente ? " (persistente)" : ""}`
+                  : `${pilar.nome}: sem avaliação`;
                 return (
                   <td key={pilar.id} className="pilar">
-                    <Celula $cor={cor} title={rotulo} aria-label={rotulo}>
+                    <Celula $cor={cor} $persistente={celula?.persistente} title={rotulo} aria-label={rotulo}>
                       {cor ? iconeDe(cor) : "·"}
+                      {celula?.persistente && <Sequencia aria-hidden="true">{celula.sequencia}</Sequencia>}
                     </Celula>
                   </td>
                 );
@@ -660,6 +687,7 @@ function contar(projetos: ProjetoNaCarteira[]) {
   const porCor: Record<CorHealthTrack, number> = { verde: 0, amarelo: 0, vermelho: 0 };
   let avaliados = 0;
   let algumVermelho = 0;
+  let persistentes = 0;
   let pioraram = 0;
   let melhoraram = 0;
   for (const p of projetos) {
@@ -668,6 +696,7 @@ function contar(projetos: ProjetoNaCarteira[]) {
       porCor[p.status_geral.pela_regra_atual] += 1;
     }
     if (p.algum_vermelho) algumVermelho += 1;
+    if (p.alertas_persistentes > 0) persistentes += 1;
     const r = rumo(p);
     if (r === "piorou") pioraram += 1;
     if (r === "melhorou") melhoraram += 1;
@@ -678,6 +707,7 @@ function contar(projetos: ProjetoNaCarteira[]) {
     semAvaliacao: projetos.length - avaliados,
     porCor,
     algumVermelho,
+    persistentes,
     pioraram,
     melhoraram,
   };

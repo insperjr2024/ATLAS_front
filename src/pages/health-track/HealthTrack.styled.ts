@@ -113,7 +113,8 @@ export const Secundario = styled.span`
 `;
 
 /** A célula do heatmap: o fundo é a cor, o ícone é a forma. */
-export const Celula = styled.span<{ $cor: CorHealthTrack | null }>`
+export const Celula = styled.span<{ $cor: CorHealthTrack | null; $persistente?: boolean }>`
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -123,6 +124,8 @@ export const Celula = styled.span<{ $cor: CorHealthTrack | null }>`
   background: ${({ $cor }) => ($cor ? SOLIDO_COR[$cor] : theme.colors.muted)};
   color: ${({ $cor }) => ($cor ? "white" : theme.colors.mutedForeground)};
   border: 1px dashed ${({ $cor }) => ($cor ? "transparent" : theme.colors.border)};
+  /* Persistente (§7): um anel escuro em volta, além do número no canto. */
+  box-shadow: ${({ $persistente }) => ($persistente ? `0 0 0 2px ${theme.colors.foreground}` : "none")};
 
   svg {
     width: 1rem;
@@ -385,4 +388,34 @@ export const Contagem = styled.span<{ $cor: CorHealthTrack }>`
   font-weight: ${theme.fontWeight.semibold};
   min-width: 1.1rem;
   text-align: right;
+`;
+
+// ---------------------------------------------------------------- evolução
+
+export const CaixaGrafico = styled.div<{ $altura?: string }>`
+  width: 100%;
+  height: ${({ $altura }) => $altura ?? "14rem"};
+`;
+
+export const TituloGrafico = styled.p`
+  margin: 0 0 ${theme.spacing.xs};
+  font-size: ${theme.fontSize.sm};
+  font-weight: ${theme.fontWeight.semibold};
+`;
+
+/** O número de avaliações seguidas, no canto da célula persistente. */
+export const Sequencia = styled.span`
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.2rem;
+  border-radius: 999px;
+  background: ${theme.colors.foreground};
+  color: white;
+  font-size: 0.6rem;
+  font-weight: ${theme.fontWeight.bold};
+  line-height: 1rem;
+  text-align: center;
 `;

@@ -357,6 +357,10 @@ export interface Frente {
 
 export interface Configuracao {
   id: number;
+  /** Health Track §7: a partir de quantas avaliações seguidas na mesma cor
+   *  um pilar vira alerta de persistência. */
+  health_track_persistencia_amarelo: number;
+  health_track_persistencia_vermelho: number;
   /** Teto de pessoas por banca, editável pela diretoria em Config. */
   vagas_por_banca: number;
   /** Quantas lideranças (gerente da frente, ou diretor) cada frente

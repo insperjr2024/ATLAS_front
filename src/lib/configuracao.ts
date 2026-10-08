@@ -17,6 +17,8 @@ export function updateConfiguracao(
   dados: {
     vagas_por_banca?: number;
     lideranca_minima_por_frente?: number;
+    health_track_persistencia_amarelo?: number;
+    health_track_persistencia_vermelho?: number;
   },
   token: string,
 ) {
