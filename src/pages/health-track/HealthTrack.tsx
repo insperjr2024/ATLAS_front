@@ -59,7 +59,6 @@ import { PilaresGrafico } from "./PilaresGrafico";
 import {
   Celula,
   Contagem,
-  FaixaBarra,
   Faixas,
   Legenda,
   Mapa,
@@ -512,7 +511,12 @@ export function HealthTrack() {
                         {percentual(p.verde, p.verde + p.amarelo + p.vermelho)} saudável
                       </Secundario>
                     </button>
-                    <FaixasCores verde={p.verde} amarelo={p.amarelo} vermelho={p.vermelho} />
+                    {/* Sem a barrinha: o gráfico ao lado já é ela. Ficam os números. */}
+                    <Faixas>
+                      <Contagem $cor="verde">{p.verde}</Contagem>
+                      <Contagem $cor="amarelo">{p.amarelo}</Contagem>
+                      <Contagem $cor="vermelho">{p.vermelho}</Contagem>
+                    </Faixas>
                   </RankingItem>
                 ))}
               </Ranking>
@@ -656,25 +660,6 @@ function MapaTabela({
     </Rolagem>
   );
 }
-
-/** Verde, amarelo e vermelho lado a lado: a barra e os três números. */
-function FaixasCores({ verde, amarelo, vermelho }: { verde: number; amarelo: number; vermelho: number }) {
-  const total = Math.max(1, verde + amarelo + vermelho);
-  return (
-    <Faixas>
-      <FaixaBarra aria-hidden="true">
-        <i style={{ width: `${(verde / total) * 100}%`, background: SOLIDO_COR.verde }} />
-        <i style={{ width: `${(amarelo / total) * 100}%`, background: SOLIDO_COR.amarelo }} />
-        <i style={{ width: `${(vermelho / total) * 100}%`, background: SOLIDO_COR.vermelho }} />
-      </FaixaBarra>
-      <Contagem $cor="verde">{verde}</Contagem>
-      <Contagem $cor="amarelo">{amarelo}</Contagem>
-      <Contagem $cor="vermelho">{vermelho}</Contagem>
-    </Faixas>
-  );
-}
-
-export type LinhaRanking = { id: number; nome: string; projetos: number; verde: number; amarelo: number; vermelho: number };
 
 /** O pilar com mais vermelho (depois amarelo) na JR inteira: problema
  *  sistêmico, não de um projeto. */
