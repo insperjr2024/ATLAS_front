@@ -24,6 +24,11 @@ export const Placar = styled.div`
 export const PlacarItem = styled.div<{ $cor?: CorHealthTrack }>`
   display: flex;
   flex-direction: column;
+  /* Centrado nos dois eixos: a linha tem a altura do card mais alto, e os
+     mais curtos ficavam com o texto encostado em cima e um vão embaixo. */
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   gap: 0.15rem;
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   border-radius: ${theme.borderRadius.lg};
