@@ -397,11 +397,10 @@ export function HealthTrack() {
         </PlacarItem>
         <PlacarItem>
           <strong>
-            {placar.pioraram} <Secundario as="span" style={{ display: "inline" }}>pioraram</Secundario>
-            {" · "}
-            {placar.melhoraram} <Secundario as="span" style={{ display: "inline" }}>melhoraram</Secundario>
+            {placar.pioraram} <small>↓</small> {placar.melhoraram} <small>↑</small>
           </strong>
-          <span>Desde o ciclo anterior</span>
+          <span>Pioraram / melhoraram</span>
+          <small>desde o ciclo anterior</small>
         </PlacarItem>
       </Placar>
 

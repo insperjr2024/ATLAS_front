@@ -5,17 +5,27 @@ import { FUNDO_COR, SOLIDO_COR, TEXTO_COR } from "@/components/health-track/Heal
 import type { CorHealthTrack } from "@/lib/health-track";
 
 /** Os quatro cards de contagem do topo, mais os de alerta. */
+/** Os sete KPIs numa linha só no desktop (a pedido): colunas iguais, cada
+ *  card encolhe em vez de quebrar linha. Em tela estreita, 4 e depois 2. */
 export const Placar = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: ${theme.spacing.sm};
+
+  @media (max-width: ${theme.breakpoints.lg}px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  @media (max-width: ${theme.breakpoints.sm - 1}px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 `;
 
 export const PlacarItem = styled.div<{ $cor?: CorHealthTrack }>`
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  padding: ${theme.spacing.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
   border-radius: ${theme.borderRadius.lg};
   border: 1px solid ${({ $cor }) => ($cor ? SOLIDO_COR[$cor] : theme.colors.border)};
   background: ${({ $cor }) => ($cor ? FUNDO_COR[$cor] : theme.colors.card)};
@@ -23,7 +33,7 @@ export const PlacarItem = styled.div<{ $cor?: CorHealthTrack }>`
   min-width: 0;
 
   strong {
-    font-size: ${theme.fontSize["2xl"]};
+    font-size: ${theme.fontSize.xl};
     font-weight: ${theme.fontWeight.bold};
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
@@ -31,12 +41,14 @@ export const PlacarItem = styled.div<{ $cor?: CorHealthTrack }>`
   }
 
   span {
-    font-size: ${theme.fontSize.sm};
+    font-size: ${theme.fontSize.xs};
     font-weight: ${theme.fontWeight.semibold};
+    line-height: 1.25;
   }
 
   small {
-    font-size: ${theme.fontSize.xs};
+    font-size: 0.7rem;
+    line-height: 1.25;
     opacity: 0.85;
   }
 `;
