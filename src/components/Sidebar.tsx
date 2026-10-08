@@ -233,13 +233,9 @@ const navItems: NavItemConfig[] = [
     path: "/sabatina/config",
     grupo: "sistema",
     // Caixa que nasce marcada pra diretoria. Espelha
-    // `require_pode_acessar_configuracoes_sabatina` no backend.
-    //
-    // ESCONDIDA de todo mundo por enquanto (2026-10-06, a pedido): a rota
-    // /sabatina/config continua funcionando pelo link, mas o item não
-    // aparece até a diretoria querer anunciar. Pra liberar, volte a
-    // `visible: (c) => c.pode_acessar_configuracoes_sabatina`.
-    visible: () => false,
+    // `require_pode_acessar_configuracoes_sabatina` no backend. Ficou
+    // escondida de 2026-10-06 a 2026-10-08, até a diretoria liberar.
+    visible: (c) => c.pode_acessar_configuracoes_sabatina,
   },
 ];
 

@@ -225,14 +225,12 @@ const PERMISSOES = [
     descricao:
       "A revisão jurídica de verdade: fecha a etapa de revisão interna e libera o documento pra ser exportado e mandado ao cliente.",
   },
-  // "Acessar configurações de sabatina" (`pode_acessar_configuracoes_sabatina`)
-  // fica fora da lista por enquanto (2026-10-06, a pedido): a Sabatina ainda
-  // não foi anunciada e a caixa aqui entregaria. A permissão existe no
-  // backend e já está marcada pra diretoria. Pra liberar, devolva a entrada:
-  // { campo: "pode_acessar_configuracoes_sabatina", titulo: "Acessar
-  //   configurações de sabatina", descricao: "Abre a aba Configuração de
-  //   Sabatina: peso do voto por posição, montar, abrir, fechar e excluir
-  //   eleições e ver a apuração. Votar não depende disto." }
+  {
+    campo: "pode_acessar_configuracoes_sabatina" as const,
+    titulo: "Ver configurações de sabatina",
+    descricao:
+      "Abre a aba Configuração de Sabatina: peso do voto por posição, montar, abrir, fechar e excluir eleições, a corrida em tempo real e a apuração. Votar não depende disto, e ninguém vê em quem cada pessoa votou.",
+  },
   {
     campo: "pode_acessar_arquivo_contratos" as const,
     titulo: "Acessar o arquivo de contratos",
