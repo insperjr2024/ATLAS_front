@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useOutletContext } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoadingBlock } from "@/styles/page.styled";
 import type { Permissoes } from "@/types/auth";
@@ -16,9 +16,12 @@ type PermissaoCampo = keyof Permissoes;
  */
 export function AdminRoute({ permissao }: { permissao: PermissaoCampo }) {
   const { usuario, carregando } = useAuth();
+  // Repassa o contexto do pai: aninhada em `/projetos/:id`, sem isto a aba
+  // perde o `useProjeto()`, porque o contexto de outlet não atravessa sozinho.
+  const contexto = useOutletContext();
 
   if (carregando) return <PageLoadingBlock />;
   if (!usuario?.permissoes[permissao]) return <Navigate to="/dashboard" replace />;
 
-  return <Outlet />;
+  return <Outlet context={contexto} />;
 }

@@ -256,6 +256,12 @@ const PERMISSOES = [
     descricao:
       "Mesma coisa que a caixa acima, sem o recorte por vendedor — elabora o documento jurídico de qualquer projeto, igual diretoria.",
   },
+  {
+    campo: "pode_ver_health_track" as const,
+    titulo: "Ver o Health Track",
+    descricao:
+      "A aba Health Track dos projetos e a regra do status geral nesta tela. Só leitura: preencher as cores continua restrito à diretoria de projetos e à gerência da frente, e editar a regra, à diretoria de projetos.",
+  },
 ];
 
 type CampoPermissao = (typeof PERMISSOES)[number]["campo"];
@@ -482,7 +488,7 @@ export function Config() {
 
         <SituacoesCargaCard />
 
-        <HealthTrackRegraCard />
+        {usuario.permissoes.pode_ver_health_track && <HealthTrackRegraCard />}
       </SecaoGrupo>
 
       <SecaoGrupo>
