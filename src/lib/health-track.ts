@@ -316,6 +316,22 @@ export function registrarAvaliacao(projetoId: number, avaliacoes: CorPilarEnvio[
   });
 }
 
+/** Apaga UM preenchimento do projeto (todas as linhas com esse `avaliado_em`). */
+export function apagarCiclo(projetoId: number, avaliadoEm: string, token: string) {
+  return apiFetch<{ apagadas: number }>(
+    `/health-track/projetos/${projetoId}/avaliacoes/ciclos?avaliado_em=${encodeURIComponent(avaliadoEm)}`,
+    { method: "DELETE", token },
+  );
+}
+
+/** Apaga todas as avaliações, rodadas e ações. Pilares e regra ficam. */
+export function zerarHealthTrack(token: string) {
+  return apiFetch<{ avaliacoes: number; rodadas: number; acoes: number }>("/health-track/tudo", {
+    method: "DELETE",
+    token,
+  });
+}
+
 export function getRegra(token: string) {
   return apiFetch<RegraStatus | null>("/health-track/regra", { token });
 }

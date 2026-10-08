@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { EstadoVazio } from "@/components/EstadoVazio";
+import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import { CorSelo } from "@/components/health-track/CorSelo";
 import { SeletorCor } from "@/components/health-track/SeletorCor";
 import { SemCor } from "@/components/health-track/HealthTrack.styled";
 import { Textarea } from "@/components/ui/textarea";
 import { formatarDataHora } from "@/lib/projetos";
 import {
+  apagarCiclo,
   getAvaliacaoAtual,
   getCiclos,
   getClassificacoes,
@@ -24,6 +27,7 @@ import {
   PageCardTitle,
   PageCardContent,
   PageButton,
+  PageButtonSm,
   PageLoadingBlock,
   ErrorBlock,
   ErrorText,
@@ -99,7 +103,9 @@ export function PainelHealthTrack({
   /** Depois de uma avaliação registrada: a página da rodada atualiza a fila. */
   onSalvo?: () => void;
 }) {
-  const { token } = useAuth();
+  const { token, usuario } = useAuth();
+  const diretoria = ehDiretoriaDeProjetos(usuario);
+  const [apagando, setApagando] = useState<Ciclo | null>(null);
   const [atual, setAtual] = useState<AvaliacaoAtual | null>(null);
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [classificacoes, setClassificacoes] = useState<Classificacao[]>([]);
@@ -275,12 +281,29 @@ export function PainelHealthTrack({
                   key={`${ciclo.avaliado_em}-${ciclo.avaliado_por}`}
                   ciclo={ciclo}
                   nomeDaCor={nomeDaCor}
+                  onApagar={diretoria ? () => setApagando(ciclo) : undefined}
                 />
               ))}
             </ListaCiclos>
           )}
         </PageCardContent>
       </PageCard>
+
+      {apagando && (
+        <ConfirmarModal
+          titulo="Excluir avaliação"
+          mensagem={`Excluir a avaliação de ${formatarDataHora(apagando.avaliado_em)}? As cores dos pilares daquele ciclo somem do histórico e a contagem de persistência é refeita.`}
+          rotuloConfirmar="Excluir"
+          onConfirmar={async () => {
+            if (!token) return;
+            await apagarCiclo(projetoId, apagando.avaliado_em, token);
+            setApagando(null);
+            await carregar();
+            onSalvo?.();
+          }}
+          onCancelar={() => setApagando(null)}
+        />
+      )}
     </PageStack>
   );
 }
@@ -325,9 +348,12 @@ function DivergenciaDeRegra({
 function CicloResumo({
   ciclo,
   nomeDaCor,
+  onApagar,
 }: {
   ciclo: Ciclo;
   nomeDaCor: (cor: CorHealthTrack) => string | undefined;
+  /** Só a diretoria de projetos: apagar um ciclo (a pedido, pra testes). */
+  onApagar?: () => void;
 }) {
   const comComentario = ciclo.avaliacoes.filter((a) => a.comentario);
   return (
@@ -338,6 +364,11 @@ function CicloResumo({
           {ciclo.avaliado_por_nome && ` · ${ciclo.avaliado_por_nome}`}
         </Meta>
         <CorSelo cor={ciclo.status_geral.na_epoca} rotulo={nomeDaCor(ciclo.status_geral.na_epoca)} />
+        {onApagar && (
+          <PageButtonSm type="button" $variant="ghost" onClick={onApagar}>
+            Excluir
+          </PageButtonSm>
+        )}
       </CicloCabecalho>
       <CoresDoCiclo aria-label="Cor de cada pilar neste ciclo">
         {ciclo.avaliacoes.map((a) => (

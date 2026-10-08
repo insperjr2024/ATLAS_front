@@ -5,6 +5,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { CorSelo } from "@/components/health-track/CorSelo";
 import { getConfiguracao, updateConfiguracao } from "@/lib/configuracao";
+import { zerarHealthTrack } from "@/lib/health-track";
+import { ConfirmarModal } from "@/components/ConfirmarModal";
 import { ehDiretoriaDeProjetos } from "@/utils/permissoes";
 import {
   EmptyText,
@@ -61,6 +63,8 @@ export function HealthTrackPersistenciaCard() {
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
+  const [zerando, setZerando] = useState(false);
+  const [zerado, setZerado] = useState("");
 
   useEffect(() => {
     if (!token) return;
@@ -149,7 +153,33 @@ export function HealthTrackPersistenciaCard() {
             )}
           </form>
         )}
+        {podeEditar && (
+          <Rodape style={{ marginTop: theme.spacing.lg }}>
+            <PageButton type="button" $variant="outline" onClick={() => setZerando(true)}>
+              Zerar Health Track
+            </PageButton>
+            <Descricao>
+              {zerado || "Apaga todas as avaliações, rodadas e ações da carteira. Pilares e regra ficam. Pra testes."}
+            </Descricao>
+          </Rodape>
+        )}
       </PageCardContent>
+      {zerando && (
+        <ConfirmarModal
+          titulo="Zerar o Health Track"
+          mensagem="Apaga TODAS as avaliações de todos os projetos, todas as rodadas e todas as ações. Pilares, regra e limites ficam. Não tem volta."
+          confirmacaoTexto="ZERAR"
+          rotuloConfirmar="Zerar tudo"
+          rotuloProcessando="Zerando…"
+          onConfirmar={async () => {
+            if (!token) return;
+            const r = await zerarHealthTrack(token);
+            setZerado(`Zerado: ${r.avaliacoes} avaliações, ${r.rodadas} rodadas e ${r.acoes} ações apagadas.`);
+            setZerando(false);
+          }}
+          onCancelar={() => setZerando(false)}
+        />
+      )}
     </PageCard>
   );
 }
