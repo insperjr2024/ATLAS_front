@@ -258,6 +258,12 @@ export function getCandidaturas(token: string) {
   return apiFetch<Candidatura[]>("/candidaturas", { token });
 }
 
+/** As avaliações pendentes de TODO MUNDO (quem tem `pode_definir_cronograma`):
+ *  é o que diz, por banca, quem ainda não enviou o formulário. */
+export function getAvaliacoesPendentes(token: string) {
+  return apiFetch<BancaParaAvaliar[]>("/avaliacoes-pendentes", { token });
+}
+
 export function getBancasParaAvaliar(usuarioId: number, token: string) {
   return apiFetch<BancaParaAvaliar[]>(`/usuarios/${usuarioId}/bancas-para-avaliar`, { token });
 }

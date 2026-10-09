@@ -16,6 +16,7 @@ import {
   getBancaDetalhes,
   getBancasFrentes,
   getCandidaturas,
+  getAvaliacoesPendentes,
   getBancasParaAvaliar,
   getEquipesProjeto,
   getEscopos,
@@ -214,6 +215,11 @@ interface Contexto {
    *  `paraAvaliar` funde `BancaParaAvaliar` com a `Banca` cheia e descarta os
    *  campos extras (ver `recarregar`). */
   prazosAvaliacao: Record<number, { prazoAvaliacao: string; prazoExpirado: boolean }>;
+  /** banca_id → quem ainda não enviou a avaliação (2026-10-09, a pedido):
+   *  aprovar a banca não quer dizer que todo mundo avaliou, e a seção de
+   *  realizadas precisa continuar cobrando até a última avaliação entrar.
+   *  Só preenchido pra quem pode agendar (a rota exige). */
+  faltamAvaliar: Record<number, number[]>;
 }
 
 export function Bancas() {
@@ -326,7 +332,7 @@ export function Bancas() {
     setCarregando(true);
     setErro("");
     try {
-      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca, esperandoAprovacaoResp, minhasEntradasPendentes] =
+      const [bancasResp, candidaturasResp, avaliarResp, avaliacoesResp, usuarios, escopos, escoposVendidos, frentes, bancasFrentes, equipesProjeto, formularioAtivo, solicitacoesTroca, esperandoAprovacaoResp, minhasEntradasPendentes, pendentesDeTodos] =
         await Promise.all([
           getBancas(token),
           getCandidaturas(token),
@@ -344,6 +350,8 @@ export function Bancas() {
           // pedir para os outros só devolveria 403 à toa.
           podeAprovar ? getBancasEsperandoAprovacao(token) : Promise.resolve([]),
           getMinhasEntradaBancaPendentes(token),
+          // Quem falta avaliar em cada banca: a rota exige `pode_definir_cronograma`.
+          podeAgendar ? getAvaliacoesPendentes(token).catch(() => []) : Promise.resolve([]),
         ]);
       setBancas(bancasResp);
       setCandidaturas(candidaturasResp);
@@ -391,6 +399,10 @@ export function Bancas() {
             { prazoAvaliacao: item.prazo_avaliacao, prazoExpirado: item.prazo_expirado },
           ]),
         ),
+        faltamAvaliar: pendentesDeTodos.reduce<Record<number, number[]>>((mapa, item) => {
+          (mapa[item.banca_id] ??= []).push(item.usuario_id);
+          return mapa;
+        }, {}),
       });
       setFormulario(formularioAtivo);
       setEsperandoAprovacao(esperandoAprovacaoResp);
@@ -553,14 +565,20 @@ export function Bancas() {
    * decidindo se vale a pena abaixo do mínimo. Listar aqui é o mínimo para a
    * banca continuar encontrável.
    */
+  // ⚠ 2026-10-09, a pedido: uma banca APROVADA com avaliação faltando
+  // continua aqui. Antes, registrar o resultado a tirava da seção e ninguém
+  // mais via que ainda faltava gente enviar o formulário.
   const realizadasAguardandoResultado = bancas
-    .filter(
-      (b) =>
-        b.realizado_em &&
-        !b.resultado &&
-        !paraAvaliar.some((p) => p.id === b.id) &&
-        !jaAvaliadas.some((j) => j.id === b.id),
-    )
+    .filter((b) => {
+      if (!b.realizado_em) return false;
+      const faltam = (contexto?.faltamAvaliar[b.id] ?? []).length > 0;
+      if (b.resultado && !faltam) return false;
+      // Se EU sou avaliador pendente, ela já está em "Para avaliar".
+      if (paraAvaliar.some((p) => p.id === b.id)) return false;
+      // Sem resultado e já avaliada por mim: só fica se faltar outra pessoa.
+      if (!b.resultado && jaAvaliadas.some((j) => j.id === b.id) && !faltam) return false;
+      return true;
+    })
     .sort(porDataMaisProxima);
 
   async function handleAlocar(bancaId: number) {
@@ -922,7 +940,7 @@ export function Bancas() {
             <SecaoBancas
               bancaDestacada={bancaDestacada}
               refDestacada={refDestacada}
-              titulo="Realizadas aguardando resultado"
+              titulo="Realizadas aguardando resultado ou avaliações"
               bancas={realizadasAguardandoResultado}
               contexto={contexto}
               acao="nenhuma"
@@ -1398,6 +1416,13 @@ function SecaoBancas({
                       : "Pendente"}
                 </PageBadge>
               )}
+              {acao === "nenhuma" &&
+                banca.realizado_em &&
+                (contexto.faltamAvaliar[banca.id] ?? []).map((uid) => (
+                  <PageBadge key={uid} $tone="warning">
+                    Falta avaliar: {contexto.usuarios.find((u) => u.id === uid)?.nome.split(" ")[0] ?? `#${uid}`}
+                  </PageBadge>
+                ))}
               {acao === "deslocar" && <PageBadge $tone="default">Inscrito</PageBadge>}
               {acao === "alocar" &&
                 (lotada ? (
