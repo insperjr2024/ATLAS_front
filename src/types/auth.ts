@@ -117,6 +117,10 @@ export interface Permissoes {
   /** Arquivo de contratos: a pasta compartilhada com os contratos assinados
    *  e o que for importado. A diretoria escolhe quem entra. */
   pode_acessar_arquivo_contratos: boolean;
+  /** Institucional (2026-10-09): a aba do que a diretoria publica no SITE
+   *  da Insper Jr — hoje os ex-membros em destaque. Nasce marcada só pra
+   *  diretoria. A leitura pelo site é pública e não passa por aqui. */
+  pode_acessar_institucional: boolean;
 }
 
 /**

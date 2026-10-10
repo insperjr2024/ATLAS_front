@@ -14,6 +14,7 @@ import { IdentidadeInstitucional } from "@/pages/IdentidadeInstitucional";
 import { Sabatina } from "@/pages/sabatina/Sabatina";
 import { SabatinaConfig } from "@/pages/sabatina/SabatinaConfig";
 import { ArquivoContratos } from "@/pages/arquivo-contratos/ArquivoContratos";
+import { Institucional } from "@/pages/institucional/Institucional";
 import { DefinirSenha } from "@/pages/DefinirSenha";
 import { Desempenho } from "@/pages/Desempenho";
 import { Bancas } from "@/pages/Bancas";
@@ -249,6 +250,13 @@ export default function App() {
                   `require_pode_acessar_configuracoes_sabatina` no backend. */}
               <Route element={<AdminRoute permissao="pode_acessar_configuracoes_sabatina" />}>
                 <Route path="/sabatina/config" element={<SabatinaConfig />} />
+              </Route>
+              {/* Institucional (2026-10-09): o que a diretoria publica no site
+                  da Insper Jr (ex-membros em destaque, por enquanto). Caixa que
+                  nasce marcada só pra diretoria; `require_pode_acessar_
+                  institucional` no backend. */}
+              <Route element={<AdminRoute permissao="pode_acessar_institucional" />}>
+                <Route path="/institucional" element={<Institucional />} />
               </Route>
             </Route>
           </Route>

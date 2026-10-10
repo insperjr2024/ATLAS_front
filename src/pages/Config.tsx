@@ -239,6 +239,12 @@ const PERMISSOES = [
       "Abre o Arquivo de Contratos (botão na página Contratos): a pasta compartilhada com os contratos assinados por gestão e projeto, mais o que for importado. Quem entra vê, baixa, importa, renomeia, move e apaga.",
   },
   {
+    campo: "pode_acessar_institucional" as const,
+    titulo: "Acessar o Institucional",
+    descricao:
+      "Abre a aba Institucional: o que aparece no site da Insper Jr — hoje, os ex-membros em destaque (cadastrar, editar, ordenar, ocultar, remover e trocar foto). Quem visita o site vê sem login; esta caixa é só para editar.",
+  },
+  {
     campo: "pode_editar_identidade_institucional" as const,
     titulo: "Editar identidade institucional",
     descricao:

@@ -8,7 +8,7 @@ import { getMinhasEleicoes } from "@/lib/sabatina";
 import { getMinhaFila } from "@/lib/desempenho-avaliacoes";
 import type { Notificacao } from "@/types/notificacao";
 import insperJrLogo from "@/assets/insperjr.png";
-import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature, Vote, ListChecks, HeartPulse } from "lucide-react";
+import { BarChart3, Bell, FolderKanban, ClipboardList, Calendar, CalendarCog, Users, ClipboardCheck, Settings, LogOut, Star, GraduationCap, UserPlus, Landmark, FileSignature, Vote, ListChecks, HeartPulse, Globe } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FotoCircular } from "@/components/Avatar";
 import { ID_MENU_LATERAL } from "./Layout.styled";
@@ -236,6 +236,17 @@ const navItems: NavItemConfig[] = [
     // `require_pode_acessar_configuracoes_sabatina` no backend. Ficou
     // escondida de 2026-10-06 a 2026-10-08, até a diretoria liberar.
     visible: (c) => c.pode_acessar_configuracoes_sabatina,
+  },
+  {
+    icon: Globe,
+    label: "Institucional",
+    path: "/institucional",
+    grupo: "sistema",
+    // O que a diretoria publica no SITE da Insper Jr (2026-10-09, a pedido):
+    // hoje os ex-membros em destaque; outras seções do site entram aqui
+    // depois. Caixa que nasce marcada só pra diretoria. Espelha
+    // `require_pode_acessar_institucional` no backend.
+    visible: (c) => c.pode_acessar_institucional,
   },
 ];
 

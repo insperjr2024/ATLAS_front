@@ -74,6 +74,7 @@ const PERMISSOES_PLACEHOLDER: Permissoes = {
   pode_ver_health_track: false,
   pode_acessar_configuracoes_sabatina: false,
   pode_acessar_arquivo_contratos: false,
+  pode_acessar_institucional: false,
 };
 
 /**
